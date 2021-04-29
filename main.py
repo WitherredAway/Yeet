@@ -20,8 +20,22 @@ embed_colour = 0x8AFFAD
 
 bot.help_command = PrettyHelp(menu=menu, color=embed_colour, sort_command=False, show_index=True)
 
+@bot.event
+async def on_command_error(ctx, error):
+  ignore = (commands.CommandNotFound, commands.UserInputError)
+  
+  if isinstance(error, ignore):
+    return
+  
+  if isinstance(error, commands.NotOwner):
+    await ctx.send("You do not own this bot.")
+    
+  else:
+    raise error
+    
+  
 # cog_load
-@bot.command(name = "cog_load",
+@bot.command(name = "cogload",
              aliases = ['cl'], 
              hidden = True,
              brief = "Load a cog",
@@ -37,13 +51,9 @@ async def cogload(ctx, cog):
     await ctx.send(f"Cog `{cog}` not found.")
   else:
     await ctx.send(f":inbox_tray: Loaded cog  `{cog}`")
-@cogload.error
-async def cogload_error(ctx, error):
-  if isinstance(error, commands.NotOwner):
-    await ctx.send("You do not own this bot.")
-    
+  raise error
 #cog_unload
-@bot.command(name = "cog_unload", 
+@bot.command(name = "cogunload", 
              aliases = ['cu'],
              hidden = True,
              brief = "Unloads a cog",
@@ -57,30 +67,12 @@ async def cogunload(ctx, cog):
     await ctx.send(f":x: Cog `{cog}` not found.")
   else:
     await ctx.send(f":outbox_tray: Unloaded cog `{cog}`")
-@cogunload.error
-async def cogunload_error(ctx, error):
-  if isinstance(error, commands.NotOwner):
-    await ctx.send("You do not own this bot.")
-"""
-#cog_reload
-@bot.command(name = "cog_reload", 
-             aliases = ['cr'], 
+    
+@bot.command(name = "cogreload", 
+             aliases = ['cr'],
              hidden = True,
              brief = "Reloads a cog",
-             help = "Unloads and loads a cog with the name, dev only command."
-             )
-@commands.is_owner()
-async def cogreload(ctx, extension):
-  bot.unload_extension(f'cogs.{extension}')
-  bot.load_extension(f'cogs.{extension}')
-  await ctx.send(f":repeat: Reloaded cog `{extension}`")
-@cogreload.error
-async def cogreload_error(ctx, error):
-  if isinstance(error, commands.NotOwner):
-    await ctx.send("You do not own this bot.")
-"""
-
-@bot.command(name='cogreload', aliases=['cr'])
+             help = "Reloads a cog with the name, dev only command.")
 @commands.is_owner()
 async def cogreload(ctx, cog):
 	'''
@@ -100,26 +92,25 @@ async def cogreload(ctx, cog):
 	    await ctx.send(f":x: Cog `{cog}` not found.")
 	  else:
 	    await ctx.send(f':repeat: Reloaded cog `{cog}`')
-@cogreload.error
-async def cogreload_error(ctx, error):
-  if isinstance(error, commands.NotOwner):
-    await ctx.send("You do not own this bot.")
 
 
 # cogall
-@bot.command(name="cogall", aliases=['ca'])
+@bot.command(name = "cogall", 
+             aliases = ['ca'],
+             hidden = True,
+             brief = "All cogs",
+             help = "Lists all cogs, dev only command.")
+@commands.is_owner()
 async def cogall(ctx):
 		'''
 		Returns a list of all enabled commands.
 		'''
 		
 		list = discord.Embed(title = "Cogs", description  = "List of all enabled cogs", colour = embed_colour)
-		try:
-		  for cog in bot.extensions:
-		    list.add_field(name = str(cog[5:]), value = str(cog), inline = False)
-		  await ctx.send(embed = list)
-		except Exception as e:
-		  await ctx.send(str(e))
+		
+		for cog in bot.extensions:
+		  list.add_field(name = str(cog[5:]), value = str(cog), inline = False)
+		await ctx.send(embed = list)
 
 for filename in os.listdir('./cogs'):
   if filename.endswith(".py"):

@@ -13,11 +13,6 @@ class Bot(commands.Cog):
     await bot.change_presence(status=discord.Status.online, activity=discord.Game(f'{prefix}help'))
     print("Running.")
     print(bot.user)
-    
-  @commands.Cog.listener()
-  async def on_command_error(self, ctx, error):
-    if isinstance(error, commands.CommandNotFound):
-      await ctx.send("Command not found.")
       
   @commands.Cog.listener(name='on_command')
   async def print(self, ctx):
