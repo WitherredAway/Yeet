@@ -14,26 +14,7 @@ class DevCommands(commands.Cog, name='Developer Commands'):
 		'''
 		return ctx.author.id == self.bot.author_id
 
-	@commands.command(  # Decorator to declare where a command is.
-		name='reload',  # Name of the command, defaults to function name.
-		aliases=['rl']  # Aliases for the command.
-	)  
-	async def reload(self, ctx, cog):
-		'''
-		Reloads a cog.
-		'''
-		extensions = self.bot.extensions  # A list of the bot's cogs/extensions.
-		if cog == 'all':  # Lets you reload all cogs at once
-			for extension in extensions:
-				self.bot.unload_extension(cog)
-				self.bot.load_extension(cog)
-			await ctx.send('Done')
-		if cog in extensions:
-			self.bot.unload_extension(cog)  # Unloads the cog
-			self.bot.load_extension(cog)  # Loads the cog
-			await ctx.send('Done')  # Sends a message where content='Done'
-		else:
-			await ctx.send('Unknown Cog')  # If the cog isn't found/loaded.
+	
 	
 	@commands.command(name="unload", aliases=['ul']) 
 	async def unload(self, ctx, cog):
@@ -47,19 +28,7 @@ class DevCommands(commands.Cog, name='Developer Commands'):
 		self.bot.unload_extension(cog)
 		await ctx.send(f"`{cog}` has successfully been unloaded.")
 	
-	@commands.command(name="load")
-	async def load(self, ctx, cog):
-		'''
-		Loads a cog.
-		'''
-		try:
-
-			self.bot.load_extension(cog)
-			await ctx.send(f"`{cog}` has successfully been loaded.")
-
-		except commands.errors.ExtensionNotFound:
-			await ctx.send(f"`{cog}` does not exist!")
-
+	
 	
 
 def setup(bot):

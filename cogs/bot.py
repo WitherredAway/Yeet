@@ -18,13 +18,14 @@ class Bot(commands.Cog):
   async def on_command_error(self, ctx, error):
     if isinstance(error, commands.CommandNotFound):
       await ctx.send("Command not found.")
-  """
-  # @mention
-  @commands.Cog.listener()
-  async def on_message(self, message):
-  	if message.content.startswith("<@634409171114262538>" or "@Yeet.1830"):
-	    await message.channel.send(f"My prefix is `{prefix}`\nDo `{prefix}help` for a list of commands")
-	"""
+      
+  @commands.Cog.listener(name='on_command')
+  async def print(self, ctx):
+    server = ctx.guild.name
+    user = ctx.author
+    command = f"{ctx.command}"
+    print(f'{server} > {user}: {command}')
+      
 	# ping
   @commands.command(name = "ping", 
                     brief = "Bot's latency",

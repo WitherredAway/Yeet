@@ -14,7 +14,8 @@ class Fun(commands.Cog):
                     brief = "Spams desired message",
                     help = "Spams <message> every <delay> seconds. For multi-word messages put them within quotes."
                     )
-  #@commands.has_permissions(manage_messages = True)
+  @commands.has_permissions(manage_messages = True)
+  @commands.max_concurrency(1, per=commands.BucketType.guild, wait = False)
   async def spam(self, ctx, msg, delay: int):
     global on
     on = True
@@ -25,10 +26,12 @@ class Fun(commands.Cog):
   async def spam_error(self, ctx, error):
   	if isinstance(error, commands.MissingRequiredArgument):
   		await ctx.send(f"Missing argument(s). Proper usage: `{prefix}spam <message to spam> <delay in seconds>`")
-  	# if isinstance(error, commands.MissingPermissions):
-  	#   await ctx.send("Missing permission(s): Manage_Messages")
+  	if isinstance(error, commands.MissingPermissions):
+  	  await ctx.send("Missing permission(s): Manage_Messages")
   	if isinstance(error, commands.BadArgument):
   	  await ctx.send("The delay must be a whole number")
+  	if isinstance(error, commands.MaxConcurrencyReached):
+  	  await ctx.send(f"`spam` command already active on this server. This command can only be used once at a time in a server. Stop the current `spam` with {prefix}stopspam.")
   
 	# stopspam
   @commands.command(name = "stopspam", 
@@ -49,7 +52,7 @@ class Fun(commands.Cog):
                     )
   async def say(self, ctx, *, message):
     await ctx.send(message)
-    asyncio.sleep(0.5)
+    await asyncio.sleep(0.5)
 
 	# cum
   @commands.command(hidden = True)
