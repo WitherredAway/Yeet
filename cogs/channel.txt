@@ -1,0 +1,34 @@
+import discord
+from discord.ext import commands
+from main import *
+import asyncio
+
+#class Channel(commands.Cog):
+  """Prank commands."""
+  def __init__(self, bot):
+    self.bot = bot
+  
+  @commands.group(name="create",
+                    aliases = ["createch"],
+                    brief = "Creates a channel",
+                    help = "Used to create a channel, right under the channel you used the command in."
+  )
+  async def create(self, ctx, channel_name, channel_topic):
+    try:
+      comm_channel = ctx.channel
+      comm_position = ctx.channel.position
+      comm_category = ctx.channel.category
+      server = ctx.channel.guild
+      position = comm_position + 1
+
+      new_channel = await server.create_text_channel(name=channel_name, category = comm_category, position=position)
+  
+  @create.
+  
+      await ctx.message.add_reaction('✅')
+    except Exception as error:
+      await ctx.send(str(error))
+      raise error
+
+def setup(bot):
+	bot.add_cog(Channel(bot))

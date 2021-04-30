@@ -6,11 +6,19 @@ from keep_alive import keep_alive
 from discord.ext import commands
 from pretty_help import DefaultMenu, PrettyHelp
 
-prefix = '--'
+def get_prefix(bot, message):
+    """A callable Prefix for our bot. This could be edited to allow per server prefixes."""
+
+    prefixes = ['--', '>>']
+    if not message.guild:
+        return '--'
+    return commands.when_mentioned_or(*prefixes)(bot, message)
 
 menu = DefaultMenu("◀️", "▶️", "❌", active_time = 60)
 
-bot = commands.Bot(command_prefix=commands.when_mentioned_or(prefix), 
+prefix = '--'
+
+bot = commands.Bot(command_prefix=get_prefix, 
                    owner_id=267550284979503104,
                    case_insensitive=True, 
                    help_command = PrettyHelp(),
@@ -51,7 +59,7 @@ async def cogload(ctx, cog):
     await ctx.send(f"Cog `{cog}` not found.")
   else:
     await ctx.send(f":inbox_tray: Loaded cog  `{cog}`")
-  raise error
+	    
 
 #cog_unload
 @bot.command(name = "cogunload", 

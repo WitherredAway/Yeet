@@ -22,16 +22,19 @@ class Bot(commands.Cog):
       log_channel = bot.get_channel(837542790119686145)
       user = ctx.author
       command = ctx.command
+      message_content = str(ctx.message.content)
+      message_id = ctx.message.id
       channel = str(ctx.channel)
+      channel_id = ctx.channel.id
       server = ctx.guild.name
-  
-      em = discord.Embed(title = "Server name", description = server, colour = embed_colour)
+      server_id = ctx.guild.id
+      em = discord.Embed(colour = embed_colour)
   
       em.set_author(name = user, icon_url = user.avatar_url)
-      em.add_field(name = "Channel name", value = f"#{channel}", inline = False)
-      em.add_field(name = "Command used", value = str(ctx.message.content), inline = False)
+      em.add_field(name = "Command used", value = message_content, inline = False)
+      em.add_field(name = "Go to", value = f"[Warp](https://discord.com/channels/{server_id}/{channel_id}/{message_id})")
       em.timestamp = datetime.datetime.utcnow()
-      em.set_footer(text = "Yeet.")
+      em.set_footer(text = f"{server} | #{channel}")
   
       await log_channel.send(embed = em)
       
