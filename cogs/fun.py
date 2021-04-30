@@ -81,12 +81,21 @@ class Fun(commands.Cog):
       await ctx.send("The delay must be an integer.")
       
   # timer
-  @commands.command()
+  global max_time
+  max_time = 600
+  global time
+  time = ""
+  @commands.command(name = "timer",
+                    aliases = ["tr", "countdown", "cd"],
+                    brief = "Sets a timer",
+                    help = f"Sets a timer for <seconds> and counts down from it(max {round(max_time/60, 2)}mins or {max_time}seconds). One timer per user at a time. Stop a running timer by using the {prefix}stoptimer command.")
   @commands.max_concurrency(1, per=commands.BucketType.user, wait = False)
   async def timer(self, ctx, seconds: int):
-    max_time = 600
     global secondint
     global msg
+    global max_time
+    global time
+    time = seconds
     mins = round(seconds/60, 2)
     secondint = seconds
     msg = f"{ctx.author.mention} time's up! ({mins}mins or {seconds}seconds)"
@@ -112,6 +121,7 @@ class Fun(commands.Cog):
   	  
   # stoptimer
   @commands.command(name = "stoptimer",
+                    aliases = ["stoptr", "stopcountdown", "stopcd"],
                     brief = "Stops running timer",
                     help = "Stops a running `timer` command."
                     )
@@ -119,7 +129,8 @@ class Fun(commands.Cog):
     try:
       global msg
       global secondint
-      msg = f"{ctx.author.mention} timer stopped! Stopped at {round(secondint/60, 2)}mins or {secondint}seconds."
+      global time
+      msg = f"{ctx.author.mention} timer stopped! Stopped at {round(secondint/60, 2)}mins/{secondint}seconds **out of** {time/60}mins/{time}seconds"
       secondint = 1
       await ctx.message.add_reaction('👍')
     except Exception as e:

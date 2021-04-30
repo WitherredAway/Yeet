@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 from main import bot, prefix, embed_colour
 import asyncio
+import datetime
 
 class Bot(commands.Cog):
   """Commands related to the bot."""
@@ -13,14 +14,29 @@ class Bot(commands.Cog):
     await bot.change_presence(status=discord.Status.online, activity=discord.Game(f'{prefix}help'))
     print("Running.")
     print(bot.user)
+    
+  # logs
+  @commands.Cog.listener(name="on_command")
+  async def on_command(self, ctx):
+    try:
+      log_channel = bot.get_channel(837542790119686145)
+      user = ctx.author
+      command = ctx.command
+      channel = str(ctx.channel)
+      server = ctx.guild.name
+  
+      em = discord.Embed(title = "Server name", description = server, colour = embed_colour)
+  
+      em.set_author(name = user, icon_url = user.avatar_url)
+      em.add_field(name = "Channel name", value = f"#{channel}", inline = False)
+      em.add_field(name = "Command used", value = str(ctx.message.content), inline = False)
+      em.timestamp = datetime.datetime.utcnow()
+      em.set_footer(text = "Yeet.")
+  
+      await log_channel.send(embed = em)
       
-  @commands.Cog.listener(name='on_command')
-  async def print(self, ctx):
-    server = ctx.guild.name
-    user = ctx.author
-    command = f"{ctx.command}"
-    print(f'{server} > {user}: {command}')
-      
+    except Exception as e:
+	    await ctx.send(str(e))
 	# ping
   @commands.command(name = "ping", 
                     brief = "Bot's latency",
