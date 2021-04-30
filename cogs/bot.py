@@ -26,26 +26,34 @@ class Bot(commands.Cog):
       message_id = ctx.message.id
       channel = str(ctx.channel)
       channel_id = ctx.channel.id
-      server = ctx.guild.name
-      server_id = ctx.guild.id
+      
       em = discord.Embed(colour = embed_colour)
   
       em.set_author(name = user, icon_url = user.avatar_url)
       em.add_field(name = "Command used", value = message_content, inline = False)
-      em.add_field(name = "Go to", value = f"[Warp](https://discord.com/channels/{server_id}/{channel_id}/{message_id})")
       em.timestamp = datetime.datetime.utcnow()
-      em.set_footer(text = f"{server} | #{channel}")
-  
+      if ctx.guild:
+        server = ctx.guild.name
+        server_id = ctx.guild.id
+        em.add_field(name = "Go to", value = f"[Warp](https://discord.com/channels/{server_id}/{channel_id}/{message_id})")
+        em.set_footer(text = f"{server} | #{channel}")
+      else:
+        em.set_footer(text = "Direct messages")
       await log_channel.send(embed = em)
       
     except Exception as e:
 	    await ctx.send(str(e))
+	    raise e
 	# ping
   @commands.command(name = "ping", 
                     brief = "Bot's latency",
                     help = "Responds with 'Pong!' and the bot's latency")
   async def ping(self, ctx):
-    await ctx.send(f'Pong! {round(bot.latency * 1000)}ms')
+    try:
+      await ctx.send(f'Pong! {round(bot.latency * 1000)}ms')
+    except Exception as error:
+      await ctx.send(str(error))
+      raise error
     
   # invite
   @commands.command(name = "invite",

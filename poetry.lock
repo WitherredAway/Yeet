@@ -56,6 +56,17 @@ version = "7.1.2"
 
 [[package]]
 category = "main"
+description = "A mirror package for discord.py. Please install that instead."
+name = "discord"
+optional = false
+python-versions = "*"
+version = "1.0.1"
+
+[package.dependencies]
+"discord.py" = ">=1.0.1"
+
+[[package]]
+category = "main"
 description = "And nicer looking interactive help menu for discord.py"
 name = "discord-pretty-help"
 optional = false
@@ -198,7 +209,7 @@ idna = ">=2.0"
 multidict = ">=4.0"
 
 [metadata]
-content-hash = "080eb79c277740d2de8d23b21a717f1449c5d05788e18354380cd16c55350b96"
+content-hash = "6bd729a12fc5a4af9198dc0cfed0dc8c249399fb0829436e67de8a55315bc4d2"
 python-versions = "^3.8"
 
 [metadata.files]
@@ -231,6 +242,10 @@ chardet = [
 click = [
     {file = "click-7.1.2-py2.py3-none-any.whl", hash = "sha256:dacca89f4bfadd5de3d7489b7c8a566eee0d3676333fbb50030263894c38c0dc"},
     {file = "click-7.1.2.tar.gz", hash = "sha256:d2b5255c7c6349bc1bd1e59e08cd12acbbd63ce649f2588755783aa94dfb6b1a"},
+]
+discord = [
+    {file = "discord-1.0.1-py3-none-any.whl", hash = "sha256:9d4debb4a37845543bd4b92cb195bc53a302797333e768e70344222857ff1559"},
+    {file = "discord-1.0.1.tar.gz", hash = "sha256:ff6653655e342e7721dfb3f10421345fd852c2a33f2cca912b1c39b3778a9429"},
 ]
 discord-pretty-help = [
     {file = "discord-pretty-help-1.3.0.tar.gz", hash = "sha256:3c76a8d0fb5046b1a0bf7441d6575bfdfb827575f5a3208a0873451e508dcef0"},
