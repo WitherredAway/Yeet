@@ -78,6 +78,15 @@ async def _load(ctx, cog):
         await ctx.send(f"Cog `{cog}` is already loaded.")
       else:
         await ctx.send(f':inbox_tray: Loaded cog `{cog}`')
+    else:
+      try:
+        bot.load_extension(f'cogs.{cog}')
+      except commands.ExtensionNotFound:
+        await ctx.send(f":x: Cog `{cog}` not found.")
+      except commands.ExtensionAlreadyLoaded:
+        await ctx.send(f"Cog `{cog}` is already loaded.")
+      else:
+        await ctx.send(f':inbox_tray: Loaded cog `{cog}`')
   except Exception as e:
 	  await ctx.send(str(e))
 	  raise e
