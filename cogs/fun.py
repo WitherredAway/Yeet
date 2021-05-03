@@ -9,40 +9,57 @@ class Fun(commands.Cog):
     self.bot = bot
 
   # spam
-  @commands.command(name = "spam",
+  @commands.check_any(commands.is_owner(), commands.has_permissions(manage_messages = True))
+  @commands.group(name = "spam",
                     aliases = ['sp'],
                     brief = "Spams desired message",
-                    help = "Spams <message> every <delay> seconds. For multi-word messages put them within quotes."
+                    invoke_without_command=True,
+                    case_insensitive=True,
+                    help = "Spams desired message, with desired intervals."
                     )
-  @commands.has_permissions(manage_messages = True)
+ 
+  async def spam(self, ctx):
+    await ctx.send_help(ctx.command)
+  
+  # spam start
+  @spam.command(name="start",
+                aliases=["s"],
+                brief="Starts spam.",
+                help="Spams <message> every <delay> seconds. For multi-word messages put them within quotes")
   @commands.max_concurrency(1, per=commands.BucketType.guild, wait = False)
-  async def spam(self, ctx, msg, delay: int):
+  async def _spam_start(self, ctx, delay: int, *, msg):
     global on
     on = True
     while on:
       await ctx.send(msg)
-      await asyncio.sleep(int(delay))
-  @spam.error
-  async def spam_error(self, ctx, error):
-  	if isinstance(error, commands.MissingRequiredArgument):
-  		await ctx.send(f"Missing argument(s). Proper usage: `{prefix}spam <message to spam> <delay in seconds>`")
+      await asyncio.sleep(delay)
+      
+  @_spam_start.error
+  async def spamstart_error(self, ctx, error):
   	if isinstance(error, commands.MissingPermissions):
   	  await ctx.send("Missing permission(s): Manage_Messages")
   	if isinstance(error, commands.BadArgument):
   	  await ctx.send("The delay must be a whole number")
-  	if isinstance(error, commands.MaxConcurrencyReached):
-  	  await ctx.send(f"`spam` command already active on this server. This command can only be used once at a time in a server. Stop the current `spam` with {prefix}stopspam.")
+  	#if isinstance(error, commands.MaxConcurrencyReached):
+  	  #await ctx.send(f"`Spam` command already active on this server. This command can only be used once at a time in a server. Stop the current `spam` with {prefix}stopspam.")
   
-	# stopspam
-  @commands.command(name = "stopspam", 
-                    aliases = ['stopsp'],
+  @commands.check_any(commands.is_owner(), commands.has_permissions(manage_messages = True))
+  @spam.command(name = "stop", 
+                    aliases = ['end'],
                     brief = "Stops running spam",
                     help = "Stops a running `spam` command."
                     )
-  async def stopspam(self, ctx):
+  async def _spam_stop(self, ctx):
     global on
-    on = False
-    await ctx.send("stopped")
+    if on == True:
+      on = False
+      await ctx.send("Stopped spam.")
+    else:
+      await ctx.send("There isn't a `spam` running.")
+  @_spam_stop.error
+  async def stop_error(ctx, error):
+    if isinstance(error, commands.MissingPermissions):
+  	  await ctx.send("Missing permission(s): Manage_Messages")
 
 	# say
   @commands.command(name = "say",
@@ -66,17 +83,13 @@ class Fun(commands.Cog):
                     brief = "Repeats <message> after <delay>",
                     help = "Repeats a <message> after <delay> seconds."
                     )
-  #@commands.has_permissions(manage_messages = True)
-  async def delaysay(self, ctx, message, delay: int):
+  @commands.max_concurrency(1, per=commands.BucketType.user, wait = False)
+  async def delaysay(self, ctx, delay: int, *, msg):
     await ctx.send(f"Delay message set, in **{delay}** seconds")
     await asyncio.sleep(int(delay))
-    await ctx.send(message)
+    await ctx.send(msg)
   @delaysay.error
-  async def dsay_error(self, ctx, error):
-    if isinstance(error, commands.MissingRequiredArgument):
-      await ctx.send(f"Missing Argument(s). Proper usage: `{prefix}delaysay <delay in seconds> <message to say>`")
-    #if isinstance(error, commands.MissingPermissions):
-    # await ctx.send("Missing Permission(s): Manage_messages")
+  async def delaysay_error(self, error):
     if isinstance(error, commands.BadArgument):
       await ctx.send("The delay must be an integer.")
       
@@ -85,12 +98,24 @@ class Fun(commands.Cog):
   max_time = 600
   global time
   time = ""
-  @commands.command(name = "timer",
-                    aliases = ["tr", "countdown", "cd"],
-                    brief = "Sets a timer",
-                    help = f"Sets a timer for <seconds> and counts down from it(max {round(max_time/60, 2)}mins or {max_time}seconds). One timer per user at a time. Stop a running timer by using the {prefix}stoptimer command.")
+  @commands.group(name = "timer",
+                  aliases = ["tr", "countdown", "cd"],
+                  brief = "Sets a timer",
+                  help = "Sets a timer, which the bot will count down from and ping at the end.",
+                  invoke_without_command=True,
+                  case_insensitive=True)
+  async def timer(self, ctx):
+    await ctx.send_help(ctx.command)
+  
+  #timer start
+
+  @timer.command(name="start",
+                aliases=["s"],
+                brief="Starts timer.",
+                help=f"Sets a timer for <seconds> and counts down from it(max {round(max_time/60, 2)}mins or {max_time}seconds). One timer per user at a time. Stop a running timer by using the {prefix}timer stop command.")
   @commands.max_concurrency(1, per=commands.BucketType.user, wait = False)
-  async def timer(self, ctx, seconds: int):
+  async def _timer_start(self, ctx, seconds: int):
+    
     global secondint
     global msg
     global max_time
@@ -99,6 +124,7 @@ class Fun(commands.Cog):
     mins = round(seconds/60, 2)
     secondint = seconds
     msg = f"{ctx.author.mention} time's up! ({mins}mins or {seconds}seconds)"
+    
     if secondint > max_time:
       await ctx.send(f"Timer can be set for max **{max_time/60}** minutes or **{max_time}** seconds")
     elif secondint <= 0:
@@ -112,12 +138,11 @@ class Fun(commands.Cog):
           break
         await message.edit(content=f"Timer: {secondint} seconds.")
         await asyncio.sleep(1)
-  @timer.error
-  async def timer_error(self, ctx, error):
+  @_timer_start.error
+  async def timer_error(self,ctx, error):
     if isinstance(error, commands.BadArgument):
       await ctx.send("The time must be a positive whole number.")
-    if isinstance(error, commands.MaxConcurrencyReached):
-  	  await ctx.send(f"A timer command is already active. This command can only be used once at a time per user. Stop the current timer with `{prefix}stoptimer`")
+    
   	  
   # stoptimer
   @commands.command(name = "stoptimer",

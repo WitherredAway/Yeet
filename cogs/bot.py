@@ -50,7 +50,9 @@ class Bot(commands.Cog):
                     help = "Responds with 'Pong!' and the bot's latency")
   async def ping(self, ctx):
     try:
-      await ctx.send(f'Pong! {round(bot.latency * 1000)}ms')
+      message = await ctx.send('Pong!')
+      ms = int((message.created_at - ctx.message.created_at).total_seconds() * 1000)
+      await message.edit(content= f"Pong! {ms} ms")
     except Exception as error:
       await ctx.send(str(error))
       raise error
