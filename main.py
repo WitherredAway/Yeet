@@ -106,26 +106,6 @@ async def _unload(ctx, cog):
   except Exception as e:
 	  await ctx.send(str(e))
 	  raise e
-  """
-  try:
-    if cog == 'all':
-      try:
-        for cog_ext in list(bot.extensions):
-          bot.reload_extension(str(cog_ext))
-          await ctx.send(f':repeat: Reloaded cog `{cog_ext[5:]}`')
-      except Exception as e:
-	      await ctx.send(str(e))
-    else:
-      try:
-        bot.reload_extension(f'cogs.{cog}')
-      except commands.ExtensionNotLoaded:
-        await ctx.send(f":x: Cog `{cog}` not found.")
-      else:
-        await ctx.send(f':repeat: Reloaded cog `{cog}`')
-  except Exception as e:
-	  await ctx.send(str(e))
-	  raise e
-  """
 
 @cog.command(name = "reload", 
              aliases = ['r'],
@@ -164,86 +144,6 @@ async def _all(ctx):
 		  list.add_field(name = str(cog[5:]), value = str(cog), inline = False)
 		await ctx.send(embed = list)
 
-"""
-# cog_load
-@bot.command(name = "cogload",
-             aliases = ['cl'], 
-             hidden = True,
-             brief = "Load a cog",
-             help = "Loads a cog with the name, dev only command."
-             )
-@commands.is_owner()
-async def cogload(ctx, cog):
-  try:
-    bot.load_extension(f'cogs.{cog}')
-  except commands.ExtensionAlreadyLoaded:
-    await ctx.send(f"Cog `{cog}` is already loaded.")
-  except commands.ExtensionNotFound:
-    await ctx.send(f"Cog `{cog}` not found.")
-  else:
-    await ctx.send(f":inbox_tray: Loaded cog  `{cog}`")
-	    
-#cog_unload
-@bot.command(name = "cogunload", 
-             aliases = ['cu'],
-             hidden = True,
-             brief = "Unloads a cog",
-             help = "Unloads a cog with the name, dev only command."
-             )
-@commands.is_owner()
-async def cogunload(ctx, cog):
-  try:
-    bot.unload_extension(f'cogs.{cog}')
-  except commands.ExtensionNotLoaded:
-    await ctx.send(f":x: Cog `{cog}` not found.")
-  else:
-    await ctx.send(f":outbox_tray: Unloaded cog `{cog}`")
-    
-# cogreload
-@bot.command(name = "cogreload", 
-             aliases = ['cr'],
-             hidden = True,
-             brief = "Reloads a cog",
-             help = "Reloads a cog with the name, dev only command.")
-@commands.is_owner()
-async def cogreload(ctx, cog):
-  try:
-    if cog == 'all':
-      try:
-        for cog_ext in list(bot.extensions):
-          bot.reload_extension(str(cog_ext))
-          await ctx.send(f':repeat: Reloaded cog `{cog_ext[5:]}`')
-      except Exception as e:
-	      await ctx.send(str(e))
-    else:
-      try:
-        bot.reload_extension(f'cogs.{cog}')
-      except commands.ExtensionNotLoaded:
-        await ctx.send(f":x: Cog `{cog}` not found.")
-      else:
-        await ctx.send(f':repeat: Reloaded cog `{cog}`')
-  except Exception as e:
-	  await ctx.send(str(e))
-	  raise e
-
-# cogall
-@bot.command(name = "cogall", 
-             aliases = ['ca'],
-             hidden = True,
-             brief = "All cogs",
-             help = "Lists all cogs, dev only command.")
-@commands.is_owner()
-async def cogall(ctx):
-		'''
-		Returns a list of all enabled commands.
-		'''
-		
-		list = discord.Embed(title = "Cogs", description  = "List of all enabled cogs", colour = embed_colour)
-		
-		for cog in bot.extensions:
-		  list.add_field(name = str(cog[5:]), value = str(cog), inline = False)
-		await ctx.send(embed = list)
-"""
 for filename in os.listdir('./cogs'):
   if filename.endswith(".py"):
     bot.load_extension(f'cogs.{filename[:-3]}')
