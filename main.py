@@ -21,13 +21,11 @@ embed_colour = 0x8AFFAD
 
 cmd_cd = 2
 
-bot = commands.AutoShardedBot(
-                      shard_count=2,
-                      command_prefix=get_prefix, 
-                      owner_id=267550284979503104,
-                      case_insensitive=True, 
-                      help_command=PrettyHelp(),
-                      self_bot=False)
+bot = commands.Bot(command_prefix=get_prefix, 
+                   owner_id=267550284979503104,
+                   case_insensitive=True, 
+                   help_command=PrettyHelp(),
+                   self_bot=False)
 
 bot.help_command = PrettyHelp(menu=menu, color=embed_colour, sort_command=False, show_index=True)
 

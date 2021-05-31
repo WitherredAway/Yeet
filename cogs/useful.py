@@ -2,9 +2,7 @@ import discord
 from discord.ext import commands
 import asyncio
 from main import *
-from typing import Counter, Union
-from utils import *
-from helpers.utils[:-2] import {FetchUserConverter}
+from typing import Counter
 
 class Useful(commands.Cog):
   """Useful commands"""
@@ -133,44 +131,7 @@ class Useful(commands.Cog):
       else:
         await ctx.send(f"There isn't a `timer` running that belongs to you.")
     except Exception as e:
-	     await ctx.send(str(e))
-	     
-  @commands.command(aliases=("whois",))
-  async def info(self, ctx, *, user: Union[discord.Member, FetchUserConverter] = None):
-        """Shows info about a user."""
-
-        user = user or ctx.author
-        if ctx.guild is not None and isinstance(user, discord.User):
-            user = ctx.guild.get_member(user.id) or user
-
-        embed = discord.Embed()
-        embed.set_author(name=str(user))
-
-        embed.add_field(name="ID", value=user.id, inline=False)
-        embed.add_field(
-            name="Joined",
-            value=format_date(getattr(user, "joined_at", None)),
-            inline=False,
-        )
-        embed.add_field(
-            name="Created",
-            value=format_date(user.created_at),
-            inline=False,
-        )
-
-        if isinstance(user, discord.Member):
-            roles = [role.name.replace("@", "@\u200b") for role in user.roles]
-            if len(roles) > 10:
-                roles = [*roles[:9], f"and {len(roles) - 9} more"]
-            embed.add_field(name="Roles", value=", ".join(roles), inline=False)
-        else:
-            embed.set_footer(text="This user is not in this server.")
-
-        embed.color = user.color
-        embed.set_thumbnail(url=user.avatar_url)
-
-        await ctx.send(embed=embed)
-
+	     raise e
 	     
 def setup(bot):
   bot.add_cog(Useful(bot))
