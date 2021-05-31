@@ -1,0 +1,176 @@
+import discord
+from discord.ext import commands
+import asyncio
+from main import *
+from typing import Counter, Union
+from utils import *
+from helpers.utils[:-2] import {FetchUserConverter}
+
+class Useful(commands.Cog):
+  """Useful commands"""
+  def __init__(self, bot):
+    self.bot = bot
+    
+    
+  # spam
+  @commands.check_any(commands.is_owner(), commands.has_permissions(manage_messages = True), commands.guild_only())
+  @commands.group(name = "spam",
+                    aliases = ['sp'],
+                    brief = "Spams desired message",
+                    invoke_without_command=True,
+                    case_insensitive=True,
+                    help = "Spams desired message, with desired intervals."
+                    )
+  async def spam(self, ctx):
+    await ctx.send_help(ctx.command)
+  
+  # spam start
+  @commands.check_any(commands.is_owner(), commands.has_permissions(manage_messages = True))
+  @spam.command(name="start",
+                aliases=["s"],
+                brief="Starts spam.",
+                help="Spams <message> every <delay> seconds. For multi-word messages put them within quotes")
+  @commands.max_concurrency(1, per=commands.BucketType.guild, wait = False)
+  async def _spam_start(self, ctx, delay: float, *, msg):
+    global on
+    global sp_start_channel
+    sp_start_channel = ctx.channel
+    on = True
+    while on:
+      await ctx.send(msg)
+      await asyncio.sleep(delay)
+  # spam start error    
+  @_spam_start.error
+  async def spamstart_error(self, ctx, error):
+  	if isinstance(error, commands.BadArgument):
+  	  await ctx.send("The delay must be a number.")
+  
+  # spam stop
+  @commands.check_any(commands.is_owner(), commands.has_permissions(manage_messages = True))
+  @spam.command(name = "stop", 
+                    aliases = ['end'],
+                    brief = "Stops running spam",
+                    help = "Stops a running `spam` command."
+                    )
+  async def _spam_stop(self, ctx):
+    global on
+    global sp_start_channel
+    sp_stop_channel = ctx.channel
+    if on == True and sp_stop_channel == sp_start_channel:
+      on = False
+      await ctx.send("Stopped spam.")
+    else:
+      await ctx.send("There isn't a `spam` command running in this channel.")
+      
+      
+  # timer
+  max_time = 600
+  time = ""
+  secondint = ""
+  tr_start_user = ""
+  @commands.group(name = "timer",
+                  aliases = ["tr", "countdown", "cd"],
+                  brief = "Sets a timer",
+                  help = "Sets a timer, which the bot will count down from and ping at the end.",
+                  invoke_without_command=True,
+                  case_insensitive=True)
+  async def timer(self, ctx):
+    await ctx.send_help(ctx.command)
+  
+  #timer start
+
+  @timer.command(name="start",
+                aliases=["s"],
+                brief="Starts timer.",
+                help=f"Sets a timer for <seconds> and counts down from it(max {round(max_time/60, 2)}mins or {max_time}seconds). One timer per user at a time. Stop a running timer by using the {prefix}timer stop command.")
+  @commands.max_concurrency(1, per=commands.BucketType.user, wait = False)
+  async def _timer_start(self, ctx, seconds: int):
+    
+    global time
+    time = round(seconds, 2)
+    global mins
+    mins = round(seconds/60, 2)
+    global tr_start_user
+    tr_start_user = ctx.author
+    global msg
+    msg = f"{ctx.author.mention} time's up! ({mins}mins or {seconds}seconds)"
+    global max_time
+    if seconds > max_time:
+      await ctx.send(f"Timer can be set for max **{max_time/60}** minutes or **{max_time}** seconds")
+    elif seconds <= 0:
+      await ctx.send("Please input a positive whole number.")
+    else:
+      message = await ctx.send(f"Timer: {seconds} seconds")
+      while True:
+        secondint -= 1
+        if secondint == 0:
+          await message.edit(content=msg)
+          break
+        await message.edit(content=f"Timer: {secondint} seconds.")
+        await asyncio.sleep(1)
+  @_timer_start.error
+  async def timerstart_error(self,ctx, error):
+    if isinstance(error, commands.BadArgument):
+      await ctx.send("The time must be a positive whole number.")
+    
+  # timer stop
+  @timer.command(name = "stop",
+                    aliases = ["end"],
+                    brief = "Stops running timer",
+                    help = "Stops a running `timer` command."
+                    )
+  async def _timer_stop(self, ctx):
+    try:
+      global msg
+      global mins
+      global secondint
+      global time
+      global tr_start_user
+      if secondint > 0 and ctx.author == tr_start_user:
+        msg = f"{ctx.author.mention} timer stopped! Stopped at {round(secondint/60, 2)}mins/{secondint}seconds **out of** {mins}mins/{time}seconds"
+        secondint = 1
+        await ctx.message.add_reaction('👍')
+      else:
+        await ctx.send(f"There isn't a `timer` running that belongs to you.")
+    except Exception as e:
+	     await ctx.send(str(e))
+	     
+  @commands.command(aliases=("whois",))
+  async def info(self, ctx, *, user: Union[discord.Member, FetchUserConverter] = None):
+        """Shows info about a user."""
+
+        user = user or ctx.author
+        if ctx.guild is not None and isinstance(user, discord.User):
+            user = ctx.guild.get_member(user.id) or user
+
+        embed = discord.Embed()
+        embed.set_author(name=str(user))
+
+        embed.add_field(name="ID", value=user.id, inline=False)
+        embed.add_field(
+            name="Joined",
+            value=format_date(getattr(user, "joined_at", None)),
+            inline=False,
+        )
+        embed.add_field(
+            name="Created",
+            value=format_date(user.created_at),
+            inline=False,
+        )
+
+        if isinstance(user, discord.Member):
+            roles = [role.name.replace("@", "@\u200b") for role in user.roles]
+            if len(roles) > 10:
+                roles = [*roles[:9], f"and {len(roles) - 9} more"]
+            embed.add_field(name="Roles", value=", ".join(roles), inline=False)
+        else:
+            embed.set_footer(text="This user is not in this server.")
+
+        embed.color = user.color
+        embed.set_thumbnail(url=user.avatar_url)
+
+        await ctx.send(embed=embed)
+
+	     
+def setup(bot):
+  bot.add_cog(Useful(bot))

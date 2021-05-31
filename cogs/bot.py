@@ -1,11 +1,11 @@
 import discord
 from discord.ext import commands
-from main import bot, prefix, embed_colour
+from main import *
 import asyncio
 import datetime
 
 class Bot(commands.Cog):
-  """Commands related to the bot."""
+  """Commands and events related to the bot."""
   def __init__(self, bot):
     self.bot = bot
 
@@ -14,7 +14,50 @@ class Bot(commands.Cog):
     await bot.change_presence(status=discord.Status.online, activity=discord.Game(f'{prefix}help'))
     print("Running.")
     print(bot.user)
+  
+  @commands.Cog.listener()
+  async def on_command_error(self, ctx, error):
+    ignore = (commands.CommandNotFound)
     
+    if isinstance(error, ignore):
+      return
+    
+    if isinstance(error, commands.NotOwner):
+      await ctx.send("You do not own this bot.")
+    
+    show_help = (commands.MissingRequiredArgument, commands.UserInputError)
+    if isinstance(error, show_help):
+    		await ctx.send_help(ctx.command)
+    		
+    if isinstance(error, commands.MaxConcurrencyReached):
+      name = error.per.name
+      suffix = "per %s" % name if error.per.name != "default" else "globally"
+      plural = "%s times %s" if error.number > 1 else "%s time %s"
+      fmt = plural % (error.number, suffix)
+      await ctx.send(f"This command can only be used **{fmt}** at the same time. Use `{prefix}{ctx.full_parent_name} stop` to stop it.")
+      
+    if isinstance(error, commands.MissingPermissions):
+      missing = ["`" + perm.replace("_", " ").replace("guild", "server").title() + "`"
+                  for perm in error.missing_perms]
+      fmt = "\n".join(missing)
+      message = f"You need the following permissions to run this command:\n{fmt}."
+      await ctx.send(message)
+      
+    if isinstance(error, commands.BotMissingPermissions):
+      missing = ["`" + perm.replace("_", " ").replace("guild", "server").title() + "`"
+                  for perm in error.missing_perms]
+      fmt = "\n".join(missing)
+      message = f"I need the following permissions to run this command:\n{fmt}."
+      await ctx.send(message)
+    
+    if isinstance(error, commands.CommandOnCooldown):
+              await ctx.send(f"That command is on cooldown for **{round(error.retry_after, 2)}s**")
+              
+    else:
+      await ctx.send(error.original)
+      raise error
+  
+      
   # logs
   @commands.Cog.listener(name="on_command")
   async def on_command(self, ctx):
@@ -42,7 +85,6 @@ class Bot(commands.Cog):
       await log_channel.send(embed = em)
       
     except Exception as e:
-	    await ctx.send(str(e))
 	    raise e
 	# ping
   @commands.command(name = "ping", 
@@ -53,9 +95,8 @@ class Bot(commands.Cog):
       message = await ctx.send('Pong!')
       ms = int((message.created_at - ctx.message.created_at).total_seconds() * 1000)
       await message.edit(content= f"Pong! {ms} ms")
-    except Exception as error:
-      await ctx.send(str(error))
-      raise error
+    except Exception as e:
+      raise e
     
   # invite
   @commands.command(name = "invite",
