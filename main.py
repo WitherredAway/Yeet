@@ -17,7 +17,7 @@ menu = DefaultMenu("◀️", "▶️", "❌", active_time = 60)
 
 prefix = '--'
 
-embed_colour = 0x8AFFAD
+embed_colour = 0xf1c40f
 
 cmd_cd = 2
 
