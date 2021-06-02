@@ -64,8 +64,11 @@ class Useful(commands.Cog):
   # timer
   max_time = 600
   time = ""
-  secondint = ""
+  mins = ""
   tr_start_user = ""
+  msg = ""
+  secondint = ""
+  
   @commands.group(name = "timer",
                   aliases = ["tr", "countdown", "cd"],
                   brief = "Sets a timer",
@@ -76,7 +79,6 @@ class Useful(commands.Cog):
     await ctx.send_help(ctx.command)
   
   #timer start
-
   @timer.command(name="start",
                 aliases=["s"],
                 brief="Starts timer.",
@@ -92,13 +94,14 @@ class Useful(commands.Cog):
     tr_start_user = ctx.author
     global msg
     msg = f"{ctx.author.mention} time's up! ({mins}mins or {seconds}seconds)"
-    global max_time
+    global secondint
+    secondint = seconds
     if seconds > max_time:
       await ctx.send(f"Timer can be set for max **{max_time/60}** minutes or **{max_time}** seconds")
     elif seconds <= 0:
       await ctx.send("Please input a positive whole number.")
     else:
-      message = await ctx.send(f"Timer: {seconds} seconds")
+      message = await ctx.send(f"Timer: {secondint} seconds")
       while True:
         secondint -= 1
         if secondint == 0:
@@ -121,9 +124,9 @@ class Useful(commands.Cog):
     try:
       global msg
       global mins
-      global secondint
       global time
       global tr_start_user
+      global secondint
       if secondint > 0 and ctx.author == tr_start_user:
         msg = f"{ctx.author.mention} timer stopped! Stopped at {round(secondint/60, 2)}mins/{secondint}seconds **out of** {mins}mins/{time}seconds"
         secondint = 1
@@ -132,6 +135,5 @@ class Useful(commands.Cog):
         await ctx.send(f"There isn't a `timer` running that belongs to you.")
     except Exception as e:
 	     raise e
-	     
 def setup(bot):
   bot.add_cog(Useful(bot))

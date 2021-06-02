@@ -21,11 +21,13 @@ embed_colour = 0xf1c40f
 
 cmd_cd = 2
 
-bot = commands.Bot(command_prefix=get_prefix, 
+bot = commands.AutoShardedBot(
+                   shard_count=2,
+                   command_prefix=prefix, 
                    owner_id=267550284979503104,
                    case_insensitive=True, 
                    help_command=PrettyHelp(),
-                   self_bot=False)
+                   self_bot=True)
 
 bot.help_command = PrettyHelp(menu=menu, color=embed_colour, sort_command=False, show_index=True)
 
@@ -35,4 +37,4 @@ for filename in os.listdir('./cogs'):
 
 keep_alive()
 my_secret = os.environ['altTOKEN']
-bot.run(my_secret, bot=False)
+bot.run(my_secret, bot = False)

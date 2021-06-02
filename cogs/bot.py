@@ -12,8 +12,20 @@ class Bot(commands.Cog):
   @commands.Cog.listener()
   async def on_ready(self):
     await bot.change_presence(status=discord.Status.online, activity=discord.Game(f'{prefix}help'))
+    
     print("Running.")
     print(bot.user)
+  
+  global msgstart
+  msgstart = ("A wild", "Wild", "a wild", "wild")
+  @commands.Cog.listener()
+  async def on_message(self, msg):
+    try:
+      if msg.content.startswith(msgstart):
+          await msg.channel.set_permissions(msg.guild.default_role, send_messages = False)
+          await msg.channel.send("Locked.")
+    except Exception as e:
+        raise e
   
   @commands.Cog.listener()
   async def on_command_error(self, ctx, error):
@@ -26,6 +38,7 @@ class Bot(commands.Cog):
       await ctx.send("You do not own this bot.")
     
     show_help = (commands.MissingRequiredArgument, commands.UserInputError)
+    
     if isinstance(error, show_help):
     		await ctx.send_help(ctx.command)
     		
@@ -62,7 +75,7 @@ class Bot(commands.Cog):
   @commands.Cog.listener(name="on_command")
   async def on_command(self, ctx):
     try:
-      log_channel = bot.get_channel(837542790119686145)
+      log_channel = bot.get_channel(849260509642620928)
       user = ctx.author
       command = ctx.command
       message_content = str(ctx.message.content)
