@@ -111,11 +111,10 @@ class Fun(commands.Cog):
       await ctx.send(file=file)
       
       try:
-          os.remove("pfp.gif")
           os.remove("pfp.png")
           os.remove("img.png")
+          os.remove("pfp.gif")
           await ctx.message.delete()
-      
       except:
           pass
 
