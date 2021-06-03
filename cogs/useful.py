@@ -3,21 +3,62 @@ from discord.ext import commands
 import asyncio
 from main import *
 from typing import Counter
+import wikipedia
 
 class Useful(commands.Cog):
   """Useful commands"""
   def __init__(self, bot):
     self.bot = bot
-    
-    
+  
+  #lock
+  @commands.check_any(commands.is_owner(), commands.has_permissions(manage_channels = True), commands.guild_only())
+  @commands.command(name = "togglelock",
+                  aliases = ['lock', 'tl'],
+                  brief = "Locks/Unlocks a channel, and optionally renames channel",
+                  case_insensitive=True,
+                  help = "Toggles send_messages perms for everyone. And renames channel if an argument is passed.)")
+  async def _togglelock(self, ctx, ch_name=None):
+      overwrite = ctx.channel.overwrites_for(ctx.guild.default_role)
+      try:
+        if ch_name != None:
+          channel = ctx.channel
+          await channel.edit(name=ch_name)
+          await ctx.send(f"Changed channel name to {ch_name}")
+        if overwrite.send_messages != False:
+          await ctx.channel.set_permissions(ctx.guild.default_role, send_messages = False)
+          await ctx.send("Locked.")
+        if overwrite.send_messages == False:
+          await ctx.channel.set_permissions(ctx.guild.default_role, send_messages = True)
+          await ctx.send("Unlocked.")
+      except Exception as e:
+          raise e
+  
+  @commands.command()
+  async def wiki(self, ctx, *, arg=None):
+    try:
+        if arg == None:
+            await ctx.send("Please, specify what do you want me to search.")
+        elif arg:
+            start = arg.replace(" ", "")
+            end = wikipedia.summary(start)
+            await ctx.send(end)
+    except:
+        try:
+            start = arg.replace(" ", "")
+            end = wikipedia.summary(start, sentences=10)
+            await ctx.send(end)
+        except:
+            await ctx.send("I can't send info because I got an unknown reference.")
+
+  
   # spam
   @commands.check_any(commands.is_owner(), commands.has_permissions(manage_messages = True), commands.guild_only())
   @commands.group(name = "spam",
-                    aliases = ['sp'],
-                    brief = "Spams desired message",
-                    invoke_without_command=True,
-                    case_insensitive=True,
-                    help = "Spams desired message, with desired intervals."
+                  aliases = ['sp'],
+                  brief = "Spams desired message",
+                  invoke_without_command=True,
+                  case_insensitive=True,
+                  help = "Spams desired message, with desired intervals."
                     )
   async def spam(self, ctx):
     await ctx.send_help(ctx.command)

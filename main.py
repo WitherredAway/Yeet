@@ -8,9 +8,9 @@ from pretty_help import DefaultMenu, PrettyHelp
 
 def get_prefix(bot, message):
 
-    prefixes = ['--', '>>']
+    prefixes = ['--', 'w!']
     if not message.guild:
-        return '--'
+        return 'w!'
     return commands.when_mentioned_or(*prefixes)(bot, message)
 
 menu = DefaultMenu("◀️", "▶️", "❌", active_time = 60)
@@ -21,9 +21,11 @@ embed_colour = 0xf1c40f
 
 cmd_cd = 2
 
+log_channel = 837542790119686145
+
 bot = commands.AutoShardedBot(
                    shard_count=2,
-                   command_prefix=prefix, 
+                   command_prefix=get_prefix, 
                    owner_id=267550284979503104,
                    case_insensitive=True, 
                    help_command=PrettyHelp(),

@@ -16,17 +16,6 @@ class Bot(commands.Cog):
     print("Running.")
     print(bot.user)
   
-  global msgstart
-  msgstart = ("A wild", "Wild", "a wild", "wild")
-  @commands.Cog.listener()
-  async def on_message(self, msg):
-    try:
-      if msg.content.startswith(msgstart):
-          await msg.channel.set_permissions(msg.guild.default_role, send_messages = False)
-          await msg.channel.send("Locked.")
-    except Exception as e:
-        raise e
-  
   @commands.Cog.listener()
   async def on_command_error(self, ctx, error):
     ignore = (commands.CommandNotFound)
@@ -67,7 +56,7 @@ class Bot(commands.Cog):
               await ctx.send(f"That command is on cooldown for **{round(error.retry_after, 2)}s**")
               
     else:
-      await ctx.send(error.original)
+      await ctx.send(str(error))
       raise error
   
       
@@ -75,7 +64,8 @@ class Bot(commands.Cog):
   @commands.Cog.listener(name="on_command")
   async def on_command(self, ctx):
     try:
-      log_channel = bot.get_channel(849260509642620928)
+      
+      log_ch = bot.get_channel(log_channel)
       user = ctx.author
       command = ctx.command
       message_content = str(ctx.message.content)
@@ -95,21 +85,19 @@ class Bot(commands.Cog):
         em.set_footer(text = f"{server} | #{channel}")
       else:
         em.set_footer(text = "Direct messages")
-      await log_channel.send(embed = em)
+      await log_ch.send(embed = em)
       
     except Exception as e:
 	    raise e
-	# ping
+  
+  # ping
   @commands.command(name = "ping", 
                     brief = "Bot's latency",
                     help = "Responds with 'Pong!' and the bot's latency")
   async def ping(self, ctx):
-    try:
       message = await ctx.send('Pong!')
       ms = int((message.created_at - ctx.message.created_at).total_seconds() * 1000)
       await message.edit(content= f"Pong! {ms} ms")
-    except Exception as e:
-      raise e
     
   # invite
   @commands.command(name = "invite",

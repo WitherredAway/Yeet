@@ -2,6 +2,9 @@ import discord
 from discord.ext import commands
 from main import *
 import asyncio
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
+from datetime import datetime
+import os
 
 class Fun(commands.Cog):
   """Fun commands."""
@@ -19,10 +22,10 @@ class Fun(commands.Cog):
     await ctx.send(message)
 
 	# cum
+  @commands.cooldown(1, cmd_cd, commands.BucketType.user)
   @commands.command(hidden = True)
   async def cum(self, ctx):
     await ctx.send("uGn!~~")
-    asyncio.sleep(0.5)
   
   # delaysay
   @commands.command(name = "delaysay",
@@ -39,6 +42,8 @@ class Fun(commands.Cog):
   async def delaysay_error(self, error):
     if isinstance(error, commands.BadArgument):
       await ctx.send("The delay must be an integer.")
+  
+  #snap
   
 def setup(bot):
 	bot.add_cog(Fun(bot))
