@@ -33,6 +33,7 @@ class Useful(commands.Cog):
       except Exception as e:
           raise e
   
+  #wiki
   @commands.command()
   async def wiki(self, ctx, *, arg=None):
     try:
@@ -41,14 +42,14 @@ class Useful(commands.Cog):
         elif arg:
             start = arg.replace(" ", "")
             end = wikipedia.summary(start)
-            await ctx.send(end)
+            await ctx.send(f"```\n{end}\n```")
     except:
         try:
             start = arg.replace(" ", "")
             end = wikipedia.summary(start, sentences=10)
             await ctx.send(end)
         except:
-            await ctx.send("I can't send info because I got an unknown reference.")
+            await ctx.send("Not found.")
 
   
   # spam

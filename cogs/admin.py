@@ -67,6 +67,7 @@ class Admin(commands.Cog):
           for cog_ext in list(bot.extensions):
             bot.reload_extension(str(cog_ext))
             await ctx.send(f':repeat: Reloaded cog `{cog_ext[5:]}`')
+            await asyncio.sleep(0.5)
         except Exception as e:
   	      raise e
       else:
