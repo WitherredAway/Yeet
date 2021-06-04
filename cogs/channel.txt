@@ -3,32 +3,37 @@ from discord.ext import commands
 from main import *
 import asyncio
 
-#class Channel(commands.Cog):
+class Channel(commands.Cog):
   """Prank commands."""
   def __init__(self, bot):
     self.bot = bot
   
-  @commands.group(name="create",
-                    aliases = ["createch"],
-                    brief = "Creates a channel",
-                    help = "Used to create a channel, right under the channel you used the command in."
+  @commands.check_any(commands.is_owner(), commands.has_permissions(manage_messages = True), commands.guild_only())
+  @commands.group(name="channel",
+                  aliases=["ch"],
+                  brief="Useful channel management commands",
+                  help="Channel management commands, use the help command for a list of commands",
+                  invoke_without_command=True,
+                  case_insensitive=True
   )
-  async def create(self, ctx, channel_name, channel_topic):
-    try:
-      comm_channel = ctx.channel
-      comm_position = ctx.channel.position
+  async def _channel(self, ctx):
+      await ctx.send_help(ctx.command)
+  
+  @commands.check_any(commands.is_owner(), commands.has_permissions(manage_channels = True), commands.guild_only())
+  @_channel.command(name="masscreate",
+                  brief="Create x number of channels.",
+                  help="Creates x amount of channels, all numbered.",
+                  invoke_without_command=True,
+                  case_insensitive=True)
+  async def _masscreate(self, ctx, count=1):
       comm_category = ctx.channel.category
       server = ctx.channel.guild
-      position = comm_position + 1
-
-      new_channel = await server.create_text_channel(name=channel_name, category = comm_category, position=position)
-  
-  @create.
-  
-      await ctx.message.add_reaction('✅')
-    except Exception as error:
-      await ctx.send(str(error))
-      raise error
-
+      ch_count = 0
+      while ch_count != count:
+          ch_count += 1
+          await server.create_text_channel(name=ch_count, category=comm_category)
+          await ctx.send(f"Created channel `{ch_count}`")
+          await asyncio.sleep(0.5)
+          
 def setup(bot):
 	bot.add_cog(Channel(bot))
