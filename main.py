@@ -10,7 +10,7 @@ prefix = '--'
 
 def get_prefix(bot, message):
 
-    prefixes = [prefix, 'w!']
+    prefixes = [prefix, '>>']
     if not message.guild:
         return prefix
     return commands.when_mentioned_or(*prefixes)(bot, message)

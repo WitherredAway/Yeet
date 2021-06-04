@@ -17,13 +17,26 @@ class Useful(commands.Cog):
                   brief = "Locks/Unlocks a channel, and optionally renames channel",
                   case_insensitive=True,
                   help = "Toggles send_messages perms for everyone. And renames channel if an argument is passed.)")
-  async def _togglelock(self, ctx, ch_name=None):
+  async def _togglelock(self, ctx, *, ch_name=None):
       overwrite = ctx.channel.overwrites_for(ctx.guild.default_role)
       try:
         if ch_name != None:
           channel = ctx.channel
           await channel.edit(name=ch_name)
           await ctx.send(f"Changed channel name to {ch_name}")
+          
+        if ch_name == "unlockall":
+            msg = await ctx.send("Unlocking all channels...")
+            for c in ctx.guild.channels:
+                await c.set_permissions(ctx.guild.default_role, send_messages = True)
+            await msg.edit(content="Unlocked all channels ✅.")
+            
+        if ch_name == "lockall":
+            msg = await ctx.send("Locking all channels...")
+            for c in ctx.guild.channels:
+                await c.set_permissions(ctx.guild.default_role, send_messages = False)
+            await msg.edit(content="Locked all channels ✅.")
+
         if overwrite.send_messages != False:
           await ctx.channel.set_permissions(ctx.guild.default_role, send_messages = False)
           await ctx.send("Locked.")
@@ -34,7 +47,10 @@ class Useful(commands.Cog):
           raise e
   
   #wiki
-  @commands.command()
+  @commands.command(name="wiki",
+                    aliases=["wikipedia"],
+                    brief="Searches wikipedia for info.",
+                    help="Use this command to look up anything on wikipedia. Sends the first 10 sentences from wikipedia.")
   async def wiki(self, ctx, *, arg=None):
     try:
         if arg == None:
