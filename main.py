@@ -29,7 +29,7 @@ bot = commands.AutoShardedBot(
                    owner_id=267550284979503104,
                    case_insensitive=True, 
                    help_command=PrettyHelp(),
-                   self_bot=True)
+                   self_bot=False)
 
 bot.help_command = PrettyHelp(menu=menu, color=embed_colour, sort_command=False, show_index=True)
 
@@ -38,5 +38,5 @@ for filename in os.listdir('./cogs'):
     bot.load_extension(f'cogs.{filename[:-3]}')
 
 keep_alive()
-my_secret = os.environ['altTOKEN']
-bot.run(my_secret, bot = False)
+my_secret = os.environ['botTOKEN']
+bot.run(my_secret, bot = True)

@@ -25,7 +25,7 @@ class Useful(commands.Cog):
           await channel.edit(name=ch_name)
           await ctx.send(f"Changed channel name to {ch_name}")
           
-        if ch_name == "unlockall":
+        elif ch_name == "unlockall":
             await ctx.send("This will *unlock* **all** channels. Type 'confirm' to confirm.")
             def check(m):
                 return m.channel.id == ctx.channel.id and m.author.id == ctx.author.id
@@ -33,7 +33,7 @@ class Useful(commands.Cog):
                 msg = await self.bot.wait_for("message", timeout=30, check=check)
             except asyncio.TimeoutError:
                 return await ctx.send("Time's up. Aborted.")
-            if msg.content.lower() != "y":
+            if msg.content.lower() != "confirm":
                 return await ctx.send("Aborted.")
 
                 
@@ -42,7 +42,7 @@ class Useful(commands.Cog):
                 await c.set_permissions(ctx.guild.default_role, send_messages = True)
             await ctx.send("Unlocked all channels ✅.")
             
-        if ch_name == "lockall":
+        elif ch_name == "lockall":
             await ctx.send("This will *lock* **all** channels. Type 'confirm' to confirm.")
             def check(m):
                 return m.channel.id == ctx.channel.id and m.author.id == ctx.author.id
