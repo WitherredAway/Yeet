@@ -20,18 +20,39 @@ class Useful(commands.Cog):
   async def _togglelock(self, ctx, *, ch_name=None):
       overwrite = ctx.channel.overwrites_for(ctx.guild.default_role)
       try:
-        if ch_name != None:
+        if ch_name != None and ch_name != "unlockall" and ch_name != "lockall":
           channel = ctx.channel
           await channel.edit(name=ch_name)
           await ctx.send(f"Changed channel name to {ch_name}")
           
         if ch_name == "unlockall":
+            await ctx.send("This will *unlock* **all** channels. Type 'confirm' to confirm.")
+            def check(m):
+                return m.channel.id == ctx.channel.id and m.author.id == ctx.author.id
+            try:
+                msg = await self.bot.wait_for("message", timeout=30, check=check)
+            except asyncio.TimeoutError:
+                return await ctx.send("Time's up. Aborted.")
+            if msg.content.lower() != "y":
+                return await ctx.send("Aborted.")
+
+                
             msg = await ctx.send("Unlocking all channels...")
             for c in ctx.guild.channels:
                 await c.set_permissions(ctx.guild.default_role, send_messages = True)
-            await msg.edit(content="Unlocked all channels ✅.")
+            await ctx.send("Unlocked all channels ✅.")
             
         if ch_name == "lockall":
+            await ctx.send("This will *lock* **all** channels. Type 'confirm' to confirm.")
+            def check(m):
+                return m.channel.id == ctx.channel.id and m.author.id == ctx.author.id
+            try:
+                msg = await self.bot.wait_for("message", timeout=30, check=check)
+            except asyncio.TimeoutError:
+                return await ctx.send("Time's up. Aborted.")
+            if msg.content.lower() != "confirm":
+                return await ctx.send("Aborted.")
+
             msg = await ctx.send("Locking all channels...")
             for c in ctx.guild.channels:
                 await c.set_permissions(ctx.guild.default_role, send_messages = False)
@@ -45,6 +66,27 @@ class Useful(commands.Cog):
           await ctx.send("Unlocked.")
       except Exception as e:
           raise e
+  
+  @commands.command()
+  @commands.has_permissions(manage_messages=True)
+  async def cleanup(self, ctx, search=100):
+        """Cleans up the bot's messages from the channel."""
+
+        def check(m):
+            return m.author == ctx.me or m.content.startswith(ctx.prefix)
+
+        deleted = await ctx.channel.purge(limit=search, check=check, before=ctx.message)
+        spammers = Counter(m.author.display_name for m in deleted)
+        count = len(deleted)
+
+        messages = [f'{count} message{" was" if count == 1 else "s were"} removed.']
+        if len(deleted) > 0:
+            messages.append("")
+            spammers = sorted(spammers.items(), key=lambda t: t[1], reverse=True)
+            messages.extend(f"– **{author}**: {count}" for author, count in spammers)
+
+        await ctx.send("\n".join(messages), delete_after=5)
+
   
   #wiki
   @commands.command(name="wiki",
