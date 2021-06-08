@@ -10,63 +10,7 @@ class Useful(commands.Cog):
   def __init__(self, bot):
     self.bot = bot
   
-  #lock
-  @commands.check_any(commands.is_owner(), commands.has_permissions(manage_channels = True), commands.guild_only())
-  @commands.command(name = "togglelock",
-                  aliases = ['lock', 'tl'],
-                  brief = "Locks/Unlocks a channel, and optionally renames channel",
-                  case_insensitive=True,
-                  help = "Toggles send_messages perms for everyone. And renames channel if an argument is passed.)")
-  async def _togglelock(self, ctx, *, ch_name=None):
-      overwrite = ctx.channel.overwrites_for(ctx.guild.default_role)
-      try:
-        if ch_name != None and ch_name != "unlockall" and ch_name != "lockall":
-          channel = ctx.channel
-          await channel.edit(name=ch_name)
-          await ctx.send(f"Changed channel name to {ch_name}")
-          
-        elif ch_name == "unlockall":
-            await ctx.send("This will *unlock* **all** channels. Type 'confirm' to confirm.")
-            def check(m):
-                return m.channel.id == ctx.channel.id and m.author.id == ctx.author.id
-            try:
-                msg = await self.bot.wait_for("message", timeout=30, check=check)
-            except asyncio.TimeoutError:
-                return await ctx.send("Time's up. Aborted.")
-            if msg.content.lower() != "confirm":
-                return await ctx.send("Aborted.")
-
-                
-            msg = await ctx.send("Unlocking all channels...")
-            for c in ctx.guild.channels:
-                await c.set_permissions(ctx.guild.default_role, send_messages = True)
-            await ctx.send("Unlocked all channels ✅.")
-            
-        elif ch_name == "lockall":
-            await ctx.send("This will *lock* **all** channels. Type 'confirm' to confirm.")
-            def check(m):
-                return m.channel.id == ctx.channel.id and m.author.id == ctx.author.id
-            try:
-                msg = await self.bot.wait_for("message", timeout=30, check=check)
-            except asyncio.TimeoutError:
-                return await ctx.send("Time's up. Aborted.")
-            if msg.content.lower() != "confirm":
-                return await ctx.send("Aborted.")
-
-            msg = await ctx.send("Locking all channels...")
-            for c in ctx.guild.channels:
-                await c.set_permissions(ctx.guild.default_role, send_messages = False)
-            await msg.edit(content="Locked all channels ✅.")
-
-        if overwrite.send_messages != False:
-          await ctx.channel.set_permissions(ctx.guild.default_role, send_messages = False)
-          await ctx.send("Locked.")
-        if overwrite.send_messages == False:
-          await ctx.channel.set_permissions(ctx.guild.default_role, send_messages = True)
-          await ctx.send("Unlocked.")
-      except Exception as e:
-          raise e
-  
+    
   @commands.command()
   @commands.has_permissions(manage_messages=True)
   async def cleanup(self, ctx, search=100):
@@ -98,16 +42,17 @@ class Useful(commands.Cog):
         if arg == None:
             await ctx.send("Please, specify what do you want me to search.")
         elif arg:
+            msg = await ctx.send("Fetching...")
             start = arg.replace(" ", "")
             end = wikipedia.summary(start)
-            await ctx.send(f"```\n{end}\n```")
+            await msg.edit(content = f"```py\n{end}\n```")
     except:
         try:
             start = arg.replace(" ", "")
             end = wikipedia.summary(start, sentences=10)
-            await ctx.send(end)
+            await msg.edit(content = f"```py\n{end}\n```")
         except:
-            await ctx.send("Not found.")
+            await msg.edit(content = "Not found.")
 
   
   # spam

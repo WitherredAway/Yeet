@@ -6,7 +6,7 @@ from keep_alive import keep_alive
 from discord.ext import commands
 from pretty_help import DefaultMenu, PrettyHelp
 
-prefix = '--'
+prefix = '_'
 
 def get_prefix(bot, message):
 
