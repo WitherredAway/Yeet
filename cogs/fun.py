@@ -44,7 +44,11 @@ class Fun(commands.Cog):
       await ctx.send("The delay must be an integer.")
   
   #snap
-  @commands.command()
+  @commands.command(name = "snap",
+                    aliases = ['forcesay', 'fake'],
+                    brief = "Fakes a text.",
+                    help = "Fakes a text with <message> sent by <member>"
+                    )
   async def snap(self, ctx, member: discord.Member, *, message):
       colour = {
           "time": (114, 118, 125),
