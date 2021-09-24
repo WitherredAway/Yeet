@@ -1,16 +1,15 @@
-import asyncio
 import os
-import discord
-from replit import db
 from keep_alive import keep_alive
 from discord.ext import commands
 from pretty_help import DefaultMenu, PrettyHelp
+import requests
 
-prefix = '_'
+prefix = ','
+prefix2 = '_'
 
 def get_prefix(bot, message):
 
-    prefixes = [prefix, '>>']
+    prefixes = [prefix, prefix2, '>>']
     if not message.guild:
         return prefix
     return commands.when_mentioned_or(*prefixes)(bot, message)
@@ -23,8 +22,7 @@ cmd_cd = 2
 
 log_channel = 837542790119686145
 
-bot = commands.AutoShardedBot(
-                   shard_count=2,
+bot = commands.Bot(
                    command_prefix=get_prefix, 
                    owner_id=267550284979503104,
                    case_insensitive=True, 
@@ -37,6 +35,13 @@ for filename in os.listdir('./cogs'):
   if filename.endswith(".py"):
     bot.load_extension(f'cogs.{filename[:-3]}')
 
-keep_alive()
-my_secret = os.environ['botTOKEN']
-bot.run(my_secret, bot = True)
+global TOKEN
+TOKEN = os.environ['botTOKEN']
+r = requests.head(url="https://discord.com/api/v1")
+try:
+    print(f"Rate limit {round(int(r.headers['Retry-After']) / 60, 2)} minutes left")
+except Exception as e:
+    print(e)
+    print("No rate limit")
+    keep_alive()
+    bot.run(TOKEN, bot = True)

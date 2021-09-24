@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 from main import *
 import asyncio
+from typing import Optional
 
 class Channel(commands.Cog):
   """Channel related commands."""
@@ -25,9 +26,15 @@ class Channel(commands.Cog):
                     aliases=["re"],
                     brief="Renames channel.",
                     help="Renames the current channel or mentioned channel if argument passed.")
-  async def _rename(self, ctx, channel, newname):
-      pass
-  
+
+  async def _rename(self, ctx, channel: Optional[discord.TextChannel] = None, *, newname):
+      if channel is None:
+          channel = ctx.channel
+
+      current_name = channel.name
+      await channel.edit(name = newname)
+      await ctx.send(f"Changed {channel.mention}'s name from **{current_name}** to **{channel.name}**.")
+
   #togglelock
   @commands.check_any(commands.is_owner(), commands.has_permissions(manage_channels = True), commands.guild_only())
   @_channel.command(name = "togglelock",
@@ -41,9 +48,10 @@ class Channel(commands.Cog):
       
       try:
         if ch_name != None:
-          channel = ctx.channel
-          await channel.edit(name=ch_name)
-          await ctx.send(f"Changed channel name to {ch_name}")
+          current_name = ctx.channel.name
+          await ctx.channel.edit(name = ch_name)
+          await ctx.send(f"Changed channel name from **{current_name}** to **{ctx.channel.name}**.")
+
           
         if overwrite.send_messages != False:
           await ctx.channel.set_permissions(ctx.guild.default_role, send_messages = False)
@@ -134,8 +142,15 @@ class Channel(commands.Cog):
                    invoke_without_command=True,
                    case_insensitive=True
                    )
-  async def _strip(self, ctx, channel: discord.TextChannel=None, *, separator):
-      channel = channel or ctx.channel
+  async def _strip(self, ctx, separator):
+      
+      await ctx.invoke(self._spchannel, channel=ctx.channel, separator=separator)
+  
+  @_strip.command(name="spchannel",
+                 brief="Strips mentioned channel.",
+                 help="Strips channel mentioned, according to syntax.")
+  async def _spchannel(self, ctx, channel: discord.TextChannel, separator):
+      
       stripped = channel.name.split(separator)[0]
       channel_name = channel.name
       if channel != "all" and channel != "current":
@@ -158,6 +173,7 @@ class Channel(commands.Cog):
               await channel.edit(name=new_name)
           await ctx.send(f"Done stripping the name of {channel.mention} ✅.")
           
+  
   @_strip.command(name="current",
                   brief="Strips current channel.",
                   help="Strips the channel the command was used in.")

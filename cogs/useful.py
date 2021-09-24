@@ -10,6 +10,43 @@ class Useful(commands.Cog):
   def __init__(self, bot):
     self.bot = bot
   
+  @commands.command()
+  async def raw(self, ctx, msg, ping: bool=True):
+      first_step = discord.utils.escape_markdown(ctx.author.display_name)
+      catch_name = first_step.replace("<", "\\<")
+      message = f"Congratulations {catch_name}! You caught a level 1 Ralts!"
+      if ping:
+        await ctx.send(message, allowed_mentions=discord.AllowedMentions(everyone=False, replied_user=True), reference=ctx.message)
+      else:
+        await ctx.send(message, allowed_mentions=discord.AllowedMentions.none(), reference=ctx.message)
+  """
+  @commands.command()
+  async def catch(self, ctx, pk, level: int=69, iv: float=69.00, shiny: bool=False):
+      msg = f"Congratulations {ctx.author.mention}! You caught a {pk}!"
+      pic = "https://images-ext-2.discordapp.net/external/fWH3TkwsG6phn7rD65Pc6l4W-jXhuD47J5iDgqeHo0w/https/i.imgur.com/TQXZKz4.png"
+      
+      if shiny:
+          msg += "\n\nThese colors seem unusual... :sparkles:"
+          pic = "https://images-ext-1.discordapp.net/external/H4ocqHL_tNFdrjKnh06kBg2_17rTaXgNlnQfwfcNLkQ/%3Fv%3D26/https/assets.poketwo.net/shiny/280.png"
+      
+      embed = discord.Embed(description=msg, color=embed_colour)
+      embed.set_author(name=str(ctx.author), icon_url=ctx.author.avatar_url)
+      embed.set_thumbnail(url=pic)
+      #embed.add_field(name="Level", value=f"{level}", inline=True)
+      #embed.add_field(name="IV", value=f"{iv}%", inline=True)
+      embed.set_footer(text=f"\nLevel: {level} | IV: {iv}%")
+      await ctx.send(embed=embed)
+  """
+  #avatar
+  @commands.command(name="avatar",
+                    aliases=["av", "pfp", "profilepicture"],
+                    brief="Avatar url",
+                    help="Sends the avatar url of author/mentioned member.")
+  async def avatar(self, ctx, member: discord.Member=None):
+      member = member or ctx.author
+      embed = discord.Embed(title=f"Avatar of {member}", color=embed_colour)
+      embed.set_image(url = ctx.author.avatar_url)
+      await ctx.send(embed=embed)
   
   #wiki
   @commands.command(name="wiki",
@@ -86,6 +123,7 @@ class Useful(commands.Cog):
       
       
   # timer
+  global max_time
   max_time = 600
   time = ""
   mins = ""
