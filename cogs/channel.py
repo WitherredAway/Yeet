@@ -194,29 +194,22 @@ class Channel(commands.Cog):
                     await c.set_permissions(ctx.guild.default_role, send_messages = True)
             await ctx.send("Unlocked all channels ✅.")
 
-  
+  # strip
   @commands.check_any(commands.is_owner(), commands.has_permissions(manage_channels = True), commands.guild_only())
   @_channel.group(name="strip",
-                   aliases=["split"],
-                   brief="Strips and renames channels.",
-                   help=f"Strips off the second part of every channels' name after the separator, and only keeps the first half before the separator\n\nsingle channel\n\n{prefix}channel strip <channel> <separator>.",
-                   invoke_without_command=True,
-                   case_insensitive=True
-                   )
-  @commands.group(name="strip",
                  brief="Strips current or mentioned channel.",
                  help="Strips current or channel mentioned, according to syntax.",
                  invoke_without_command=True,
                  case_insensitive=True)
-  async def _strip(self, ctx, channel: Optional[discord.TextChannel]=None, separator):
-
-      if not channel:
+  async def _strip(self, ctx, channel: Optional[discord.TextChannel] = None, *, separator):
+      if channel is None:
           channel = ctx.channel
       stripped = channel.name.split(separator)[0]
-      channel_name = channel.name
-      if channel != "all":
-         await ctx.send(f"This will **rename** {channel.mention} to **{stripped}**. This action cannot be undone. Type `{confirm}` to confirm.")
-         
+      if separator in channel.name:
+          await ctx.send(f"This will **rename** {channel.mention} to **{stripped}**. This action cannot be undone. Type `{confirm}` to confirm.")
+      else:
+          return await ctx.send("Nothing to strip.")
+          
       def check(m):
           return m.channel.id == ctx.channel.id and m.author.id == ctx.author.id
       try:
@@ -226,19 +219,18 @@ class Channel(commands.Cog):
       if msg.content.lower() != "confirm":
           return await ctx.send("Aborted.")
       
-                
-      if channel != "all":
-          await ctx.send(f"Stripping {channel.mention}'s name with separator `{separator}` ...")
-          if separator in channel_name:
-              new_name = stripped
-              await channel.edit(name=new_name)
-          await ctx.send(f"Done stripping the name of {channel.mention} ✅.")
-                    
-      await ctx.send(f"Stripping {channel.mention}'s name with separator ` {separator} ` ...")
-      if separator in channel_name:
+      current_name = channel.name
+      await ctx.send(f"Stripping {channel.mention}'s name with separator `{separator}` ...")
+      if separator in channel.name:
           new_name = stripped
           await channel.edit(name=new_name)
       await ctx.send(f"Done stripping the name of {channel.mention} ✅.")
+                    
+      await ctx.send(f"Stripping {channel.mention}'s name with separator ` {separator} ` ...")
+      if separator in channel.name:
+          new_name = stripped
+          await channel.edit(name=new_name)
+      await ctx.send(f"Done stripping the name of {channel.mention} to {current_name}✅.")
 
           
   @_strip.command(name="all",
