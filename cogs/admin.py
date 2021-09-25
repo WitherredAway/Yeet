@@ -6,8 +6,9 @@ import asyncio
 class Admin(commands.Cog):
   def __init__(self, bot):
     self.bot = bot
-    
+      
   # cog
+  @commands.is_owner()
   @commands.group(name="cog",
            aliases=["c"],
            invoke_without_command=True,

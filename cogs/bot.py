@@ -89,7 +89,15 @@ class Bot(commands.Cog):
       
     except Exception as e:
 	    raise e
-  
+
+  # prefix
+  @commands.command(name="prefix",
+                    aliases=["prefixes"],
+                   brief="Shows prefixes.",
+                   help="Shows the prefixes of the bot. Cannot be changed.")
+  async def _prefix(self, ctx):
+      await ctx.send(f"My prefixes are: **` {' ` , ` '.join(prefixes)} ` or <@634409171114262538>**. They cannot be changed.")
+ 
   # ping
   @commands.command(name = "ping", 
                     brief = "Bot's latency",

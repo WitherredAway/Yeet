@@ -3,12 +3,13 @@ from discord.ext import commands
 from main import *
 import asyncio
 from typing import Optional
+import textwrap
 
 class Channel(commands.Cog):
   """Channel related commands."""
   def __init__(self, bot):
     self.bot = bot
-  
+
   global confirm
   confirm = "confirm"
   @commands.check_any(commands.is_owner(), commands.has_permissions(manage_messages = True), commands.guild_only())
@@ -21,7 +22,64 @@ class Channel(commands.Cog):
   )
   async def _channel(self, ctx):
       await ctx.send_help(ctx.command)
-  
+
+  @_channel.group(name="list",
+                   aliases=["li"],
+                   brief="Lists channels that match specified criterion.",
+                   help="Lists channels that match criteria such as 'keyword', 'locked', 'unlocked'.",
+                   invoke_without_command=True,
+                   case_insensitive=True)
+  async def _list(self, ctx):
+      await ctx.send_help(ctx.command)
+      
+  @_list.command(name="keyword",
+                 aliases=["k"],
+                 brief="Lists all channels with 'keyword' in the name",
+                 help="Lists all channels with 'keyword' in the name of the channel.",
+                 case_insensitive=True)
+  async def _keyword(self, ctx, *, keyword):
+      msg = f"Channels with `{keyword}` in name:"
+      num = 0
+      for channel in ctx.guild.text_channels:
+          if keyword in channel.name:
+              msg += f"\n{channel.mention} - **{channel.name}**"
+              num += 1
+      if num == 0:
+          msg += "\n**None**"
+      msg += f"\n\nTotal number of channels = **{num}**"
+      for para in textwrap.wrap(msg, 2000, expand_tabs=False, replace_whitespace=False, fix_sentence_endings=False, break_long_words=False, drop_whitespace=False, break_on_hyphens=False, max_lines=None):
+          await ctx.send(para)
+          await asyncio.sleep(0.5)
+
+  @_list.command(name="state",
+                 brief="Lists all locked/unlocked channels",
+                 help="Lists all channels with 'send_messages' perms turned off/on for everyone.",
+                 case_insensitive=True)
+  async def _state(self, ctx, state):
+      num = 0
+      if state.lower() == "locked":
+          msg = f"Channels that are `{state.lower()}`"
+          for channel in ctx.guild.text_channels:
+              overwrite = channel.overwrites_for(ctx.guild.default_role)
+              if overwrite.send_messages == False:
+                  msg += f"\n{channel.mention} - **{channel.name}**"
+                  num += 1
+      elif state.lower() == "unlocked":
+          msg = f"Channels that are `{state.lower()}`"
+          for channel in ctx.guild.text_channels:
+              overwrite = channel.overwrites_for(ctx.guild.default_role)
+              if overwrite.send_messages != False:
+                  msg += f"\n{channel.mention} - **{channel.name}**"
+                  num += 1
+      else:
+          return await ctx.send("The 'state' argument must be 'locked' or 'unlocked'.")
+      if num == 0:
+          msg += "\n**None**"
+      msg += f"\n\nTotal number of channels = **{num}**"
+      for para in textwrap.wrap(msg, 2000, expand_tabs=False, replace_whitespace=False, fix_sentence_endings=False, break_long_words=False, drop_whitespace=False, break_on_hyphens=False, max_lines=None):
+          await ctx.send(para)
+          await asyncio.sleep(0.5)
+          
   @_channel.command(name="rename",
                     aliases=["re"],
                     brief="Renames channel.",
@@ -92,7 +150,7 @@ class Channel(commands.Cog):
                 return await ctx.send("Aborted.")
 
             msg = await ctx.send("Locking all channels...")
-            for c in ctx.guild.channels:
+            for c in ctx.guild.text_channels:
                 if overwrite.send_messages != False:
                     await c.set_permissions(ctx.guild.default_role, send_messages = False)
             await ctx.send("Locked all channels ✅.")
@@ -128,7 +186,7 @@ class Channel(commands.Cog):
 
                 
             msg = await ctx.send("Unlocking all channels...")
-            for c in ctx.guild.channels:
+            for c in ctx.guild.text_channels:
                 if overwrite.send_messages != True:
                     await c.set_permissions(ctx.guild.default_role, send_messages = True)
             await ctx.send("Unlocked all channels ✅.")
@@ -217,7 +275,7 @@ class Channel(commands.Cog):
           return await ctx.send("Aborted.")
           
       await ctx.send(f"Stripping all channels' names with separator ` {separator} ` ...")
-      for channel in ctx.guild.channels:
+      for channel in ctx.guild.text_channels:
           stripped = channel.name.split(separator)[0]
           channel_name = channel.name
           if separator in channel_name:
