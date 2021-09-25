@@ -51,6 +51,39 @@ class Channel(commands.Cog):
           await ctx.send(para)
           await asyncio.sleep(0.5)
 
+  @_list.command(name="starts_with",
+                 aliases=["startswith", "sw"],
+                 brief="Lists all channels with message starting with <key>.",
+                 help="Lists all channels with last message starting with the word/phrase <key>.",
+                 case_insensitive=True)
+  async def _starts_with(self, ctx, *, key):
+      key = key
+      msg = f"Channels with last message starting with `{key}`:"
+      num = 0
+      wait = await ctx.send(f"Looking for messages starting with `{key}`...")
+      for channel in ctx.guild.text_channels:
+          async for message in channel.history(limit=1):
+              message_content = message.content.lower()
+              if len(message.embeds) > 0:
+                  if len(message.embeds[0].title) > 0:
+                      message_content = message.embeds[0].title.lower()
+                  elif len(message.embeds[0].author) > 0:
+                      message_content = message.embeds[0].author.lower()
+                  elif len(message.embeds[0].description) > 0:
+                      message_content = message.embeds[0].description.lower()
+                  
+              if message_content.startswith(key.lower()):
+                num += 1
+                msg += f"\n**{num}.** {channel.mention} - **{channel.name}**"
+                
+      if num == 0:
+          msg += "\n**None**"
+      msg += f"\n\nTotal number of channels = **{num}**"
+      for para in textwrap.wrap(msg, 2000, expand_tabs=False, replace_whitespace=False, fix_sentence_endings=False, break_long_words=False, drop_whitespace=False, break_on_hyphens=False, max_lines=None):
+          await ctx.send(para)
+          await asyncio.sleep(0.5)
+      await wait.delete
+          
   @_list.command(name="state",
                  brief="Lists all locked/unlocked channels",
                  help="Lists all channels with 'send_messages' perms turned off/on for everyone.",
@@ -100,25 +133,27 @@ class Channel(commands.Cog):
                   brief = "Locks/Unlocks a channel, and optionally renames channel",
                   case_insensitive=True,
                   help = "Toggles send_messages perms for everyone. And renames channel if an argument is passed.)")
-  async def _togglelock(self, ctx, *, channel_name=None):
-      overwrite = ctx.channel.overwrites_for(ctx.guild.default_role)
+  async def _togglelock(self, ctx, channel: Optional[discord.TextChannel]=None, *, channel_name=None):
+      chnl = channel
+      if chnl is None:
+          channel = ctx.channel
+      current_name = channel.name
+      if chnl is None and channel_name != None:
+          channel_name = f"{current_name} {channel_name}"
+      overwrite = channel.overwrites_for(ctx.guild.default_role)
           
       try:
-
         if overwrite.send_messages != False:
-          await ctx.channel.set_permissions(ctx.guild.default_role, send_messages = False)
+          await channel.set_permissions(ctx.guild.default_role, send_messages = False)
           await ctx.send("Locked.")
           
         if overwrite.send_messages == False:
-          await ctx.channel.set_permissions(ctx.guild.default_role, send_messages = True)
+          await channel.set_permissions(ctx.guild.default_role, send_messages = True)
           await ctx.send("Unlocked.")
 
         if channel_name != None:
-          current_name = ctx.channel.name
-          if len(channel_name.split(" ")) == 1 and channel_name != current_name:
-              channel_name = f"{current_name} {channel_name}"
-          await ctx.channel.edit(name = channel_name)
-          await ctx.send(f"Changed channel name from **{current_name}** to **{ctx.channel.name}**.")
+          await channel.edit(name = channel_name)
+          await ctx.send(f"Changed channel name from **{current_name}** to **{channel.name}**.")
           await asyncio.sleep(0.5)
 
       except Exception as e:
@@ -220,17 +255,11 @@ class Channel(commands.Cog):
           return await ctx.send("Aborted.")
       
       current_name = channel.name
-      await ctx.send(f"Stripping {channel.mention}'s name with separator `{separator}` ...")
       if separator in channel.name:
+          await ctx.send(f"Stripping {channel.mention}'s name with separator ` {separator} ` ...")
           new_name = stripped
           await channel.edit(name=new_name)
-      await ctx.send(f"Done stripping the name of {channel.mention} ✅.")
-                    
-      await ctx.send(f"Stripping {channel.mention}'s name with separator ` {separator} ` ...")
-      if separator in channel.name:
-          new_name = stripped
-          await channel.edit(name=new_name)
-      await ctx.send(f"Done stripping the name of {channel.mention} to {current_name}✅.")
+          await ctx.send(f"✅ Done stripping the name of {channel.mention} from **{current_name}** to **{channel.name}**.")
 
           
   @_strip.command(name="all",
