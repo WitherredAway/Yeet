@@ -203,20 +203,18 @@ class Channel(commands.Cog):
                    invoke_without_command=True,
                    case_insensitive=True
                    )
-  async def _strip(self, ctx, separator):
-      
-      await ctx.invoke(self._spchannel, channel=ctx.channel, separator=separator)
-  
-  @_strip.command(name="spchannel",
-                 brief="Strips mentioned channel.",
-                 help="Strips channel mentioned, according to syntax.")
-  async def _spchannel(self, ctx, channel: Optional[discord.TextChannel]=None, separator):
+  @commands.group(name="strip",
+                 brief="Strips current or mentioned channel.",
+                 help="Strips current or channel mentioned, according to syntax.",
+                 invoke_without_command=True,
+                 case_insensitive=True)
+  async def _strip(self, ctx, channel: Optional[discord.TextChannel]=None, separator):
 
       if not channel:
           channel = ctx.channel
       stripped = channel.name.split(separator)[0]
       channel_name = channel.name
-      if channel != "all" and channel != "current":
+      if channel != "all":
          await ctx.send(f"This will **rename** {channel.mention} to **{stripped}**. This action cannot be undone. Type `{confirm}` to confirm.")
          
       def check(m):
@@ -229,14 +227,14 @@ class Channel(commands.Cog):
           return await ctx.send("Aborted.")
       
                 
-      if channel != "all" and channel != "current":
+      if channel != "all":
           await ctx.send(f"Stripping {channel.mention}'s name with separator `{separator}` ...")
           if separator in channel_name:
               new_name = stripped
               await channel.edit(name=new_name)
           await ctx.send(f"Done stripping the name of {channel.mention} ✅.")
                     
-      await ctx.send(f"Stripping {channel.mention}'s name with separator `{separator}` ...")
+      await ctx.send(f"Stripping {channel.mention}'s name with separator ` {separator} ` ...")
       if separator in channel_name:
           new_name = stripped
           await channel.edit(name=new_name)
