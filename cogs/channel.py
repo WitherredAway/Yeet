@@ -102,15 +102,9 @@ class Channel(commands.Cog):
                   help = "Toggles send_messages perms for everyone. And renames channel if an argument is passed.)")
   async def _togglelock(self, ctx, *, channel_name=None):
       overwrite = ctx.channel.overwrites_for(ctx.guild.default_role)
-      ch_name = channel_name
-      
-      try:
-        if ch_name != None:
-          current_name = ctx.channel.name
-          await ctx.channel.edit(name = ch_name)
-          await ctx.send(f"Changed channel name from **{current_name}** to **{ctx.channel.name}**.")
-
           
+      try:
+
         if overwrite.send_messages != False:
           await ctx.channel.set_permissions(ctx.guild.default_role, send_messages = False)
           await ctx.send("Locked.")
@@ -118,6 +112,15 @@ class Channel(commands.Cog):
         if overwrite.send_messages == False:
           await ctx.channel.set_permissions(ctx.guild.default_role, send_messages = True)
           await ctx.send("Unlocked.")
+
+        if channel_name != None:
+          current_name = ctx.channel.name
+          if len(channel_name.split(" ")) == 1 and channel_name != current_name:
+              channel_name = f"{current_name} {channel_name}"
+          await ctx.channel.edit(name = channel_name)
+          await ctx.send(f"Changed channel name from **{current_name}** to **{ctx.channel.name}**.")
+          await asyncio.sleep(0.5)
+
       except Exception as e:
           raise e
 
@@ -207,8 +210,10 @@ class Channel(commands.Cog):
   @_strip.command(name="spchannel",
                  brief="Strips mentioned channel.",
                  help="Strips channel mentioned, according to syntax.")
-  async def _spchannel(self, ctx, channel: discord.TextChannel, separator):
-      
+  async def _spchannel(self, ctx, channel: Optional[discord.TextChannel]=None, separator):
+
+      if not channel:
+          channel = ctx.channel
       stripped = channel.name.split(separator)[0]
       channel_name = channel.name
       if channel != "all" and channel != "current":
@@ -230,27 +235,7 @@ class Channel(commands.Cog):
               new_name = stripped
               await channel.edit(name=new_name)
           await ctx.send(f"Done stripping the name of {channel.mention} ✅.")
-          
-  
-  @_strip.command(name="current",
-                  brief="Strips current channel.",
-                  help="Strips the channel the command was used in.")
-  async def _current(self, ctx, separator):
-      
-      channel = ctx.channel
-      channel_name = channel.name
-      stripped = channel.name.split(separator)[0]
-      await ctx.send(f"This will **rename** {channel.mention} to **{stripped}**. This action cannot be undone. Type `{confirm}` to confirm.")
-      
-      def check(m):
-          return m.channel.id == ctx.channel.id and m.author.id == ctx.author.id
-      try:
-          msg = await self.bot.wait_for("message", timeout=30, check=check)
-      except asyncio.TimeoutError:
-          return await ctx.send("Time's up. Aborted.")
-      if msg.content.lower() != "confirm":
-          return await ctx.send("Aborted.")
-          
+                    
       await ctx.send(f"Stripping {channel.mention}'s name with separator `{separator}` ...")
       if separator in channel_name:
           new_name = stripped

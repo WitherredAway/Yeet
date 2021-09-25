@@ -96,8 +96,9 @@ class Bot(commands.Cog):
                    brief="Shows prefixes.",
                    help="Shows the prefixes of the bot. Cannot be changed.")
   async def _prefix(self, ctx):
-      await ctx.send(f"My prefixes are: **` {' ` , ` '.join(prefixes)} ` or <@634409171114262538>**. They cannot be changed.")
- 
+      n = "\n> "
+      await ctx.send(f"My prefixes are:\n> {n.join(enumerate(get_prefix(bot, ctx)[1:]))}\nThey cannot be changed.")
+      
   # ping
   @commands.command(name = "ping", 
                     brief = "Bot's latency",
