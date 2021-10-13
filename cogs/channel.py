@@ -11,7 +11,8 @@ class Channel(commands.Cog):
     self.bot = bot
 
   global confirm
-  confirm = "confirm"
+  confirm = "ligma"
+  # channel
   @commands.check_any(commands.is_owner(), commands.has_permissions(manage_messages = True), commands.guild_only())
   @commands.group(name="channel",
                   aliases=["ch"],
@@ -22,7 +23,8 @@ class Channel(commands.Cog):
   )
   async def _channel(self, ctx):
       await ctx.send_help(ctx.command)
-
+  
+  # list
   @_channel.group(name="list",
                    aliases=["li"],
                    brief="Lists channels that match specified criterion.",
@@ -31,7 +33,8 @@ class Channel(commands.Cog):
                    case_insensitive=True)
   async def _list(self, ctx):
       await ctx.send_help(ctx.command)
-      
+
+  # keyword
   @_list.command(name="keyword",
                  aliases=["k"],
                  brief="Lists all channels with 'keyword' in the name",
@@ -50,7 +53,8 @@ class Channel(commands.Cog):
       for para in textwrap.wrap(msg, 2000, expand_tabs=False, replace_whitespace=False, fix_sentence_endings=False, break_long_words=False, drop_whitespace=False, break_on_hyphens=False, max_lines=None):
           await ctx.send(para)
           await asyncio.sleep(0.5)
-
+          
+  # startswith
   @_list.command(name="starts_with",
                  aliases=["startswith", "sw"],
                  brief="Lists all channels with message starting with <key>.",
@@ -82,8 +86,8 @@ class Channel(commands.Cog):
       for para in textwrap.wrap(msg, 2000, expand_tabs=False, replace_whitespace=False, fix_sentence_endings=False, break_long_words=False, drop_whitespace=False, break_on_hyphens=False, max_lines=None):
           await ctx.send(para)
           await asyncio.sleep(0.5)
-      await wait.delete
-          
+      await wait.edit(content="✅ Done.")
+  # state
   @_list.command(name="state",
                  brief="Lists all locked/unlocked channels",
                  help="Lists all channels with 'send_messages' perms turned off/on for everyone.",
@@ -113,6 +117,7 @@ class Channel(commands.Cog):
           await ctx.send(para)
           await asyncio.sleep(0.5)
           
+  # rename
   @_channel.command(name="rename",
                     aliases=["re"],
                     brief="Renames channel.",
@@ -141,7 +146,7 @@ class Channel(commands.Cog):
       if chnl is None and channel_name != None:
           channel_name = f"{current_name} {channel_name}"
       overwrite = channel.overwrites_for(ctx.guild.default_role)
-          
+      
       try:
         if overwrite.send_messages != False:
           await channel.set_permissions(ctx.guild.default_role, send_messages = False)
@@ -184,7 +189,7 @@ class Channel(commands.Cog):
                 msg = await self.bot.wait_for("message", timeout=30, check=check)
             except asyncio.TimeoutError:
                 return await ctx.send("Time's up. Aborted.")
-            if msg.content.lower() != "confirm":
+            if msg.content.lower() != confirm:
                 return await ctx.send("Aborted.")
 
             msg = await ctx.send("Locking all channels...")
@@ -219,7 +224,7 @@ class Channel(commands.Cog):
                 msg = await self.bot.wait_for("message", timeout=30, check=check)
             except asyncio.TimeoutError:
                 return await ctx.send("Time's up. Aborted.")
-            if msg.content.lower() != "confirm":
+            if msg.content.lower() != confirm:
                 return await ctx.send("Aborted.")
 
                 
@@ -240,11 +245,12 @@ class Channel(commands.Cog):
       if channel is None:
           channel = ctx.channel
       stripped = channel.name.split(separator)[0]
-      if separator in channel.name:
-          await ctx.send(f"This will **rename** {channel.mention} to **{stripped}**. This action cannot be undone. Type `{confirm}` to confirm.")
-      else:
+      #if separator in channel.name:
+          #await ctx.send(f"This will **rename** {channel.mention} to **{stripped}**. This action cannot be undone. Type `{confirm}` to confirm.")
+      if separator not in channel.name:
           return await ctx.send("Nothing to strip.")
-          
+
+      """
       def check(m):
           return m.channel.id == ctx.channel.id and m.author.id == ctx.author.id
       try:
@@ -253,10 +259,10 @@ class Channel(commands.Cog):
           return await ctx.send("Time's up. Aborted.")
       if msg.content.lower() != "confirm":
           return await ctx.send("Aborted.")
-      
+      """
       current_name = channel.name
       if separator in channel.name:
-          await ctx.send(f"Stripping {channel.mention}'s name with separator ` {separator} ` ...")
+          #await ctx.send(f"Stripping {channel.mention}'s name with separator ` {separator} ` ...")
           new_name = stripped
           await channel.edit(name=new_name)
           await ctx.send(f"✅ Done stripping the name of {channel.mention} from **{current_name}** to **{channel.name}**.")
@@ -275,7 +281,7 @@ class Channel(commands.Cog):
           msg = await self.bot.wait_for("message", timeout=30, check=check)
       except asyncio.TimeoutError:
           return await ctx.send("Time's up. Aborted.")
-      if msg.content.lower() != "confirm":
+      if msg.content.lower() != confirm:
           return await ctx.send("Aborted.")
           
       await ctx.send(f"Stripping all channels' names with separator ` {separator} ` ...")

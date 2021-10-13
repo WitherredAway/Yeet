@@ -10,7 +10,12 @@ class Fun(commands.Cog):
   """Fun commands."""
   def __init__(self, bot):
     self.bot = bot
-  
+
+  @commands.Cog.listener()
+  async def on_message(self, message):
+      if message.content.lower() == "ligma":
+          await message.channel.send("balls")
+      
 	# say
   @commands.command(name = "say",
                     aliases = ['s'],

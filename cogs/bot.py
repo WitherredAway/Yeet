@@ -8,7 +8,7 @@ class Bot(commands.Cog):
   """Commands and events related to the bot."""
   def __init__(self, bot):
     self.bot = bot
-
+                    
   @commands.Cog.listener()
   async def on_ready(self):
     await bot.change_presence(status=discord.Status.online, activity=discord.Game(f'{prefix}help'))
@@ -97,7 +97,7 @@ class Bot(commands.Cog):
                    help="Shows the prefixes of the bot. Cannot be changed.")
   async def _prefix(self, ctx):
       n = "\n> "
-      await ctx.send(f"My prefixes are:\n> {n.join(enumerate(get_prefix(bot, ctx)[1:]))}\nThey cannot be changed.")
+      await ctx.send(f"My prefixes are:\n> {n.join(get_prefix(bot, ctx)[1:])}\nThey cannot be changed.")
       
   # ping
   @commands.command(name = "ping", 
