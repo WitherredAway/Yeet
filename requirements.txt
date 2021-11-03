@@ -84,7 +84,7 @@ pyquil==1.9.0
 python-dateutil==2.8.2
 python-jsonrpc-server==0.3.2
 python-language-server==0.31.10
-pyxel @ git+https://github.com/amasad/pyxel@8bcc2266b2fbb65f72ad686952de3838971c136e
+pyxel==1.4.3
 referenceqvm==0.3
 regex==2021.8.28
 requests==2.15.1
