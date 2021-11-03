@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 from main import *
 import asyncio
-from PIL import Image, ImageDraw, ImageFont, ImageFilter
+from pillow import Image, ImageDraw, ImageFont, ImageFilter
 from datetime import datetime
 import os
 
