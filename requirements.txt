@@ -5,8 +5,6 @@ astunparse==1.6.3
 async-timeout==3.0.1
 attrs==21.2.0
 backports.entry-points-selectable==1.1.0
-beautifulsoup4 @ file:///home/runner/.cache/pypoetry/artifacts/e0/38/d7/f9b232f345b5354d13487afd553ef917480088fda47bb62e056a3a7924/beautifulsoup4-4.9.3-py3-none-any.whl
-braceexpand @ file:///home/runner/.cache/pypoetry/artifacts/2d/b8/02/4729f565b530e450f2d9a0f956c7c1782cbcdccb0ae3355023bbd2acfb/braceexpand-0.1.7-py2.py3-none-any.whl
 CacheControl==0.12.6
 cachetools==4.2.2
 cachy==0.3.0
@@ -15,20 +13,19 @@ cffi==1.14.6
 chardet==4.0.0
 charset-normalizer==2.0.4
 cleo==0.8.1
-click @ file:///home/runner/.cache/pypoetry/artifacts/30/bc/bf/e00ffd8f0edf0294942e70e80e42a839bd2649d2c5b864e6389e526d2a/click-7.1.2-py2.py3-none-any.whl
 clikit==0.6.2
 crashtest==0.3.1
 cryptography==3.4.8
 cs50==7.0.2
 cycler==0.10.0
 debugpy==1.2.1
-discord-pretty-help @ file:///home/runner/.cache/pypoetry/artifacts/62/01/87/29ae7fc7edb0ef81e8765c7177a400a2afd16227c872546f959627a73f/discord_pretty_help-1.3.0-py3-none-any.whl
-discord.py @ file:///home/runner/.cache/pypoetry/artifacts/5c/69/57/1b58eef3572e1fc3d5dedb4580efb9ca406d44ba440a6676a3c858d092/discord.py-1.7.2-py3-none-any.whl
+discord-pretty-help==1.3.0
+discord.py==1.7.2
 distlib==0.3.2
 docopt==0.6.2
-durations-nlp @ file:///home/runner/.cache/pypoetry/artifacts/37/08/2b/b59932f9a99de5d91556eca66678f6156ad3a4fd5f7dfe5c84cf051001/durations_nlp-1.0.1-py3-none-any.whl
+durations-nlp==1.0.1
 filelock==3.0.12
-Flask @ file:///home/runner/.cache/pypoetry/artifacts/0b/5a/9e/38b1bab936ade7d1bccb7f5c39bdbe0215cb26c1d40260765099e5af4c/Flask-1.1.4-py2.py3-none-any.whl
+Flask==1.1.4
 funcsigs==1.0.2
 future==0.18.2
 gast==0.3.3
@@ -39,17 +36,15 @@ google-pasta==0.2.0
 greenlet==1.1.1
 grpcio==1.40.0
 h5py==2.10.0
-helpers @ file:///home/runner/.cache/pypoetry/artifacts/ea/0b/9d/6d41b18d8a2122612755e1449dd19cb4a5069ae6413994d66988cfe936/helpers-0.2.0-py3-none-any.whl
 html5lib==1.1
-humanize @ file:///home/runner/.cache/pypoetry/artifacts/79/1e/c9/00584353562071d6d7b32faf4464df48d453e132db0646ea81d86c64bb/humanize-3.6.0-py3-none-any.whl
+humanize==3.6.0
 idna==3.2
-import-expression @ file:///home/runner/.cache/pypoetry/artifacts/11/82/3e/266d263aafe1dfe405cfef3b4b2aa1b598d4dd0f6124816b2ed8a4cb00/import_expression-1.1.4-py3-none-any.whl
+import-expression==1.1.4
 importlib-metadata==3.10.1
-itsdangerous @ file:///home/runner/.cache/pypoetry/artifacts/ed/be/b7/3afa53339fde1838049443e48288a0348e1c636069b0c90f199510d48a/itsdangerous-1.1.0-py2.py3-none-any.whl
+itsdangerous==1.1.0
 jedi==0.15.2
 jeepney==0.7.1
-Jinja2 @ file:///home/runner/.cache/pypoetry/artifacts/1e/19/63/9b4675e143abad59de60e0e667815fd5e19dd0b28fc2815f9f957726d3/Jinja2-2.11.3-py2.py3-none-any.whl
-jishaku @ file:///home/runner/.cache/pypoetry/artifacts/a2/14/32/5c1598c4876ff746398d0582a2d0c3207a63727b532fa2e9bdec51333a/jishaku-1.20.0.220-py3-none-any.whl
+jishaku==1.20.0.220
 joblib==1.0.1
 Keras-Preprocessing==1.1.2
 keyring==21.8.0
@@ -92,8 +87,7 @@ python-language-server==0.31.10
 pyxel @ git+https://github.com/amasad/pyxel@8bcc2266b2fbb65f72ad686952de3838971c136e
 referenceqvm==0.3
 regex==2021.8.28
-replit @ file:///home/runner/.cache/pypoetry/artifacts/7e/fe/24/77a2fc56aa5eafb3648681311edb3d35e8ff7b58959170815292197022/replit-3.0.0-py3-none-any.whl
-requests @ file:///home/runner/.cache/pypoetry/artifacts/74/b0/47/36905ed55a24fa116f001991f544b12b454891158d99ab3ae08394b0d6/requests-2.15.1-py2.py3-none-any.whl
+requests==2.15.1
 requests-oauthlib==1.3.0
 requests-toolbelt==0.9.1
 rope==0.18.0
@@ -103,24 +97,21 @@ SecretStorage==3.3.1
 shellingham==1.4.0
 six==1.16.0
 sounddevice==0.4.2
-soupsieve @ file:///home/runner/.cache/pypoetry/artifacts/b8/a8/7f/9e40f555a1f9d45c0bee1c0968b363dd999d2beb5b111eec78c11e9203/soupsieve-2.2.1-py3-none-any.whl
 SQLAlchemy==1.4.23
 sqlparse==0.4.2
 tensorboard==2.2.2
 tensorboard-plugin-wit==1.8.0
-tensorflow-cpu @ https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow_cpu-2.2.0-cp38-cp38-manylinux2010_x86_64.whl
 tensorflow-estimator==2.2.0
 termcolor==1.1.0
 toml==0.10.2
 tomlkit==0.7.2
 tqdm==4.62.2
-typing-extensions @ file:///home/runner/.cache/pypoetry/artifacts/fe/31/ef/8176395be3e4536aa430a84a1af3ade772047a9017c78ce2d045c1636b/typing_extensions-3.10.0.0-py3-none-any.whl
+typing-extensions==3.10.0.0
 ujson==1.35
 urllib3==1.26.6
-utils @ file:///home/runner/.cache/pypoetry/artifacts/89/55/bd/3a8611192e4ea6bfa7996114d66878ea34e4a6093d0ed9b2013ee559b1/utils-1.0.1-py2.py3-none-any.whl
+utils==1.0.1
 virtualenv==20.7.2
 webencodings==0.5.1
-Werkzeug @ file:///home/runner/.cache/pypoetry/artifacts/71/cb/8f/ea556c118c51e63201517bf1ce46027e851bef2077e67f333349deacf1/Werkzeug-1.0.1-py2.py3-none-any.whl
 wikipedia==1.4.0
 wrapt==1.12.1
 yapf==0.31.0
