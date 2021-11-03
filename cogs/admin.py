@@ -21,7 +21,7 @@ class Admin(commands.Cog):
   # cog load
   @cog.command(name = "load",
                aliases = ['l'], 
-               #hidden = True,
+               hidden = True,
                brief = "Load a cog",
                help = "Loads a cog with the name, dev only command.")
   async def _load(self, ctx, cog):
@@ -39,7 +39,7 @@ class Admin(commands.Cog):
   # cog unload
   @cog.command(name = "unload", 
                aliases = ['u'],
-               #hidden = True,
+               hidden = True,
                brief = "Unloads a cog",
                help = "Unloads a cog with the name, dev only command.")
   async def _unload(self, ctx, cog):
@@ -58,7 +58,7 @@ class Admin(commands.Cog):
   # cog reload
   @cog.command(name = "reload", 
                aliases = ['r'],
-               #hidden = True,
+               hidden = True,
                brief = "Reloads a cog",
                help = "Reloads a cog with the name, dev only command.")
   async def _reload(self, ctx, cog):
@@ -84,7 +84,7 @@ class Admin(commands.Cog):
   # cog all
   @cog.command(name = "all", 
                aliases = ['a'],
-               #hidden = True,
+               hidden = True,
                brief = "All cogs",
                help = "Lists all cogs, dev only command.")
   async def _all(self, ctx):
