@@ -35,11 +35,11 @@ for filename in os.listdir('./cogs'):
     bot.load_extension(f'cogs.{filename[:-3]}')
 
 global TOKEN
-TOKEN = os.environ['botTOKEN']
+TOKEN = os.getenv('botTOKEN')
 r = requests.head(url="https://discord.com/api/v1")
 try:
     print(f"Rate limit {round(int(r.headers['Retry-After']) / 60, 2)} minutes left")
 except Exception as e:
     print("No rate limit")
-    keep_alive()
-    bot.run(TOKEN, bot = True)
+    # keepalive()
+    bot.run(TOKEN)
