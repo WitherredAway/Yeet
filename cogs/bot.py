@@ -116,7 +116,7 @@ class Bot(commands.Cog):
   async def invite(self, ctx):
     embed = discord.Embed(title = "Add the bot to your server using the following link.", color = embed_colour)
     embed.set_thumbnail(url=self.bot.user.avatar_url)
-    embed.add_field(name="Invite Bot", value="[Invite link.](https://discord.com/api/oauth2/authorize?client_id=634409171114262538&permissions=8&scope=bot)", inline=False)
+    embed.add_field(name="Invite Bot", value=f"[Invite link.](https://discord.com/api/oauth2/authorize?client_id={self.bot.user.id}&permissions=8&scope=bot)", inline=False)
 
     await ctx.send(embed=embed)
 
