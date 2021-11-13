@@ -30,6 +30,7 @@ bot = commands.Bot(
 
 bot.help_command = PrettyHelp(menu=menu, color=embed_colour, sort_command=False, show_index=True)
 
+bot.load_extension('jishaku')
 for filename in os.listdir('./cogs'):
   if filename.endswith(".py"):
     bot.load_extension(f'cogs.{filename[:-3]}')
