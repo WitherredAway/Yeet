@@ -19,7 +19,7 @@ class Useful(commands.Cog):
         await ctx.send(message, allowed_mentions=discord.AllowedMentions(everyone=False, replied_user=True), reference=ctx.message)
       else:
         await ctx.send(message, allowed_mentions=discord.AllowedMentions.none(), reference=ctx.message)
-  """
+  
   @commands.command()
   async def catch(self, ctx, pk, level: int=69, iv: float=69.00, shiny: bool=False):
       msg = f"Congratulations {ctx.author.mention}! You caught a {pk}!"
@@ -32,11 +32,11 @@ class Useful(commands.Cog):
       embed = discord.Embed(description=msg, color=embed_colour)
       embed.set_author(name=str(ctx.author), icon_url=ctx.author.avatar_url)
       embed.set_thumbnail(url=pic)
-      #embed.add_field(name="Level", value=f"{level}", inline=True)
-      #embed.add_field(name="IV", value=f"{iv}%", inline=True)
+      embed.add_field(name="Level", value=f"{level}", inline=True)
+      embed.add_field(name="IV", value=f"{iv}%", inline=True)
       embed.set_footer(text=f"\nLevel: {level} | IV: {iv}%")
       await ctx.send(embed=embed)
-  """
+
   #avatar
   @commands.command(name="avatar",
                     aliases=["av", "pfp", "profilepicture"],
