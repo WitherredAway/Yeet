@@ -1,7 +1,6 @@
 import os
 from keep_alive import keep_alive
 from discord.ext import commands
-from pretty_help import DefaultMenu, PrettyHelp
 import requests
 
 global prefixes
@@ -13,7 +12,7 @@ def get_prefix(bot, message):
         return prefix
     return commands.when_mentioned_or(*prefixes)(bot, message)
 
-menu = DefaultMenu("◀️", "▶️", "❌", active_time = 60)
+# menu = DefaultMenu("👈", "👉", "🙅", active_time = 60)
 
 embed_colour = 0xf1c40f
 
@@ -24,11 +23,11 @@ log_channel = 837542790119686145
 bot = commands.Bot(
                    command_prefix=get_prefix, 
                    owner_ids=[267550284979503104, 761944238887272481],
-                   case_insensitive=True, 
-                   help_command=PrettyHelp(),
-                   self_bot=False)
+                   case_insensitive=True,
+                   self_bot=False
+                  )
 
-bot.help_command = PrettyHelp(menu=menu, color=embed_colour, sort_command=False, show_index=True)
+# bot.help_command = PrettyHelp(menu=menu, color=embed_colour, sort_command=False, show_index=True)
 
 bot.load_extension('jishaku')
 for filename in os.listdir('./cogs'):

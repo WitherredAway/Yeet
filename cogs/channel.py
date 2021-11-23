@@ -13,7 +13,7 @@ class Channel(commands.Cog):
   global confirm
   confirm = "ligma"
   # channel
-  @commands.check_any(commands.is_owner(), commands.has_permissions(manage_messages = True), commands.guild_only())
+  @commands.check_any(commands.is_owner(), commands.has_permissions(manage_channels = True), commands.guild_only())
   @commands.group(name="channel",
                   aliases=["ch"],
                   brief="Useful channel management commands",

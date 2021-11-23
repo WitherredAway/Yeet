@@ -23,7 +23,10 @@ class Fun(commands.Cog):
                     )
   @commands.cooldown(1, cmd_cd, commands.BucketType.user)
   async def say(self, ctx, *, message):
-    await ctx.send(message)
+      if ctx.message.attachments:
+          await ctx.send(content=message, files=[await f.to_file() for f in ctx.message.attachments])
+      else:
+          await ctx.send(message)
 
 	# cum
   @commands.cooldown(1, cmd_cd, commands.BucketType.user)

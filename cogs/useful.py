@@ -45,7 +45,7 @@ class Useful(commands.Cog):
   async def avatar(self, ctx, member: discord.Member=None):
       member = member or ctx.author
       embed = discord.Embed(title=f"Avatar of {member}", color=embed_colour)
-      embed.set_image(url = ctx.author.avatar_url)
+      embed.set_image(url = ctx.author.avatar.url)
       await ctx.send(embed=embed)
   
   #wiki
