@@ -13,8 +13,8 @@ jishaku = "^2.3.0"
 durations-nlp = "^1.0.1"
 utils = "^1.0.1"
 wikipedia = "^1.4.0"
-"discord.py" = "1.7.3"
-"dislash.py" = "^1.4.9"
+"discord.py" = {git = "https://github.com/Rapptz/discord.py"}
+discord-ext-menus = {git = "https://github.com/Rapptz/discord-ext-menus"}
 
 [tool.poetry.dev-dependencies]
 
