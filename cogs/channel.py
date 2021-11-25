@@ -10,6 +10,11 @@ class Channel(commands.Cog):
   def __init__(self, bot):
     self.bot = bot
 
+  @property
+  def display_emoji(self) -> discord.PartialEmoji:
+    return discord.PartialEmoji(name="\U00000023\U0000fe0f\U000020e3")
+
+
   global confirm
   confirm = "ligma"
   # channel

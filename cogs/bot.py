@@ -75,7 +75,7 @@ class Bot(commands.Cog):
       
       em = discord.Embed(colour = embed_colour)
   
-      em.set_author(name = user, icon_url = user.avatar_url)
+      em.set_author(name = user, icon_url = user.avatar.url)
       em.add_field(name = "Command used", value = message_content, inline = False)
       em.timestamp = datetime.datetime.utcnow()
       if ctx.guild:
@@ -107,7 +107,7 @@ class Bot(commands.Cog):
       message = await ctx.send('Pong!')
       ms = int((message.created_at - ctx.message.created_at).total_seconds() * 1000)
       await message.edit(content= f"Pong! {ms} ms")
-    
+  
   # invite
   @commands.command(name = "invite",
                     brief = "Bot's invite link",
@@ -115,10 +115,10 @@ class Bot(commands.Cog):
                     )
   async def invite(self, ctx):
     embed = discord.Embed(title = "Add the bot to your server using the following link.", color = embed_colour)
-    embed.set_thumbnail(url=self.bot.user.avatar_url)
+    embed.set_thumbnail(url=self.bot.user.avatar.url)
     embed.add_field(name="Invite Bot", value=f"[Invite link.](https://discord.com/api/oauth2/authorize?client_id={self.bot.user.id}&permissions=8&scope=bot)", inline=False)
 
     await ctx.send(embed=embed)
-
+  
 def setup(bot):
 	bot.add_cog(Bot(bot))
