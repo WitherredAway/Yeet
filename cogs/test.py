@@ -1,7 +1,7 @@
 import discord
 from main import *
 
-class Test(commands.Cog):
+class Test(slash.ApplicationCog):
     def __init__(self, bot):
         self.bot = bot
 

@@ -12,7 +12,8 @@ from collections import Counter
 from main import *
 import aiohttp
 
-bot.session = aiohttp.ClientSession()
+session = aiohttp.ClientSession()
+
 
 class SphinxObjectFileReader:
     # Inspired by Sphinx's InventoryFileReader
@@ -109,7 +110,7 @@ class Docs(commands.Cog):
         cache = {}
         for key, page in page_types.items():
             sub = cache[key] = {}
-            async with self.bot.session.get(page + '/objects.inv') as resp:
+            async with session.get(page + '/objects.inv') as resp:
                 if resp.status != 200:
                     raise RuntimeError('Cannot build rtfm lookup table, try again later.')
 
@@ -117,7 +118,6 @@ class Docs(commands.Cog):
                 cache[key] = self.parse_object_inv(stream, page)
 
         self._rtfm_cache = cache
-
     async def do_rtfm(self, ctx, key, obj):
         page_types = {
             'latest': 'https://discordpy.readthedocs.io/en/latest',

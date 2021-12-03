@@ -63,29 +63,28 @@ class Admin(commands.Cog):
     # cog reload
     @cog.command(name = "reload", 
                aliases = ['r'],
-               hidden = True,
                brief = "Reloads a cog",
                help = "Reloads a cog with the name, dev only command.")
     async def _reload(self, ctx, cog):
-        try:
-            if cog == 'all':
-                try:
-                    loaded = ""
-                    for cog_ext in list(bot.extensions):
-                        bot.reload_extension(str(cog_ext))
-                        loaded += f':repeat: Reloaded cog `{cog_ext[5:]}`\n'
-                    await ctx.send(loaded)
-                except Exception as e:
-                    raise e
-            else:
-                try:
-                    bot.reload_extension(f'cogs.{cog}')
-                except commands.ExtensionNotLoaded:
-                    await ctx.send(f":x: Cog `{cog}` not found.")
-                else:
-                    await ctx.send(f':repeat: Reloaded cog `{cog}`')
-        except Exception as e:
+      #await self.bot.sync_commands()
+      try:
+        if cog == 'all':
+          try: # let me try
+            for cog_ext in list(self.bot.extensions):
+                self.bot.reload_extension(f'{cog_ext}')
+                await ctx.send(f':repeat: Reloaded cog `{cog_ext[11:]}`')
+                await asyncio.sleep(0.5)
+          except Exception as e:
   	        raise e
+        else:
+          try:
+            self.bot.reload_extension(f'cogs.{cog}')
+          except commands.ExtensionNotLoaded:
+            await ctx.send(f":x: Cog `{cog}` not found.")
+          else:
+            await ctx.send(f':repeat: Reloaded cog `{cog}`')
+      except Exception as e:
+  	    raise e
   
     # cog all
     @cog.command(name = "all", aliases = ['a'], hidden = True, brief = "All cogs", help = "Lists all cogs, dev only command.")

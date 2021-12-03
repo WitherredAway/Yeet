@@ -3,6 +3,7 @@ from discord.ext import commands
 from main import *
 import asyncio
 import datetime
+import cogs.utils.slash as slash
 
 class Bot(commands.Cog):
   """Commands and events related to the bot."""
@@ -11,10 +12,10 @@ class Bot(commands.Cog):
                     
   @commands.Cog.listener()
   async def on_ready(self):
-    await bot.change_presence(status=discord.Status.online, activity=discord.Game(f'{prefix}help'))
+    await self.bot.change_presence(status=discord.Status.online, activity=discord.Game(f'{prefix}help'))
     
     print("Running.")
-    print(bot.user)
+    print(self.bot.user)
   
   @commands.Cog.listener()
   async def on_command_error(self, ctx, error):
@@ -65,7 +66,7 @@ class Bot(commands.Cog):
   async def on_command(self, ctx):
     try:
       
-      log_ch = bot.get_channel(log_channel)
+      log_ch = await self.bot.fetch_channel(log_channel)
       user = ctx.author
       command = ctx.command
       message_content = str(ctx.message.content)
@@ -116,7 +117,7 @@ class Bot(commands.Cog):
   async def invite(self, ctx):
     embed = discord.Embed(title = "Add the bot to your server using the following link.", color = embed_colour)
     embed.set_thumbnail(url=self.bot.user.avatar.url)
-    embed.add_field(name="Invite Bot", value=f"[Invite link.](https://discord.com/api/oauth2/authorize?client_id={self.bot.user.id}&permissions=8&scope=bot)", inline=False)
+    embed.add_field(name="Invite Bot", value=f"[Invite link.](https://discord.com/api/oauth2/authorize?client_id={self.bot.user.id}&permissions=8&scope=bot%20applications.commands)", inline=False)
 
     await ctx.send(embed=embed)
   

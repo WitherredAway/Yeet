@@ -1,8 +1,9 @@
 import os
+import discord
 from keep_alive import keep_alive
 from discord.ext import commands
 import requests
-
+import cogs.utils.slash as slash
 global prefixes
 prefixes = [',', '_', '>>']
 prefix = prefixes[0]
@@ -12,22 +13,20 @@ def get_prefix(bot, message):
         return prefix
     return commands.when_mentioned_or(*prefixes)(bot, message)
 
-# menu = DefaultMenu("👈", "👉", "🙅", active_time = 60)
 
 embed_colour = 0xf1c40f
 
 cmd_cd = 2 #seconds
 
 log_channel = 837542790119686145
-
+intents = discord.Intents().default()
+        
 bot = commands.Bot(
                    command_prefix=get_prefix, 
                    owner_ids=[267550284979503104, 761944238887272481],
                    case_insensitive=True,
-                   self_bot=False
+                   intents=intents
                   )
-
-# bot.help_command = PrettyHelp(menu=menu, color=embed_colour, sort_command=False, show_index=True)
 
 bot.load_extension('jishaku')
 for filename in os.listdir('./cogs'):
@@ -43,5 +42,6 @@ try:
 except Exception as e:
     print("No rate limit")
 """
-# keepalive()
-bot.run(TOKEN)
+
+if __name__ == '__main__':
+    bot.run(TOKEN)

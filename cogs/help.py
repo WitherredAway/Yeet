@@ -112,7 +112,7 @@ class FrontPageSource(menus.PageSource):
         return self
 
     def format_page(self, menu: HelpMenu, page):
-        embed = discord.Embed(title='Help Interface', description=f"**[Invite the bot here!](https://discord.com/api/oauth2/authorize?client_id={bot.user.id}&permissions=8&scope=bot)**", color=embed_colour)
+        embed = discord.Embed(title='Help Interface', description=f"**[Invite the bot here!](https://discord.com/api/oauth2/authorize?client_id=634409171114262538&permissions=8&scope=bot)**", color=embed_colour)
         for cog_name, cog in bot.cogs.items():
             description = cog.description.split('\n', 1)[0] or "No description found."
             emoji = getattr(cog, 'display_emoji', "🟡")
