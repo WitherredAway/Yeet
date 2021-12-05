@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands, tasks
 from main import *
 import re
+import simpleeval
 from simpleeval import simple_eval
 
 class Calculator(discord.ui.View):
@@ -18,13 +19,20 @@ class Calculator(discord.ui.View):
         return True
 
     async def new_edit(self, append, interaction: discord.Interaction, string: str=None):
+        # very convoluted code, new bugs might arise
         if self.text != "":
-            if self.text.startswith("0") or not self.text[0].isdigit():
+            check = any([self.text.startswith("0"), not self.text[0].isdigit()]) and not any([self.text[0] == "-", self.text[0] == "+"])
+            if check:
                 self.text = self.text[1:]
-            if not append.isdigit() and self.text[-1].isdigit():
+            if not append.isdigit() and any([self.text[-1].isdigit(), append == "-", append == "+"]):
                 self.text += append
-        if append.isdigit() or append == "3.14":
-            self.text += append
+
+        if self.text == "":
+            if any([append == "+", append == "-"]):
+                self.text += append
+
+        if any([append.isdigit(), append == "3.14", append == "*3.14"]):
+                self.text += append
         if string is None:
             string = self.text
         result = calculate(string)
@@ -42,6 +50,7 @@ class Calculator(discord.ui.View):
     @discord.ui.button(label="C", style=discord.ButtonStyle.danger)
     async def clear(self, button: discord.ui.Button, interaction: discord.Interaction):
         await interaction.response.defer()
+        self.history += f"\n__Cleared__:\n{calculate(self.text)}"
         self.text = ""
         await self.new_edit("", interaction)
     @discord.ui.button(label="⌫", style=discord.ButtonStyle.danger)
@@ -182,29 +191,31 @@ class Calculator(discord.ui.View):
     @discord.ui.button(label="=", style=discord.ButtonStyle.green)
     async def _equals(self, button: discord.ui.Button, interaction: discord.Interaction):
         await interaction.response.defer()
-        self.history += "\n" + calculate(self.text)
+        self.history += "\n__Equalled__:\n" + calculate(self.text)
         self.text = str(simple_eval(self.text))
         await self.new_edit("", interaction)
     
     
 def calculate(to_calc):
+    err = "Invalid operators/operations specified."
     if to_calc == "":
         result = "\u200b"
     elif not to_calc.isdigit() and re.search(r"[\+\-\*\/%()\.]", to_calc) is None:
-        result = f"Invalid operators/operations specified."
+        result = err
     else:
         try:
             result = simple_eval(to_calc)
         except SyntaxError:
             result = "\u200b"
+        except simpleeval.NameNotDefined:
+            result = err
     final = f"""
 ```py
 > {to_calc}
 ```
 ```
 = {result}
-```
-             """
+```"""
     return final
 
 
