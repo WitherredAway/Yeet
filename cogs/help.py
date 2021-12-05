@@ -36,8 +36,8 @@ class GroupHelpPageSource(menus.ListPageSource):
         embed = discord.Embed(title=self.title, description=self.description, colour=embed_colour)
 
         for command in commandz:
-            signature = f'{command.qualified_name} {command.signature}'
-            value = command.short_doc or 'No help found.'
+            signature = f"`{self.prefix}`" + PaginatedHelpCommand.get_command_signature(self, command)
+            value = command.description or 'No help found.'
             if isinstance(command, commands.Group):
                 com_names = [com.name for com in command.commands]
                 value += '\n> **Subcommands**: `' + '` • `'.join(com_names) + '`'
@@ -163,13 +163,13 @@ class PaginatedHelpCommand(commands.HelpCommand):
         parent = command.full_parent_name
         if len(command.aliases) > 0:
             aliases = '|'.join(command.aliases)
-            fmt = f'[{command.name}|{aliases}]'
+            fmt = f'{command.name}[{aliases}]'
             if parent:
                 fmt = f'{parent} {fmt}'
             alias = fmt
         else:
             alias = command.name if not parent else f'{parent} {command.name}'
-        return f'{alias} {command.signature}'
+        return f'{alias} `{command.signature}`'
 
     async def send_bot_help(self, mapping):
         bot = self.context.bot
@@ -198,7 +198,7 @@ class PaginatedHelpCommand(commands.HelpCommand):
         await menu.start()
 
     def common_command_formatting(self, embed_like, command):
-        embed_like.title = self.get_command_signature(command)
+        embed_like.title = f"`{self.context.prefix}`" + self.get_command_signature(command)
         if command.description:
             embed_like.description = f'{command.description}\n\n{command.help}'
         else:

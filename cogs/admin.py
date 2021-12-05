@@ -60,7 +60,6 @@ class Admin(commands.Cog):
             else:
                 await ctx.send(f':outbox_tray: Unloaded cog `{cog}`')
   
-    # cog reload
     @cog.command(name = "reload", 
                aliases = ['r'],
                brief = "Reloads a cog",
@@ -85,7 +84,7 @@ class Admin(commands.Cog):
             await ctx.send(f':repeat: Reloaded cog `{cog}`')
       except Exception as e:
   	    raise e
-  
+
     # cog all
     @cog.command(name = "all", aliases = ['a'], hidden = True, brief = "All cogs", help = "Lists all cogs, dev only command.")
     async def _all(self, ctx):
