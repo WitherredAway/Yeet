@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands, tasks
 from main import *
 import re
+from simpleeval import simple_eval
 
 class Calculator(discord.ui.View):
     def __init__(self, ctx: commands.Context, text: str):
@@ -22,7 +23,7 @@ class Calculator(discord.ui.View):
                 self.text = self.text[1:]
             if not append.isdigit() and self.text[-1].isdigit():
                 self.text += append
-        if append.isdigit():
+        if append.isdigit() or append == "3.14":
             self.text += append
         if string is None:
             string = self.text
@@ -32,7 +33,10 @@ class Calculator(discord.ui.View):
     @discord.ui.button(label="■", style=discord.ButtonStyle.danger)
     async def cancel(self, button: discord.ui.Button, interaction: discord.Interaction):
         await interaction.response.defer()
-        await interaction.edit_original_message(view=None)
+        if self.text == "":
+            await interaction.delete_original_message()
+        else:
+            await interaction.edit_original_message(view=None)
         self.stop()
 
     @discord.ui.button(label="C", style=discord.ButtonStyle.danger)
@@ -179,7 +183,7 @@ class Calculator(discord.ui.View):
     async def _equals(self, button: discord.ui.Button, interaction: discord.Interaction):
         await interaction.response.defer()
         self.history += "\n" + calculate(self.text)
-        self.text = str(eval(self.text))
+        self.text = str(simple_eval(self.text))
         await self.new_edit("", interaction)
     
     
@@ -190,7 +194,7 @@ def calculate(to_calc):
         result = f"Invalid operators/operations specified."
     else:
         try:
-            result = eval(to_calc)
+            result = simple_eval(to_calc)
         except SyntaxError:
             result = "\u200b"
     final = f"""

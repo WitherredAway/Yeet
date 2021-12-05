@@ -18,6 +18,7 @@ discord-ext-menus = {git = "https://github.com/Rapptz/discord-ext-menus"}
 parsedatetime = "^2.6"
 lxml = "^4.6.4"
 typing-extensions = "3.7.4.3"
+simpleeval = "^0.9.11"
 
 [tool.poetry.dev-dependencies]
 
