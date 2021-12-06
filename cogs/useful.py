@@ -43,58 +43,6 @@ class Useful(commands.Cog):
           except:
               await msg.edit(content = "Not found.")
 
-  
-    # spam
-    @commands.check_any(commands.is_owner(), commands.has_permissions(manage_messages = True), commands.guild_only())
-    @commands.group(name = "spam",
-                    aliases = ['sp'],
-                    brief = "Spams desired message",
-                    invoke_without_command=True,
-                    case_insensitive=True,
-                    help = "Spams desired message, with desired intervals."
-                    )
-    async def spam(self, ctx):
-        await ctx.send_help(ctx.command)
-  
-    # spam start
-    @commands.check_any(commands.is_owner(), commands.has_permissions(manage_messages = True))
-    @spam.command(name="start",
-                  aliases=["s"],
-                  brief="Starts spam.",
-                  help="Spams <message> every <delay> seconds. For multi-word messages put them within quotes")
-    @commands.max_concurrency(1, per=commands.BucketType.guild, wait = False)
-    async def _spam_start(self, ctx, delay: float, *, msg):
-      global on
-      global sp_start_channel
-      sp_start_channel = ctx.channel
-      on = True
-      while on:
-        await ctx.send(msg)
-        await asyncio.sleep(delay)
-    # spam start error    
-    @_spam_start.error
-    async def spamstart_error(self, ctx, error):
-    	if isinstance(error, commands.BadArgument):
-  	        await ctx.send("The delay must be a number.")
-  
-    # spam stop
-    @commands.check_any(commands.is_owner(), commands.has_permissions(manage_messages = True))
-    @spam.command(name = "stop", 
-                      aliases = ['end'],
-                    brief = "Stops running spam",
-                    help = "Stops a running `spam` command."
-                    )
-    async def _spam_stop(self, ctx):
-        global on
-        global sp_start_channel
-        sp_stop_channel = ctx.channel
-        if on == True and sp_stop_channel == sp_start_channel:
-            on = False
-            await ctx.send("Stopped spam.")
-        else:
-            await ctx.send("There isn't a `spam` command running in this channel.")
-      
-      
     # timer
     global max_time
     max_time = 600
