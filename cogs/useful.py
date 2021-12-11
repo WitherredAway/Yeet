@@ -9,6 +9,9 @@ class Useful(commands.Cog):
     """Useful commands"""
     def __init__(self, bot):
         self.bot = bot
+
+    display_emoji = "💾"
+
   
     #avatar
     @commands.command(name="avatar",
@@ -84,7 +87,7 @@ class Useful(commands.Cog):
             @discord.ui.button(label="Stop", style=discord.ButtonStyle.danger)
             async def confirm(_self, button: discord.ui.Button, interaction: discord.Interaction):
                 if interaction.user != ctx.author:
-                    return
+                    await interaction.response.send_message("This timer does not belong to you!", ephemeral=True)
                 _self.stop()
                 global secondint
                 global mins
@@ -99,40 +102,18 @@ class Useful(commands.Cog):
             await ctx.send("Please input a positive whole number.")
         else:
             message = await ctx.send(f"Timer: {secondint} seconds", view=view)
-        while secondint > 0:
-            secondint -= 1
-            if secondint == 0:
-                await message.edit(content=msg, view=None)
-                break
-            await message.edit(content=f"Timer: {secondint} seconds.")
-            await asyncio.sleep(1)
+            while secondint > 0:
+                secondint -= 1
+                if secondint == 0:
+                    await message.edit(content=msg, view=None)
+                    break
+                await message.edit(content=f"Timer: {secondint} seconds.")
+                await asyncio.sleep(1)
     
     @_timer_start.error
     async def timerstart_error(self,ctx, error):
         if isinstance(error, commands.BadArgument):
             await ctx.send("The time must be a positive whole number.")
-
-    # timer stop
-    @timer.command(name = "stop",
-                    aliases = ["end"],
-                    brief = "Stops running timer",
-                    help = "Stops a running `timer` command."
-                    )
-    async def _timer_stop(self, ctx):
-        try:
-            global msg
-            global mins
-            global time
-            global tr_start_user
-            global secondint
-            if secondint > 0 and ctx.author == tr_start_user:
-                msg = f"{ctx.author.mention} timer stopped! Stopped at {round(secondint/60, 2)}mins/{secondint}seconds **out of** {mins}mins/{time}seconds"
-                secondint = 1
-                await ctx.message.add_reaction('👍')
-            else:
-                await ctx.send(f"There isn't a `timer` running that belongs to you.")
-        except Exception as e:
-            raise e
         
 def setup(bot):
   bot.add_cog(Useful(bot))
