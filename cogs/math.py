@@ -9,6 +9,7 @@ class Calculator(discord.ui.View):
     def __init__(self, ctx: commands.Context, text: str):
         super().__init__(timeout=300)
         self.ctx = ctx
+        self.response = None
         self.text = text
         self.history = "__**History of calculations for this session.**__"
 
@@ -18,6 +19,11 @@ class Calculator(discord.ui.View):
             return False
         return True
 
+    async def on_timeout(self):
+        self.clear_items()
+        self.add_item(discord.ui.Button(label=f"This interaction has timed out. Use {self.ctx.prefix}{self.ctx.command} for a new one.", style=discord.ButtonStyle.gray, disabled=True))
+        await self.response.edit(view=self)
+        
     async def new_edit(self, append, interaction: discord.Interaction, string: str=None):
         # very convoluted code, new bugs might arise
         if self.text != "":
@@ -221,9 +227,12 @@ def calculate(to_calc):
 
                      
 class Math(commands.Cog):
+    """Commands for mathematical stuff."""
     def __init__(self, bot):
         self.bot = bot
 
+    display_emoji = "🔢"
+    
     @commands.group(name="calculator", 
                     aliases=["calc", "calculate"],
                     help=f"""
@@ -241,7 +250,7 @@ R% - Modulus operator, shows remainder of a division
 + - Addition
 // - Floor; division, but decimals removed
 . - Period(t 💅)
-↻ - History of calculations, logged by =
+↻ - History of calculations, logged by = and C
 = - Equals to, brings the result into the text box. Also logs the calculation for ↻
 ```
                     """,
@@ -253,7 +262,8 @@ R% - Modulus operator, shows remainder of a division
         string = string.replace(" ", "")
         result = calculate(string)
         view = Calculator(ctx=ctx, text=string)
-        await ctx.send(result, view=view)
+        response = await ctx.send(result, view=view)
+        view.response = response
         await view.wait()
 
     @calculator.command(name="hcf", case_insensitive=True)
@@ -265,9 +275,7 @@ R% - Modulus operator, shows remainder of a division
         for i in range(1, smaller+1):
             if (num1 % i == 0) and (num2 % i == 0):
                 hcf = i
-            else:
-                hcf = None
-        await ctx.send(f"__**{hcf}**__ is the HCF (Highest common factor) of `{num1}` and `{num2}`.")
+        await ctx.send(f"**{hcf}** is the HCF (Highest common factor) of `{num1}` and `{num2}`.")
         
 def setup(bot):
     bot.add_cog(Math(bot))
