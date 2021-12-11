@@ -34,18 +34,18 @@ class GroupHelpPageSource(menus.ListPageSource):
 
     async def format_page(self, menu, commandz):
         embed = discord.Embed(title=self.title, description=self.description, colour=embed_colour)
-
         for command in commandz:
-            signature = f"`{self.prefix}`" + PaginatedHelpCommand.get_command_signature(self, command)
-            value = command.description or 'No help found.'
+            #signature = f"{self.prefix}{PaginatedHelpCommand.get_command_signature(self, command)}"
+            #value = f">>> **Category**: `{command.cog_name if command.cog else 'None'}`\n\n**Description**: {command.description if command.description else 'No description found.'}\n\n**Help**: {command.help if command.help else 'No help found.'}"
+            signature = f"> `{self.prefix}`" + PaginatedHelpCommand.get_command_signature(self, command)
+            value = f"{command.description if command.description else command.help if command.help else 'No description found.'}"
             if isinstance(command, commands.Group):
                 com_names = [com.name for com in command.commands]
-                value += '\n> **Subcommands**: `' + '` • `'.join(com_names) + '`'
+                value += '\n**Subcommands**: `' + '` • `'.join(com_names) + '`'
             embed.add_field(name=signature, value=value, inline=False)
 
         maximum = self.get_max_pages()
-        if maximum > 1:
-            embed.set_author(name=f'Page {menu.current_page + 1}/{maximum} ({len(self.entries)} commands)')
+        embed.set_author(name=f'Page {menu.current_page + 1}/{maximum} ({len(self.entries)} commands)\n——————————————————————————————')
 
         embed.set_footer(text=f'Use "{self.prefix}help command" for more info on a command.')
         return embed
@@ -62,7 +62,8 @@ class HelpSelectMenu(discord.ui.Select['HelpMenu']):
         self.commands = commands
         self.bot = bot
         self.__fill_options()
-
+        
+    
     def __fill_options(self) -> None:
         self.add_option(
             label='Index',
@@ -70,13 +71,14 @@ class HelpSelectMenu(discord.ui.Select['HelpMenu']):
             value='__index',
             description='The help page showing how to use the bot.',
         )
+        
         for cog, commands in self.commands.items():
             if not commands:
                 continue
             description = cog.description.split('\n', 1)[0] or None
             emoji = getattr(cog, 'display_emoji', "🟡")
             self.add_option(label=cog.qualified_name, value=cog.qualified_name, description=description, emoji=emoji)
-
+        
     async def callback(self, interaction: discord.Interaction):
         assert self.view is not None
         value = self.values[0]
@@ -98,6 +100,8 @@ class HelpSelectMenu(discord.ui.Select['HelpMenu']):
 
 
 class FrontPageSource(menus.PageSource):
+    def __init__(self, ctx):
+        self.context = ctx
     def is_paginating(self) -> bool:
         return True
 
@@ -112,15 +116,19 @@ class FrontPageSource(menus.PageSource):
         return self
 
     def format_page(self, menu: HelpMenu, page):
-        embed = discord.Embed(title='Help Interface', description=f"**[Invite the bot here!](https://discord.com/api/oauth2/authorize?client_id=634409171114262538&permissions=8&scope=bot)**", color=embed_colour)
+        embed = discord.Embed(title='Help Interface', description=f"**[Invite the bot here!](https://discord.com/api/oauth2/authorize?client_id=634409171114262538&permissions=8&scope=bot)**\n——————————————————————————————\nDo `{self.context.prefix}help <command>` for more info on a command.\nDo `{self.context.prefix}help <category>` (case sensitive) for more info on a category.\n——————————————————————————————", color=embed_colour)
         for cog_name, cog in bot.cogs.items():
             description = cog.description.split('\n', 1)[0] or "No description found."
             emoji = getattr(cog, 'display_emoji', "🟡")
-            commands = []
+            commandz = []
             for command in cog.get_commands():
                 if not command.hidden:
-                    commands.append(command.qualified_name)
-            embed.add_field(name=f"{emoji} __{cog.qualified_name}__ - *{description}*", value=f"`{'` • `'.join(commands) or 'No commands found.'}`")
+                    com = command.qualified_name
+                    if isinstance(command, commands.Group):
+                        com += f" - {len(command.commands)}"
+                    commandz.append(com)
+                
+            embed.add_field(name=f"{emoji} **{cog.qualified_name}** - *{description}*", value=f"`{'` • `'.join(commandz) or 'No commands found.'}`")
         return embed
 
 class HelpMenu(BotPages):
@@ -162,14 +170,14 @@ class PaginatedHelpCommand(commands.HelpCommand):
     def get_command_signature(self, command):
         parent = command.full_parent_name
         if len(command.aliases) > 0:
-            aliases = '|'.join(command.aliases)
-            fmt = f'{command.name}[{aliases}]'
+            aliases = '/'.join(command.aliases)
+            fmt = f'[**{command.name}**/{aliases}]'
             if parent:
                 fmt = f'{parent} {fmt}'
             alias = fmt
         else:
             alias = command.name if not parent else f'{parent} {command.name}'
-        return f'{alias} `{command.signature}`'
+        return (f'{alias} `{command.signature}`') if command.signature else (f'{alias}')
 
     async def send_bot_help(self, mapping):
         bot = self.context.bot
@@ -188,7 +196,7 @@ class PaginatedHelpCommand(commands.HelpCommand):
             cog = bot.get_cog(name)
             all_commands[cog] = sorted(children, key=lambda c: c.qualified_name)
 
-        menu = HelpMenu(FrontPageSource(), ctx=self.context)
+        menu = HelpMenu(FrontPageSource(ctx=self.context), ctx=self.context)
         menu.add_categories(all_commands)
         await menu.start()
 
@@ -198,11 +206,8 @@ class PaginatedHelpCommand(commands.HelpCommand):
         await menu.start()
 
     def common_command_formatting(self, embed_like, command):
-        embed_like.title = f"`{self.context.prefix}`" + self.get_command_signature(command)
-        if command.description:
-            embed_like.description = f'{command.description}\n\n{command.help}'
-        else:
-            embed_like.description = command.help or 'No help found...'
+        embed_like.title = f"`{self.context.prefix}`{self.get_command_signature(command)}"
+        embed_like.description = f"**Category**: `{command.cog_name if command.cog else 'None'}`\n\n**Description**: {command.description if command.description else 'No description found.'}\n\n**Help**: {command.help if command.help else 'No help found.'}"
 
     async def send_command_help(self, command):
         embed = discord.Embed(colour=embed_colour)
@@ -234,10 +239,8 @@ class Help(commands.Cog):
         bot.help_command = PaginatedHelpCommand()
         bot.help_command.cog = self
 
-    @property
-    def display_emoji(self) -> discord.PartialEmoji:
-        return discord.PartialEmoji(name='\N{WHITE QUESTION MARK ORNAMENT}')
-
+    display_emoji = "❔"
+    
     def cog_unload(self):
         self.bot.help_command = self.old_help_command
 
