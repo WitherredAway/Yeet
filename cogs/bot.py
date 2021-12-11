@@ -9,6 +9,8 @@ class Bot(commands.Cog):
   """Commands and events related to the bot."""
   def __init__(self, bot):
     self.bot = bot
+
+  display_emoji = "👾"
                     
   @commands.Cog.listener()
   async def on_ready(self):

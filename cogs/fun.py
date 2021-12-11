@@ -10,6 +10,8 @@ class Fun(commands.Cog):
   def __init__(self, bot):
     self.bot = bot
 
+  display_emoji = "🧩"
+
   @commands.Cog.listener()
   async def on_message(self, message):
       if message.content.lower() == "ligma":

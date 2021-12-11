@@ -11,6 +11,7 @@ import lxml.etree as etree
 from collections import Counter
 from main import *
 import aiohttp
+from typing import Optional
 
 session = aiohttp.ClientSession()
 
@@ -50,6 +51,8 @@ class SphinxObjectFileReader:
 class Docs(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+
+    display_emoji = "📄"
 
     def parse_object_inv(self, stream, url):
         # key: URL
@@ -158,8 +161,8 @@ class Docs(commands.Cog):
         e.description = '\n'.join(f'[`{key}`]({url})' for key, url in matches)
         await ctx.send(embed=e, reference=ctx.message.reference)
 
-    @commands.group(aliases=['rtfd', 'docs', 'doc', 'documentation'], invoke_without_command=True)
-    async def rtfm(self, ctx, *, obj: str = None):
+    @commands.group(aliases=['rtfd', 'rtfm', 'doc', 'documentation'], invoke_without_command=True)
+    async def docs(self, ctx, *, obj: str = None):
         """Gives you a documentation link for a discord.py entity.
 
         Events, objects, and functions are all supported through 
@@ -168,16 +171,16 @@ class Docs(commands.Cog):
         key = 'master'
         await self.do_rtfm(ctx, key, obj)
 
-    @rtfm.command(name='python', aliases=['py'])
-    async def rtfm_python(self, ctx, *, obj: str = None):
+    @docs.command(name='python', aliases=['py'])
+    async def docs_python(self, ctx, *, obj: str = None):
         """Gives you a documentation link for a Python entity."""
         key = 'python'
         await self.do_rtfm(ctx, key, obj)
 
-    @rtfm.command(name='master', aliases=['2.0'])
-    async def rtfm_master(self, ctx, *, obj: str = None):
+    @docs.command(name='latest', aliases=['1.7.3'])
+    async def docs_master(self, ctx, *, obj: str = None):
         """Gives you a documentation link for a discord.py entity (master branch)"""
-        await self.do_rtfm(ctx, 'master', obj)
+        await self.do_rtfm(ctx, 'latest', obj)
 
     def library_name(self, channel):
         # language_<name>
