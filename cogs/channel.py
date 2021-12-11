@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 from main import *
 import asyncio
-from typing import Optional
+from typing import Optional, Union
 import textwrap
 
 class Channel(commands.Cog):
@@ -10,10 +10,7 @@ class Channel(commands.Cog):
   def __init__(self, bot):
     self.bot = bot
 
-  @property
-  def display_emoji(self) -> discord.PartialEmoji:
-    return discord.PartialEmoji(name="\U00000023\U0000fe0f\U000020e3")
-
+  display_emoji = "#️⃣"
 
   global confirm
   confirm = "ligma"
@@ -62,11 +59,11 @@ class Channel(commands.Cog):
   # startswith
   @_list.command(name="starts_with",
                  aliases=["startswith", "sw"],
-                 brief="Lists all channels with message starting with <key>.",
-                 help="Lists all channels with last message starting with the word/phrase <key>.",
+                 brief="Lists all channels with message starting with <phrase>.",
+                 help="Lists all channels with last message starting with the word/phrase specified.",
                  case_insensitive=True)
-  async def _starts_with(self, ctx, *, key):
-      key = key
+  async def _starts_with(self, ctx, *, phrase):
+      key = phrase
       msg = f"Channels with last message starting with `{key}`:"
       num = 0
       wait = await ctx.send(f"Looking for messages starting with `{key}`...")
@@ -128,12 +125,12 @@ class Channel(commands.Cog):
                     brief="Renames channel.",
                     help="Renames the current channel or mentioned channel if argument passed.")
 
-  async def _rename(self, ctx, channel: Optional[discord.TextChannel] = None, *, newname):
+  async def _rename(self, ctx, channel: Optional[discord.TextChannel] = None, *, new_name):
       if channel is None:
           channel = ctx.channel
 
       current_name = channel.name
-      await channel.edit(name = newname)
+      await channel.edit(name = new_name)
       await ctx.send(f"Changed {channel.mention}'s name from **{current_name}** to **{channel.name}**.")
 
   #togglelock
@@ -143,7 +140,8 @@ class Channel(commands.Cog):
                   brief = "Locks/Unlocks a channel, and optionally renames channel",
                   case_insensitive=True,
                   help = "Toggles send_messages perms for everyone. And renames channel if an argument is passed.)")
-  async def _togglelock(self, ctx, channel: Optional[discord.TextChannel]=None, *, channel_name=None):
+  async def _togglelock(self, ctx, channel: Optional[discord.TextChannel]=None, *, new_name=None):
+      channel_name = new_name
       chnl = channel
       if chnl is None:
           channel = ctx.channel
@@ -174,18 +172,9 @@ class Channel(commands.Cog):
   @commands.check_any(commands.is_owner(), commands.has_permissions(manage_channels = True), commands.guild_only())
   @_channel.command(name="lock",
                    brief="Locks channel(s).",
-                   help="Lock current/all channel(s)"
+                   help="Lock current/specified/all channel(s)"
                    )
-  async def _lock(self, ctx, channel=None):
-      overwrite = ctx.channel.overwrites_for(ctx.guild.default_role)
-      
-      if channel == None and overwrite.send_messages == True:
-          await ctx.channel.set_permissions(ctx.guild.default_role, send_messages = False)
-          await ctx.send("Locked.")
-          
-      if channel == None and overwrite.send_messages != True:
-          await ctx.send("This channel is already locked.")
-      
+  async def _lock(self, ctx, channel: Union[discord.TextChannel, str]=None):
       if channel == "all":
             await ctx.send(f"This will **lock** *all* channels. Type `{confirm}` to confirm.")
             def check(m):
@@ -199,28 +188,31 @@ class Channel(commands.Cog):
 
             msg = await ctx.send("Locking all channels...")
             for c in ctx.guild.text_channels:
-                if overwrite.send_messages != False:
+                if c.overwrites_for(c.guild.default_role).send_messages != False:
                     await c.set_permissions(ctx.guild.default_role, send_messages = False)
-            await ctx.send("Locked all channels ✅.")
+            return await ctx.send("Locked all channels ✅.")
 
-
-
+      if channel == None:
+          channel = ctx.channel
+      try:
+          overwrite = channel.overwrites_for(channel.guild.default_role)
+      except AttributeError:
+          return await ctx.send(f'Channel "{channel}" not found.')
+      
+      if overwrite.send_messages != False:
+          await channel.set_permissions(channel.guild.default_role, send_messages = False)
+          return await ctx.send(f"Locked {channel.mention}.")
+          
+      if overwrite.send_messages == False:
+          return await ctx.send(f"{'This' if channel == ctx.channel else 'That'} channel is already locked.")
+      
   #unlock
   @commands.check_any(commands.is_owner(), commands.has_permissions(manage_channels = True), commands.guild_only())
   @_channel.command(name="unlock",
                    brief="Unlocks channel(s).",
-                   help="Unlock current/all channel(s)"
+                   help="Unlock current/specified/all channel(s)"
                    )
-  async def _unlock(self, ctx, channel=None):
-      overwrite = ctx.channel.overwrites_for(ctx.guild.default_role)
-      
-      if channel == None and overwrite.send_messages == False:
-          await ctx.channel.set_permissions(ctx.guild.default_role, send_messages = True)
-          await ctx.send("Unlocked.")
-          
-      if channel == None and overwrite.send_messages != False:
-          await ctx.send("This channel is already unlocked.")
-      
+  async def _unlock(self, ctx, channel: Union[discord.TextChannel, str]=None):
       if channel == "all":
             await ctx.send(f"This will **unlock** *all* channels. Type `{confirm}` to confirm.")
             def check(m):
@@ -232,12 +224,26 @@ class Channel(commands.Cog):
             if msg.content.lower() != confirm:
                 return await ctx.send("Aborted.")
 
-                
             msg = await ctx.send("Unlocking all channels...")
             for c in ctx.guild.text_channels:
-                if overwrite.send_messages != True:
-                    await c.set_permissions(ctx.guild.default_role, send_messages = True)
-            await ctx.send("Unlocked all channels ✅.")
+                if c.overwrites_for(c.guild.default_role).send_messages == False:
+                    await c.set_permissions(ctx.guild.default_role, send_messages = None)
+            return await ctx.send("Unlocked all channels ✅.")
+
+      if channel == None:
+          channel = ctx.channel
+      try:
+          overwrite = channel.overwrites_for(channel.guild.default_role)
+      except AttributeError:
+          return await ctx.send(f'Channel "{channel}" not found.')
+      
+      if overwrite.send_messages == False:
+          await channel.set_permissions(channel.guild.default_role, send_messages = None)
+          return await ctx.send(f"Unlocked {channel.mention}.")
+          
+      if overwrite.send_messages != False:
+          return await ctx.send(f"{'This' if channel == ctx.channel else 'That'} channel is already unlocked.")
+      
 
   # strip
   @commands.check_any(commands.is_owner(), commands.has_permissions(manage_channels = True), commands.guild_only())
