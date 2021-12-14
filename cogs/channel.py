@@ -14,7 +14,7 @@ class Channel(commands.Cog):
 
   global confirm
   confirm = "ligma"
-  # channel
+  #channel
   @commands.check_any(commands.is_owner(), commands.has_permissions(manage_channels = True), commands.guild_only())
   @commands.group(name="channel",
                   aliases=["ch"],
