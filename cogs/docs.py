@@ -13,7 +13,6 @@ from main import *
 import aiohttp
 from typing import Optional
 
-session = aiohttp.ClientSession()
 
 
 class SphinxObjectFileReader:
@@ -110,6 +109,7 @@ class Docs(commands.Cog):
         return result
 
     async def build_rtfm_lookup_table(self, page_types):
+        session = aiohttp.ClientSession()
         cache = {}
         for key, page in page_types.items():
             sub = cache[key] = {}
@@ -121,6 +121,7 @@ class Docs(commands.Cog):
                 cache[key] = self.parse_object_inv(stream, page)
 
         self._rtfm_cache = cache
+        session.close()
     async def do_rtfm(self, ctx, key, obj):
         page_types = {
             'latest': 'https://discordpy.readthedocs.io/en/latest',

@@ -15,7 +15,7 @@ class Calculator(discord.ui.View):
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user != self.ctx.author:
-            await interaction.response.send_message(f"This calculator instance does not belong to you, use the `{self.ctx.command}` command to create your own instance.", ephemeral=True)
+            await interaction.response.send_message(f"This instance does not belong to you, use the `{self.ctx.command}` command to create your own instance.", ephemeral=True)
             return False
         return True
 

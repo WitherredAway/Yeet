@@ -8,6 +8,23 @@ class Admin(commands.Cog):
         self.bot = bot
 
     display_emoji = "⚒️"
+
+
+    @commands.command(name="togglecommand", aliases=["tc"], description="Enable or disable a command.")
+    @commands.is_owner()
+    async def toggle(self, ctx, *, command):
+        command = self.bot.get_command(command)
+
+        if command is None:
+            return await ctx.send(f":x: Command `{command}` not found.")
+
+        elif ctx.command == command:
+            return await ctx.send(f":x: This command cannot be disabled.")
+
+        else:
+            command.enabled = not command.enabled
+            await ctx.send(f'{"↪️ Enabled" if command.enabled else "↩️ Disabled"} command `{command.qualified_name}`.')
+
       
     # cog
     @commands.is_owner()

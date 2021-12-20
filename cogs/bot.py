@@ -57,7 +57,9 @@ class Bot(commands.Cog):
     
     if isinstance(error, commands.CommandOnCooldown):
               await ctx.send(f"That command is on cooldown for **{round(error.retry_after, 2)}s**")
-              
+
+    if isinstance(error, commands.DisabledCommand):
+        await ctx.send(f'Command `{ctx.command}` has been disabled by the developer for updates, debugging or due to some other issue.')              
     else:
       await ctx.send(str(error))
       raise error
