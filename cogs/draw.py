@@ -437,7 +437,7 @@ class Draw(commands.Cog):
                     )
     async def draw(self, ctx, height: Optional[int]=9, width: Optional[int]=9, background: str="⬜"):
         bg = background
-        bg_list = ["🟥", "🟧", "🟨", "🟩", "🟦", "🟪", "🟫", "⬛", "⬜", "🔴", "🟠", "🟡", "🟢", "🔵", "🟣", "🟤", "⚫", "⚪", "🔳"]
+        bg_list = ["🟥", "🟧", "🟨", "🟩", "🟦", "🟪", "🟫", "⬛", "⬜", "🔴", "🟠", "🟡", "🟢", "🔵", "🟣", "🟤", "⚫", "⚪"]
         if bg not in bg_list:
             return await ctx.send(f"Please include a proper background. Available backgrounds:\n{', '.join(bg_list)}")
         if height > 17 or width > 17:
