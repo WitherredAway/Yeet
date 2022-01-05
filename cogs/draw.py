@@ -192,12 +192,43 @@ class DrawButtons(discord.ui.View):
                                label="White",
                                emoji="⬜",
                                value="⚪"
+                           ),
+                           discord.SelectOption(
+                               label="Emoji",
+                               emoji="<:emojismiley:920902406336815104>",
+                               value="emoji"
                            )
                        ]
                       )
     async def colour_picker(self, select, interaction):
         await interaction.response.defer()
-        self.cursor = select.values[0]
+        if select.values[0] == "emoji":
+            res = await interaction.channel.send(content="Please send a single emoji you want to draw on your drawing board. e.g. 😎")
+            def first_emoji(self, sentence):
+                return [word for word in sentence.split() if str(word.encode('unicode-escape'))[2] == '\\' ]
+
+            def check(m):
+                return m.author == interaction.user and len(m.content.split(" ")) == 1
+            try:
+                msg = await self.ctx.bot.wait_for("message", timeout=30, check=check)
+            except asyncio.TimeoutError:
+                return await interaction.channel.send(content="Timed out.")
+            try:
+                emoji = await commands.PartialEmojiConverter.convert(self, self.ctx, msg.content)
+            except commands.PartialEmojiConversionFailure:
+                if emojis.count(msg.content) > 0:
+                    emoji = list(emojis.get(msg.content))[0]
+                else:
+                    return await interaction.channel.send(content="Invalid emoji")
+            else:
+                emoji.name = "_"
+            self.cursor = str(emoji)
+            await self.edit_draw(interaction)
+            await res.delete()
+            await asyncio.sleep(0.5)
+            await msg.delete()
+        else:
+            self.cursor = select.values[0]
     
     @discord.ui.button(emoji="<:stop:921864670145552444>", style=discord.ButtonStyle.danger)
     async def cancel(self, button: discord.ui.Button, interaction: discord.Interaction):
@@ -292,33 +323,9 @@ class DrawButtons(discord.ui.View):
         col_move = 1
         await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
         
-    @discord.ui.button(emoji="<:emojismiley:920902406336815104>", style=discord.ButtonStyle.gray)
-    async def emoji(self, button: discord.Button, interaction: discord.Interaction):
+    @discord.ui.button(label="\u200b", style=discord.ButtonStyle.gray)
+    async def placeholder6(self, button: discord.ui.Button, interaction: discord.Interaction):
         await interaction.response.defer()
-        res = await interaction.channel.send(content="Please send a single emoji you want to draw on your drawing board. e.g. 😎")
-        def first_emoji(self, sentence):
-            return [word for word in sentence.split() if str(word.encode('unicode-escape'))[2] == '\\' ]
-
-        def check(m):
-            return m.author == interaction.user and len(m.content.split(" ")) == 1
-        try:
-            msg = await self.ctx.bot.wait_for("message", timeout=30, check=check)
-        except asyncio.TimeoutError:
-            return await interaction.channel.send(content="Timed out.")
-        try:
-            emoji = await commands.PartialEmojiConverter.convert(self, self.ctx, msg.content)
-        except commands.PartialEmojiConversionFailure:
-            if emojis.count(msg.content) > 0:
-                emoji = list(emojis.get(msg.content))[0]
-            else:
-                return await interaction.channel.send(content="Invalid emoji")
-        else:
-            emoji.name = "_"
-        self.cursor = str(emoji)
-        await self.edit_draw(interaction)
-        await res.delete()
-        await asyncio.sleep(0.5)
-        await msg.delete()
         
     @discord.ui.button(emoji="<:middle:920897054060998676>", style=discord.ButtonStyle.green)
     async def draw(self, button: discord.ui.Button, interaction: discord.Interaction):
