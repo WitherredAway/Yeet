@@ -117,7 +117,9 @@ class FrontPageSource(menus.PageSource):
 
     def format_page(self, menu: HelpMenu, page):
         embed = discord.Embed(title='Help Interface', description=f"**[Invite the bot here!](https://discord.com/api/oauth2/authorize?client_id=634409171114262538&permissions=8&scope=bot)**\n——————————————————————————————\nDo `{self.context.prefix}help <command>` for more info on a command.\nDo `{self.context.prefix}help <category>` (case sensitive) for more info on a category.\n——————————————————————————————", color=embed_colour)
-        for cog_name, cog in bot.cogs.items():
+        cog_names = sorted(bot.cogs.keys())
+        for cog_name in cog_names:
+            cog = bot.cogs[cog_name]
             description = cog.description.split('\n', 1)[0] or "No description found."
             emoji = getattr(cog, 'display_emoji', "🟡")
             commandz = []
@@ -263,7 +265,7 @@ class Help(commands.Cog):
             return f'{time.format_dt(dt, "F")} ({time.format_relative(dt)})'
 
         e.add_field(name='ID', value=user.id, inline=False)
-        e.add_field(nane="Avatar", value=f"[Link]({user.avatar.url})", inline=False)
+        e.add_field(name="Avatar", value=f"[Link]({user.avatar.url})", inline=False)
         e.add_field(name='Joined', value=format_date(getattr(user, 'joined_at', None)), inline=False)
         e.add_field(name='Created', value=format_date(user.created_at), inline=False)
 

@@ -4,6 +4,7 @@ import asyncio
 from main import *
 from typing import Counter
 import wikipedia
+import random
 
 class Useful(commands.Cog):
     """Useful commands"""
@@ -11,7 +12,9 @@ class Useful(commands.Cog):
         self.bot = bot
 
     display_emoji = "💾"
-
+    
+    def ec(self):
+            return random.choice([0x9ECFFC, 0xDE2E43, 0x79B15A])
   
     #avatar
     @commands.command(name="avatar",
@@ -20,7 +23,7 @@ class Useful(commands.Cog):
                       help="Sends the avatar url of author/mentioned member.")
     async def avatar(self, ctx, member: discord.Member=None):
         member = member or ctx.author
-        embed = discord.Embed(title=f"Avatar of {member}", color=embed_colour)
+        embed = discord.Embed(title=f"Avatar of {member}", color=random.choice([0x9ECFFC, 0xDE2E43, 0x79B15A]))#embed_colour)
         embed.set_image(url=member.avatar.url)
         await ctx.send(embed=embed)
   
