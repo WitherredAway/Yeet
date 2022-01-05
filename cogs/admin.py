@@ -38,6 +38,7 @@ class Admin(commands.Cog):
         await ctx.send_help(ctx.command)
     
     # cog load
+    @commands.is_owner()
     @cog.command(name = "load",
                aliases = ['l'], 
                hidden = True,
@@ -56,6 +57,7 @@ class Admin(commands.Cog):
             await ctx.send(f':inbox_tray: Loaded cog `{cog}`')
   
     # cog unload
+    @commands.is_owner()
     @cog.command(name = "unload", 
                aliases = ['u'],
                hidden = True,
@@ -73,7 +75,8 @@ class Admin(commands.Cog):
                 raise e
             else:
                 await ctx.send(f':outbox_tray: Unloaded cog `{cog}`')
-  
+
+    @commands.is_owner()
     @cog.command(name = "reload", 
                aliases = ['r'],
                brief = "Reloads a cog",
@@ -102,6 +105,7 @@ class Admin(commands.Cog):
   	        raise e
 
     # cog all
+    @commands.is_owner()
     @cog.command(name = "all", aliases = ['a'], hidden = True, brief = "All cogs", help = "Lists all cogs, dev only command.")
     async def _all(self, ctx):
         extlist = discord.Embed(title = "Cogs", description  = "List of all enabled cogs", colour = embed_colour)

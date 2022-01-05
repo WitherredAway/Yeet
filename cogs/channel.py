@@ -15,7 +15,7 @@ class Channel(commands.Cog):
   global confirm
   confirm = "ligma"
   #channel
-  @commands.check_any(commands.is_owner(), commands.has_permissions(manage_channels = True), commands.guild_only())
+  @commands.guild_only()
   @commands.group(name="channel",
                   aliases=["ch"],
                   brief="Useful channel management commands",
@@ -120,6 +120,8 @@ class Channel(commands.Cog):
           await asyncio.sleep(0.5)
           
   # rename
+  @commands.check_any(commands.is_owner(), commands.has_permissions(manage_channels = True))
+  @commands.guild_only()
   @_channel.command(name="rename",
                     aliases=["re"],
                     brief="Renames channel.",
@@ -134,7 +136,8 @@ class Channel(commands.Cog):
       await ctx.send(f"Changed {channel.mention}'s name from **{current_name}** to **{channel.name}**.")
 
   #togglelock
-  @commands.check_any(commands.is_owner(), commands.has_permissions(manage_channels = True), commands.guild_only())
+  @commands.check_any(commands.is_owner(), commands.has_permissions(manage_channels = True))
+  @commands.guild_only()
   @_channel.command(name = "togglelock",
                   aliases = ['tl'],
                   brief = "Locks/Unlocks a channel, and optionally renames channel",
@@ -169,7 +172,8 @@ class Channel(commands.Cog):
 
 
   #lock
-  @commands.check_any(commands.is_owner(), commands.has_permissions(manage_channels = True), commands.guild_only())
+  @commands.guild_only()
+  @commands.check_any(commands.is_owner(), commands.has_permissions(manage_channels = True))
   @_channel.command(name="lock",
                    brief="Locks channel(s).",
                    help="Lock current/specified/all channel(s)"

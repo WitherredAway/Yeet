@@ -375,6 +375,9 @@ def make_embed(ctx, board, corner, row, col):
 class Draw(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+
+    display_emoji = "🖌️"
+    
     @commands.bot_has_permissions(external_emojis=True)
     @commands.command(name="draw",
                       aliases=["drawing", "paint", "painting"],
