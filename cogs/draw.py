@@ -64,6 +64,7 @@ class DrawButtons(discord.ui.View):
         self.cursor_col_max = col_list.index(col_list[-1])
         self.bg = bg
         self.auto = False
+        self.fill = False
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user != self.ctx.author:
@@ -281,7 +282,7 @@ class DrawButtons(discord.ui.View):
         self.col_list = col_list
         self.cursor_row = int(len(row_list)/2)
         self.cursor_col = int(len(col_list)/2)
-        self.cursor = self.board[self.cursor_row][self.cursor_col]
+        self.cursor = [self.board[self.cursor_row][self.cursor_col]]
         self.cursor_row_max = row_list.index(row_list[-1])
         self.cursor_col_max = col_list.index(col_list[-1])
         self.bg = bg
@@ -342,7 +343,7 @@ class DrawButtons(discord.ui.View):
                 return key
         return value
              
-    async def move_cursor(self, interaction: discord.Interaction, row_move: int=0, col_move: int=0):
+    async def move_cursor(self, interaction: discord.Interaction, row_move: int=0, col_move: int=0):)
         self.board[self.cursor_row][self.cursor_col] = self.find_key(self.board[self.cursor_row][self.cursor_col])
         self.cursor_row += row_move
         self.cursor_col += col_move
@@ -480,13 +481,20 @@ class DrawButtons(discord.ui.View):
     @discord.ui.button(label="\u200b", style=discord.ButtonStyle.gray)
     async def placeholder2(self, button: discord.ui.Button, interaction: discord.Interaction):
         await interaction.response.defer()
-        
+            
+    @discord.ui.button(emoji="<:fill:930832869692149790>", style=discord.ButtonStyle.gray)
+    async def fill_bucket(self, button: discord.ui.Button, interaction: discord.Interaction):
+        await interaction.response.defer()
+        if self.fill == False:
+            self.fill = True
+            self.fill_bucket.style = discord.ButtonStyle.green
+        elif self.fill == True:
+            self.fill = False
+            self.fill_bucket.style = discord.ButtonStyle.grey
+        await interaction.edit_original_message(view=self)
+
     @discord.ui.button(label="\u200b", style=discord.ButtonStyle.gray)
     async def placeholder3(self, button: discord.ui.Button, interaction: discord.Interaction):
-        await interaction.response.defer()
-        
-    @discord.ui.button(label="\u200b", style=discord.ButtonStyle.gray)
-    async def placeholder4(self, button: discord.ui.Button, interaction: discord.Interaction):
         await interaction.response.defer()
     
     @discord.ui.button(emoji="<:up_left:920896021700161547>", style=discord.ButtonStyle.blurple)
@@ -661,7 +669,7 @@ class Draw(commands.Cog):
         bg_list = ["🟥", "🟧", "🟨", "🟩", "🟦", "🟪", "🟫", "⬛", "⬜", "🔴", "🟠", "🟡", "🟢", "🔵", "🟣", "🟤", "⚫", "⚪"]
         if bg not in bg_list:
             return await ctx.send(f"Please include a proper background. Available backgrounds:\n{', '.join(bg_list)}")
-        if any(height < 5, height > 17, width < 5, width > 17):
+        if any((height < 5, height > 17, width < 5, width > 17)):
             return await ctx.send("Min and max height and width are 5 and 17!")  
         
         tboard, row_list, col_list = make_board(bg, height, width)            
