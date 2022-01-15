@@ -85,6 +85,7 @@ class DrawButtons(discord.ui.View):
         self.board[self.cursor_row][self.cursor_col] = self.find_key(self.board[self.cursor_row][self.cursor_col])
         embed = make_embed(self.ctx, self.board, self.bg, self.row_list, self.col_list)
         await self.response.edit(embed=embed, view=self)
+        self.stop()
 
     @discord.ui.select(placeholder="🎨 Colour picker",
                        min_values=1,
@@ -216,7 +217,11 @@ class DrawButtons(discord.ui.View):
     def clear_cursors(self):
         for cell_tuple in self.cells:
             self.board[cell_tuple[0]][cell_tuple[1]] = self.find_key(self.board[cell_tuple[0]][cell_tuple[1]])
-            
+        self.cells = [(self.cursor_row, self.cursor_col)]
+        try:
+            self.board[cell_tuple[0]][cell_tuple[1]] = self.cur_cle[self.board[cell_tuple[0]][cell_tuple[1]]]
+        except KeyError:
+            pass
              
     async def move_cursor(self, interaction: discord.Interaction, row_move: int=0, col_move: int=0):
         if self.fill is not True:
@@ -230,22 +235,23 @@ class DrawButtons(discord.ui.View):
             self.final_row = self.final_cell[0]
             self.final_col = self.final_cell[1]
             self.cells.append(self.final_cell)
-            await interaction.channel.send(f'initial row = {self.initial_row} - final row = {self.final_row}\ninitial col = {self.initial_col} - final col = {self.final_col}')
-            for row in range(min(self.initial_row, self.final_row), max(self.initial_row, self.final_row)):
+            for row in range(min(self.initial_row, self.final_row), max(self.initial_row, self.final_row)+1):
                 self.cells.append((row, self.final_col))
-                for col in range(min(self.initial_col, self.final_col), max(self.initial_col, self.final_col)):
+                for col in range(min(self.initial_col, self.final_col), max(self.initial_col, self.final_col)+1):
                     self.cells.append((self.final_row, col))
-            await interaction.channel.send(self.cells)
-            
+             
         if self.auto is True:
             await self.edit_draw(interaction, self.cursor)
-        try:
-            self.board[self.cursor_row][self.cursor_col] = self.cur_cle[self.board[self.cursor_row][self.cursor_col]]
-        except KeyError:
-            self.board[self.cursor_row][self.cursor_col] = self.board[self.cursor_row][self.cursor_col]
+
+        for cell_tuple in self.cells:
+            try:
+                self.board[cell_tuple[0]][cell_tuple[1]] = self.cur_cle[self.board[cell_tuple[0]][cell_tuple[1]]]
+            except KeyError:
+                continue
         embed = make_embed(self.ctx, self.board, self.bg, self.row_list, self.col_list)
-        await interaction.edit_original_message(embed=embed)
-            
+        if self.auto is not True:
+            await interaction.edit_original_message(embed=embed)
+        
     async def edit_draw(self, interaction, draw=None, corner=None):
         if all(cell == draw for cell in self.cells):
             return
@@ -264,7 +270,6 @@ class DrawButtons(discord.ui.View):
     async def cancel(self, button: discord.ui.Button, interaction: discord.Interaction):
         await interaction.response.defer()
         self.clear_cursors()
-        self.board[self.cursor_row][self.cursor_col] = self.find_key(self.board[self.cursor_row][self.cursor_col])
         embed = make_embed(self.ctx, self.board, self.bg, self.row_list, self.col_list)
         await interaction.edit_original_message(embed=embed, view=None)
         self.stop()
@@ -274,13 +279,14 @@ class DrawButtons(discord.ui.View):
         await interaction.response.defer()
         self.auto = False
         self.auto_colour.style = discord.ButtonStyle.gray
+        self.fill = False
+        self.fill_bucket.style = discord.ButtonStyle.grey
         self.cursor_row = int(len(self.row_list)/2)
         self.cursor_col = int(len(self.col_list)/2)
         row = [self.bg for i in range(len(self.col_list))]
         board = [row[:] for i in range(len(self.row_list))]
         self.board = board
-        self.cells = [(self.cursor_row, self.cursor_col)]
-        self.board[self.cursor_row][self.cursor_col] = self.cur_cle[self.board[self.cursor_row][self.cursor_col]]
+        self.clear_cursors()
         embed = make_embed(self.ctx, self.board, self.bg, self.row_list, self.col_list)
         await interaction.edit_original_message(embed=embed, view=self)
     
@@ -304,8 +310,6 @@ class DrawButtons(discord.ui.View):
         elif self.fill == True:
             self.fill = False
             self.clear_cursors()
-            self.board[self.cursor_row][self.cursor_col] = self.cur_cle[self.board[self.cursor_row][self.cursor_col]]
-            self.cells = [(self.cursor_row, self.cursor_col)]
             self.fill_bucket.style = discord.ButtonStyle.grey
         await self.edit_draw(interaction)
         await interaction.edit_original_message(view=self)
