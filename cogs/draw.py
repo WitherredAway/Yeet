@@ -286,7 +286,7 @@ class DrawButtons(discord.ui.View):
         self.board = board
         self.clear_cursors()
         try:
-            self.board[self.cursor_row][self.cursor_col] = self.cur_cle(self.board[self.cursor_row][self.cursor_col])
+            self.board[self.cursor_row][self.cursor_col] = self.cur_cle[self.board[self.cursor_row][self.cursor_col]]
         except KeyError:
             pass
         embed = make_embed(self.ctx, self.board, self.bg, self.row_list, self.col_list)
@@ -313,7 +313,7 @@ class DrawButtons(discord.ui.View):
             self.fill = False
             self.clear_cursors()
             try:
-                self.board[self.cursor_row][self.cursor_col] = self.find_key(self.board[self.cursor_row][self.cursor_col])
+                self.board[self.cursor_row][self.cursor_col] = self.cur_cle[self.board[self.cursor_row][self.cursor_col]]
             except KeyError:
                 pass
             self.fill_bucket.style = discord.ButtonStyle.grey
