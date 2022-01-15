@@ -216,12 +216,11 @@ class DrawButtons(discord.ui.View):
 
     def clear_cursors(self):
         for cell_tuple in self.cells:
-            self.board[cell_tuple[0]][cell_tuple[1]] = self.find_key(self.board[cell_tuple[0]][cell_tuple[1]])
+            try:
+                self.board[cell_tuple[0]][cell_tuple[1]] = self.find_key(self.board[cell_tuple[0]][cell_tuple[1]])
+            except:
+                pass
         self.cells = [(self.cursor_row, self.cursor_col)]
-        try:
-            self.board[cell_tuple[0]][cell_tuple[1]] = self.cur_cle[self.board[cell_tuple[0]][cell_tuple[1]]]
-        except KeyError:
-            pass
              
     async def move_cursor(self, interaction: discord.Interaction, row_move: int=0, col_move: int=0):
         if self.fill is not True:
@@ -286,6 +285,10 @@ class DrawButtons(discord.ui.View):
         board = [row[:] for i in range(len(self.row_list))]
         self.board = board
         self.clear_cursors()
+        try:
+            self.board[self.cursor_row][self.cursor_col] = self.find_key(self.board[self.cursor_row][self.cursor_col])
+        except KeyError:
+            pass
         embed = make_embed(self.ctx, self.board, self.bg, self.row_list, self.col_list)
         await interaction.edit_original_message(embed=embed, view=self)
     
@@ -309,6 +312,10 @@ class DrawButtons(discord.ui.View):
         elif self.fill == True:
             self.fill = False
             self.clear_cursors()
+            try:
+                self.board[self.cursor_row][self.cursor_col] = self.find_key(self.board[self.cursor_row][self.cursor_col])
+            except KeyError:
+                pass
             self.fill_bucket.style = discord.ButtonStyle.grey
         await self.edit_draw(interaction)
         await interaction.edit_original_message(view=self)
@@ -466,7 +473,7 @@ class Draw(commands.Cog):
                     )
     async def draw(self, ctx, height: Optional[int]=9, width: Optional[int]=9, background: str="⬜"):
         bg = background
-        bg_list = ["🟥", "🟧", "🟨", "🟩", "🟦", "🟪", "🟫", "⬛", "⬜", "🔴", "🟠", "🟡", "🟢", "🔵", "🟣", "🟤", "⚫", "⚪"]
+        bg_list = ["🟥", "🟧", "🟨", "🟩", "🟦", "🟪", "🟫", "⬛", "⬜"]
         if bg not in bg_list:
             return await ctx.send(f"Please include a proper background. Available backgrounds:\n{', '.join(bg_list)}")
         if any((height < 5, height > 17, width < 5, width > 17)):
@@ -508,7 +515,7 @@ class Draw(commands.Cog):
         try:
             tboard[int(len(row_list)/2)][int(len(col_list)/2)] = DrawButtons.cur_cle[tboard[int(len(row_list)/2)][int(len(col_list)/2)]]
         except KeyError:
-            tboard = tboard
+            pass
         view = DrawButtons(ctx, tboard, row_list, col_list, bg)
         
         response = await ctx.send(embed=make_embed(ctx, tboard, bg, row_list, col_list), view=view)
