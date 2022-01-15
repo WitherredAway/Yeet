@@ -21,12 +21,11 @@ cmd_cd = 2 #seconds
 log_channel = 837542790119686145
 intents = discord.Intents().default()
         
-bot = commands.Bot(
-                   command_prefix=get_prefix, 
-                   owner_ids=[267550284979503104, 761944238887272481],
-                   case_insensitive=True,
-                   intents=intents
-                  )
+bot = slash.Bot(command_prefix=get_prefix, 
+                owner_ids=[267550284979503104, 761944238887272481],
+                case_insensitive=True,
+                intents=intents
+                )
 
 bot.load_extension('jishaku')
 for filename in os.listdir('./cogs'):
