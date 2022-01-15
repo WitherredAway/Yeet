@@ -236,9 +236,8 @@ class DrawButtons(discord.ui.View):
             self.final_col = self.final_cell[1]
             self.cells.append(self.final_cell)
             for row in range(min(self.initial_row, self.final_row), max(self.initial_row, self.final_row)+1):
-                self.cells.append((row, self.final_col))
                 for col in range(min(self.initial_col, self.final_col), max(self.initial_col, self.final_col)+1):
-                    self.cells.append((self.final_row, col))
+                    self.cells.append((row, col))
              
         if self.auto is True:
             await self.edit_draw(interaction, self.cursor)
