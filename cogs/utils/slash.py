@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 import inspect
 import json
+import traceback
+import sys
 from collections import defaultdict
 
 import discord, discord.channel, discord.http, discord.state
@@ -20,7 +22,7 @@ __all__ = ['describe', 'SlashCommand', 'ApplicationCog', 'Range', 'Context', 'Bo
 
 if TYPE_CHECKING:
     from typing import Any, Awaitable, Callable, ClassVar
-    from typing_extensions import Concatenate, ParamSpec
+    from typing_extensions import Concatenate, ParamSpec, Self
 
     CmdP = ParamSpec("CmdP")
     CmdT = Callable[Concatenate[CogT, CtxT, CmdP], Awaitable[Any]]
@@ -49,7 +51,7 @@ channel_filter: dict[type[discord.abc.GuildChannel], int] = {
     discord.CategoryChannel: 4
 }
 
-def describe(**kwargs: str) -> Callable[[SlashCommand | CmdT], SlashCommand | CmdT]:
+def describe(**kwargs):
     """
     Sets the description for the specified parameters of the slash command. Sample usage:
     ```python
@@ -59,7 +61,7 @@ def describe(**kwargs: str) -> Callable[[SlashCommand | CmdT], SlashCommand | Cm
         await ctx.send(f'{channel.mention}')
     ```
     If this decorator is not used, parameter descriptions will be set to "No description provided." instead."""
-    def _inner(cmd: SlashCommand | CmdT) -> SlashCommand | CmdT:
+    def _inner(cmd):
         func = cmd.func if isinstance(cmd, SlashCommand) else cmd
         for name, desc in kwargs.items():
             try:
@@ -142,10 +144,14 @@ class Range(metaclass=_RangeMeta):
         self.max = max
 
 class Bot(commands.Bot):
-    async def start(self, token: str) -> None:
+    async def start(self, token: str, *, reconnect: bool = True) -> None:
         await self.login(token)
+        
+        app_info = await self.application_info()
+        self._connection.application_id = app_info.id
+
         await self.sync_commands()
-        await self.connect()
+        await self.connect(reconnect=reconnect)
 
     def get_application_command(self, name: str) -> Command | None:
         """
@@ -176,7 +182,7 @@ class Bot(commands.Bot):
         - guild_id: ``Optional[str]``
         - - The guild ID to delete from, or ``None`` to delete global commands.
         """
-        path = f'/applications/{self.user.id}'
+        path = f'/applications/{self.application_id}'
         if guild_id is not None:
             path += f'/guilds/{guild_id}'
         path += '/commands'
@@ -198,7 +204,7 @@ class Bot(commands.Bot):
         - guild_id: ``Optional[str]``
         - - The guild ID to delete from, or ``None`` to delete a global command.
         """
-        route = discord.http.Route('DELETE', f'/applications/{self.user.id}{f"/guilds/{guild_id}" if guild_id else ""}/commands/{id}')
+        route = discord.http.Route('DELETE', f'/applications/{self.application_id}{f"/guilds/{guild_id}" if guild_id else ""}/commands/{id}')
         await self.http.request(route)
  
     async def sync_commands(self) -> None:
@@ -206,7 +212,7 @@ class Bot(commands.Bot):
         Uploads all commands from cogs found and syncs them with discord.
         Global commands will take up to an hour to update. Guild specific commands will update immediately.
         """
-        if not self.user:
+        if not self.application_id:
             raise RuntimeError("sync_commands must be called after `run`, `start` or `login`")
 
         for cog in self.cogs.values():
@@ -215,7 +221,7 @@ class Bot(commands.Bot):
 
             for cmd in cog._commands.values():
                 cmd.cog = cog
-                route = f"/applications/{self.user.id}"
+                route = f"/applications/{self.application_id}"
 
                 if cmd.guild_id:
                     route += f"/guilds/{cmd.guild_id}"
@@ -299,22 +305,22 @@ class Context(Generic[BotT, CogT]):
     @property
     def guild(self) -> discord.Guild:
         """The guild this interaction was executed in."""
-        return self.interaction.guild
+        return self.interaction.guild  # type: ignore
 
     @property
     def message(self) -> discord.Message:
         """The message that executed this interaction."""
-        return self.interaction.message
+        return self.interaction.message  # type: ignore
 
     @property
     def channel(self) -> discord.interactions.InteractionChannel:
         """The channel the interaction was executed in."""
-        return self.interaction.channel
+        return self.interaction.channel  # type: ignore
 
     @property
     def author(self) -> discord.Member:
         """The user that executed this interaction."""
-        return self.interaction.user
+        return self.interaction.user  # type: ignore
 
 class Command(Generic[CogT]):
     cog: CogT
@@ -325,8 +331,11 @@ class Command(Generic[CogT]):
     def _build_command_payload(self) -> dict[str, Any]:
         raise NotImplementedError
 
-    async def invoke(self, context: Context[BotT, CogT], *args) -> None:
-        await self.func(self.cog, context, *args)
+    def _build_arguments(self, interaction: discord.Interaction, state: discord.state.ConnectionState) -> dict[str, Any]:
+        raise NotImplementedError
+
+    async def invoke(self, context: Context[BotT, CogT], **params) -> None:
+        await self.func(self.cog, context, **params)
 
 class SlashCommand(Command[CogT]):
     def __init__(self, func: CmdT, **kwargs):
@@ -341,6 +350,20 @@ class SlashCommand(Command[CogT]):
 
         self.parameters = self._build_parameters()
         self._parameter_descriptions: dict[str, str] = defaultdict(lambda: "No description provided")
+
+    def _build_arguments(self, interaction, state):
+        if 'options' not in interaction.data:
+            return {}
+
+        resolved = _parse_resolved_data(interaction, interaction.data.get('resolved'), state)
+        result = {}
+        for option in interaction.data['options']:
+            value = option['value']
+            if option['type'] in (6, 7, 8):
+                value = resolved[int(value)]
+
+            result[option['name']] = value
+        return result
 
     def _build_parameters(self) -> dict[str, inspect.Parameter]:
         params = list(inspect.signature(self.func).parameters.values())
@@ -443,11 +466,57 @@ class ContextMenuCommand(Command[CogT]):
             payload['guild_id'] = self.guild_id
         return payload
 
+    def _build_arguments(self, interaction: discord.Interaction, state: discord.state.ConnectionState) -> dict[str, Any]:
+        resolved = _parse_resolved_data(interaction, interaction.data.get('resolved'), state)  # type: ignore
+        value = resolved[int(interaction.data['target_id'])]  # type: ignore
+        return {'target': value}
+
+    async def invoke(self, context: Context[BotT, CogT], **params) -> None:
+        await self.func(self.cog, context, *params.values())
+
 class MessageCommand(ContextMenuCommand[CogT]):
     _type = 3
 
 class UserCommand(ContextMenuCommand[CogT]):
     _type = 2
+
+def _parse_resolved_data(interaction: discord.Interaction, data, state: discord.state.ConnectionState):
+    if not data:
+        return {}
+
+    assert interaction.guild 
+    resolved = {}
+
+    resolved_users = data.get('users')
+    if resolved_users:
+        resolved_members = data['members']
+        for id, d in resolved_users.items():
+            member_data = resolved_members[id]
+            member_data['user'] = d
+            member = discord.Member(data=member_data, guild=interaction.guild, state=state)
+            resolved[int(id)] = member
+        
+    resolved_channels = data.get('channels')
+    if resolved_channels:
+        for id, d in resolved_channels.items():
+            d['position'] = None
+            cls, _ = discord.channel._guild_channel_factory(d['type'])
+            channel = cls(state=state, guild=interaction.guild, data=d)
+            resolved[int(id)] = channel
+
+    resolved_messages = data.get('messages')
+    if resolved_messages:
+        for id, d in resolved_messages.items():
+            msg = discord.Message(state=state, channel=interaction.channel, data=d)  # type: ignore
+            resolved[int(id)] = msg
+
+    resolved_roles = data.get('roles')
+    if resolved_roles:
+        for id, d in resolved_roles.items():
+            role = discord.Role(guild=interaction.guild, state=state, data=d)
+            resolved[int(id)] = role
+
+    return resolved
 
 class ApplicationCog(commands.Cog, Generic[BotT]):
     """
@@ -463,38 +532,10 @@ class ApplicationCog(commands.Cog, Generic[BotT]):
         slashes = inspect.getmembers(self, lambda c: isinstance(c, Command))
         for k, v in slashes:
             self._commands[v.name] = v
-
-    def _get_resolved_data(self, interaction: discord.Interaction, data, state: discord.state.ConnectionState):
-        if not data:
-            return {}
-
-        assert interaction.guild 
-        resolved = {}
-
-        resolved_users = data.get('users')
-        if resolved_users:
-            resolved_members = data['members']
-            for id, d in resolved_users.items():
-                member_data = resolved_members[id]
-                member_data['user'] = d
-                member = discord.Member(data=member_data, guild=interaction.guild, state=state)
-                resolved[int(id)] = member
-        
-        resolved_channels = data.get('channels')
-        if resolved_channels:
-            for id, d in resolved_channels.items():
-                d['position'] = None
-                cls, _ = discord.channel._guild_channel_factory(d['type'])
-                channel = cls(state=state, guild=interaction.guild, data=d)
-                resolved[int(id)] = channel
-
-        resolved_messages = data.get('messages')
-        if resolved_messages:
-            for id, d in resolved_messages.items():
-                msg = discord.Message(state=state, channel=interaction.channel, data=d)  # type: ignore
-                resolved[int(id)] = msg
-
-        return resolved
+    
+    async def slash_command_error(self, ctx: Context[BotT, Self], error: Exception) -> None:
+        print("Error occured in command", ctx.command.name, file=sys.stderr)
+        traceback.print_exception(type(error), error, error.__traceback__)
 
     @commands.Cog.listener("on_interaction")
     async def _internal_interaction_handler(self, interaction: discord.Interaction):
@@ -502,21 +543,18 @@ class ApplicationCog(commands.Cog, Generic[BotT]):
             return
             
         name = interaction.data['name']  # type: ignore
-        command = self._commands[name]
-        state = self.bot._connection
-        resolved_data = self._get_resolved_data(interaction, interaction.data.get('resolved'), state)  # type: ignore
-        params = []
+        command = self._commands.get(name)
+        
+        if not command:
+            return
 
-        if interaction.data['type'] == 1:  # type: ignore
-            if 'options' in interaction.data:  # type: ignore
-                for option in interaction.data['options']:  # type: ignore
-                    value = option['value']  # type: ignore
-                    if option['type'] in (6, 7, 8):
-                        value = resolved_data[int(value)]
-                        
-                    params.append(value)
-        else:  # type: ignore
-            params.append(resolved_data[int(interaction.data['target_id'])])  # type: ignore
+        state = self.bot._connection
+        params: dict = command._build_arguments(interaction, state)
         
         ctx = Context(self.bot, command, interaction)
-        await command.invoke(ctx, *params)
+        try:
+            await command.invoke(ctx, **params)
+        except commands.CommandError as e:
+            await self.slash_command_error(ctx, e)
+        except Exception as e:
+            await self.slash_command_error(ctx, commands.CommandInvokeError(e))

@@ -59,12 +59,20 @@ class DrawButtons(discord.ui.View):
         self.col_list = col_list
         self.cursor_row = int(len(row_list)/2)
         self.cursor_col = int(len(col_list)/2)
+        self.cells = [(self.cursor_row, self.cursor_col)]
         self.cursor = self.board[self.cursor_row][self.cursor_col]
         self.cursor_row_max = row_list.index(row_list[-1])
         self.cursor_col_max = col_list.index(col_list[-1])
         self.bg = bg
         self.auto = False
-
+        self.fill = False
+        self.initial_cell = (None, None)
+        self.initial_row = self.initial_cell[0]
+        self.initial_col = self.initial_cell[1]
+        self.final_cell = (None, None)
+        self.final_row = self.final_cell[0]
+        self.final_col = self.final_cell[1]
+        
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user != self.ctx.author:
             await interaction.response.send_message(f"This instance does not belong to you, use the `{self.ctx.command}` command to create your own instance.", ephemeral=True)
@@ -77,294 +85,7 @@ class DrawButtons(discord.ui.View):
         self.board[self.cursor_row][self.cursor_col] = self.find_key(self.board[self.cursor_row][self.cursor_col])
         embed = make_embed(self.ctx, self.board, self.bg, self.row_list, self.col_list)
         await self.response.edit(embed=embed, view=self)
-
-        
-    def cursor_conv(self, row_key):
-        conv = {
-            "A": 0,
-            "B": 1,
-            "C": 2,
-            "D": 3,
-            "E": 4,
-            "F": 5,
-            "G": 6,
-            "H": 7,
-            "I": 8,
-            "J": 9,
-            "K": 10,
-            "L": 11,
-            "M": 12,
-            "N": 13,
-            "O": 14,
-            "P": 15,
-            "Q": 16
-
-        }
-        row = conv[row_key]-self.cursor_row
-        return row
-    cur_cle = {
-            "🟥": "🔴",
-            "🟧": "🟠",
-            "🟨": "🟡",
-            "🟩": "🟢",
-            "🟦": "🔵",
-            "🟪": "🟣",
-            "🟫": "🟤",
-            "⬛": "⚫",
-            "⬜": "⚪"
-    }
-
-    def find_key(self, value):
-        for key, val in self.cur_cle.items():
-            if val == value:
-                return key
-        return value
-             
-    async def move_cursor(self, interaction: discord.Interaction, row_move: int=0, col_move: int=0):
-        self.board[self.cursor_row][self.cursor_col] = self.find_key(self.board[self.cursor_row][self.cursor_col])
-        self.cursor_row += row_move
-        self.cursor_col += col_move
-        if self.auto == True:
-            await self.edit_draw(interaction, self.cursor)
-        try:
-            self.board[self.cursor_row][self.cursor_col] = self.cur_cle[self.board[self.cursor_row][self.cursor_col]]
-        except KeyError:
-            self.board[self.cursor_row][self.cursor_col] = self.board[self.cursor_row][self.cursor_col]
-        embed = make_embed(self.ctx, self.board, self.bg, self.row_list, self.col_list)
-        await interaction.edit_original_message(embed=embed)
-            
-    async def edit_draw(self, interaction, draw=None, corner=None):
-        if self.board[self.cursor_row][self.cursor_col] == draw:
-            return
-        if draw is None:
-            draw = self.board[self.cursor_row][self.cursor_col]
-        if corner is None:
-            corner = self.cursor
-        self.board[self.cursor_row][self.cursor_col] = draw
-        embed = make_embed(self.ctx, self.board, self.bg, self.row_list, self.col_list)
-        await interaction.edit_original_message(embed=embed)
-
-    @discord.ui.select(placeholder="🎨 Colour picker",
-                       min_values=1,
-                       max_values=1,
-                       options=[
-                           discord.SelectOption(
-                               label="Red",
-                               emoji="🟥",
-                               value="🔴"
-                           ),
-                           discord.SelectOption(
-                               label="Orange",
-                               emoji="🟧",
-                               value="🟠"
-                           ),
-                           discord.SelectOption(
-                               label="Yellow",
-                               emoji="🟨",
-                               value="🟡"
-                           ),
-                           discord.SelectOption(
-                               label="Green",
-                               emoji="🟩",
-                               value="🟢"
-                           ),
-                           discord.SelectOption(
-                               label="Blue",
-                               emoji="🟦",
-                               value="🔵"
-                           ),
-                           discord.SelectOption(
-                               label="Purple",
-                               emoji="🟪",
-                               value="🟣"
-                           ),
-                           discord.SelectOption(
-                               label="Brown",
-                               emoji="🟫",
-                               value="🟤"
-                           ),
-                           discord.SelectOption(
-                               label="Black",
-                               emoji="⬛",
-                               value="⚫"
-                           ),
-                           discord.SelectOption(
-                               label="White",
-                               emoji="⬜",
-                               value="⚪"
-                           ),
-                           discord.SelectOption(
-                               label="Emoji",
-                               emoji="<:emojismiley:920902406336815104>",
-                               value="emoji"
-                           )
-                       ]
-                      )
-    async def colour_picker(self, select, interaction):
-        await interaction.response.defer()
-        if select.values[0] == "emoji":
-            res = await interaction.channel.send(content="Please send a single emoji you want to draw on your drawing board. e.g. 😎")
-            def first_emoji(self, sentence):
-                return [word for word in sentence.split() if str(word.encode('unicode-escape'))[2] == '\\' ]
-
-            def check(m):
-                return m.author == interaction.user and len(m.content.split(" ")) == 1
-            try:
-                msg = await self.ctx.bot.wait_for("message", timeout=30, check=check)
-            except asyncio.TimeoutError:
-                return await interaction.channel.send(content="Timed out.")
-            emoji_check = discord.PartialEmoji.from_str(msg.content)
-            emoji = msg.content if emoji_check.is_unicode_emoji() else (f"<{'a' if emoji_check.animated else ''}:_:{emoji_check.id}>")
-            try:
-                select.add_option(label=emoji_check.name, emoji=emoji, value=emoji)
-            except:
-                return await interaction.channel.send(content="Invalid emoji")
-        await interaction.edit_original_message(view=self)
-import discord
-from discord.ext import commands, tasks
-from main import *
-import re
-import itertools
-import emojis
-import asyncio
-from typing import Optional, Union
-import copy
-
-row_alpha = [
-    "🇦",
-    "🇧",
-    "🇨",
-    "🇩",
-    "🇪",
-    "🇫",
-    "🇬",
-    "🇭",
-    "🇮",
-    "🇯",
-    "🇰",
-    "🇱",
-    "🇲",
-    "🇳",
-    "🇴",
-    "🇵",
-    "🇶"
-]
-
-col_alpha = [
-    "0️⃣",
-    "1️⃣",
-    "2️⃣",
-    "3️⃣",
-    "4️⃣",
-    "5️⃣",
-    "6️⃣",
-    "7️⃣",
-    "8️⃣",
-    "9️⃣",
-    "🔟",
-    "<:11:920679053688725596>",
-    "<:12:920679079756300339>",
-    "<:13:920679103332495430>",
-    "<:14:920679132260618260>",
-    "<:15:920679200854253578>",
-    "<:16:920679238414266408>"
-]
-
-class DrawButtons(discord.ui.View):
-    def __init__(self, ctx, board, row_list, col_list, bg):
-        super().__init__(timeout=300)
-        self.ctx = ctx
-        self.response = None
-        self.initial_board = board
-        self.board = copy.deepcopy(self.initial_board)
-        self.row_list = row_list
-        self.col_list = col_list
-        self.cursor_row = int(len(row_list)/2)
-        self.cursor_col = int(len(col_list)/2)
-        self.cursor = self.board[self.cursor_row][self.cursor_col]
-        self.cursor_row_max = row_list.index(row_list[-1])
-        self.cursor_col_max = col_list.index(col_list[-1])
-        self.bg = bg
-        self.auto = False
-
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        if interaction.user != self.ctx.author:
-            await interaction.response.send_message(f"This instance does not belong to you, use the `{self.ctx.command}` command to create your own instance.", ephemeral=True)
-            return False
-        return True
-
-    async def on_timeout(self):
-        self.clear_items()
-        self.add_item(discord.ui.Button(label=f"This interaction has timed out. Use {self.ctx.prefix}{self.ctx.command} for a new one.", style=discord.ButtonStyle.gray, disabled=True))
-        self.board[self.cursor_row][self.cursor_col] = self.find_key(self.board[self.cursor_row][self.cursor_col])
-        embed = make_embed(self.ctx, self.board, self.bg, self.row_list, self.col_list)
-        await self.response.edit(embed=embed, view=self)
-
-        
-    def cursor_conv(self, row_key):
-        conv = {
-            "A": 0,
-            "B": 1,
-            "C": 2,
-            "D": 3,
-            "E": 4,
-            "F": 5,
-            "G": 6,
-            "H": 7,
-            "I": 8,
-            "J": 9,
-            "K": 10,
-            "L": 11,
-            "M": 12,
-            "N": 13,
-            "O": 14,
-            "P": 15,
-            "Q": 16
-
-        }
-        row = conv[row_key]-self.cursor_row
-        return row
-    cur_cle = {
-            "🟥": "🔴",
-            "🟧": "🟠",
-            "🟨": "🟡",
-            "🟩": "🟢",
-            "🟦": "🔵",
-            "🟪": "🟣",
-            "🟫": "🟤",
-            "⬛": "⚫",
-            "⬜": "⚪"
-    }
-
-    def find_key(self, value):
-        for key, val in self.cur_cle.items():
-            if val == value:
-                return key
-        return value
-             
-    async def move_cursor(self, interaction: discord.Interaction, row_move: int=0, col_move: int=0):
-        self.board[self.cursor_row][self.cursor_col] = self.find_key(self.board[self.cursor_row][self.cursor_col])
-        self.cursor_row += row_move
-        self.cursor_col += col_move
-        if self.auto == True:
-            await self.edit_draw(interaction, self.cursor)
-        try:
-            self.board[self.cursor_row][self.cursor_col] = self.cur_cle[self.board[self.cursor_row][self.cursor_col]]
-        except KeyError:
-            self.board[self.cursor_row][self.cursor_col] = self.board[self.cursor_row][self.cursor_col]
-        embed = make_embed(self.ctx, self.board, self.bg, self.row_list, self.col_list)
-        await interaction.edit_original_message(embed=embed)
-            
-    async def edit_draw(self, interaction, draw=None, corner=None):
-        if self.board[self.cursor_row][self.cursor_col] == draw:
-            return
-        if draw is None:
-            draw = self.board[self.cursor_row][self.cursor_col]
-        if corner is None:
-            corner = self.cursor
-        self.board[self.cursor_row][self.cursor_col] = draw
-        embed = make_embed(self.ctx, self.board, self.bg, self.row_list, self.col_list)
-        await interaction.edit_original_message(embed=embed)
+        self.stop()
 
     @discord.ui.select(placeholder="🎨 Colour picker",
                        min_values=1,
@@ -451,10 +172,102 @@ class DrawButtons(discord.ui.View):
         else:
             self.cursor = select.values[0]
     
+        
+    def cursor_conv(self, row_key):
+        conv = {
+            "A": 0,
+            "B": 1,
+            "C": 2,
+            "D": 3,
+            "E": 4,
+            "F": 5,
+            "G": 6,
+            "H": 7,
+            "I": 8,
+            "J": 9,
+            "K": 10,
+            "L": 11,
+            "M": 12,
+            "N": 13,
+            "O": 14,
+            "P": 15,
+            "Q": 16
+
+        }
+        row = conv[row_key]-self.cursor_row
+        return row
+    cur_cle = {
+            "🟥": "🔴",
+            "🟧": "🟠",
+            "🟨": "🟡",
+            "🟩": "🟢",
+            "🟦": "🔵",
+            "🟪": "🟣",
+            "🟫": "🟤",
+            "⬛": "⚫",
+            "⬜": "⚪"
+    }
+
+    def find_key(self, value):
+        for key, val in self.cur_cle.items():
+            if val == value:
+                return key
+        return value
+
+    def clear_cursors(self):
+        for cell_tuple in self.cells:
+            try:
+                self.board[cell_tuple[0]][cell_tuple[1]] = self.find_key(self.board[cell_tuple[0]][cell_tuple[1]])
+            except:
+                pass
+        self.cells = [(self.cursor_row, self.cursor_col)]
+             
+    async def move_cursor(self, interaction: discord.Interaction, row_move: int=0, col_move: int=0):
+        if self.fill is not True:
+            self.board[self.cursor_row][self.cursor_col] = self.find_key(self.board[self.cursor_row][self.cursor_col])
+        self.cursor_row += row_move
+        self.cursor_col += col_move
+        if self.fill is not True:
+            self.cells = [(self.cursor_row, self.cursor_col)]
+        if self.fill is True:
+            self.final_cell = (self.cursor_row, self.cursor_col)
+            self.final_row = self.final_cell[0]
+            self.final_col = self.final_cell[1]
+            self.cells.append(self.final_cell)
+            for row in range(min(self.initial_row, self.final_row), max(self.initial_row, self.final_row)+1):
+                for col in range(min(self.initial_col, self.final_col), max(self.initial_col, self.final_col)+1):
+                    self.cells.append((row, col))
+             
+        if self.auto is True:
+            await self.edit_draw(interaction, self.cursor)
+
+        for cell_tuple in self.cells:
+            try:
+                self.board[cell_tuple[0]][cell_tuple[1]] = self.cur_cle[self.board[cell_tuple[0]][cell_tuple[1]]]
+            except KeyError:
+                continue
+        embed = make_embed(self.ctx, self.board, self.bg, self.row_list, self.col_list)
+        if self.auto is not True:
+            await interaction.edit_original_message(embed=embed)
+        
+    async def edit_draw(self, interaction, draw=None, corner=None):
+        if all(cell == draw for cell in self.cells):
+            return
+        if draw is None:
+            draw = self.board[self.cursor_row][self.cursor_col]
+        if corner is None:
+            corner = self.cursor
+        for cell_tuple in self.cells:
+            self.board[cell_tuple[0]][cell_tuple[1]] = draw
+        embed = make_embed(self.ctx, self.board, self.bg, self.row_list, self.col_list)
+        await interaction.edit_original_message(embed=embed, view=self)
+  
+    # ------ buttons ------
+
     @discord.ui.button(emoji="<:stop:921864670145552444>", style=discord.ButtonStyle.danger)
     async def cancel(self, button: discord.ui.Button, interaction: discord.Interaction):
         await interaction.response.defer()
-        self.board[self.cursor_row][self.cursor_col] = self.find_key(self.board[self.cursor_row][self.cursor_col])
+        self.clear_cursors()
         embed = make_embed(self.ctx, self.board, self.bg, self.row_list, self.col_list)
         await interaction.edit_original_message(embed=embed, view=None)
         self.stop()
@@ -464,12 +277,18 @@ class DrawButtons(discord.ui.View):
         await interaction.response.defer()
         self.auto = False
         self.auto_colour.style = discord.ButtonStyle.gray
+        self.fill = False
+        self.fill_bucket.style = discord.ButtonStyle.grey
         self.cursor_row = int(len(self.row_list)/2)
         self.cursor_col = int(len(self.col_list)/2)
         row = [self.bg for i in range(len(self.col_list))]
         board = [row[:] for i in range(len(self.row_list))]
         self.board = board
-        self.board[self.cursor_row][self.cursor_col] = self.cur_cle[self.board[self.cursor_row][self.cursor_col]]
+        self.clear_cursors()
+        try:
+            self.board[self.cursor_row][self.cursor_col] = self.cur_cle[self.board[self.cursor_row][self.cursor_col]]
+        except KeyError:
+            pass
         embed = make_embed(self.ctx, self.board, self.bg, self.row_list, self.col_list)
         await interaction.edit_original_message(embed=embed, view=self)
     
@@ -480,13 +299,29 @@ class DrawButtons(discord.ui.View):
     @discord.ui.button(label="\u200b", style=discord.ButtonStyle.gray)
     async def placeholder2(self, button: discord.ui.Button, interaction: discord.Interaction):
         await interaction.response.defer()
-        
+            
+    @discord.ui.button(emoji="<:fill:930832869692149790>", style=discord.ButtonStyle.gray)
+    async def fill_bucket(self, button: discord.ui.Button, interaction: discord.Interaction):
+        await interaction.response.defer()
+        if self.fill == False:
+            self.fill = True
+            self.initial_cell = (self.cursor_row, self.cursor_col)
+            self.initial_row = self.initial_cell[0]
+            self.initial_col = self.initial_cell[1]
+            self.fill_bucket.style = discord.ButtonStyle.green
+        elif self.fill == True:
+            self.fill = False
+            self.clear_cursors()
+            try:
+                self.board[self.cursor_row][self.cursor_col] = self.cur_cle[self.board[self.cursor_row][self.cursor_col]]
+            except KeyError:
+                pass
+            self.fill_bucket.style = discord.ButtonStyle.grey
+        await self.edit_draw(interaction)
+        await interaction.edit_original_message(view=self)
+
     @discord.ui.button(label="\u200b", style=discord.ButtonStyle.gray)
     async def placeholder3(self, button: discord.ui.Button, interaction: discord.Interaction):
-        await interaction.response.defer()
-        
-    @discord.ui.button(label="\u200b", style=discord.ButtonStyle.gray)
-    async def placeholder4(self, button: discord.ui.Button, interaction: discord.Interaction):
         await interaction.response.defer()
     
     @discord.ui.button(emoji="<:up_left:920896021700161547>", style=discord.ButtonStyle.blurple)
@@ -611,28 +446,8 @@ def make_embed(ctx, board, bg, row, col):
     return embed
 
 def make_board(bg, height, width):
-    board = [
-            [bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg],
-            [bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg],
-            [bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg],
-            [bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg],
-            [bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg],
-            [bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg],
-            [bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg],
-            [bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg],
-            [bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg],
-            [bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg],
-            [bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg],
-            [bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg],
-            [bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg],
-            [bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg],
-            [bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg],
-            [bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg],
-            [bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg, bg]
-    ]
-    tboard = board[:height]
-    for idx, r in enumerate(tboard):
-        tboard[idx] = tboard[idx][:width]
+    col = [bg for i in range(height)]
+    tboard = [col[:] for i in range(width)]
     row_list = row_alpha[:height]
     col_list = col_alpha[:width]
 
@@ -658,10 +473,10 @@ class Draw(commands.Cog):
                     )
     async def draw(self, ctx, height: Optional[int]=9, width: Optional[int]=9, background: str="⬜"):
         bg = background
-        bg_list = ["🟥", "🟧", "🟨", "🟩", "🟦", "🟪", "🟫", "⬛", "⬜", "🔴", "🟠", "🟡", "🟢", "🔵", "🟣", "🟤", "⚫", "⚪"]
+        bg_list = ["🟥", "🟧", "🟨", "🟩", "🟦", "🟪", "🟫", "⬛", "⬜"]
         if bg not in bg_list:
             return await ctx.send(f"Please include a proper background. Available backgrounds:\n{', '.join(bg_list)}")
-        if any(height < 5, height > 17, width < 5, width > 17):
+        if any((height < 5, height > 17, width < 5, width > 17)):
             return await ctx.send("Min and max height and width are 5 and 17!")  
         
         tboard, row_list, col_list = make_board(bg, height, width)            
@@ -700,7 +515,7 @@ class Draw(commands.Cog):
         try:
             tboard[int(len(row_list)/2)][int(len(col_list)/2)] = DrawButtons.cur_cle[tboard[int(len(row_list)/2)][int(len(col_list)/2)]]
         except KeyError:
-            tboard = tboard
+            pass
         view = DrawButtons(ctx, tboard, row_list, col_list, bg)
         
         response = await ctx.send(embed=make_embed(ctx, tboard, bg, row_list, col_list), view=view)

@@ -21,6 +21,7 @@ typing-extensions = "3.7.4.3"
 simpleeval = "^0.9.11"
 emojis = "^0.6.0"
 google = "^3.0.0"
+pandas = "^1.4.0"
 
 [tool.poetry.dev-dependencies]
 
