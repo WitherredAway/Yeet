@@ -40,7 +40,7 @@ class GroupHelpPageSource(menus.ListPageSource):
             signature = f"> `{self.prefix}`" + PaginatedHelpCommand.get_command_signature(self, command)
             value = f"{command.description if command.description else command.help if command.help else 'No description found.'}"
             if isinstance(command, commands.Group):
-                com_names = [com.name for com in command.commands]
+                com_names = sorted([com.name for com in command.commands])
                 value += '\n**Subcommands**: `' + '` • `'.join(com_names) + '`'
             embed.add_field(name=signature, value=value, inline=False)
 
@@ -250,43 +250,71 @@ class Help(commands.Cog):
         if isinstance(error, commands.BadArgument):
             await ctx.send(error)
 
-    @commands.command()
-    async def info(self, ctx, *, user: Union[discord.Member, discord.User] = None):
-        """Shows info about a user."""
-
-        user = user or ctx.author
-        e = discord.Embed()
-        roles = [role.name.replace('@', '@\u200b') for role in getattr(user, 'roles', [])]
-        e.set_author(name=str(user))
+    @commands.command(aliases=("whois",))
+    async def info(self, ctx, *, id: Union[discord.Member, discord.User, discord.Role] = None):
+        """Shows info about an ID."""
 
         def format_date(dt):
             if dt is None:
                 return 'N/A'
             return f'{time.format_dt(dt, "F")} ({time.format_relative(dt)})'
 
-        e.add_field(name='ID', value=user.id, inline=False)
-        e.add_field(name="Avatar", value=f"[Link]({user.avatar.url})", inline=False)
-        e.add_field(name='Joined', value=format_date(getattr(user, 'joined_at', None)), inline=False)
-        e.add_field(name='Created', value=format_date(user.created_at), inline=False)
+        e = discord.Embed()
+        
+        if isinstance(id, (discord.Member, discord.User, type(None))):
+            user = id or ctx.author
+            roles = [role.name.replace("@", "@\u200b") for role in getattr(user, 'roles', [])]
+            title = str(user)
+            if user.bot:
+                if user.public_flags.verified_bot:
+                    title += " **[✓BOT]**"
+                else:
+                    title += " **[BOT]**"
+            e.title = title
 
-        voice = getattr(user, 'voice', None)
-        if voice is not None:
-            vc = voice.channel
-            other_people = len(vc.members) - 1
-            voice = f'{vc.name} with {other_people} others' if other_people else f'{vc.name} by themselves'
-            e.add_field(name='Voice', value=voice, inline=False)
+            e.add_field(name='ID', value=user.id, inline=False)
+            e.add_field(name="Avatar", value=f"[Link]({user.avatar.url})", inline=False)
+            e.add_field(name='Joined', value=format_date(getattr(user, 'joined_at', None)), inline=False)
+            e.add_field(name='Created', value=format_date(user.created_at), inline=False)
 
-        if roles:
-            e.add_field(name='Roles', value=', '.join(roles) if len(roles) < 10 else f'{len(roles)} roles', inline=False)
+            voice = getattr(user, 'voice', None)
+            if voice is not None:
+                vc = voice.channel
+                other_people = len(vc.members) - 1
+                voice = f'{vc.name} with {other_people} others' if other_people else f'{vc.name} by themselves'
+                e.add_field(name='Voice', value=voice, inline=False)
 
-        colour = user.colour
-        if colour.value:
-            e.colour = colour
+            if roles:
+                e.add_field(name='Roles', value=', '.join(roles) if len(roles) < 10 else f'{len(roles)} roles', inline=False)
 
-        e.set_thumbnail(url=user.display_avatar.url)
+            e.colour = user.colour
 
-        if isinstance(user, discord.User):
-            e.set_footer(text='This member is not in this server.')
+            e.set_thumbnail(url=user.display_avatar.url)
+
+            if isinstance(user, discord.User):
+                e.set_footer(text='This member is not in this server.')
+
+        elif isinstance(id, discord.Role):
+            role = id
+            members = [str(member) for member in role.members]
+            permissions = ['administrator'] if role.permissions.administrator else [name for name, value in role.permissions if value]
+            title = str(role)
+
+            e.title = title
+
+            if role.colour.value:
+                colour = role.colour
+                e.colour = colour
+            else:
+                colour = None
+                
+            e.add_field(name='ID', value=role.id, inline=False)
+            e.add_field(name='Color', value=colour, inline=False)
+            e.add_field(name='Created', value=format_date(role.created_at), inline=False)
+            e.add_field(name='Permissions', value=', '.join(permissions), inline=False)
+
+            if members:
+                e.add_field(name='Members', value=', '.join(members) if len(members) < 20 else f'{len(members)} members.', inline=False)
 
         await ctx.send(embed=e)
 
