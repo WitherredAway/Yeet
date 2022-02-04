@@ -4,6 +4,7 @@ from main import *
 import re
 import simpleeval
 from simpleeval import simple_eval
+from typing import Optional
 
 class Calculator(discord.ui.View):
     def __init__(self, ctx: commands.Context, text: str):
@@ -233,8 +234,18 @@ class Math(commands.Cog):
 
     display_emoji = "🔢"
     
-    @commands.group(name="calculator", 
-                    aliases=["calc", "calculate"],
+    @commands.command(name="simplecalculate",
+                     aliases=["simplecalc", "sc", "simplecalculator"],
+                     help="Supports simple [python arithmetic operators](https://www.w3schools.com/python/python_operators.asp#:~:text=Python%20Arithmetic%20Operators) for calculation.",
+                     description="Simple calculate command to perform arithmetic calculations. Use the `calculate` command for a more interactive calculator.")
+    async def simplecalculate(self, ctx, *, string=""):
+        string = string.replace("\\", "")
+        string = string.replace(" ", "")
+        result = calculate(string)
+        await ctx.send(result)
+    
+    @commands.group(name="calculate", 
+                    aliases=["calc", "calculator"],
                     help=f"""
 ```
 ■ - Stops the calculator buttons
@@ -265,7 +276,7 @@ R% - Modulus operator, shows remainder of a division
         response = await ctx.send(result, view=view)
         view.response = response
         await view.wait()
-
+            
     @calculator.command(name="hcf", case_insensitive=True)
     async def hcf(self, ctx, num1: int, num2: int):
         if num1 > num2:
