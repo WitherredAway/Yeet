@@ -2,20 +2,19 @@ import discord
 from discord.ext import commands
 import asyncio
 from main import *
-from typing import Counter
+from typing import Counter, Union
 import wikipedia
 import random
+import pandas as pd
+import itertools
 
 class Useful(commands.Cog):
     """Useful commands"""
     def __init__(self, bot):
         self.bot = bot
-
+        
     display_emoji = "💾"
-    
-    def ec(self):
-            return random.choice([0x9ECFFC, 0xDE2E43, 0x79B15A])
-  
+            
     #avatar
     @commands.command(name="avatar",
                       aliases=["av", "pfp", "profilepicture"],
