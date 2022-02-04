@@ -14,10 +14,7 @@ class Bot(commands.Cog):
                     
   @commands.Cog.listener()
   async def on_ready(self):
-    await self.bot.change_presence(status=discord.Status.online, activity=discord.Game(f'{prefix}help'))
-    
-    print("Running.")
-    print(self.bot.user)
+    print(f"Running.\n{self.bot.user}")
   
   @commands.Cog.listener()
   async def on_command_error(self, ctx, error):

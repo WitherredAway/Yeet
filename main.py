@@ -20,10 +20,12 @@ cmd_cd = 2 #seconds
 
 log_channel = 837542790119686145
 intents = discord.Intents().default()
-        
+intents.members = True        
 bot = slash.Bot(command_prefix=get_prefix, 
                 owner_ids=[267550284979503104, 761944238887272481],
                 case_insensitive=True,
+                activity=discord.Game(f'{prefix}help'),
+                status=discord.Status.online,
                 intents=intents
                 )
 
