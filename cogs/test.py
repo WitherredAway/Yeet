@@ -15,8 +15,5 @@ class Test(slash.Cog):
     display_emoji = "🧪"
 
 
-    
-
-    
 def setup(bot):
     bot.add_cog(Test(bot))
