@@ -1,5 +1,3 @@
-from discord.ext import commands
-from .utils import fuzzy
 import asyncio
 import datetime
 import discord
@@ -7,11 +5,15 @@ import re
 import zlib
 import io
 import os
+import aiohttp
 import lxml.etree as etree
+
+from discord.ext import commands, menus
+from .utils import fuzzy
 from collections import Counter
 from main import *
-import aiohttp
-from typing import Optional
+from typing import Optional, Tuple
+from .utils.paginator import BotPages
 
 
 
@@ -46,6 +48,23 @@ class SphinxObjectFileReader:
                 yield buf[:pos].decode('utf-8')
                 buf = buf[pos + 1:]
                 pos = buf.find(b'\n')
+
+class DocsPageSource(menus.ListPageSource):
+    def __init__(self, entries: Tuple, *, per_page: int):
+        super().__init__(entries, per_page=per_page)
+        self.embed = bot.Embed()
+        
+    async def format_page(self, menu, entries):
+        self.embed.clear_fields()
+        self.embed.description = "\n".join([f'[`{key}`]({url})' for key, url in entries])
+
+        maximum = self.get_max_pages()
+        if maximum > 1:
+            text = f'Page {menu.current_page + 1}/{maximum} ({len(self.entries)} entries)'
+            self.embed.set_footer(text=text)
+
+        return self.embed
+
 
 class Docs(commands.Cog):
     def __init__(self, bot):
@@ -109,19 +128,18 @@ class Docs(commands.Cog):
         return result
 
     async def build_rtfm_lookup_table(self, page_types):
-        session = aiohttp.ClientSession()
         cache = {}
         for key, page in page_types.items():
             sub = cache[key] = {}
-            async with session.get(page + '/objects.inv') as resp:
-                if resp.status != 200:
-                    raise RuntimeError('Cannot build rtfm lookup table, try again later.')
+            async with aiohttp.ClientSession() as session:
+                async with session.get(page + '/objects.inv') as resp:
+                    if resp.status != 200:
+                        raise RuntimeError('Cannot build rtfm lookup table, try again later.')
 
-                stream = SphinxObjectFileReader(await resp.read())
-                cache[key] = self.parse_object_inv(stream, page)
+                    stream = SphinxObjectFileReader(await resp.read())
+                    cache[key] = self.parse_object_inv(stream, page)
 
         self._rtfm_cache = cache
-        session.close()
     async def do_rtfm(self, ctx, key, obj):
         page_types = {
             'latest': 'https://discordpy.readthedocs.io/en/latest',
@@ -153,14 +171,14 @@ class Docs(commands.Cog):
         def transform(tup):
             return tup[0]
 
-        matches = fuzzy.finder(obj, cache, key=lambda t: t[0], lazy=False)[:8]
+        matches = fuzzy.finder(obj, cache, key=lambda t: t[0], lazy=False)
 
-        e = discord.Embed(colour=discord.Colour.blurple())
         if len(matches) == 0:
             return await ctx.send('Could not find anything. Sorry.')
 
-        e.description = '\n'.join(f'[`{key}`]({url})' for key, url in matches)
-        await ctx.send(embed=e, reference=ctx.message.reference)
+        formatter = DocsPageSource(matches, per_page=8)
+        menu = BotPages(formatter, ctx=ctx)
+        await menu.start()
 
     @commands.group(aliases=['rtfd', 'rtfm', 'doc', 'documentation'], invoke_without_command=True)
     async def docs(self, ctx, *, obj: str = None):
