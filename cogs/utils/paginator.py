@@ -11,14 +11,14 @@ from discord.ext import menus
 class BotPages(discord.ui.View):
     def __init__(
         self,
-        source: menus.PageSource,
+        source: menus.ListPageSource,
         *,
         ctx: commands.Context,
         check_embeds: bool = True,
         compact: bool = False,
     ):
         super().__init__()
-        self.source: menus.PageSource = source
+        self.source: menus.ListPageSource = source
         self.check_embeds: bool = check_embeds
         self.ctx: commands.Context = ctx
         self.message: Optional[discord.Message] = None
@@ -29,25 +29,25 @@ class BotPages(discord.ui.View):
         self.fill_items()
 
     def fill_items(self) -> None:
-        if not self.compact:
-            self.numbered_page.row = 1
-            self.stop_pages.row = 1
 
         if self.source.is_paginating():
             max_pages = self.source.get_max_pages()
             use_last_and_first = max_pages is not None and max_pages >= 2
-            if use_last_and_first:
-                self.add_item(self.go_to_first_page)  # type: ignore
+            self.add_item(self.go_to_first_page)  # type: ignore
+            self.go_to_first_page.label = f'1 ⏮'
             self.add_item(self.go_to_previous_page)  # type: ignore
-            self.add_item(self.stop_pages)  # type: ignore
-            if not self.compact:
-                self.add_item(self.go_to_current_page)  # type: ignore
+            #self.add_item(self.stop_pages)   type: ignore
+            self.add_item(self.go_to_current_page)  # type: ignore
             self.add_item(self.go_to_next_page)  # type: ignore
-            if use_last_and_first:
-                self.add_item(self.go_to_last_page)  # type: ignore
+            self.add_item(self.go_to_last_page)  # type: ignore
+            self.go_to_last_page.label = f'⏭ {max_pages}'
             if not self.compact:
                 self.add_item(self.numbered_page)  # type: ignore
-            
+            if not use_last_and_first:
+                self.go_to_first_page.disabled = True
+                self.go_to_last_page.disabled = True
+                self.numbered_page.disabled = True
+                
 
     async def _get_kwargs_from_page(self, page: int) -> Dict[str, Any]:
         value = await discord.utils.maybe_coroutine(self.source.format_page, self, page)
@@ -81,22 +81,23 @@ class BotPages(discord.ui.View):
             self.go_to_previous_page.disabled = page_number == 0
             return
 
+        self.go_to_previous_page.label = f'{page_number} ᐊ'
         self.go_to_current_page.label = str(page_number + 1)
-        self.go_to_previous_page.label = str(page_number)
-        self.go_to_next_page.label = str(page_number + 2)
+        self.go_to_next_page.label = f'ᐅ {page_number + 2}'
+        
         self.go_to_next_page.disabled = False
         self.go_to_previous_page.disabled = False
-        self.go_to_first_page.disabled = False
+       # self.go_to_first_page.disabled = False
 
         max_pages = self.source.get_max_pages()
         if max_pages is not None:
             self.go_to_last_page.disabled = (page_number + 1) >= max_pages
             if (page_number + 1) >= max_pages:
                 self.go_to_next_page.disabled = True
-                self.go_to_next_page.label = '…'
+                self.go_to_next_page.label = 'ᐅ'
             if page_number == 0:
                 self.go_to_previous_page.disabled = True
-                self.go_to_previous_page.label = '…'
+                self.go_to_previous_page.label = 'ᐊ'
 
     async def show_checked_page(self, interaction: discord.Interaction, page_number: int) -> None:
         max_pages = self.source.get_max_pages()
@@ -148,7 +149,7 @@ class BotPages(discord.ui.View):
         await self.show_checked_page(interaction, self.current_page - 1)
 
     @discord.ui.button(label='□', style=discord.ButtonStyle.red)
-    async def stop_pages(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def go_to_current_page(self, button: discord.ui.Button, interaction: discord.Interaction):
         """stops the pagination session."""
         await interaction.response.defer()
         await interaction.delete_original_message()
@@ -200,7 +201,7 @@ class FieldPageSource(menus.ListPageSource):
 
     def __init__(self, entries, *, per_page=12):
         super().__init__(entries, per_page=per_page)
-        self.embed = discord.Embed(colour=discord.Colour.blurple())
+        self.embed = bot.Embed()
 
     async def format_page(self, menu, entries):
         self.embed.clear_fields()
@@ -245,7 +246,6 @@ class SimplePageSource(menus.ListPageSource):
 
         menu.embed.description = '\n'.join(pages)
         return menu.embed
-
 
 class SimplePages(BotPages):
     """A simple pagination session reminiscent of the old Pages interface.
