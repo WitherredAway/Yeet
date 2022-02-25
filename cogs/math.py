@@ -5,6 +5,15 @@ import re
 import simpleeval
 from simpleeval import simple_eval
 from typing import Optional
+import math
+
+def isfloat(input):
+    try:
+        float(input)
+    except:
+        return False
+    else:
+        return True
 
 class Calculator(discord.ui.View):
     def __init__(self, ctx: commands.Context, text: str):
@@ -28,18 +37,19 @@ class Calculator(discord.ui.View):
     async def new_edit(self, append, interaction: discord.Interaction, string: str=None):
         # very convoluted code, new bugs might arise
         if self.text != "":
-            check = any([self.text.startswith("0"), not self.text[0].isdigit()]) and not any([self.text[0] == "-", self.text[0] == "+"])
+            check = any([self.text.startswith("0"), not self.text[0].isdigit()]) and not any([self.text[0] == "-", self.text[0] == "+", self.text[0] == "."])
             if check:
                 self.text = self.text[1:]
             if not append.isdigit() and any([self.text[-1].isdigit(), append == "-", append == "+"]):
                 self.text += append
 
         if self.text == "":
-            if any([append == "+", append == "-"]):
+            if any([append == "+", append == "-", append == "."]):
                 self.text += append
 
-        if any([append.isdigit(), append == "3.14", append == "*3.14"]):
-                self.text += append
+        if isfloat(append):
+            self.text += append
+            
         if string is None:
             string = self.text
         result = calculate(string)
@@ -78,7 +88,7 @@ class Calculator(discord.ui.View):
        # self.text += "/"
         await self.new_edit("/", interaction)
 
-    @discord.ui.button(label="^", style=discord.ButtonStyle.gray)
+    @discord.ui.button(label="𝓍ʸ", style=discord.ButtonStyle.gray)
     async def _power(self, button: discord.ui.Button, interaction: discord.Interaction):
         await interaction.response.defer()
        # self.text += "**"
@@ -113,9 +123,9 @@ class Calculator(discord.ui.View):
         await interaction.response.defer()
         append = ""
         if self.text != "" and self.text[-1].isdigit():
-            append = "*3.14"
+            append = f"*{math.pi}"
         else:
-            append = "3.14"
+            append = f"{math.pi}"
         await self.new_edit(append, interaction)
 
     @discord.ui.button(label="4", style=discord.ButtonStyle.blurple)
@@ -236,6 +246,7 @@ class Math(commands.Cog):
     
     @commands.command(name="simplecalculate",
                      aliases=["simplecalc", "sc", "simplecalculator"],
+                     brief="Simple calculator. Use `calculate` for fanciness.",
                      help="Supports simple [python arithmetic operators](https://www.w3schools.com/python/python_operators.asp#:~:text=Python%20Arithmetic%20Operators) for calculation.",
                      description="Simple calculate command to perform arithmetic calculations. Use the `calculate` command for a more interactive calculator.")
     async def simplecalculate(self, ctx, *, string=""):
@@ -244,8 +255,9 @@ class Math(commands.Cog):
         result = calculate(string)
         await ctx.send(result)
     
-    @commands.group(name="calculate", 
+    @commands.command(name="calculate", 
                     aliases=["calc", "calculator"],
+                    brief="Interactive and fancy calculator.",
                     help=f"""
 ```
 ■ - Stops the calculator buttons
@@ -255,7 +267,7 @@ R% - Modulus operator, shows remainder of a division
 ÷ - Division
 ^ - Power / Exponent
 × - Multiplication
-π - pi = 3.14
+π - pi
 – - Subtraction
 % - Percentage; divides by 100
 + - Addition
@@ -277,16 +289,6 @@ R% - Modulus operator, shows remainder of a division
         view.response = response
         await view.wait()
             
-    @calculator.command(name="hcf", case_insensitive=True)
-    async def hcf(self, ctx, num1: int, num2: int):
-        if num1 > num2:
-            smaller = num2
-        else:
-            smaller = num1
-        for i in range(1, smaller+1):
-            if (num1 % i == 0) and (num2 % i == 0):
-                hcf = i
-        await ctx.send(f"**{hcf}** is the HCF (Highest common factor) of `{num1}` and `{num2}`.")
         
 def setup(bot):
     bot.add_cog(Math(bot))
