@@ -38,7 +38,7 @@ class Poketwo(commands.Cog):
                 pkm_per_cent = round(self.pk.at[pkm, 'abundance']/self.possible_abundance*100, 4)
                 pkm_out_of = round(1/pkm_per_cent, 1)
                 total_abundance += self.pk.at[pkm, 'abundance']
-                pokemon.append(f"> **{self.pk.at[pkm, 'name.en']}** - {pkm_per_cent}% (1/{pkm_out_of})")
+                pokemon.append(f"> **{self.pk.at[pkm, 'name.en']}** - {pkm_per_cent}%")
                     #pokes[f"{round(pk.at[pkm, 'abundance']/266933*100, 4)}%"].append(f"{pk.at[pkm, 'name.en']}")
 
         per_cent = round(total_abundance/self.possible_abundance*100, 3)
