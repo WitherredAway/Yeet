@@ -3,45 +3,64 @@ import discord
 from keep_alive import keep_alive
 from discord.ext import commands
 import requests
-import cogs.utils.slash as slash
-global prefixes
-prefixes = [',', '_', '>>']
-prefix = prefixes[0]
+import slash_util as slash
+
+
+COMMAND_COOLDOWN = 2  # seconds
+
+intents = discord.Intents().default()
+intents.members = True
+
 
 def get_prefix(bot, message):
+    prefixes = bot.PREFIXES
     if not message.guild:
-        return prefix
+        return prefixes[0]
     return commands.when_mentioned_or(*prefixes)(bot, message)
 
 
-embed_colour = 0xf1c40f
+class Bot(slash.Bot):
+    PREFIXES = [",", "_", ">>"]
+    PREFIX = PREFIXES[0]
 
-cmd_cd = 2 #seconds
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
-log_channel = 837542790119686145
-intents = discord.Intents().default()
-intents.members = True        
-bot = slash.Bot(command_prefix=get_prefix, 
-                owner_ids=[267550284979503104, 761944238887272481],
-                case_insensitive=True,
-                activity=discord.Game(f'{prefix}help'),
-                status=discord.Status.online,
-                intents=intents
-                )
+        self.LOG_CHANNEL = 837542790119686145
 
-bot.load_extension('jishaku')
-for filename in os.listdir('./cogs'):
-  if filename.endswith(".py"):
-    bot.load_extension(f'cogs.{filename[:-3]}')
+        self.activity = discord.Game(f"{self.PREFIXES[0]}help")
+        self.status = discord.Status.online
+
+    class Embed(discord.Embed):
+        def __init__(self, **kwargs):
+            self.EMBED_COLOUR = 0xF1C40F
+
+            color = kwargs.pop("color", self.EMBED_COLOUR)
+            super().__init__(**kwargs, color=color)
+
+
+bot = Bot(
+    command_prefix=get_prefix,
+    owner_ids=[267550284979503104, 761944238887272481],
+    case_insensitive=True,
+    intents=intents,
+)
+
+prefix = bot.PREFIX
+bot.load_extension("jishaku")
+for filename in os.listdir("./cogs"):
+    if filename.endswith(".py"):
+        bot.load_extension(f"cogs.{filename[:-3]}")
 
 global TOKEN
-TOKEN = os.getenv('botTOKEN')
+TOKEN = os.getenv("botTOKEN")
 
 r = requests.head(url="https://discord.com/api/v1")
-try:
-    print(f"Rate limit {round(int(r.headers['Retry-After']) / 60, 2)} minutes left")
-except Exception as e:
-    print("No rate limit")
-    bot.run(TOKEN)
 
-
+keep_alive()
+bot.run(TOKEN)
+# try:
+#    print(f"Rate limit {round(int(r.headers['Retry-After']) / 60, 2)} minutes left")
+# except Exception as e:
+#    print("No rate limit")
+#    bot.run(TOKEN)
