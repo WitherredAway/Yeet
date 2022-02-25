@@ -23,7 +23,7 @@ class Fun(commands.Cog):
                     brief = "Repeats <message>",
                     help = "Repeats <message> passed in after the command."
                     )
-  @commands.cooldown(1, cmd_cd, commands.BucketType.user)
+  @commands.cooldown(1, COMMAND_COOLDOWN, commands.BucketType.user)
   async def say(self, ctx, *, message):
       if ctx.message.attachments:
           await ctx.send(content=message, files=[await f.to_file() for f in ctx.message.attachments])
@@ -31,7 +31,7 @@ class Fun(commands.Cog):
           await ctx.send(message)
 
 	# cum
-  @commands.cooldown(1, cmd_cd, commands.BucketType.user)
+  @commands.cooldown(1, COMMAND_COOLDOWN, commands.BucketType.user)
   @commands.command(hidden = True)
   async def cum(self, ctx):
     await ctx.send("uGn!~~")

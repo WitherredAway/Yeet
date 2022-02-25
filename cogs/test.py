@@ -1,14 +1,22 @@
 import discord
-from main import *
-import cogs.utils.slash as slash
 import random
+import slash_util as slash
 
-class Test(slash.ApplicationCog):
+from main import *
+from typing import List
+from .utils.paginator import BotPages
+from discord.ext import menus
+
+
+class Test(slash.Cog):
     def __init__(self, bot):
-        super().__init__(bot)
         self.bot = bot
 
     display_emoji = "🧪"
+
+
+    
+
     
 def setup(bot):
     bot.add_cog(Test(bot))

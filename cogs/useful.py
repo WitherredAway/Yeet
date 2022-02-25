@@ -1,14 +1,17 @@
 import discord
-from discord.ext import commands
 import asyncio
-from main import *
-from typing import Counter, Union
 import wikipedia
 import random
-import pandas as pd
 import itertools
+import pandas as pd
+import slash_util as slash
 
-class Useful(commands.Cog):
+from discord.ext import commands
+from main import *
+from typing import Counter, Union
+
+
+class Useful(slash.Cog):
     """Useful commands"""
     def __init__(self, bot):
         self.bot = bot
@@ -34,7 +37,7 @@ class Useful(commands.Cog):
     async def wiki(self, ctx, *, arg=None):
       try:
           if arg == None:
-              await ctx.send("Please, specify what do you want me to search.")
+              await ctx.send("Please specify what you want me to search.")
           elif arg:
               msg = await ctx.send("Fetching...")
               start = arg.replace(" ", "")
@@ -116,6 +119,7 @@ class Useful(commands.Cog):
     async def timerstart_error(self,ctx, error):
         if isinstance(error, commands.BadArgument):
             await ctx.send("The time must be a positive whole number.")
+
         
 def setup(bot):
   bot.add_cog(Useful(bot))
