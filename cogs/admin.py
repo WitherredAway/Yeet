@@ -6,11 +6,13 @@ import asyncio
 class Admin(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.hidden = True
+
 
     display_emoji = "⚒️"
 
 
-    @commands.command(name="togglecommand", aliases=["tc"], description="Enable or disable a command.")
+    @commands.command(name="togglecommand", aliases=["tc"], description="Enable or disable a command.", hidden=True)
     @commands.is_owner()
     async def toggle(self, ctx, *, command):
         command = self.bot.get_command(command)
@@ -76,13 +78,13 @@ class Admin(commands.Cog):
             else:
                 await ctx.send(f':outbox_tray: Unloaded cog `{cog}`')
 
+    # cog reload
     @commands.is_owner()
     @cog.command(name = "reload", 
                aliases = ['r'],
                brief = "Reloads a cog",
                help = "Reloads a cog with the name, dev only command.")
     async def _reload(self, ctx, cog):
-        #await self.bot.sync_commands()
         try:
             if cog == 'all':
                 try:
@@ -90,7 +92,8 @@ class Admin(commands.Cog):
                     for cog_ext in list(self.bot.extensions):
                         self.bot.reload_extension(cog_ext)
                         cog_name = cog_ext[5:] if cog_ext.startswith("cogs.") else cog_ext
-                        cogs.append(f"\n:repeat: Reloaded cog `{cog_name}`")
+                        cogs.append(f"\n🔁 Reloaded cog `{cog_name}`")
+                    await self.bot.sync_commands()
                     await ctx.send(", ".join(cogs))
                 except Exception as e:
   	                raise e
@@ -100,6 +103,7 @@ class Admin(commands.Cog):
                 except commands.ExtensionNotLoaded:
                     await ctx.send(f":x: Cog `{cog}` not found.")
                 else:
+                    await self.bot.sync_commands()
                     await ctx.send(f':repeat: Reloaded cog `{cog}`')
         except Exception as e:
   	        raise e
