@@ -58,7 +58,7 @@ class Poketwo(commands.Cog):
                 # pokes[f"{round(pk.at[pkm, 'abundance']/266933*100, 4)}%"].append(f"{pk.at[pkm, 'name.en']}")
 
         per_cent = round(total_abundance / self.possible_abundance * 100, 3)
-        out_of = round(1 / per_cent, 1)
+        out_of = round(1 / per_cent * 100)
         pokemon.sort()
         all_pokemon = "\n".join(pokemon)
         result = f"__**{rarity.capitalize()}**__ (Includes all forms of all pokémon)\n{all_pokemon}\n**Total pokemon**: {len(pokemon)}\n**Total chance**: {per_cent}% (1/{out_of})"
@@ -90,7 +90,7 @@ class Poketwo(commands.Cog):
                 pkm_per_cent = round(
                     self.pk.at[pkm, "abundance"] / self.possible_abundance * 100, 4
                 )
-                pkm_out_of = round(1 / pkm_per_cent, 1)
+                pkm_out_of = round(1 / pkm_per_cent * 100)
                 total_abundance += self.pk.at[pkm, "abundance"]
                 pokemon.append(
                     f"> **{self.pk.at[pkm, 'name.en']}** - {pkm_per_cent}% (1/{pkm_out_of})"
@@ -98,7 +98,7 @@ class Poketwo(commands.Cog):
                 # pokemon[f"{round(pk.at[pkm, 'abundance']/266933*100, 4)}%"].append(f"{pk.at[pkm, 'name.en']}")
 
         per_cent = round(total_abundance / self.possible_abundance * 100, 3)
-        out_of = round(1 / per_cent, 1)
+        out_of = round(1 / per_cent * 100)
         pokemon.sort()
         all_pokemon = "\n".join(pokemon)
         result = f"__**{form.capitalize()}-form**__ (Includes all forms of all pokémon)\n{all_pokemon}\n**Total pokemon**: {len(pokemon)}\n**Total chance**: {per_cent}% (1/{out_of})"
@@ -142,7 +142,7 @@ class Poketwo(commands.Cog):
                 # pokemon[f"{round(pk.at[pkm, 'abundance']/266933*100, 4)}%"].append(f"{pk.at[pkm, 'name.en']}")
 
         per_cent = round(total_abundance / self.possible_abundance * 100, 3)
-        out_of = round(1 / per_cent, 1)
+        out_of = round(1 / per_cent * 100)
         result = f"__**{region.capitalize()}**__ (Includes all forms of all pokémon)\n\n**Total pokemon**: {len(pokemon)}\n**Total chance**: {per_cent}% (1/{out_of})"
         await ctx.send(result)
 
@@ -174,7 +174,7 @@ class Poketwo(commands.Cog):
             return await ctx.send("Invalid pokémon provided.")
 
         per_cent = round(total_abundance / self.possible_abundance * 100, 4)
-        out_of = round(1 / per_cent, 1)
+        out_of = round(1 / per_cent * 100)
         result = f'__**{", ".join(pokemons)}**__\n\n**Total pokemon**: {len(pokemons)}\n**Total chance**: {per_cent}% (1/{out_of})'
         await ctx.send(result)
 
