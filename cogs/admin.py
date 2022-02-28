@@ -133,8 +133,9 @@ class Admin(commands.Cog):
         help="Lists all cogs, dev only command.",
     )
     async def _all(self, ctx):
-        extlist = discord.Embed(
-            title="Cogs", description="List of all enabled cogs", colour=embed_colour
+        extlist = self.bot.Embed(
+            title="Cogs",
+            description="List of all enabled cogs"
         )
 
         for ext in bot.extensions:
