@@ -3,15 +3,17 @@ from main import *
 from discord.ext import commands, menus
 from .utils import checks, formats, time
 from .utils.paginator import BotPages
-import discord
 from collections import OrderedDict, deque, Counter
+from typing import Any, Dict, List, Optional, Union
+from .utils.source import source
+
+import discord
 import os, datetime
 import asyncio
 import copy
 import unicodedata
 import inspect
 import itertools
-from typing import Any, Dict, List, Optional, Union
 
 
 class Prefix(commands.Converter):
@@ -47,12 +49,22 @@ class GroupHelpPageSource(menus.ListPageSource):
                 f"`{self.prefix}`"
                 + PaginatedHelpCommand.get_command_signature(self, self.group)
             )
-            self.description = f"**Category**: `{self.group.cog_name if self.group.cog else 'None'}`\n\n**Description**: {self.group.description if self.group.description else 'No description found.'}\n\n**Help**: {self.group.help if self.group.help else 'No help found.'}"
+            bs = '\_'
+            self.description = f"""
+**Category**
+`{self.group.cog_name if self.group.cog else 'None'}`
+
+**Description**
+{self.group.description if self.group.description else 'No description found.'}
+
+**Help**
+{self.group.help if self.group.help else 'No help found.'}
+            """
             embed.set_footer(
                 text=f'Page {menu.current_page + 1}/{maximum} ({(no_commands := len(self.entries))} {"subcommand" if no_commands <= 1 else "subcommands"})'
             )
-        else:
-            self.title = f'{self.group.qualified_name} {"Commands"}'
+        elif isinstance(self.group, commands.Cog):
+            self.title = f'{self.group.qualified_name} Commands'
             self.description = (
                 self.group.description
                 if self.group.description
@@ -61,7 +73,8 @@ class GroupHelpPageSource(menus.ListPageSource):
                 else "No description found."
             )
             embed.set_footer(
-                text=f'Page {menu.current_page + 1}/{maximum} ({(no_commands := len(self.entries))} {"command" if no_commands <= 1 else "commands"})'
+                text=f'Do ,help <command> for more info on a command.'
+                     f'\nPage {menu.current_page + 1}/{maximum} ({(no_commands := len(self.entries))} {"command" if no_commands <= 1 else "commands"})'
             )
         embed.title = self.title
         embed.description = self.description
@@ -78,7 +91,6 @@ class GroupHelpPageSource(menus.ListPageSource):
                 value += "\n> **Subcommands**: `" + "` • `".join(com_names) + "`"
             embed.add_field(name=signature, value=value, inline=False)
 
-        embed.description += f"\n————————————————————————————\n**Subcommands:**\nDo `,help <command>` for more info on a command."
 
         return embed
 
@@ -301,31 +313,36 @@ class PaginatedHelpCommand(commands.HelpCommand):
         menu = HelpMenu(FrontPageSource(), ctx=self.context)
         menu.add_categories(all_commands)
         await menu.start()
-
+    
     async def send_cog_help(self, cog):
-        command_entries = await self.filter_commands(cog.get_commands(), sort=True)
+        # cog help
+        cog_commands = await self.filter_commands(cog.get_commands(), sort=True)
+        menu = HelpMenu(
+            GroupHelpPageSource(cog, cog_commands, prefix=self.context.clean_prefix),
+            ctx=self.context
+        )
+
+        # for the selectmenu
+        bot = self.context.bot
 
         def key(command) -> str:
             cog = command.cog
             return cog.qualified_name if cog else "\U0010ffff"
 
-        cog_entries: List[commands.Command] = await self.filter_commands(
+        all_commands_list: List[commands.Command] = await self.filter_commands(
             bot.commands, sort=True, key=key
         )
 
-        all_commands: Dict[commands.Cog, List[commands.Command]] = {}
-        for name, children in itertools.groupby(cog_entries, key=key):
+        all_commands_dict: Dict[commands.Cog, List[commands.Command]] = {}
+        for name, children in itertools.groupby(all_commands_list, key=key):
             if name == "\U0010ffff":
                 continue
 
             cog = bot.get_cog(name)
-            all_commands[cog] = sorted(children, key=lambda c: c.qualified_name)
+            all_commands_dict[cog] = sorted(children, key=lambda c: c.qualified_name)
+        menu.add_categories(all_commands_dict)
 
-        menu = HelpMenu(
-            GroupHelpPageSource(cog, command_entries, prefix=self.context.clean_prefix),
-            ctx=self.context,
-        )
-        menu.add_categories(all_commands)
+        # start the menu
         await menu.start()
 
     def common_command_formatting(self, embed_like, command):
@@ -521,6 +538,11 @@ class Help(commands.Cog):
             member = ctx.author
 
         await self.say_permissions(ctx, member, channel)
+
+    @commands.command()
+    async def source(self, ctx, *, command: str=None):
+        final_url = source(self, command=command)
+        await ctx.send(final_url)
 
 
 def setup(bot):
