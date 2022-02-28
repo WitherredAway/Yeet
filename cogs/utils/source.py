@@ -3,9 +3,9 @@ import inspect
 
 
 def source(self, *, command: str):
-    """Displays my full source code or for a specific command.
+    """Displays the full source code or for a specific command of the bot.
 
-    To display the source code of a subcommand you can separate it by periods, e.g. tag.create for the create subcommand of the tag command or by spaces.
+    To display the source code of a subcommand you can separate it by periods, e.g. timer.start for the start subcommand of the timer command or by spaces.
 
     Code taken from [Robodanny](https://github.com/Rapptz/RoboDanny).
     """
