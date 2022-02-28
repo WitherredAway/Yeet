@@ -70,7 +70,7 @@ class DocsPageSource(menus.ListPageSource):
         return self.embed
 
 
-class Docs(commands.Cog):
+class Documentations(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
@@ -189,7 +189,7 @@ class Docs(commands.Cog):
         await menu.start()
 
     @commands.group(
-        aliases=["rtfd", "rtfm", "doc", "documentation"], invoke_without_command=True
+        aliases=["rtfd", "rtfm", "doc", "documentation", "documentations"], invoke_without_command=True
     )
     async def docs(self, ctx, *, obj: str = None):
         """Gives you a documentation link for a discord.py entity.
@@ -221,4 +221,4 @@ class Docs(commands.Cog):
 
 
 def setup(bot):
-    bot.add_cog(Docs(bot))
+    bot.add_cog(Documentations(bot))
