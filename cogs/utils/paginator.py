@@ -123,9 +123,10 @@ class BotPages(discord.ui.View):
 
     async def on_error(self, error: Exception, item: discord.ui.Item, interaction: discord.Interaction) -> None:
         if interaction.response.is_done():
-            await interaction.followup.send('An unknown error occurred, sorry', ephemeral=True)
+            await interaction.followup.send(error)
         else:
-            await interaction.response.send_message('An unknown error occurred, sorry', ephemeral=True)
+            await interaction.response.send_message(error)
+        raise error
 
     async def start(self) -> None:
         if self.check_embeds and not self.ctx.channel.permissions_for(self.ctx.me).embed_links:
@@ -151,9 +152,9 @@ class BotPages(discord.ui.View):
     @discord.ui.button(label='□', style=discord.ButtonStyle.red)
     async def go_to_current_page(self, button: discord.ui.Button, interaction: discord.Interaction):
         """stops the pagination session."""
-        await interaction.response.defer()
-        await interaction.delete_original_message()
-        self.stop()
+        if self.message:
+            await self.message.edit(view=None)
+            self.stop()
 
     @discord.ui.button(label='ᐅ', style=discord.ButtonStyle.grey)
     async def go_to_next_page(self, button: discord.ui.Button, interaction: discord.Interaction):

@@ -12,7 +12,7 @@ def source(self, *, command: str):
     source_url = 'https://github.com/WitherredAway/Yeet.'
     branch = 'master'
     if command is None:
-        return source_url
+        return f'{source_url}/'
 
 
     if command == 'help':
@@ -36,7 +36,7 @@ def source(self, *, command: str):
     if not module.startswith('discord'):
         # not a built-in command
         location = os.path.relpath(filename).replace('\\', '/')
-    else:
+    if module.startswith('discord'):
         location = module.replace('.', '/') + '.py'
         source_url = 'https://github.com/Rapptz/discord.py'
         branch = 'master'
