@@ -16,12 +16,81 @@ import inspect
 import itertools
 
 
-class Prefix(commands.Converter):
-    async def convert(self, ctx, argument):
-        user_id = ctx.bot.user.id
-        if argument.startswith((f"<@{user_id}>", f"<@!{user_id}>")):
-            raise commands.BadArgument("That is a reserved prefix already in use.")
-        return argument
+class FrontPageSource(menus.PageSource):
+    new_line = "\n"
+
+    def is_paginating(self) -> bool:
+        return True
+
+    def get_max_pages(self) -> Optional[int]:
+        return 2
+
+    async def get_page(self, page_number: int) -> Any:
+        # The front page is a dummy
+        self.index = page_number
+        return self
+
+    def format_page(self, menu: HelpMenu, page):
+        embed = self.bot.Embed(
+            title="Help Interface",
+            description=f"**[Invite the bot here!](https://discord.com/api/oauth2/authorize?client_id=634409171114262538&permissions=8&scope=bot)**\n——————————————————————————————\nDo `,help <command>` for more info on a command.\nDo `,help <category>` (case sensitive) for more info on a category.\n——————————————————————————————",
+        )
+
+        if self.index == 0:
+            cog_names = sorted(bot.cogs.keys())
+            for cog_name in cog_names:
+                cog = bot.cogs[cog_name]
+                try:
+                    if cog.hidden:
+                        continue
+                except:
+                    pass
+                description = (
+                    cog.description.split("\n", 1)[0] or "No description found."
+                )
+                emoji = getattr(cog, "display_emoji", "🟡")
+                commandz = []
+                for command in cog.get_commands():
+                    if not command.hidden:
+                        com = command.qualified_name
+                        com_src = source(self, command=com)
+                        commandz.append(
+                            f"**[{com}]({com_src})**{(' (' + str(len(command.commands)) + ')') if isinstance(command, commands.Group) else ''}: {command.brief or command.description or 'No description found.'}"
+                        )
+
+                embed.add_field(
+                    name=f"{emoji} **{cog.qualified_name}**: {description}",
+                    value=f"{self.new_line.join(commandz) or 'No commands found.'}",
+                )
+
+        elif self.index == 1:
+            entries = (
+                ("<argument>", "This means the argument is __**required**__."),
+                ("[argument]", "This means the argument is __**optional**__."),
+                (
+                    "[A|B]",
+                    "This means that it can be __**either A or B**__. If one is **bold**, that means that it is the **main option**.",
+                ),
+                (
+                    "[argument=value]",
+                    "This means that the argument defaults to **value** if nothing is passed.",
+                ),
+                (
+                    "[argument...]",
+                    "This means you can have multiple arguments.\n"
+                    "__**Remember not to include the brackets (<> or [])!**__",
+                ),
+            )
+
+            embed.add_field(
+                name="How do I use this bot?",
+                value="Reading the bot signature is pretty simple.",
+            )
+
+            for name, value in entries:
+                embed.add_field(name=name, value=value, inline=False)
+
+        return embed
 
 
 class GroupHelpPageSource(menus.ListPageSource):
@@ -99,7 +168,7 @@ class HelpSelectMenu(discord.ui.Select["HelpMenu"]):
     def __init__(
         self,
         commands: Dict[commands.Cog, List[commands.Command]],
-        bot: commands.AutoShardedBot,
+        bot: slash.Bot,
     ):
         super().__init__(
             placeholder="Select a category...",
@@ -135,7 +204,9 @@ class HelpSelectMenu(discord.ui.Select["HelpMenu"]):
         assert self.view is not None
         value = self.values[0]
         if value == "__index":
-            await self.view.rebind(FrontPageSource(), interaction)
+            index = FrontPageSource()
+            index.bot = self.bot
+            await self.view.rebind(index, interaction)
         else:
             cog = self.bot.get_cog(value)
             if cog is None:
@@ -155,84 +226,6 @@ class HelpSelectMenu(discord.ui.Select["HelpMenu"]):
                 cog, commands, prefix=self.view.ctx.clean_prefix
             )
             await self.view.rebind(source, interaction)
-
-
-class FrontPageSource(menus.PageSource):
-    new_line = "\n"
-
-    def is_paginating(self) -> bool:
-        return True
-
-    def get_max_pages(self) -> Optional[int]:
-        # There's only one actual page in the front page
-        # However we need at least 2 to show all the buttons
-        return 2
-
-    async def get_page(self, page_number: int) -> Any:
-        # The front page is a dummy
-        self.index = page_number
-        return self
-
-    def format_page(self, menu: HelpMenu, page):
-        embed = bot.Embed(
-            title="Help Interface",
-            description=f"**[Invite the bot here!](https://discord.com/api/oauth2/authorize?client_id=634409171114262538&permissions=8&scope=bot)**\n——————————————————————————————\nDo `,help <command>` for more info on a command.\nDo `,help <category>` (case sensitive) for more info on a category.\n——————————————————————————————",
-        )
-
-        if self.index == 0:
-            cog_names = sorted(bot.cogs.keys())
-            for cog_name in cog_names:
-                cog = bot.cogs[cog_name]
-                try:
-                    if cog.hidden:
-                        continue
-                except:
-                    pass
-                description = (
-                    cog.description.split("\n", 1)[0] or "No description found."
-                )
-                emoji = getattr(cog, "display_emoji", "🟡")
-                commandz = []
-                for command in cog.get_commands():
-                    if not command.hidden:
-                        com = command.qualified_name
-                        commandz.append(
-                            f"**[{com}](https://0.0)**{(' (' + str(len(command.commands)) + ')') if isinstance(command, commands.Group) else ''}: {command.brief or command.description or 'No description found.'}"
-                        )
-
-                embed.add_field(
-                    name=f"{emoji} **{cog.qualified_name}**: {description}",
-                    value=f"{self.new_line.join(commandz) or 'No commands found.'}",
-                )
-
-        elif self.index == 1:
-            entries = (
-                ("<argument>", "This means the argument is __**required**__."),
-                ("[argument]", "This means the argument is __**optional**__."),
-                (
-                    "[A|B]",
-                    "This means that it can be __**either A or B**__. If one is **bold**, that means that it is the **main option**.",
-                ),
-                (
-                    "[argument=value]",
-                    "This means that the argument defaults to **value** if nothing is passed.",
-                ),
-                (
-                    "[argument...]",
-                    "This means you can have multiple arguments.\n"
-                    "__**Remember not to include the brackets (<> or [])!**__",
-                ),
-            )
-
-            embed.add_field(
-                name="How do I use this bot?",
-                value="Reading the bot signature is pretty simple.",
-            )
-
-            for name, value in entries:
-                embed.add_field(name=name, value=value, inline=False)
-
-        return embed
 
 
 class HelpMenu(BotPages):
@@ -320,7 +313,9 @@ class PaginatedHelpCommand(commands.HelpCommand):
             cog = bot.get_cog(name)
             all_commands[cog] = sorted(children, key=lambda c: c.qualified_name)
 
-        menu = HelpMenu(FrontPageSource(), ctx=self.context)
+        initial = FrontPageSource()
+        initial.bot = self.context.bot
+        menu = HelpMenu(initial, ctx=self.context)
         menu.add_categories(all_commands)
         await menu.start()
     
