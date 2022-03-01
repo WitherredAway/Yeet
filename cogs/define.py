@@ -108,7 +108,7 @@ class Term:
         await instance.__init__(*args, **kwargs)
         return instance
 
-    async def __init__(self, term: str = "define"):
+    async def __init__(self, term: str):
         self.TERM: str = term
         self.API: str = "https://api.dictionaryapi.dev/api/v2/entries/en/"
 
