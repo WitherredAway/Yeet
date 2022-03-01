@@ -57,10 +57,11 @@ TOKEN = os.getenv("botTOKEN")
 
 r = requests.head(url="https://discord.com/api/v1")
 
-keep_alive()
-bot.run(TOKEN)
-# try:
-#    print(f"Rate limit {round(int(r.headers['Retry-After']) / 60, 2)} minutes left")
-# except Exception as e:
-#    print("No rate limit")
-#    bot.run(TOKEN)
+#keep_alive()
+#bot.run(TOKEN)
+try:
+    print(f"Rate limit {round(int(r.headers['Retry-After']) / 60, 2)} minutes left")
+except Exception as e:
+    print("No rate limit")
+    keep_alive()
+    bot.run(TOKEN)
