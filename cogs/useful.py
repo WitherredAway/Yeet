@@ -4,14 +4,13 @@ import wikipedia
 import random
 import itertools
 import pandas as pd
-import slash_util as slash
 
 from discord.ext import commands
 from main import *
 from typing import Counter, Union
 
 
-class Useful(slash.Cog):
+class Useful(commands.Cog):
     """Useful commands"""
 
     def __init__(self, bot):

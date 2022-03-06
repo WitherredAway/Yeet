@@ -3,7 +3,6 @@ import aiohttp
 import typing
 import urllib
 import asyncio
-import slash_util as slash
 
 from discord.ext import commands, menus
 from .utils.paginator import BotPages
@@ -14,7 +13,7 @@ T = TypeVar("T", bound="Term")
 
 
 class TermSelectMenu(discord.ui.Select):
-    def __init__(self, entries, bot: slash.Bot):
+    def __init__(self, entries, bot: commands.Bot):
         super().__init__(placeholder="Jump to definition", row=0)
         self.entries = entries[:25]
         self.bot = bot

@@ -3,7 +3,6 @@ from discord.ext import commands
 from main import *
 import asyncio
 import datetime
-import slash_util as slash
 
 
 class Bot(commands.Cog):

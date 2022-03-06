@@ -1,14 +1,13 @@
 import discord
 import random
-import slash_util as slash
 
 from main import *
 from typing import List
 from .utils.paginator import BotPages
-from discord.ext import menus
+from discord.ext import commands, menus
 
 
-class Test(slash.Cog):
+class Test(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
