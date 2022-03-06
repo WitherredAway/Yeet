@@ -3,12 +3,12 @@ import discord
 from keep_alive import keep_alive
 from discord.ext import commands
 import requests
-import slash_util as slash
 
 
 COMMAND_COOLDOWN = 2  # seconds
 
-intents = discord.Intents().default()
+intents = discord.Intents.default()
+intents.message_content = True
 intents.members = True
 
 
@@ -19,7 +19,7 @@ def get_prefix(bot, message):
     return commands.when_mentioned_or(*prefixes)(bot, message)
 
 
-class Bot(slash.Bot):
+class Bot(commands.Bot):
     PREFIXES = [",", "_", ">>"]
     PREFIX = PREFIXES[0]
 
@@ -55,11 +55,10 @@ for filename in os.listdir("./cogs"):
 global TOKEN
 TOKEN = os.getenv("botTOKEN")
 
-r = requests.head(url="https://discord.com/api/v1")
-
-#keep_alive()
-#bot.run(TOKEN)
+# keep_alive()
+# bot.run(TOKEN)
 try:
+    r = requests.head(url="https://discord.com/api/v1")
     print(f"Rate limit {round(int(r.headers['Retry-After']) / 60, 2)} minutes left")
 except Exception as e:
     print("No rate limit")
