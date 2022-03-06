@@ -1,20 +1,12 @@
 import discord
-from discord.ext import commands, tasks
-from main import *
 import re
 import simpleeval
-from simpleeval import simple_eval
-from typing import Optional
 import math
 
-
-def isfloat(input):
-    try:
-        float(input)
-    except:
-        return False
-    else:
-        return True
+from simpleeval import simple_eval
+from typing import Optional
+from discord.ext import commands, tasks
+from .utils.utils import isfloat
 
 
 class Calculator(discord.ui.View):

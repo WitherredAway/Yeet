@@ -13,11 +13,6 @@ from typing import Type, TypeVar
 T = TypeVar("T", bound="Term")
 
 
-def invert_dict(dict: typing.Dict) -> typing.Dict:
-    inverted_dict = {value: key for key, value in dict.items()}
-    return inverted_dict
-
-
 class TermSelectMenu(discord.ui.Select):
     def __init__(self, entries, bot: slash.Bot):
         super().__init__(placeholder="Jump to definition", row=0)

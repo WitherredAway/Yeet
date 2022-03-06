@@ -1,12 +1,13 @@
 import discord
-from discord.ext import commands, tasks
-from main import *
 import re
 import itertools
 import emojis
-import asyncio
-from typing import Optional, Union
 import copy
+import asyncio
+
+from typing import Optional, Union
+from discord.ext import commands, tasks
+from .utils.utils import invert_dict
 
 row_alpha = [
     "🇦",
@@ -73,6 +74,8 @@ class DrawButtons(discord.ui.View):
         self.final_cell = (None, None)
         self.final_row = self.final_cell[0]
         self.final_col = self.final_cell[1]
+        self.inv_cur_cle = invert_dict(self.cur_cle)
+
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user != self.ctx.author:
@@ -193,12 +196,9 @@ class DrawButtons(discord.ui.View):
         "⬛": "⚫",
         "⬜": "⚪",
     }
-
+    
     def find_key(self, value):
-        for key, val in self.cur_cle.items():
-            if val == value:
-                return key
-        return value
+        return self.inv_cur_cle.get(value, value)
 
     def clear_cursors(self):
         for cell_tuple in self.cells:
