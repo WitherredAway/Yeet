@@ -83,7 +83,7 @@ class Useful(commands.Cog):
         name="start",
         aliases=["s"],
         brief="Starts timer.",
-        help=f"Sets a timer for <seconds> and counts down from it(max {round(max_time/60, 2)}mins or {max_time}seconds). One timer per user at a time. Stop a running timer by using the {prefix}timer stop command.",
+        help=f"Sets a timer for <seconds> and counts down from it(max {round(max_time/60, 2)}mins or {max_time}seconds). One timer per user at a time.",
     )
     @commands.max_concurrency(1, per=commands.BucketType.user, wait=False)
     async def _timer_start(self, ctx, seconds: int):
