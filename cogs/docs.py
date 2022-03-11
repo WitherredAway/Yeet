@@ -11,7 +11,6 @@ import lxml.etree as etree
 from discord.ext import commands, menus
 from .utils import fuzzy
 from collections import Counter
-from main import *
 from typing import Optional, Tuple
 from .utils.paginator import BotPages
 
@@ -50,9 +49,10 @@ class SphinxObjectFileReader:
 
 
 class DocsPageSource(menus.ListPageSource):
-    def __init__(self, entries: Tuple, *, per_page: int):
+    def __init__(self, bot, entries: Tuple, *, per_page: int):
         super().__init__(entries, per_page=per_page)
-        self.embed = bot.Embed()
+        self.bot = bot
+        self.embed = self.bot.Embed()
 
     async def format_page(self, menu, entries):
         self.embed.clear_fields()
@@ -71,6 +71,8 @@ class DocsPageSource(menus.ListPageSource):
 
 
 class Documentations(commands.Cog):
+    """Documentation command for python and discord.py"""
+
     def __init__(self, bot):
         self.bot = bot
 
@@ -184,12 +186,13 @@ class Documentations(commands.Cog):
         if len(matches) == 0:
             return await ctx.send("Could not find anything. Sorry.")
 
-        formatter = DocsPageSource(matches, per_page=8)
+        formatter = DocsPageSource(self.bot, matches, per_page=8)
         menu = BotPages(formatter, ctx=ctx)
         await menu.start()
 
     @commands.group(
-        aliases=["rtfd", "rtfm", "doc", "documentation", "documentations"], invoke_without_command=True
+        aliases=["rtfd", "rtfm", "doc", "documentation", "documentations"],
+        invoke_without_command=True,
     )
     async def docs(self, ctx, *, obj: str = None):
         """Gives you a documentation link for a discord.py entity.
