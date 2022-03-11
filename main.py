@@ -1,11 +1,14 @@
 import os
 import discord
+import requests
+
 from keep_alive import keep_alive
 from discord.ext import commands
-import requests
 
 
 COMMAND_COOLDOWN = 2  # seconds
+
+TOKEN = os.getenv("botTOKEN")
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -31,6 +34,11 @@ class Bot(commands.Bot):
         self.activity = discord.Game(f"{self.PREFIXES[0]}help")
         self.status = discord.Status.online
 
+        self.load_extension("jishaku")
+        for filename in os.listdir("./cogs"):
+            if filename.endswith(".py"):
+                self.load_extension(f"cogs.{filename[:-3]}")
+
     class Embed(discord.Embed):
         def __init__(self, **kwargs):
             self.EMBED_COLOUR = 0xF1C40F
@@ -46,21 +54,10 @@ bot = Bot(
     intents=intents,
 )
 
-prefix = bot.PREFIX
-bot.load_extension("jishaku")
-for filename in os.listdir("./cogs"):
-    if filename.endswith(".py"):
-        bot.load_extension(f"cogs.{filename[:-3]}")
-
-global TOKEN
-TOKEN = os.getenv("botTOKEN")
-
-# keep_alive()
-# bot.run(TOKEN)
-try:
-    r = requests.head(url="https://discord.com/api/v1")
+r = requests.head(url="https://discord.com/api/v1")
+if r.headers.get("Retry-After", None):
     print(f"Rate limit {round(int(r.headers['Retry-After']) / 60, 2)} minutes left")
-except Exception as e:
-    print("No rate limit")
+else:
+    print(f"No rate limit.")
     keep_alive()
     bot.run(TOKEN)
