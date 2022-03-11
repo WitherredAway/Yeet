@@ -1,5 +1,4 @@
 from __future__ import annotations
-from main import *
 from discord.ext import commands, menus
 from .utils import checks, formats, time
 from .utils.paginator import BotPages
@@ -37,30 +36,30 @@ class FrontPageSource(menus.PageSource):
         )
 
         if self.index == 0:
-            cog_names = sorted(bot.cogs.keys())
+            cog_names = sorted(self.bot.cogs.keys())
             for cog_name in cog_names:
-                cog = bot.cogs[cog_name]
-                try:
-                    if cog.hidden:
-                        continue
-                except:
-                    pass
+                cog = self.bot.cogs[cog_name]
+                cog_commands = sorted(
+                    cog.get_commands(), key=lambda x: x.qualified_name
+                )
+                if any((getattr(cog, "hidden", False), len(cog_commands) == 0)):
+                    continue
                 description = (
                     cog.description.split("\n", 1)[0] or "No description found."
                 )
                 emoji = getattr(cog, "display_emoji", "🟡")
-                commandz = []
-                for command in cog.get_commands():
+                category_commands = []
+                for command in cog_commands:
                     if not command.hidden:
                         com = command.qualified_name
                         com_src = source(self, command=com)
-                        commandz.append(
+                        category_commands.append(
                             f"**[{com}]({com_src})**{(' (' + str(len(command.commands)) + ')') if isinstance(command, commands.Group) else ''}: {command.brief or command.description or 'No description found.'}"
                         )
 
                 embed.add_field(
                     name=f"{emoji} **{cog.qualified_name}**: {description}",
-                    value=f"{self.new_line.join(commandz) or 'No commands found.'}",
+                    value=f"{self.new_line.join(category_commands)}",
                 )
 
         elif self.index == 1:
@@ -94,20 +93,23 @@ class FrontPageSource(menus.PageSource):
 
 
 class GroupHelpPageSource(menus.ListPageSource):
-    def is_paginating(self) -> bool:
-        return True
-
     def __init__(
         self,
+        ctx,
         group: Union[commands.Group, commands.Cog],
         _commands: List[commands.Command],
         *,
         prefix: str,
     ):
-        super().__init__(entries=_commands, per_page=6)
-        self.bot = bot
+        super().__init__(entries=_commands, per_page=8)
+        self.entries = _commands
+        self.ctx = ctx
+        self.bot = self.ctx.bot
         self.group = group
         self.prefix = prefix
+
+    def is_paginating(self) -> bool:
+        return len(self.entries) > self.per_page
 
     async def format_page(self, menu, _commands):
         embed = self.bot.Embed()
@@ -116,9 +118,9 @@ class GroupHelpPageSource(menus.ListPageSource):
         if isinstance(self.group, commands.Group):
             self.title = (
                 f"`{self.prefix}`"
-                + PaginatedHelpCommand.get_command_signature(self, self.group)
+                + PaginatedHelpCommand.get_command_signature(self.group)
             )
-            bs = '\_'
+            bs = "\_"
             self.description = f"""
 **Category**
 `{self.group.cog_name if self.group.cog else 'None'}`
@@ -130,54 +132,137 @@ class GroupHelpPageSource(menus.ListPageSource):
 {self.group.help if self.group.help else 'No help found.'}
             """
             embed.set_footer(
-                text=f'Page {menu.current_page + 1}/{maximum} ({(no_commands := len(self.entries))} {"subcommand" if no_commands <= 1 else "subcommands"})'
+                text=f"Do ,help <command> for more info on a command."
+                f'\nPage {menu.current_page + 1}/{maximum} ({(no_commands := len(self.entries))} {"subcommand" if no_commands <= 1 else "subcommands"})'
             )
-        elif isinstance(self.group, commands.Cog):
-            self.title = f'{self.group.qualified_name} Commands'
+        if isinstance(self.group, commands.Cog):
+            self.title = f"{self.group.qualified_name} Commands"
             self.description = (
                 self.group.description
                 if self.group.description
                 else self.group.help
-                if self.group.help
+                if getattr(self.group, "help", None)
                 else "No description found."
             )
             embed.set_footer(
-                text=f'Do ,help <command> for more info on a command.'
-                     f'\nPage {menu.current_page + 1}/{maximum} ({(no_commands := len(self.entries))} {"command" if no_commands <= 1 else "commands"})'
+                text=f"Do ,help <command> for more info on a command."
+                f'\nPage {menu.current_page + 1}/{maximum} ({(no_commands := len(self.entries))} {"command" if no_commands <= 1 else "commands"})'
             )
+
         embed.title = self.title
         embed.description = self.description
 
+        value = []
         for command in _commands:
             # signature = f"{self.prefix}{PaginatedHelpCommand.get_command_signature(self, command)}"
             # value = f">>> **Category**: `{command.cog_name if command.cog else 'None'}`\n\n**Description**: {command.description if command.description else 'No description found.'}\n\n**Help**: {command.help if command.help else 'No help found.'}"
-            signature = f"`{self.prefix}`" + PaginatedHelpCommand.get_command_signature(
-                self, command
+            signature = (
+                f"`{self.prefix}`{PaginatedHelpCommand.get_command_signature(command)}"
             )
-            value = f"> {command.description if command.description else command.help if command.help else 'No description found.'}"
+            desc = (
+                command.brief
+                if command.brief
+                else command.description.split("\n")[0]
+                if command.description
+                else command.help.split("\n")[0]
+                if command.help
+                else "No brief description found."
+            )
             if isinstance(command, commands.Group):
                 com_names = sorted([com.name for com in command.commands])
-                value += "\n> **Subcommands**: `" + "` • `".join(com_names) + "`"
-            embed.add_field(name=signature, value=value, inline=False)
+                desc += "\n⌙ **subcommands**: `" + "` - `".join(com_names) + "`"
+            # embed.add_field(name=signature, value=value, inline=False)
+            value.append(f"• {signature} - {desc}")
 
-
+        embed.add_field(
+            name="Commands" if isinstance(self.group, commands.Cog) else "Subcommands",
+            value="\n\n".join(value),
+            inline=False,
+        )
         return embed
+
+
+class CommandSelectMenu(discord.ui.Select):
+    def __init__(
+        self,
+        ctx,
+        commands: List[commands.Command],
+    ):
+        super().__init__(
+            custom_id="cmd_select",
+            placeholder="Select a command...",
+            min_values=1,
+            max_values=1,
+        )
+        self.commands = list(commands)[:25]
+        self.ctx = ctx
+        self.context = self.ctx
+        self.bot = self.ctx.bot
+        self.__fill_options()
+
+    def __fill_options(self) -> None:
+        self.add_option(
+            label="Index",
+            emoji="⭕",
+            value="__command_index",
+            description="Initial page of the parent command.",
+        )
+
+        for command in self.commands:
+            description = f"{command.description[:50] or command.help[:50] or None}..."
+            emoji = getattr(command.cog, "display_emoji", "🟡")
+            self.add_option(
+                label=command.qualified_name,
+                value=command.qualified_name,
+                description=description,
+                emoji=emoji,
+            )
+
+    async def callback(self, interaction: discord.Interaction):
+        assert self.view is not None
+        value = self.values[0]
+        if value == "__command_index":
+            await self.view.rebind(self.view.initial_source, interaction)
+        else:
+            command = self.bot.get_command(value)
+            if command is None:
+                await interaction.response.send_message(
+                    "Somehow this command does not exist?", ephemeral=True
+                )
+                return
+
+            if isinstance(command, commands.Group):
+                source = GroupHelpPageSource(
+                    self.ctx,
+                    command,
+                    list(command.commands),
+                    prefix=self.view.ctx.clean_prefix,
+                )
+                await self.view.rebind(source, interaction)
+            else:
+                embed = self.bot.Embed()
+                PaginatedHelpCommand.common_command_formatting(self, embed, command)
+                await interaction.response.edit_message(embed=embed, view=self.view)
 
 
 class HelpSelectMenu(discord.ui.Select["HelpMenu"]):
     def __init__(
         self,
+        ctx,
         commands: Dict[commands.Cog, List[commands.Command]],
-        bot: slash.Bot,
+        cmd_select: bool = False,
     ):
         super().__init__(
+            custom_id="cat_select",
             placeholder="Select a category...",
             min_values=1,
             max_values=1,
             row=0,
         )
         self.commands = commands
-        self.bot = bot
+        self.ctx = ctx
+        self.bot = self.ctx.bot
+        self.cmd_select = cmd_select
         self.__fill_options()
 
     def __fill_options(self) -> None:
@@ -206,6 +291,9 @@ class HelpSelectMenu(discord.ui.Select["HelpMenu"]):
         if value == "__index":
             index = FrontPageSource()
             index.bot = self.bot
+            for idx, item in enumerate(self.view.children):
+                if isinstance(item, CommandSelectMenu):
+                    self.view.remove_item(item)
             await self.view.rebind(index, interaction)
         else:
             cog = self.bot.get_cog(value)
@@ -222,21 +310,46 @@ class HelpSelectMenu(discord.ui.Select["HelpMenu"]):
                 )
                 return
 
+            for idx, item in enumerate(self.view.children):
+                if isinstance(item, CommandSelectMenu):
+                    self.view.remove_item(item)
+                    self.view.add_item(CommandSelectMenu(self.view.ctx, commands))
+                    break
+            else:
+                self.view.add_categories_and_commands(self.commands, commands)
+
             source = GroupHelpPageSource(
-                cog, commands, prefix=self.view.ctx.clean_prefix
+                self.ctx, cog, commands, prefix=self.view.ctx.clean_prefix
             )
+            self.view.initial_source = source
             await self.view.rebind(source, interaction)
 
 
 class HelpMenu(BotPages):
     def __init__(self, source: menus.PageSource, ctx: commands.Context):
         super().__init__(source, ctx=ctx)
+        self.initial_source = source
 
     def add_categories(
         self, commands: Dict[commands.Cog, List[commands.Command]]
     ) -> None:
         self.clear_items()
-        self.add_item(HelpSelectMenu(commands, self.ctx.bot))
+        self.add_item(HelpSelectMenu(self.ctx, commands))
+        self.fill_items()
+
+    def add_commands(self, commands: List[commands.Command]) -> None:
+        self.clear_items()
+        self.add_item(CommandSelectMenu(self.ctx, commands))
+        self.fill_items()
+
+    def add_categories_and_commands(
+        self,
+        cogs_and_commands: Dict[commands.Cog, List[commands.Command]],
+        commands: List[commands.Command],
+    ) -> None:
+        self.clear_items()
+        self.add_item(HelpSelectMenu(self.ctx, cogs_and_commands, cmd_select=True))
+        self.add_item(CommandSelectMenu(self.ctx, commands))
         self.fill_items()
 
     async def rebind(
@@ -267,7 +380,7 @@ class PaginatedHelpCommand(commands.HelpCommand):
                 
                 Do `help <command>` to view the help of a specific command
                 Do `help <category/cog>` (case-sensitive) to view help of a specific category or cog.
-                """
+                """,
             }
         )
 
@@ -282,11 +395,12 @@ class PaginatedHelpCommand(commands.HelpCommand):
 
             await ctx.send(str(error.original))
 
-    def get_command_signature(self, command):
+    @staticmethod
+    def get_command_signature(command):
         parent = command.full_parent_name
         if len(command.aliases) > 0:
             aliases = "/".join(command.aliases)
-            fmt = f"[**{command.name}**|{aliases}]"
+            fmt = f"[**{command.name}**/{aliases}]"
             if parent:
                 fmt = f"{parent} {fmt}"
             alias = fmt
@@ -307,25 +421,27 @@ class PaginatedHelpCommand(commands.HelpCommand):
 
         all_commands: Dict[commands.Cog, List[commands.Command]] = {}
         for name, children in itertools.groupby(entries, key=key):
-            if name == "\U0010ffff":
+            children = sorted(children, key=lambda c: c.qualified_name)
+            if any((name == "\U0010ffff", len(children) == 0)):
                 continue
 
             cog = bot.get_cog(name)
-            all_commands[cog] = sorted(children, key=lambda c: c.qualified_name)
+            all_commands[cog] = children
 
         initial = FrontPageSource()
         initial.bot = self.context.bot
         menu = HelpMenu(initial, ctx=self.context)
         menu.add_categories(all_commands)
         await menu.start()
-    
+
     async def send_cog_help(self, cog):
         # cog help
         cog_commands = await self.filter_commands(cog.get_commands(), sort=True)
-        menu = HelpMenu(
-            GroupHelpPageSource(cog, cog_commands, prefix=self.context.clean_prefix),
-            ctx=self.context
+        source = GroupHelpPageSource(
+            self.context, cog, cog_commands, prefix=self.context.clean_prefix
         )
+        menu = HelpMenu(source, ctx=self.context)
+        menu.initial_source = source
 
         # for the selectmenu
         bot = self.context.bot
@@ -340,23 +456,22 @@ class PaginatedHelpCommand(commands.HelpCommand):
 
         all_commands_dict: Dict[commands.Cog, List[commands.Command]] = {}
         for name, children in itertools.groupby(all_commands_list, key=key):
-            if name == "\U0010ffff":
+            children = sorted(children, key=lambda c: c.qualified_name)
+            if any((name == "\U0010ffff", len(children) == 0)):
                 continue
 
             cog = bot.get_cog(name)
-            all_commands_dict[cog] = sorted(children, key=lambda c: c.qualified_name)
-        menu.add_categories(all_commands_dict)
+            all_commands_dict[cog] = children
 
+        menu.add_categories_and_commands(all_commands_dict, cog_commands)
         # start the menu
         await menu.start()
 
     def common_command_formatting(self, embed_like, command):
-        embed_like.title = (
-            f"`{self.context.prefix}`{self.get_command_signature(command)}"
-        )
+        embed_like.title = f"`{self.context.prefix}`{PaginatedHelpCommand.get_command_signature(command)}"
         embed_like.add_field(
-            name="Category",
-            value=f"`{command.cog_name if command.cog else 'None'}`",
+            name="Help",
+            value=f"{command.help if command.help else 'No help found.'}",
             inline=False,
         )
         embed_like.add_field(
@@ -365,8 +480,8 @@ class PaginatedHelpCommand(commands.HelpCommand):
             inline=False,
         )
         embed_like.add_field(
-            name="Help",
-            value=f"{command.help if command.help else 'No help found.'}",
+            name="Category",
+            value=f"`{command.cog_name if command.cog else 'None'}`",
             inline=False,
         )
 
@@ -384,10 +499,13 @@ class PaginatedHelpCommand(commands.HelpCommand):
         if len(entries) == 0:
             return await self.send_command_help(group)
 
-        source = GroupHelpPageSource(group, entries, prefix=self.context.clean_prefix)
+        source = GroupHelpPageSource(
+            self.context, group, entries, prefix=self.context.clean_prefix
+        )
         # self.common_command_formatting(source, group)
         menu = HelpMenu(source, ctx=self.context)
-        # await self.context.release()
+        # menu.initial_source = source
+        menu.add_commands(subcommands)
         await menu.start()
 
 
@@ -526,18 +644,20 @@ class Help(commands.Cog):
         e.add_field(name="Denied", value="\n".join(denied))
         await ctx.send(embed=e)
 
-    @commands.command(brief="Shows a member's permissions in a channel")
-    @commands.guild_only()
-    async def permissions(
-        self, ctx, member: discord.Member = None, channel: discord.TextChannel = None
-    ):
-        """Shows a member's permissions in a specific channel.
+    @commands.command(
+        brief="Shows a member's permissions in a channel",
+        help="""Shows a member's permissions in a specific channel.
 
         If no channel is given then it uses the current one.
 
         You cannot use this in private messages. If no member is given then
         the info returned will be yours.
-        """
+        """,
+    )
+    @commands.guild_only()
+    async def permissions(
+        self, ctx, member: discord.Member = None, channel: discord.TextChannel = None
+    ):
         channel = channel or ctx.channel
         if member is None:
             member = ctx.author
@@ -547,17 +667,18 @@ class Help(commands.Cog):
     @commands.command(
         name="source",
         aliases=("src",),
+        brief="Displays the source code of a command.",
         description="""
         Displays the full source code or for a specific command of the bot.
 
         Code taken from [Robodanny](https://github.com/Rapptz/RoboDanny).
-        """
+        """,
     )
-    async def source(self, ctx, *, command: str=None):
+    async def source(self, ctx, *, command: str = None):
         """
         To display the source code of a subcommand you can separate it by periods, e.g. timer.start for the start subcommand of the timer command or by spaces.
         """
-        
+
         # use the imported source function from utils/source.py
         final_url = source(self, command=command)
         await ctx.send(final_url)
