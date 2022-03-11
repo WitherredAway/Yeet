@@ -2,27 +2,24 @@
 name = "yeet"
 version = "0.1.0"
 description = ""
-authors = ["Your Name <you@example.com>"]
+authors = ["Witherr <you@example.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.8"
 flask = "^2.0.0"
-replit = "3.2.0"
-helpers = "^0.2.0"
+replit = "^3.2.0"
 jishaku = "^2.3.0"
 durations-nlp = "^1.0.1"
-utils = "^1.0.1"
 wikipedia = "^1.4.0"
 "discord.py" = {git = "https://github.com/Rapptz/discord.py"}
 discord-ext-menus = {git = "https://github.com/Rapptz/discord-ext-menus"}
-parsedatetime = "^2.6"
-lxml = "^4.6.4"
 typing-extensions = "^3.7.4.3"
 simpleeval = "^0.9.11"
 emojis = "^0.6.0"
-google = "^3.0.0"
 pandas = "^1.4.0"
 black = "^22.1.0"
+parsedatetime = "^2.6"
+lxml = "^4.8.0"
 
 [tool.poetry.dev-dependencies]
 
