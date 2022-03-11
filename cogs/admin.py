@@ -108,7 +108,6 @@ class Admin(commands.Cog):
                             cog_ext[5:] if cog_ext.startswith("cogs.") else cog_ext
                         )
                         cogs.append(f"\n🔁 Reloaded cog `{cog_name}`")
-                    await self.bot.sync_commands()
                     await ctx.send(", ".join(cogs))
                 except Exception as e:
                     raise e
@@ -118,7 +117,6 @@ class Admin(commands.Cog):
                 except commands.ExtensionNotLoaded:
                     await ctx.send(f":x: Cog `{cog}` not found.")
                 else:
-                    await self.bot.sync_commands()
                     await ctx.send(f":repeat: Reloaded cog `{cog}`")
         except Exception as e:
             raise e
@@ -133,10 +131,7 @@ class Admin(commands.Cog):
         help="Lists all cogs, dev only command.",
     )
     async def _all(self, ctx):
-        extlist = self.bot.Embed(
-            title="Cogs",
-            description="List of all enabled cogs"
-        )
+        extlist = self.bot.Embed(title="Cogs", description="List of all enabled cogs")
 
         for ext in bot.extensions:
             extn = (
