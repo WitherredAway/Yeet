@@ -508,7 +508,7 @@ class PaginatedHelpCommand(commands.HelpCommand):
         # self.common_command_formatting(source, group)
         menu = HelpMenu(source, ctx=self.context)
         # menu.initial_source = source
-        menu.add_commands(subcommands)
+        menu.add_commands(entries)
         await menu.start()
 
 
