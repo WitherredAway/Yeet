@@ -20,6 +20,7 @@ pandas = "^1.4.0"
 black = "^22.1.0"
 parsedatetime = "^2.6"
 lxml = "^4.8.0"
+humanize = "^4.0.0"
 
 [tool.poetry.dev-dependencies]
 
