@@ -303,7 +303,10 @@ class HelpSelectMenu(discord.ui.Select["HelpMenu"]):
                 )
                 return
 
-            commands = self.commands[cog]
+            commands = [
+                command for command in self.commands[cog]
+                if not command.hidden
+            ]
             if not commands:
                 await interaction.response.send_message(
                     "This category has no commands for you", ephemeral=True

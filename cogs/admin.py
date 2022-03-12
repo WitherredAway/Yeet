@@ -14,8 +14,7 @@ class Admin(commands.Cog):
     @commands.command(
         name="togglecommand",
         aliases=["tc"],
-        description="Enable or disable a command.",
-        hidden=True,
+        description="Enable or disable a command."
     )
     @commands.is_owner()
     async def toggle(self, ctx, *, command):
