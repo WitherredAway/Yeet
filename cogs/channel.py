@@ -1,6 +1,7 @@
 import discord
 import asyncio
 import textwrap
+import re
 
 from discord.ext import commands, menus
 from .utils.paginator import BotPages
@@ -87,6 +88,7 @@ class Channel(commands.Cog):
         case_insensitive=True,
     )
     async def _keyword(self, ctx, *, keyword):
+        keyword = keyword.replace(" ", "-")
         top_msg = f"Channels with `{keyword}` in the name"
         channels = [channel for channel in ctx.guild.text_channels if keyword in channel.name]
         source = ChannelPageSource(ctx, channels, top_msg, per_page=50)
@@ -102,22 +104,21 @@ class Channel(commands.Cog):
         case_insensitive=True,
     )
     async def _starts_with(self, ctx, *, phrase):
-        key = phrase
-        top_msg = f"Channels with last message starting with `{key}`"
+        key = re.compile(phrase.lower())
+        top_msg = f"Channels with last message starting with `{key.pattern}`"
         channels = []
         async with ctx.channel.typing():
             for channel in ctx.guild.text_channels:
                 async for message in channel.history(limit=1):
-                    message_content = message.content.lower()
+                    message_content = message.content
                     if len(message.embeds) > 0:
                         if len(message.embeds[0].title) > 0:
-                            message_content = message.embeds[0].title.lower()
+                            message_content = message.embeds[0].title
                         elif len(message.embeds[0].author) > 0:
-                            message_content = message.embeds[0].author.lower()
+                            message_content = message.embeds[0].author
                         elif len(message.embeds[0].description) > 0:
-                            message_content = message.embeds[0].description.lower()
-
-                    if message_content.startswith(key.lower()):
+                            message_content = message.embeds[0].description
+                    if key.search(message_content.lower()):
                         channels.append(channel)
         
         source = ChannelPageSource(ctx, channels, top_msg, per_page=50)
