@@ -1,8 +1,9 @@
 import discord
-from discord.ext import commands
-from main import *
 import asyncio
 import datetime
+import humanize
+
+from discord.ext import commands
 
 
 class Bot(commands.Cog):
@@ -123,13 +124,26 @@ class Bot(commands.Cog):
     # ping
     @commands.command(
         name="ping",
-        brief="Bot's latency",
+        brief="Bot's latency.",
         help="Responds with 'Pong!' and the bot's latency",
     )
     async def ping(self, ctx):
         message = await ctx.send("Pong!")
         ms = int((message.created_at - ctx.message.created_at).total_seconds() * 1000)
         await message.edit(content=f"Pong! {ms} ms")
+
+    # uptime
+    @commands.command(
+        name="uptime",
+        brief="Bot's uptime.",
+        help="Shows how long it has been since the bot last went offline."
+    )
+    async def uptime(self, ctx):
+        embed = self.bot.Embed(
+            title="Bot's uptime",
+            description=f"The bot has been up for `{humanize.precisedelta(datetime.datetime.utcnow() - self.bot.uptime)}`."
+        )
+        await ctx.send(embed=embed)
 
     # invite
     @commands.command(
