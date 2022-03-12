@@ -37,7 +37,7 @@ class Bot(commands.Bot):
         self.activity = discord.Game(f"{self.PREFIXES[0]}help")
         self.status = discord.Status.online
 
-        self.load_extension("jishaku")
+        #self.load_extension("jishaku")
         for filename in os.listdir("./cogs"):
             if filename.endswith(".py"):
                 self.load_extension(f"cogs.{filename[:-3]}")
