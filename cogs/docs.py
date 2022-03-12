@@ -49,9 +49,10 @@ class SphinxObjectFileReader:
 
 
 class DocsPageSource(menus.ListPageSource):
-    def __init__(self, bot, entries: Tuple, *, per_page: int):
+    def __init__(self, ctx, entries: Tuple, *, per_page: int):
         super().__init__(entries, per_page=per_page)
-        self.bot = bot
+        self.ctx = ctx
+        self.bot = self.ctx.bot
         self.embed = self.bot.Embed()
 
     async def format_page(self, menu, entries):
@@ -186,7 +187,7 @@ class Documentations(commands.Cog):
         if len(matches) == 0:
             return await ctx.send("Could not find anything. Sorry.")
 
-        formatter = DocsPageSource(self.bot, matches, per_page=8)
+        formatter = DocsPageSource(ctx, matches, per_page=8)
         menu = BotPages(formatter, ctx=ctx)
         await menu.start()
 
