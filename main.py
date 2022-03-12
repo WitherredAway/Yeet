@@ -2,6 +2,8 @@ import os
 import discord
 import requests
 import json
+import datetime
+import humanize
 
 from keep_alive import keep_alive
 from discord.ext import commands
@@ -31,7 +33,7 @@ class Bot(commands.Bot):
         super().__init__(**kwargs)
 
         self.LOG_CHANNEL = 837542790119686145
-
+        self.uptime = datetime.datetime.utcnow()
         self.activity = discord.Game(f"{self.PREFIXES[0]}help")
         self.status = discord.Status.online
 
