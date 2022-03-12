@@ -1,6 +1,7 @@
 import os
 import discord
 import requests
+import json
 
 from keep_alive import keep_alive
 from discord.ext import commands
@@ -23,7 +24,7 @@ def get_prefix(bot, message):
 
 
 class Bot(commands.Bot):
-    PREFIXES = [",", "_", ">>"]
+    PREFIXES = json.loads(os.getenv("PREFIXES"))
     PREFIX = PREFIXES[0]
 
     def __init__(self, **kwargs):
