@@ -132,7 +132,7 @@ class GroupHelpPageSource(menus.ListPageSource):
 {self.group.help if self.group.help else 'No help found.'}
             """
             embed.set_footer(
-                text=f"Do ,help <command> for more info on a command."
+                text=f"Do {self.ctx.clean_prefix}help <command> for more info on a command."
                 f'\nPage {menu.current_page + 1}/{maximum} ({(no_commands := len(self.entries))} {"subcommand" if no_commands <= 1 else "subcommands"})'
             )
         if isinstance(self.group, commands.Cog):
@@ -145,7 +145,7 @@ class GroupHelpPageSource(menus.ListPageSource):
                 else "No description found."
             )
             embed.set_footer(
-                text=f"Do ,help <command> for more info on a command."
+                text=f"Do {self.ctx.clean_prefix}help <command> for more info on a command."
                 f'\nPage {menu.current_page + 1}/{maximum} ({(no_commands := len(self.entries))} {"command" if no_commands <= 1 else "commands"})'
             )
 
