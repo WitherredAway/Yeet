@@ -1,9 +1,46 @@
 import discord
-from discord.ext import commands
-from main import *
 import asyncio
-from typing import Optional, Union
 import textwrap
+
+from discord.ext import commands, menus
+from .utils.paginator import BotPages
+from typing import Optional, Union, Tuple
+
+
+class ChannelPageSource(menus.ListPageSource):
+    def __init__(self, ctx, entries: Tuple, top_msg: str, *, per_page: int):
+        super().__init__(entries, per_page=per_page)
+        self.ctx = ctx
+        self.bot = self.ctx.bot
+        self.entries = entries
+        self.top_msg = top_msg
+        self.per_page = per_page
+        self.embed = self.bot.Embed()
+
+    async def format_page(self, menu, entries):
+        self.embed.clear_fields()
+        self.embed.title = self.top_msg
+        self.embed.description = (
+            (
+                "\n".join(
+                [
+                    f"{idx + 1 + (self.per_page * menu.current_page)}. {channel.mention} - **{channel.name}**"
+                    for idx, channel in enumerate(entries)
+                ]
+                )
+                if len(entries) > 0
+                else "None"
+            )
+        )
+
+        maximum = self.get_max_pages()
+        if maximum > 1:
+            text = (
+                f"Page {menu.current_page + 1}/{maximum} ({len(self.entries)} channels)"
+            )
+            self.embed.set_footer(text=text)
+
+        return self.embed
 
 
 class Channel(commands.Cog):
@@ -44,34 +81,17 @@ class Channel(commands.Cog):
     # keyword
     @_list.command(
         name="keyword",
-        aliases=["k"],
+        aliases=["k", "kw"],
         brief="Lists all channels with 'keyword' in the name",
         help="Lists all channels with 'keyword' in the name of the channel.",
         case_insensitive=True,
     )
     async def _keyword(self, ctx, *, keyword):
-        msg = f"Channels with `{keyword}` in name:"
-        num = 0
-        for channel in ctx.guild.text_channels:
-            if keyword in channel.name:
-                msg += f"\n{channel.mention} - **{channel.name}**"
-                num += 1
-        if num == 0:
-            msg += "\n**None**"
-        msg += f"\n\nTotal number of channels = **{num}**"
-        for para in textwrap.wrap(
-            msg,
-            2000,
-            expand_tabs=False,
-            replace_whitespace=False,
-            fix_sentence_endings=False,
-            break_long_words=False,
-            drop_whitespace=False,
-            break_on_hyphens=False,
-            max_lines=None,
-        ):
-            await ctx.send(para)
-            await asyncio.sleep(0.5)
+        top_msg = f"Channels with `{keyword}` in the name"
+        channels = [channel for channel in ctx.guild.text_channels if keyword in channel.name]
+        source = ChannelPageSource(ctx, channels, top_msg, per_page=50)
+        menu = BotPages(source, ctx=ctx)
+        await menu.start()
 
     # startswith
     @_list.command(
@@ -83,42 +103,27 @@ class Channel(commands.Cog):
     )
     async def _starts_with(self, ctx, *, phrase):
         key = phrase
-        msg = f"Channels with last message starting with `{key}`:"
-        num = 0
-        wait = await ctx.send(f"Looking for messages starting with `{key}`...")
-        for channel in ctx.guild.text_channels:
-            async for message in channel.history(limit=1):
-                message_content = message.content.lower()
-                if len(message.embeds) > 0:
-                    if len(message.embeds[0].title) > 0:
-                        message_content = message.embeds[0].title.lower()
-                    elif len(message.embeds[0].author) > 0:
-                        message_content = message.embeds[0].author.lower()
-                    elif len(message.embeds[0].description) > 0:
-                        message_content = message.embeds[0].description.lower()
+        top_msg = f"Channels with last message starting with `{key}`"
+        channels = []
+        async with ctx.channel.typing():
+            for channel in ctx.guild.text_channels:
+                async for message in channel.history(limit=1):
+                    message_content = message.content.lower()
+                    if len(message.embeds) > 0:
+                        if len(message.embeds[0].title) > 0:
+                            message_content = message.embeds[0].title.lower()
+                        elif len(message.embeds[0].author) > 0:
+                            message_content = message.embeds[0].author.lower()
+                        elif len(message.embeds[0].description) > 0:
+                            message_content = message.embeds[0].description.lower()
 
-                if message_content.startswith(key.lower()):
-                    num += 1
-                    msg += f"\n**{num}.** {channel.mention} - **{channel.name}**"
-
-        if num == 0:
-            msg += "\n**None**"
-        msg += f"\n\nTotal number of channels = **{num}**"
-        for para in textwrap.wrap(
-            msg,
-            2000,
-            expand_tabs=False,
-            replace_whitespace=False,
-            fix_sentence_endings=False,
-            break_long_words=False,
-            drop_whitespace=False,
-            break_on_hyphens=False,
-            max_lines=None,
-        ):
-            await ctx.send(para)
-            await asyncio.sleep(0.5)
-        await wait.edit(content="✅ Done.")
-
+                    if message_content.startswith(key.lower()):
+                        channels.append(channel)
+        
+        source = ChannelPageSource(ctx, channels, top_msg, per_page=50)
+        menu = BotPages(source, ctx=ctx)
+        await menu.start()
+        
     # state
     @_list.command(
         name="state",
@@ -126,42 +131,27 @@ class Channel(commands.Cog):
         help="Lists all channels with 'send_messages' perms turned off/on for everyone.",
         case_insensitive=True,
     )
-    async def _state(self, ctx, state):
-        num = 0
-        if state.lower() == "locked":
-            msg = f"Channels that are `{state.lower()}`"
-            for channel in ctx.guild.text_channels:
-                overwrite = channel.overwrites_for(ctx.guild.default_role)
-                if overwrite.send_messages == False:
-                    msg += f"\n{channel.mention} - **{channel.name}**"
-                    num += 1
-        elif state.lower() == "unlocked":
-            msg = f"Channels that are `{state.lower()}`"
-            for channel in ctx.guild.text_channels:
-                overwrite = channel.overwrites_for(ctx.guild.default_role)
-                if overwrite.send_messages != False:
-                    msg += f"\n{channel.mention} - **{channel.name}**"
-                    num += 1
+    async def _state(self, ctx, state="locked"):
+        channels = []
+        states = {"locked": (False,), "unlocked": (True, None)}
+        for _state in states.keys():
+            if state.lower() in _state:
+                state = states[_state]
+                state_key = _state
+                break
         else:
             return await ctx.send(
-                "The 'state' argument must be 'locked' or 'unlocked'."
+                "The 'state' argument must be in 'locked' or 'unlocked'."
             )
-        if num == 0:
-            msg += "\n**None**"
-        msg += f"\n\nTotal number of channels = **{num}**"
-        for para in textwrap.wrap(
-            msg,
-            2000,
-            expand_tabs=False,
-            replace_whitespace=False,
-            fix_sentence_endings=False,
-            break_long_words=False,
-            drop_whitespace=False,
-            break_on_hyphens=False,
-            max_lines=None,
-        ):
-            await ctx.send(para)
-            await asyncio.sleep(0.5)
+        top_msg = f"Channels that are `{state_key.lower()}`"
+        for channel in ctx.guild.text_channels:
+            overwrite = channel.overwrites_for(ctx.guild.default_role)
+            if overwrite.send_messages in state:
+                channels.append(channel)
+
+        source = ChannelPageSource(ctx, channels, top_msg, per_page=50)
+        menu = BotPages(source, ctx=ctx)
+        await menu.start()
 
     # rename
     @commands.check_any(
