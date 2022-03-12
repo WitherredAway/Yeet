@@ -176,7 +176,7 @@ class GroupHelpPageSource(menus.ListPageSource):
 
         embed.add_field(
             name="Commands" if isinstance(self.group, commands.Cog) else "Subcommands",
-            value="\n\n".join(value),
+            value="\u200b"+"\n\n".join(value),
             inline=False,
         )
         return embed

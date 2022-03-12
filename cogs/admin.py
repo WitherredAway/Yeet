@@ -40,7 +40,6 @@ class Admin(commands.Cog):
         aliases=["c"],
         invoke_without_command=True,
         case_insensitive=True,
-        hidden=True,
         help="Commands related to cogs, dev only command.",
     )
     async def cog(self, ctx):
@@ -51,7 +50,6 @@ class Admin(commands.Cog):
     @cog.command(
         name="load",
         aliases=["l"],
-        hidden=True,
         brief="Load a cog",
         help="Loads a cog with the name, dev only command.",
     )
@@ -72,7 +70,6 @@ class Admin(commands.Cog):
     @cog.command(
         name="unload",
         aliases=["u"],
-        hidden=True,
         brief="Unloads a cog",
         help="Unloads a cog with the name, dev only command.",
     )
