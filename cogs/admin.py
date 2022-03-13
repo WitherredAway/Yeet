@@ -4,7 +4,8 @@ from main import *
 import asyncio
 
 
-class Admin(commands.Cog):
+class Dev(commands.Cog):
+    """Developer only category."""
     def __init__(self, bot):
         self.bot = bot
         self.hidden = True
@@ -129,7 +130,7 @@ class Admin(commands.Cog):
     async def _all(self, ctx):
         extlist = self.bot.Embed(title="Cogs", description="List of all enabled cogs")
 
-        for ext in bot.extensions:
+        for ext in self.bot.extensions:
             extn = (
                 ext.split(".")[1].capitalize()
                 if ext.startswith("cogs")
@@ -140,4 +141,4 @@ class Admin(commands.Cog):
 
 
 def setup(bot):
-    bot.add_cog(Admin(bot))
+    bot.add_cog(Dev(bot))
