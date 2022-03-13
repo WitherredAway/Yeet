@@ -26,7 +26,7 @@ class Bot(commands.Cog):
                 url,
                 session=session
             )
-            await webhook.send(msg)
+            await webhook.send(embed=self.bot.Embed(title=msg))
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
