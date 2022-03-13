@@ -667,25 +667,6 @@ class Help(commands.Cog):
 
         await self.say_permissions(ctx, member, channel)
 
-    @commands.command(
-        name="source",
-        aliases=("src",),
-        brief="Displays the source code of a command.",
-        description="""
-        Displays the full source code or for a specific command of the bot.
-
-        Code taken from [Robodanny](https://github.com/Rapptz/RoboDanny).
-        """,
-    )
-    async def source(self, ctx, *, command: str = None):
-        """
-        To display the source code of a subcommand you can separate it by periods, e.g. timer.start for the start subcommand of the timer command or by spaces.
-        """
-
-        # use the imported source function from utils/source.py
-        final_url = source(self, command=command)
-        await ctx.send(final_url)
-
 
 def setup(bot):
     bot.add_cog(Help(bot))
