@@ -2,6 +2,8 @@ import discord
 import asyncio
 import datetime
 import humanize
+import aiohttp
+import os
 
 from discord.ext import commands
 
@@ -16,7 +18,15 @@ class Bot(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        print(f"Running.\n{self.bot.user}")
+        msg = f"Running.\n{self.bot.user}"
+        url = os.getenv("webhookURL")
+        print(msg)
+        async with aiohttp.ClientSession() as session:
+            webhook = discord.Webhook.from_url(
+                url,
+                session=session
+            )
+            await webhook.send(msg)
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
