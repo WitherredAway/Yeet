@@ -11,7 +11,7 @@ from typing import Counter, Union
 
 
 class Useful(commands.Cog):
-    """Useful commands"""
+    """Useful commands."""
 
     def __init__(self, bot):
         self.bot = bot

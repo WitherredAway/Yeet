@@ -548,6 +548,7 @@ def make_board(bg, height, width):
 
 
 class Draw(commands.Cog):
+    """Category with commands to bring out your inner artist."""
     def __init__(self, bot):
         self.bot = bot
 
@@ -558,8 +559,9 @@ class Draw(commands.Cog):
         name="draw",
         aliases=["drawing", "paint", "painting"],
         case_insensitive=True,
-        help="p",
-        description="p",
+        brief="Make pixel art on discord!",
+        help="wip",
+        description="Command which you can use to make pixel art using buttons and dropdown menus.",
         invoke_without_command=True,
     )
     async def draw(
@@ -587,7 +589,12 @@ class Draw(commands.Cog):
         view.response = response
         await view.wait()
 
-    @draw.command(name="copy")
+    @draw.command(
+        name="copy",
+        brief="Copy a drawing.",
+        help="Copy a drawing from an embed by replying to with message ID and channel.",
+        description="Allows you to copy a drawing that was done with the `draw` command."
+    )
     async def copy(
         self,
         ctx,

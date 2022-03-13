@@ -7,7 +7,7 @@ import os
 
 
 class Fun(commands.Cog):
-    """Fun commands."""
+    """Commands for fun."""
 
     def __init__(self, bot):
         self.bot = bot
