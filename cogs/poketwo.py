@@ -1,18 +1,17 @@
 import discord
 from discord.ext import commands
 import asyncio
-from main import *
 from typing import Counter, Union
 import wikipedia
 import random
 import pandas as pd
 import itertools
 
-
 class Poketwo(commands.Cog):
+    """Commands related to the poketwo bot."""
     def __init__(self, bot):
         self.bot = bot
-        self.pk = pd.read_csv("pokemon.csv")
+        self.pk = pd.read_csv("cogs/utils/poketwo.csv")
         self.possible_abundance = sum(
             [
                 self.pk.at[pkm, "abundance"]
