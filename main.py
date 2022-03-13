@@ -37,8 +37,6 @@ class Bot(commands.Bot):
         self.activity = discord.Game(f"{self.PREFIXES[0]}help")
         self.status = discord.Status.online
 
-        self.EMBED_COLOUR = 0xF1C40F
-
         #self.load_extension("jishaku")
         for filename in os.listdir("./cogs"):
             if filename.endswith(".py"):
@@ -46,6 +44,8 @@ class Bot(commands.Bot):
 
     class Embed(discord.Embed):
         def __init__(self, **kwargs):
+            self.EMBED_COLOUR = 0xF1C40F
+
             color = kwargs.pop("color", self.EMBED_COLOUR)
             super().__init__(**kwargs, color=color)
 
