@@ -394,14 +394,6 @@ optional = false
 python-versions = "*"
 
 [[package]]
-name = "pastebin"
-version = "1.1.2"
-description = "Python Pastebin API interaction object."
-category = "main"
-optional = false
-python-versions = "*"
-
-[[package]]
 name = "pathspec"
 version = "0.9.0"
 description = "Utility library for gitignore style pattern matching of file paths."
@@ -564,7 +556,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "ab9111fd47bc230aef38b2b20ce789bfdcdcb13e2655c99ee5b5752b486a0a82"
+content-hash = "0dd3b27369e6e6f1832a93cbc02900d8a4e25d985fccaaa5e15c42063c5e2d09"
 
 [metadata.files]
 aiohttp = [
@@ -1030,9 +1022,6 @@ pandas = [
 parsedatetime = [
     {file = "parsedatetime-2.6-py3-none-any.whl", hash = "sha256:cb96edd7016872f58479e35879294258c71437195760746faffedb692aef000b"},
     {file = "parsedatetime-2.6.tar.gz", hash = "sha256:4cb368fbb18a0b7231f4d76119165451c8d2e35951455dfee97c62a87b04d455"},
-]
-pastebin = [
-    {file = "Pastebin-1.1.2.tar.gz", hash = "sha256:ac7fb9cd9130a188cb1188186ab8f2607513f76ec599e78ed7c902ce816f116b"},
 ]
 pathspec = [
     {file = "pathspec-0.9.0-py2.py3-none-any.whl", hash = "sha256:7d15c4ddb0b5c802d161efc417ec1a2558ea2653c2e8ad9c19098201dc1c993a"},
