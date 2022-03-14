@@ -5,6 +5,7 @@ import asyncio
 
 class Dev(commands.Cog):
     """Developer only category."""
+
     def __init__(self, bot):
         self.bot = bot
         self.hidden = True
@@ -12,9 +13,7 @@ class Dev(commands.Cog):
     display_emoji = "⚒️"
 
     @commands.command(
-        name="togglecommand",
-        aliases=["tc"],
-        description="Enable or disable a command."
+        name="togglecommand", aliases=["tc"], description="Enable or disable a command."
     )
     @commands.is_owner()
     async def toggle(self, ctx, *, command):
@@ -140,4 +139,4 @@ class Dev(commands.Cog):
 
 
 async def setup(bot):
-   await bot.add_cog(Dev(bot))
+    await bot.add_cog(Dev(bot))

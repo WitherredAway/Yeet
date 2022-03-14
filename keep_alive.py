@@ -3,18 +3,18 @@ from threading import Thread
 import random
 
 
-app = Flask('')
+app = Flask("")
 
-@app.route('/')
+
+@app.route("/")
 def home():
-	return 'Im in!'
+    return "Im in!"
+
 
 def run():
-  app.run(
-		host='0.0.0.0',
-		port=random.randint(7000, 8000)
-	)
+    app.run(host="0.0.0.0", port=random.randint(7000, 8000))
+
 
 def keep_alive():
-	t = Thread(target=run)
-	t.start()
+    t = Thread(target=run)
+    t.start()

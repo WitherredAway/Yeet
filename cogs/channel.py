@@ -22,16 +22,14 @@ class ChannelPageSource(menus.ListPageSource):
         self.embed.clear_fields()
         self.embed.title = self.top_msg
         self.embed.description = (
-            (
-                "\n".join(
+            "\n".join(
                 [
                     f"{idx + 1 + (self.per_page * menu.current_page)}. {channel.mention} - **{channel.name}**"
                     for idx, channel in enumerate(entries)
                 ]
-                )
-                if len(entries) > 0
-                else "None"
             )
+            if len(entries) > 0
+            else "None"
         )
 
         maximum = self.get_max_pages()
@@ -90,7 +88,9 @@ class Channel(commands.Cog):
     async def _keyword(self, ctx, *, keyword):
         keyword = keyword.replace(" ", "-")
         top_msg = f"Channels with `{keyword}` in the name"
-        channels = [channel for channel in ctx.guild.text_channels if keyword in channel.name]
+        channels = [
+            channel for channel in ctx.guild.text_channels if keyword in channel.name
+        ]
         source = ChannelPageSource(ctx, channels, top_msg, per_page=50)
         menu = BotPages(source, ctx=ctx)
         await menu.start()
@@ -120,11 +120,11 @@ class Channel(commands.Cog):
                             message_content = message.embeds[0].description
                     if key.search(message_content.lower()):
                         channels.append(channel)
-        
+
         source = ChannelPageSource(ctx, channels, top_msg, per_page=50)
         menu = BotPages(source, ctx=ctx)
         await menu.start()
-        
+
     # state
     @_list.command(
         name="state",

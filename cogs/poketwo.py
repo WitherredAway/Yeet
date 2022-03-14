@@ -15,32 +15,46 @@ from constants import NEW_LINE
 
 class Poketwo(commands.Cog):
     """Commands related to the poketwo bot."""
+
     def __init__(self, bot):
         self.bot = bot
         self.pk = (pd.read_csv("cogs/utils/poketwo.csv")).fillna(0)
-        self.possible_abundance = round((self.pk['abundance'][self.pk['catchable'] > 0]).sum())
+        self.possible_abundance = round(
+            (self.pk["abundance"][self.pk["catchable"] > 0]).sum()
+        )
 
     display_emoji = "🫒"
 
-    async def format_msg(self, title: str, pokemon_dataframe: pd.DataFrame, *, list_pokemon: bool=True, pokemon_out_of: bool=True) -> str:
+    async def format_msg(
+        self,
+        title: str,
+        pokemon_dataframe: pd.DataFrame,
+        *,
+        list_pokemon: bool = True,
+        pokemon_out_of: bool = True,
+    ) -> str:
         pkm_df = pokemon_dataframe
-        total_abundance = round(pkm_df['abundance'].sum())
+        total_abundance = round(pkm_df["abundance"].sum())
 
         pokemon = []
         for pkm_idx, pkm_row in pkm_df.iterrows():
             pkm_per_cent = round(
-                pkm_row['abundance'] / self.possible_abundance * 100, 4
+                pkm_row["abundance"] / self.possible_abundance * 100, 4
             )
             pkm_out_of = round(1 / pkm_per_cent * 100)
             line = f"> **{pkm_row['name.en']}** - {pkm_per_cent}%"
             pokemon.append((f"{line} (1/{pkm_out_of})" if pokemon_out_of else line))
-                
+
         per_cent = round(total_abundance / self.possible_abundance * 100, 4)
         out_of = round(1 / per_cent * 100)
         pokemon.sort()
-        all_pokemon = (("\n".join(pokemon)) if list_pokemon else "") if len(pokemon) < 30 else f"> All pokémon: {await paste_to_bin(NEW_LINE.join(pokemon), 'md')}"
+        all_pokemon = (
+            (("\n".join(pokemon)) if list_pokemon else "")
+            if len(pokemon) < 30
+            else f"> All pokémon: {await paste_to_bin(NEW_LINE.join(pokemon), 'md')}"
+        )
         result = f"__**{title}**__ (Includes all catchable forms)\n{all_pokemon}\n**Total pokemon**: {len(pokemon)}\n**Total chance**: {per_cent}% (1/{out_of})"
-        
+
         return result
 
     @commands.group(
@@ -66,10 +80,12 @@ class Poketwo(commands.Cog):
                 f'Invalid rarity provided. Valid rarities: {", ".join(options)}.'
             )
 
-        pkm_df = self.pk.loc[(self.pk['catchable'] > 0) & (self.pk[rarity] == 1)]
-        
+        pkm_df = self.pk.loc[(self.pk["catchable"] > 0) & (self.pk[rarity] == 1)]
+
         async with ctx.channel.typing():
-            result = await self.format_msg(rarity.capitalize(), pkm_df, pokemon_out_of=False)
+            result = await self.format_msg(
+                rarity.capitalize(), pkm_df, pokemon_out_of=False
+            )
         await ctx.send(result)
 
     @chance.command(
@@ -87,7 +103,9 @@ class Poketwo(commands.Cog):
                 f'Invalid form provided. Options: {", ".join(options)}'
             )
 
-        pkm_df = self.pk.loc[(self.pk['catchable'] > 0) & (self.pk['slug'].str.endswith(form))]
+        pkm_df = self.pk.loc[
+            (self.pk["catchable"] > 0) & (self.pk["slug"].str.endswith(form))
+        ]
 
         async with ctx.channel.typing():
             result = await self.format_msg(f"{form.capitalize()}-form", pkm_df)
@@ -116,14 +134,16 @@ class Poketwo(commands.Cog):
         elif all((type(region) is int, region < 9)):
             region = options[region - 1].lower()
 
-        pkm_df = self.pk.loc[(self.pk['catchable'] > 0) & (self.pk["region"] == region)]
+        pkm_df = self.pk.loc[(self.pk["catchable"] > 0) & (self.pk["region"] == region)]
         if len(pkm_df) == 0:
             return await ctx.send(
                 f'Invalid region provided. Options: {", ".join(options)}'
             )
-            
+
         async with ctx.channel.typing():
-            result = await self.format_msg(f"{region.capitalize()} region", pkm_df, list_pokemon=True)
+            result = await self.format_msg(
+                f"{region.capitalize()} region", pkm_df, list_pokemon=True
+            )
         await ctx.send(result)
 
     @chance.command(
@@ -134,12 +154,22 @@ class Poketwo(commands.Cog):
     async def _pokemon(self, ctx, *, pokemon: str):
         pokemon = pokemon.lower()
 
-        pkm_df = self.pk.loc[(self.pk['catchable'] > 0) & ((self.pk['slug'].str.lower() == pokemon) | (self.pk['name.en'].str.lower() == pokemon))]
+        pkm_df = self.pk.loc[
+            (self.pk["catchable"] > 0)
+            & (
+                (self.pk["slug"].str.lower() == pokemon)
+                | (self.pk["name.en"].str.lower() == pokemon)
+            )
+        ]
         if len(pkm_df) == 0:
             return await ctx.send("Invalid pokémon provided.")
 
         async with ctx.channel.typing():
-            result = await self.format_msg(", ".join([pkm_row['name.en'] for _, pkm_row in pkm_df.iterrows()]), pkm_df, list_pokemon=False)
+            result = await self.format_msg(
+                ", ".join([pkm_row["name.en"] for _, pkm_row in pkm_df.iterrows()]),
+                pkm_df,
+                list_pokemon=False,
+            )
         await ctx.send(result)
 
     @chance.command(
@@ -148,22 +178,24 @@ class Poketwo(commands.Cog):
         brief="See the chances of pokémon with certain type(s)",
         help="See the chances of pokémon with certain type(s). Types: Normal, Fire, Water, Grass, Flying, Fighting, Poison, Electric, Ground, Rock, Psychic, Ice, Bug, Ghost, Steel, Dragon, Dark and Fairy.",
     )
-    async def _type(self, ctx, type_1: str, type_2: str=None):
+    async def _type(self, ctx, type_1: str, type_2: str = None):
         types = (type_1.capitalize(), type_2.capitalize() if type_2 else 0)
-        pkm_groups = self.pk.groupby(['type.0', 'type.1'])
+        pkm_groups = self.pk.groupby(["type.0", "type.1"])
         try:
             pkm_df = pkm_groups.get_group(types)
             if type_2:
                 pkm_df_1 = pkm_groups.get_group(tuple(reversed(types)))
                 pkm_df = pd.concat([pkm_df, pkm_df_1])
         except KeyError:
-            return await ctx.send(
-                f'Invalid type(s) provided `{types}`.'
-            )
-        pkm_df = pkm_df[:][pkm_df['catchable'] > 0]
-        
+            return await ctx.send(f"Invalid type(s) provided `{types}`.")
+        pkm_df = pkm_df[:][pkm_df["catchable"] > 0]
+
         async with ctx.channel.typing():
-            result = await self.format_msg(f'{types[0] if types[1] == 0 else (" & ".join(types))} type(s)', pkm_df, list_pokemon=True)
+            result = await self.format_msg(
+                f'{types[0] if types[1] == 0 else (" & ".join(types))} type(s)',
+                pkm_df,
+                list_pokemon=True,
+            )
         await ctx.send(result)
 
 

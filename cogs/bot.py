@@ -22,10 +22,7 @@ class Bot(commands.Cog):
         url = os.getenv("webhookURL")
         print(msg)
         async with aiohttp.ClientSession() as session:
-            webhook = discord.Webhook.from_url(
-                url,
-                session=session
-            )
+            webhook = discord.Webhook.from_url(url, session=session)
             await webhook.send(embed=self.bot.Embed(title=msg))
 
     @commands.Cog.listener()
@@ -146,12 +143,12 @@ class Bot(commands.Cog):
     @commands.command(
         name="uptime",
         brief="Bot's uptime.",
-        help="Shows how long it has been since the bot last went offline."
+        help="Shows how long it has been since the bot last went offline.",
     )
     async def uptime(self, ctx):
         embed = self.bot.Embed(
             title="Bot's uptime",
-            description=f"The bot has been up for `{humanize.precisedelta(datetime.datetime.utcnow() - self.bot.uptime)}`."
+            description=f"The bot has been up for `{humanize.precisedelta(datetime.datetime.utcnow() - self.bot.uptime)}`.",
         )
         await ctx.send(embed=embed)
 

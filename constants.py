@@ -1,3 +1,3 @@
-COMMAND_COOLDOWN = 2 # seconds
+COMMAND_COOLDOWN = 2  # seconds
 
-NEW_LINE = '\n'
+NEW_LINE = "\n"

@@ -26,10 +26,7 @@ class MystbinClient(mystbin.Client):
         await self.close()
 
 
-async def paste_to_bin(
-    paste_content: str,
-    syntax: str='txt'
-)-> str:
+async def paste_to_bin(paste_content: str, syntax: str = "txt") -> str:
     async with MystbinClient() as mystbin_client:
         content = await mystbin_client.post(paste_content, syntax=syntax)
         return content.url

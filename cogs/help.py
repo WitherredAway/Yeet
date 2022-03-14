@@ -177,7 +177,7 @@ class GroupHelpPageSource(menus.ListPageSource):
 
         embed.add_field(
             name="Commands" if isinstance(self.group, commands.Cog) else "Subcommands",
-            value="\u200b"+"\n\n".join(value),
+            value="\u200b" + "\n\n".join(value),
             inline=False,
         )
         return embed
@@ -304,10 +304,7 @@ class HelpSelectMenu(discord.ui.Select["HelpMenu"]):
                 )
                 return
 
-            commands = [
-                command for command in self.commands[cog]
-                if not command.hidden
-            ]
+            commands = [command for command in self.commands[cog] if not command.hidden]
             if not commands:
                 await interaction.response.send_message(
                     "This category has no commands for you", ephemeral=True

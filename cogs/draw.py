@@ -76,7 +76,6 @@ class DrawButtons(discord.ui.View):
         self.final_col = self.final_cell[1]
         self.inv_cur_cle = invert_dict(self.cur_cle)
 
-
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user != self.ctx.author:
             await interaction.response.send_message(
@@ -196,7 +195,7 @@ class DrawButtons(discord.ui.View):
         "⬛": "⚫",
         "⬜": "⚪",
     }
-    
+
     def find_key(self, value):
         return self.inv_cur_cle.get(value, value)
 
@@ -549,6 +548,7 @@ def make_board(bg, height, width):
 
 class Draw(commands.Cog):
     """Category with commands to bring out your inner artist."""
+
     def __init__(self, bot):
         self.bot = bot
 
@@ -593,7 +593,7 @@ class Draw(commands.Cog):
         name="copy",
         brief="Copy a drawing.",
         help="Copy a drawing from an embed by replying to with message ID and channel.",
-        description="Allows you to copy a drawing that was done with the `draw` command."
+        description="Allows you to copy a drawing that was done with the `draw` command.",
     )
     async def copy(
         self,

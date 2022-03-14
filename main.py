@@ -34,10 +34,10 @@ class Bot(commands.Bot):
         self.status = discord.Status.online
 
     async def setup_hook(self):
-        #self.load_extension("jishaku")
+        # self.load_extension("jishaku")
         for filename in os.listdir("./cogs"):
             if filename.endswith(".py"):
-               await self.load_extension(f"cogs.{filename[:-3]}")
+                await self.load_extension(f"cogs.{filename[:-3]}")
 
     class Embed(discord.Embed):
         def __init__(self, **kwargs):
@@ -55,13 +55,13 @@ if r.headers.get("Retry-After", None):
     print(f"Rate limit {round(int(r.headers['Retry-After']) / 60, 2)} minutes left")
 
 # no rate-limit, run
-elif __name__ == '__main__':
+elif __name__ == "__main__":
     bot = Bot(
         command_prefix=get_prefix,
         owner_ids=[267550284979503104, 761944238887272481],
         case_insensitive=True,
         intents=intents,
-        )
+    )
     print(f"No rate limit.")
     keep_alive()
     bot.run(TOKEN)
