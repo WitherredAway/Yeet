@@ -9,10 +9,6 @@ from keep_alive import keep_alive
 from discord.ext import commands
 
 
-COMMAND_COOLDOWN = 2  # seconds
-
-TOKEN = os.getenv("botTOKEN")
-
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
@@ -51,17 +47,21 @@ class Bot(commands.Bot):
             super().__init__(**kwargs, color=color)
 
 
-bot = Bot(
-    command_prefix=get_prefix,
-    owner_ids=[267550284979503104, 761944238887272481],
-    case_insensitive=True,
-    intents=intents,
-)
+TOKEN = os.getenv("botTOKEN")
 
+# checks for rate-limit
 r = requests.head(url="https://discord.com/api/v1")
 if r.headers.get("Retry-After", None):
     print(f"Rate limit {round(int(r.headers['Retry-After']) / 60, 2)} minutes left")
-else:
+
+# no rate-limit, run
+elif __name__ == '__main__':
+    bot = Bot(
+        command_prefix=get_prefix,
+        owner_ids=[267550284979503104, 761944238887272481],
+        case_insensitive=True,
+        intents=intents,
+        )
     print(f"No rate limit.")
     keep_alive()
     bot.run(TOKEN)

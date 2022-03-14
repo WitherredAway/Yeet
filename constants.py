@@ -1,0 +1,1 @@
+COMMAND_COOLDOWN = 2 # seconds
