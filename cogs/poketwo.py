@@ -10,6 +10,7 @@ import os
 from typing import Counter, Union, Optional
 from discord.ext import commands
 from cogs.utils.paste import paste_to_bin
+from constants import NEW_LINE
 
 
 class Poketwo(commands.Cog):
@@ -21,7 +22,7 @@ class Poketwo(commands.Cog):
 
     display_emoji = "🫒"
 
-    def format_msg(self, title: str, pokemon_dataframe: pd.DataFrame, *, list_pokemon: bool=True, pokemon_out_of: bool=True) -> str:
+    async def format_msg(self, title: str, pokemon_dataframe: pd.DataFrame, *, list_pokemon: bool=True, pokemon_out_of: bool=True) -> str:
         pkm_df = pokemon_dataframe
         total_abundance = round(pkm_df['abundance'].sum())
 
@@ -37,10 +38,9 @@ class Poketwo(commands.Cog):
         per_cent = round(total_abundance / self.possible_abundance * 100, 4)
         out_of = round(1 / per_cent * 100)
         pokemon.sort()
-        all_pokemon = ("\n".join(pokemon)) if list_pokemon else ""
+        all_pokemon = (("\n".join(pokemon)) if list_pokemon else "") if len(pokemon) < 30 else f"> All pokémon: {await paste_to_bin(NEW_LINE.join(pokemon), 'md')}"
         result = f"__**{title}**__ (Includes all catchable forms)\n{all_pokemon}\n**Total pokemon**: {len(pokemon)}\n**Total chance**: {per_cent}% (1/{out_of})"
-        if len(result) > 2000:
-            pass
+        
         return result
 
     @commands.group(
@@ -68,7 +68,7 @@ class Poketwo(commands.Cog):
 
         pkm_df = self.pk.loc[(self.pk['catchable'] > 0) & (self.pk[rarity] == 1)]
 
-        result = self.format_msg(rarity.capitalize(), pkm_df, pokemon_out_of=False)
+        result = await self.format_msg(rarity.capitalize(), pkm_df, pokemon_out_of=False)
         await ctx.send(result)
 
     @chance.command(
@@ -88,7 +88,7 @@ class Poketwo(commands.Cog):
 
         pkm_df = self.pk.loc[(self.pk['catchable'] > 0) & (self.pk['slug'].str.endswith(form))]
 
-        result = self.format_msg(f"{form.capitalize()}-form", pkm_df)
+        result = await self.format_msg(f"{form.capitalize()}-form", pkm_df)
         await ctx.send(result)
 
     @chance.command(
@@ -120,7 +120,7 @@ class Poketwo(commands.Cog):
                 f'Invalid region provided. Options: {", ".join(options)}'
             )
             
-        result = self.format_msg(f"{region.capitalize()} region", pkm_df, list_pokemon=False)
+        result = await self.format_msg(f"{region.capitalize()} region", pkm_df, list_pokemon=True)
         await ctx.send(result)
 
     @chance.command(
@@ -135,7 +135,7 @@ class Poketwo(commands.Cog):
         if len(pkm_df) == 0:
             return await ctx.send("Invalid pokémon provided.")
 
-        result = self.format_msg(", ".join([pkm_row['name.en'] for _, pkm_row in pkm_df.iterrows()]), pkm_df, list_pokemon=False)
+        result = await self.format_msg(", ".join([pkm_row['name.en'] for _, pkm_row in pkm_df.iterrows()]), pkm_df, list_pokemon=False)
         await ctx.send(result)
 
     @chance.command(
@@ -158,7 +158,7 @@ class Poketwo(commands.Cog):
             )
         pkm_df = pkm_df[:][pkm_df['catchable'] > 0]
         
-        result = self.format_msg(f'{types[0] if types[1] == 0 else (" & ".join(types))} type(s)', pkm_df, list_pokemon=True)
+        result = await self.format_msg(f'{types[0] if types[1] == 0 else (" & ".join(types))} type(s)', pkm_df, list_pokemon=True)
         await ctx.send(result)
 
 

@@ -22,6 +22,7 @@ parsedatetime = "^2.6"
 lxml = "^4.8.0"
 humanize = "^4.0.0"
 Pastebin = "^1.1.2"
+"mystbin.py" = "^2.2.0"
 
 [tool.poetry.dev-dependencies]
 
