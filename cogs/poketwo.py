@@ -67,8 +67,9 @@ class Poketwo(commands.Cog):
             )
 
         pkm_df = self.pk.loc[(self.pk['catchable'] > 0) & (self.pk[rarity] == 1)]
-
-        result = await self.format_msg(rarity.capitalize(), pkm_df, pokemon_out_of=False)
+        
+        async with ctx.channel.typing():
+            result = await self.format_msg(rarity.capitalize(), pkm_df, pokemon_out_of=False)
         await ctx.send(result)
 
     @chance.command(
@@ -88,7 +89,8 @@ class Poketwo(commands.Cog):
 
         pkm_df = self.pk.loc[(self.pk['catchable'] > 0) & (self.pk['slug'].str.endswith(form))]
 
-        result = await self.format_msg(f"{form.capitalize()}-form", pkm_df)
+        async with ctx.channel.typing():
+            result = await self.format_msg(f"{form.capitalize()}-form", pkm_df)
         await ctx.send(result)
 
     @chance.command(
@@ -120,7 +122,8 @@ class Poketwo(commands.Cog):
                 f'Invalid region provided. Options: {", ".join(options)}'
             )
             
-        result = await self.format_msg(f"{region.capitalize()} region", pkm_df, list_pokemon=True)
+        async with ctx.channel.typing():
+            result = await self.format_msg(f"{region.capitalize()} region", pkm_df, list_pokemon=True)
         await ctx.send(result)
 
     @chance.command(
@@ -135,7 +138,8 @@ class Poketwo(commands.Cog):
         if len(pkm_df) == 0:
             return await ctx.send("Invalid pokémon provided.")
 
-        result = await self.format_msg(", ".join([pkm_row['name.en'] for _, pkm_row in pkm_df.iterrows()]), pkm_df, list_pokemon=False)
+        async with ctx.channel.typing():
+            result = await self.format_msg(", ".join([pkm_row['name.en'] for _, pkm_row in pkm_df.iterrows()]), pkm_df, list_pokemon=False)
         await ctx.send(result)
 
     @chance.command(
@@ -158,7 +162,8 @@ class Poketwo(commands.Cog):
             )
         pkm_df = pkm_df[:][pkm_df['catchable'] > 0]
         
-        result = await self.format_msg(f'{types[0] if types[1] == 0 else (" & ".join(types))} type(s)', pkm_df, list_pokemon=True)
+        async with ctx.channel.typing():
+            result = await self.format_msg(f'{types[0] if types[1] == 0 else (" & ".join(types))} type(s)', pkm_df, list_pokemon=True)
         await ctx.send(result)
 
 
