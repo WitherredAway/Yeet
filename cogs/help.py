@@ -1,10 +1,4 @@
 from __future__ import annotations
-from discord.ext import commands, menus
-from .utils import checks, formats, time
-from .utils.paginator import BotPages
-from collections import OrderedDict, deque, Counter
-from typing import Any, Dict, List, Optional, Union
-from .utils.source import source
 
 import discord
 import os, datetime
@@ -13,6 +7,13 @@ import copy
 import unicodedata
 import inspect
 import itertools
+
+from discord.ext import commands, menus
+from .utils import checks, formats, time
+from .utils.paginator import BotPages
+from collections import OrderedDict, deque, Counter
+from typing import Any, Dict, List, Optional, Union
+from .utils.source import source
 
 
 class FrontPageSource(menus.PageSource):
@@ -668,5 +669,5 @@ class Help(commands.Cog):
         await self.say_permissions(ctx, member, channel)
 
 
-def setup(bot):
-    bot.add_cog(Help(bot))
+async def setup(bot):
+    await bot.add_cog(Help(bot))

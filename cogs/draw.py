@@ -658,5 +658,5 @@ class Draw(commands.Cog):
         await view.wait()
 
 
-def setup(bot):
-    bot.add_cog(Draw(bot))
+async def setup(bot):
+    await bot.add_cog(Draw(bot))

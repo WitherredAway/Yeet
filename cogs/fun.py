@@ -1,9 +1,10 @@
 import discord
-from discord.ext import commands
-from main import *
 import asyncio
-from datetime import datetime
 import os
+
+from discord.ext import commands
+from datetime import datetime
+from constants import COMMAND_COOLDOWN
 
 
 class Fun(commands.Cog):
@@ -61,5 +62,5 @@ class Fun(commands.Cog):
             await ctx.send("The delay must be an integer.")
 
 
-def setup(bot):
-    bot.add_cog(Fun(bot))
+async def setup(bot):
+    await bot.add_cog(Fun(bot))

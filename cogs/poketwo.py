@@ -40,7 +40,7 @@ class Poketwo(commands.Cog):
         all_pokemon = ("\n".join(pokemon)) if list_pokemon else ""
         result = f"__**{title}**__ (Includes all catchable forms)\n{all_pokemon}\n**Total pokemon**: {len(pokemon)}\n**Total chance**: {per_cent}% (1/{out_of})"
         if len(result) > 2000:
-            
+            pass
         return result
 
     @commands.group(
@@ -162,5 +162,5 @@ class Poketwo(commands.Cog):
         await ctx.send(result)
 
 
-def setup(bot):
-    bot.add_cog(Poketwo(bot))
+async def setup(bot):
+    await bot.add_cog(Poketwo(bot))

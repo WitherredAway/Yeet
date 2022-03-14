@@ -158,5 +158,5 @@ class Define(commands.Cog):
         await menu.start()
 
 
-def setup(bot):
-    bot.add_cog(Define(bot))
+async def setup(bot):
+    await bot.add_cog(Define(bot))

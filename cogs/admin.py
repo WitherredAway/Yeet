@@ -1,6 +1,5 @@
 import discord
 from discord.ext import commands
-from main import *
 import asyncio
 
 
@@ -55,7 +54,7 @@ class Dev(commands.Cog):
     )
     async def _load(self, ctx, cog):
         try:
-            bot.load_extension(f"cogs.{cog}")
+            await bot.load_extension(f"cogs.{cog}")
         except commands.ExtensionNotFound:
             await ctx.send(f":x: Cog `{cog}` not found.")
         except commands.ExtensionAlreadyLoaded:
@@ -78,7 +77,7 @@ class Dev(commands.Cog):
             await ctx.send(":x: Cannot unload this cog")
         else:
             try:
-                bot.unload_extension(f"cogs.{cog}")
+                await bot.unload_extension(f"cogs.{cog}")
             except commands.ExtensionNotLoaded:
                 await ctx.send(f":x: Cog `{cog}` not found.")
             except Exception as e:
@@ -100,7 +99,7 @@ class Dev(commands.Cog):
                 try:
                     cogs = []
                     for cog_ext in list(self.bot.extensions):
-                        self.bot.reload_extension(cog_ext)
+                        await self.bot.reload_extension(cog_ext)
                         cog_name = (
                             cog_ext[5:] if cog_ext.startswith("cogs.") else cog_ext
                         )
@@ -110,7 +109,7 @@ class Dev(commands.Cog):
                     raise e
             else:
                 try:
-                    self.bot.reload_extension(f"cogs.{cog}")
+                    await self.bot.reload_extension(f"cogs.{cog}")
                 except commands.ExtensionNotLoaded:
                     await ctx.send(f":x: Cog `{cog}` not found.")
                 else:
@@ -140,5 +139,5 @@ class Dev(commands.Cog):
         await ctx.send(embed=extlist)
 
 
-def setup(bot):
-    bot.add_cog(Dev(bot))
+async def setup(bot):
+   await bot.add_cog(Dev(bot))

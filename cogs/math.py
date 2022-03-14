@@ -324,5 +324,5 @@ R% - Modulus operator, shows remainder of a division
         await view.wait()
 
 
-def setup(bot):
-    bot.add_cog(Math(bot))
+async def setup(bot):
+    await bot.add_cog(Math(bot))

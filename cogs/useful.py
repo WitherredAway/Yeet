@@ -6,7 +6,6 @@ import itertools
 import pandas as pd
 
 from discord.ext import commands
-from main import *
 from typing import Counter, Union
 
 
@@ -139,5 +138,5 @@ class Useful(commands.Cog):
             await ctx.send("The time must be a positive whole number.")
 
 
-def setup(bot):
-    bot.add_cog(Useful(bot))
+async def setup(bot):
+    await bot.add_cog(Useful(bot))

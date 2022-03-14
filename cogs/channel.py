@@ -401,5 +401,5 @@ class Channel(commands.Cog):
         await ctx.send("Done stripping all channels' names ✅.")
 
 
-def setup(bot):
-    bot.add_cog(Channel(bot))
+async def setup(bot):
+    await bot.add_cog(Channel(bot))

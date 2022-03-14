@@ -51,5 +51,5 @@ class Jishaku(Jishaku):
         await ctx.send("Jishaku is now visible.")
 
 
-def setup(bot):
-    bot.add_cog(Jishaku(bot=bot))
+async def setup(bot):
+    await bot.add_cog(Jishaku(bot=bot))
