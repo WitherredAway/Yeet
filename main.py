@@ -9,11 +9,6 @@ from keep_alive import keep_alive
 from discord.ext import commands
 
 
-intents = discord.Intents.default()
-intents.message_content = True
-intents.members = True
-
-
 def get_prefix(bot, message):
     prefixes = bot.PREFIXES
     if not message.guild:
@@ -60,7 +55,7 @@ elif __name__ == "__main__":
         command_prefix=get_prefix,
         owner_ids=[267550284979503104, 761944238887272481],
         case_insensitive=True,
-        intents=intents,
+        intents=discord.Intents.all(),
     )
     print(f"No rate limit.")
     keep_alive()
