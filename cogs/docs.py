@@ -13,6 +13,7 @@ from .utils import fuzzy
 from collections import Counter
 from typing import Optional, Tuple
 from .utils.paginator import BotPages
+from .utils.source import source
 
 
 class SphinxObjectFileReader:
