@@ -1,19 +1,23 @@
-import discord
-import aiohttp
-import typing
 import urllib
 import asyncio
-
-from discord.ext import commands, menus
-from .utils.paginator import BotPages
+import typing
 from typing import Type, TypeVar
+
+import discord
+from discord.ext import commands, menus
+import aiohttp
+from benedict import benedict
+
+from .utils.paginator import BotPages
 
 
 T = TypeVar("T", bound="Term")
 
 
 class TermSelectMenu(discord.ui.Select):
-    def __init__(self, entries, bot: commands.Bot):
+    """The select menu for different words and their information."""
+    
+    def __init__(self, entries: typing.List, bot: commands.Bot):
         super().__init__(placeholder="Jump to definition", row=0)
         self.entries = entries[:25]
         self.bot = bot
@@ -34,12 +38,12 @@ class TermSelectMenu(discord.ui.Select):
 
 
 class TermPages(BotPages):
-    def __init__(self, source, ctx, compact):
+    def __init__(self, source: menus.PageSource, ctx: commands.Context, compact: bool):
         super().__init__(source, ctx=ctx, compact=compact)
         if source.is_paginating():
             self.add_select(source.entries)
 
-    def add_select(self, entries) -> None:
+    def add_select(self, entries: typing.List) -> None:
         self.clear_items()
         self.add_item(TermSelectMenu(entries, self.ctx.bot))
         self.fill_items()
@@ -48,13 +52,13 @@ class TermPages(BotPages):
 class TermPageSource(menus.ListPageSource):
     def __init__(self, term_obj: T, *, ctx: commands.Context, per_page: int = 1):
         self.ctx = ctx
-        self.bot = self.ctx.bot
+        self.bot: discord.Bot = self.ctx.bot
         self.embed = self.bot.Embed()
 
-        self.term = term_obj
-        self.entries = self.term.meanings
+        self.term: T = term_obj
+        self.entries: typing.List = self.term.meanings
         self.per_page = per_page
-        self.phonetics = [self.term.phonetic]
+        self.phonetics: typing.List = [self.term.phonetic]
         for phonetic in self.term.phonetics:
             if phonetic.get("text", "") != "" and phonetic.get("audio", "") != "":
                 self.phonetics.append(f"[{phonetic['text']}]({phonetic['audio']})")
@@ -63,7 +67,7 @@ class TermPageSource(menus.ListPageSource):
     def is_paginating(self) -> bool:
         return len(self.entries) > self.per_page
 
-    async def format_page(self, menu, entry):
+    async def format_page(self, menu, entry) -> discord.Embed:
         self.embed.clear_fields()
         self.embed.title = f"{self.term.word}"
 
@@ -73,12 +77,12 @@ class TermPageSource(menus.ListPageSource):
         if (example := entry.get("example", "")) != "":
             self.embed.add_field(name="example", value=example, inline=True)
 
-        if len((antonyms := entry["antonyms"])) > 0:
+        if (antonyms := entry["antonyms"]):
             self.embed.add_field(
                 name="antonyms", value=", ".join(antonyms), inline=True
             )
 
-        if len((synonyms := entry["synonyms"])) > 0:
+        if (synonyms := entry["synonyms"]):
             self.embed.add_field(
                 name="synonyms", value=", ".join(synonyms), inline=True
             )
@@ -98,6 +102,7 @@ class Term:
 
     async def __new__(cls, *args, **kwargs):
         """Makes the __init__ function asynchronous."""
+        
         instance = super().__new__(cls)
         await instance.__init__(*args, **kwargs)
         return instance
@@ -111,7 +116,7 @@ class Term:
         self.phonetic: typing.Dict = self.data.get("phonetic", "")
         self.phonetics: typing.Dict = self.data.get("phonetics", None)
         self.raw_meanings: typing.List = self.data.get("meanings", None)
-        self.meanings: typing.List = self.clean_meanings()
+        self.meanings: typing.List = self.clean_meanings
         self.src_urls: typing.List = self.data.get("sourceUrls", None)
 
     async def get_data(self, term: str) -> typing.Dict:
@@ -121,6 +126,7 @@ class Term:
             async with session.get(f"{self.API}{term}") as resp:
                 return (await resp.json())[0]
 
+    @property
     def clean_meanings(
         self,
     ) -> typing.List:
@@ -138,7 +144,7 @@ class Term:
 class Define(commands.Cog):
     """Command(s) for all kinds of information of a term; word or phrase."""
 
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
 
     display_emoji: discord.PartialEmoji = "🔍"
@@ -148,7 +154,7 @@ class Define(commands.Cog):
         aliases=("definition", "definitions", "df"),
         description=("Show all kinds of information about a term; word or phrase."),
     )
-    async def define(self, ctx, *, term):
+    async def define(self, ctx: commands.Context, *, term: str):
         try:
             term = await Term(term)
         except KeyError:
@@ -158,5 +164,5 @@ class Define(commands.Cog):
         await menu.start()
 
 
-async def setup(bot):
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Define(bot))
