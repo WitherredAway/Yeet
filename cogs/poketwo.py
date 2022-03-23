@@ -128,10 +128,10 @@ class Poketwo(commands.Cog):
             "Alola",
             "Galar",
         ]
-        if type(region) is str:
+        if isinstance(region, str):
             region = region.lower()
 
-        elif all((type(region) is int, region < 9)):
+        elif all((isinstance(region, int), region < 9)):
             region = options[region - 1].lower()
 
         pkm_df = self.pk.loc[(self.pk["catchable"] > 0) & (self.pk["region"] == region)]
