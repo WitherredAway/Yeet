@@ -1,28 +1,55 @@
-import discord
-from discord.ext import commands
 import asyncio
 
+import discord
+from discord.ext import commands
 
-class Dev(commands.Cog):
+
+class RepeatView(discord.ui.View):
+    def __init__(self, ctx: commands.Context):
+        super().__init__(timeout=120)
+        self.ctx = ctx
+        self.bot = self.ctx.bot
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user != self.ctx.author:
+            await interaction.response.send_message(
+                f"This instance does not belong to you, use the `{self.ctx.command}` command to create your own instance.",
+                ephemeral=True,
+            )
+            return False
+        return True
+
+    async def on_timeout(self):
+        await self.message.edit(view=None)
+
+    @discord.ui.button(label="Run again", style=discord.ButtonStyle.blurple)
+    async def repeat(self, button: discord.ui.Button, interaction: discord.Interaction):
+        await interaction.response.defer()
+        await self.ctx.bot.process_commands(self.ctx.message)
+
+
+class Developer(commands.Cog):
     """Developer only category."""
 
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.hidden = True
 
-    display_emoji = "⚒️"
+    display_emoji: discord.PartialEmoji = "⚒️"
 
     @commands.command(
-        name="togglecommand", aliases=["tc"], description="Enable or disable a command."
+        name="togglecommand",
+        aliases=("tc",),
+        description="Enable or disable a command.",
     )
     @commands.is_owner()
-    async def toggle(self, ctx, *, command):
+    async def toggle(self, ctx: commands.Context, *, command: str):
         command = self.bot.get_command(command)
 
         if command is None:
             return await ctx.send(f":x: Command `{command}` not found.")
 
-        elif ctx.command == command:
+        elif command == ctx.command:
             return await ctx.send(f":x: This command cannot be disabled.")
 
         else:
@@ -31,90 +58,89 @@ class Dev(commands.Cog):
                 f'{"↪️ Enabled" if command.enabled else "↩️ Disabled"} command `{command.qualified_name}`.'
             )
 
-    # cog
+    # Cog related commands group
     @commands.is_owner()
     @commands.group(
         name="cog",
-        aliases=["c"],
+        aliases=("c",),
         invoke_without_command=True,
         case_insensitive=True,
         help="Commands related to cogs, dev only command.",
     )
-    async def cog(self, ctx):
+    async def cog(self, ctx: commands.Context):
         await ctx.send_help(ctx.command)
 
-    # cog load
+    # Cog load command for loading cogs
     @commands.is_owner()
     @cog.command(
         name="load",
-        aliases=["l"],
+        aliases=("l",),
         brief="Load a cog",
         help="Loads a cog with the name, dev only command.",
     )
-    async def _load(self, ctx, cog):
+    async def _load(self, ctx: commands.Context, cog: str):
         try:
             await bot.load_extension(f"cogs.{cog}")
         except commands.ExtensionNotFound:
-            await ctx.send(f":x: Cog `{cog}` not found.")
+            message = f":x: Cog `{cog}` not found."
         except commands.ExtensionAlreadyLoaded:
-            await ctx.send(f"Cog `{cog}` is already loaded.")
-        except Exception as e:
-            raise e
+            message = f"Cog `{cog}` is already loaded."
         else:
-            await ctx.send(f":inbox_tray: Loaded cog `{cog}`")
+            message = f":inbox_tray: Loaded cog `{cog}`"
 
-    # cog unload
+        view = RepeatView(ctx)
+        view.message = await ctx.send(message, view=view)
+
+    # Cog unload command for unloading cogs
     @commands.is_owner()
     @cog.command(
         name="unload",
-        aliases=["u"],
+        aliases=("u",),
         brief="Unloads a cog",
         help="Unloads a cog with the name, dev only command.",
     )
-    async def _unload(self, ctx, cog):
+    async def _unload(self, ctx: commands.Context, cog: str):
         if cog.lower() == "admin":
-            await ctx.send(":x: Cannot unload this cog")
+            message = ":x: Cannot unload this cog"
         else:
             try:
                 await bot.unload_extension(f"cogs.{cog}")
             except commands.ExtensionNotLoaded:
-                await ctx.send(f":x: Cog `{cog}` not found.")
+                message = f":x: Cog `{cog}` not found."
             except Exception as e:
                 raise e
             else:
-                await ctx.send(f":outbox_tray: Unloaded cog `{cog}`")
+                message = f":outbox_tray: Unloaded cog `{cog}`"
 
-    # cog reload
+        view = RepeatView(ctx)
+        view.message = await ctx.send(message, view=view)
+
+    # Cog reload command for reloading cogs
     @commands.is_owner()
     @cog.command(
         name="reload",
-        aliases=["r"],
+        aliases=("r",),
         brief="Reloads a cog",
         help="Reloads a cog with the name, dev only command.",
     )
-    async def _reload(self, ctx, cog):
-        try:
-            if cog == "all":
-                try:
-                    cogs = []
-                    for cog_ext in list(self.bot.extensions):
-                        await self.bot.reload_extension(cog_ext)
-                        cog_name = (
-                            cog_ext[5:] if cog_ext.startswith("cogs.") else cog_ext
-                        )
-                        cogs.append(f"\n🔁 Reloaded cog `{cog_name}`")
-                    await ctx.send(", ".join(cogs))
-                except Exception as e:
-                    raise e
+    async def _reload(self, ctx: commands.Context, cog):
+        if cog == "all":
+            cogs = []
+            for cog_ext in list(self.bot.extensions):
+                await self.bot.reload_extension(cog_ext)
+                cog_name = cog_ext[5:] if cog_ext.startswith("cogs.") else cog_ext
+                cogs.append(f"\n🔁 Reloaded cog `{cog_name}`")
+            message = ", ".join(cogs)
+        else:
+            try:
+                await self.bot.reload_extension(f"cogs.{cog}")
+            except commands.ExtensionNotLoaded:
+                message = f":x: Cog `{cog}` not found."
             else:
-                try:
-                    await self.bot.reload_extension(f"cogs.{cog}")
-                except commands.ExtensionNotLoaded:
-                    await ctx.send(f":x: Cog `{cog}` not found.")
-                else:
-                    await ctx.send(f":repeat: Reloaded cog `{cog}`")
-        except Exception as e:
-            raise e
+                message = f":repeat: Reloaded cog `{cog}`"
+
+        view = RepeatView(ctx)
+        view.message = await ctx.send(message, view=view)
 
     # cog all
     @commands.is_owner()
@@ -138,5 +164,5 @@ class Dev(commands.Cog):
         await ctx.send(embed=extlist)
 
 
-async def setup(bot):
-    await bot.add_cog(Dev(bot))
+async def setup(bot: commands.Bot):
+    await bot.add_cog(Developer(bot))
