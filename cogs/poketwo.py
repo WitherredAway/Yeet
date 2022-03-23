@@ -18,7 +18,7 @@ class Poketwo(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.pk = (pd.read_csv("cogs/utils/poketwo.csv")).fillna(0)
+        self.pk = pd.read_csv("cogs/utils/poketwo.csv")
         self.possible_abundance = round(
             (self.pk["abundance"][self.pk["catchable"] > 0]).sum()
         )
@@ -179,20 +179,27 @@ class Poketwo(commands.Cog):
         help="See the chances of pokémon with certain type(s). Types: Normal, Fire, Water, Grass, Flying, Fighting, Poison, Electric, Ground, Rock, Psychic, Ice, Bug, Ghost, Steel, Dragon, Dark and Fairy.",
     )
     async def _type(self, ctx, type_1: str, type_2: str = None):
-        types = (type_1.capitalize(), type_2.capitalize() if type_2 else 0)
-        pkm_groups = self.pk.groupby(["type.0", "type.1"])
-        try:
-            pkm_df = pkm_groups.get_group(types)
-            if type_2:
-                pkm_df_1 = pkm_groups.get_group(tuple(reversed(types)))
-                pkm_df = pd.concat([pkm_df, pkm_df_1])
-        except KeyError:
-            return await ctx.send(f"Invalid type(s) provided `{types}`.")
+        type_1 = type_1.capitalize()
+        if not type_2:
+            msg = type_1
+            pkm_df = self.pk.loc[
+                (self.pk["type.0"] == type_1) | (self.pk["type.1"] == type_1)
+            ]
+        else:
+            msg = " & ".join([type_1, type_2])
+            type_2 = type_2.capitalize()
+            pkm_df = self.pk.loc[
+                ((self.pk["type.0"] == type_1) & (self.pk["type.1"] == type_2))
+                | ((self.pk["type.0"] == type_2) & (self.pk["type.1"] == type_1))
+            ]
+
+        if len(pkm_df) == 0:
+            return await ctx.send(f"Invalid type(s) provided `{type_1}`, `{type_2}`.")
         pkm_df = pkm_df[:][pkm_df["catchable"] > 0]
 
         async with ctx.channel.typing():
             result = await self.format_msg(
-                f'{types[0] if types[1] == 0 else (" & ".join(types))} type(s)',
+                f"{msg} Type(s)",
                 pkm_df,
                 list_pokemon=True,
             )
