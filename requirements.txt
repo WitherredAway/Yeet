@@ -44,3 +44,4 @@ Werkzeug==2.0.3
 wikipedia==1.4.0
 yarl==1.7.2
 mystbin.py==2.2.0
+python-benedict==0.25.0

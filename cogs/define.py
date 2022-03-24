@@ -6,7 +6,6 @@ from typing import Type, TypeVar
 import discord
 from discord.ext import commands, menus
 import aiohttp
-from benedict import benedict
 
 from .utils.paginator import BotPages
 
