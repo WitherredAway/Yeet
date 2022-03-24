@@ -112,37 +112,41 @@ class GroupHelpPageSource(menus.ListPageSource):
     def is_paginating(self) -> bool:
         return len(self.entries) > self.per_page
 
-    async def format_page(self, menu, _commands):
+    async def format_page(self, menu, entries):
         embed = self.bot.Embed()
         maximum = self.get_max_pages()
 
         if isinstance(self.group, commands.Group):
-            self.title = (
-                f"`{self.prefix}`"
-                + PaginatedHelpCommand.get_command_signature(self.group)
-            )
+            group_command = self.group
             bs = "\_"
-            self.description = f"""
-**Category**
-`{self.group.cog_name if self.group.cog else 'None'}`
-
-**Description**
-{self.group.description if self.group.description else 'No description found.'}
-
-**Help**
-{self.group.help if self.group.help else 'No help found.'}
-            """
+            embed.title = f"`{self.ctx.clean_prefix}`{PaginatedHelpCommand.get_command_signature(group_command)}"
+            embed.add_field(
+                name="Help",
+                value=f"{group_command.help if group_command.help else group_command.brief if group_command.brief else 'No help found.'}",
+                inline=False,
+            )
+            embed.add_field(
+                name="Description",
+                value=f"{group_command.description if group_command.description else 'No description found.'}",
+                inline=False,
+            )
+            embed.add_field(
+                name="Category",
+                value=f"`{group_command.cog_name if group_command.cog else 'None'}`",
+                inline=False,
+            )
             embed.set_footer(
                 text=f"Do {self.ctx.clean_prefix}help <command> for more info on a command."
                 f'\nPage {menu.current_page + 1}/{maximum} ({(no_commands := len(self.entries))} {"subcommand" if no_commands <= 1 else "subcommands"})'
             )
-        if isinstance(self.group, commands.Cog):
-            self.title = f"{self.group.qualified_name} Commands"
-            self.description = (
-                self.group.description
-                if self.group.description
-                else self.group.help
-                if getattr(self.group, "help", None)
+        elif isinstance(self.group, commands.Cog):
+            group_cog = self.group
+            embed.title = f"{group_cog.qualified_name} Commands"
+            embed.description = (
+                group_cog.description
+                if group_cog.description
+                else group_cog.help
+                if getattr(group_cog, "help", None)
                 else "No description found."
             )
             embed.set_footer(
@@ -150,11 +154,8 @@ class GroupHelpPageSource(menus.ListPageSource):
                 f'\nPage {menu.current_page + 1}/{maximum} ({(no_commands := len(self.entries))} {"command" if no_commands <= 1 else "commands"})'
             )
 
-        embed.title = self.title
-        embed.description = self.description
-
         value = []
-        for command in _commands:
+        for command in entries:
             # signature = f"{self.prefix}{PaginatedHelpCommand.get_command_signature(self, command)}"
             # value = f">>> **Category**: `{command.cog_name if command.cog else 'None'}`\n\n**Description**: {command.description if command.description else 'No description found.'}\n\n**Help**: {command.help if command.help else 'No help found.'}"
             signature = (
@@ -210,7 +211,7 @@ class CommandSelectMenu(discord.ui.Select):
         )
 
         for command in self.commands:
-            description = f"{command.description[:50] or command.help[:50] or None}..."
+            description = f"{command.description[:50] if command.description else command.help[:50] if command.help else None}..."
             emoji = getattr(command.cog, "display_emoji", "🟡")
             self.add_option(
                 label=command.qualified_name,
