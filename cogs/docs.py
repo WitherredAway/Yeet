@@ -238,10 +238,9 @@ class Documentations(commands.Cog):
         """
         To display the source code of a subcommand you can separate it by periods, e.g. timer.start for the start subcommand of the timer command or by spaces.
         """
-
         # use the imported source function from utils/source.py
-        final_url = source(self, command=command)
-        await ctx.send(final_url)
+        final_url = source(self.bot, command=command)
+        await ctx.send(f"<{final_url}>")
 
 
 async def setup(bot):

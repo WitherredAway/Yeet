@@ -2,7 +2,7 @@ import os
 import inspect
 
 
-def source(self, *, command: str):
+def source(bot, *, command: str):
     """Displays the full source code or for a specific command of the bot.
 
     To display the source code of a subcommand you can separate it by periods, e.g. timer.start for the start subcommand of the timer command or by spaces.
@@ -15,11 +15,11 @@ def source(self, *, command: str):
         return f"{source_url}/"
 
     if command == "help":
-        src = type(self.bot.help_command)
+        src = type(bot.help_command)
         module = src.__module__
         filename = inspect.getsourcefile(src)
     else:
-        obj = self.bot.get_command(command.replace(".", " "))
+        obj = bot.get_command(command.replace(".", " "))
         if obj is None:
             return "Could not find command."
 
@@ -38,5 +38,5 @@ def source(self, *, command: str):
         source_url = "https://github.com/Rapptz/discord.py"
         branch = "master"
 
-    final_url = f"<{source_url}/blob/{branch}/{location}#L{firstlineno}-L{firstlineno + len(lines) - 1}>"
+    final_url = f"{source_url}/blob/{branch}/{location}#L{firstlineno}-L{firstlineno + len(lines) - 1}"
     return final_url

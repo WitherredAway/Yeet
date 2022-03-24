@@ -53,7 +53,7 @@ class FrontPageSource(menus.PageSource):
                 for command in cog_commands:
                     if not command.hidden:
                         com = command.qualified_name
-                        com_src = source(self, command=com)
+                        com_src = source(self.bot, command=com)
                         category_commands.append(
                             f"**[{com}]({com_src})**{(' (' + str(len(command.commands)) + ')') if isinstance(command, commands.Group) else ''}: {command.brief or command.description or 'No description found.'}"
                         )
@@ -119,22 +119,11 @@ class GroupHelpPageSource(menus.ListPageSource):
         if isinstance(self.group, commands.Group):
             group_command = self.group
             bs = "\_"
-            embed.title = f"`{self.ctx.clean_prefix}`{PaginatedHelpCommand.get_command_signature(group_command)}"
-            embed.add_field(
-                name="Help",
-                value=f"{group_command.help if group_command.help else group_command.brief if group_command.brief else 'No help found.'}",
-                inline=False,
+
+            PaginatedHelpCommand.common_command_formatting(
+                self.ctx, embed, group_command
             )
-            embed.add_field(
-                name="Description",
-                value=f"{group_command.description if group_command.description else 'No description found.'}",
-                inline=False,
-            )
-            embed.add_field(
-                name="Category",
-                value=f"`{group_command.cog_name if group_command.cog else 'None'}`",
-                inline=False,
-            )
+
             embed.set_footer(
                 text=f"Do {self.ctx.clean_prefix}help <command> for more info on a command."
                 f'\nPage {menu.current_page + 1}/{maximum} ({(no_commands := len(self.entries))} {"subcommand" if no_commands <= 1 else "subcommands"})'
@@ -469,8 +458,13 @@ class PaginatedHelpCommand(commands.HelpCommand):
         # start the menu
         await menu.start()
 
-    def common_command_formatting(self, embed_like, command):
-        embed_like.title = f"`{self.context.prefix}`{PaginatedHelpCommand.get_command_signature(command)}"
+    @staticmethod
+    def common_command_formatting(ctx, embed_like, command):
+        bot = ctx.bot
+        embed_like.title = (
+            f"`{ctx.clean_prefix}`{PaginatedHelpCommand.get_command_signature(command)}"
+        )
+        embed_like.url = source(bot, command=command.name)
         embed_like.add_field(
             name="Help",
             value=f"{command.help if command.help else 'No help found.'}",
@@ -489,7 +483,7 @@ class PaginatedHelpCommand(commands.HelpCommand):
 
     async def send_command_help(self, command):
         embed = self.context.bot.Embed()
-        self.common_command_formatting(embed, command)
+        self.common_command_formatting(self.context, embed, command)
         await self.context.send(embed=embed)
 
     async def send_group_help(self, group):
