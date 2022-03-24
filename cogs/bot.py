@@ -1,19 +1,19 @@
-import discord
+import os
 import asyncio
 import datetime
+
+import discord
 import humanize
 import aiohttp
-import os
-
 from discord.ext import commands
 
 
 class Bot(commands.Cog):
     """Commands and events related to the bot."""
 
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
-
+        
     display_emoji = "👾"
 
     @commands.Cog.listener()
@@ -85,35 +85,20 @@ class Bot(commands.Cog):
     # logs
     @commands.Cog.listener(name="on_command")
     async def on_command(self, ctx):
-        try:
+        log_ch = self.bot.LOG_CHANNEL
+        user = ctx.author
+        
+        em = self.bot.Embed()
 
-            log_ch = await self.bot.fetch_channel(self.bot.LOG_CHANNEL)
-            user = ctx.author
-            command = ctx.command
-            message_content = str(ctx.message.content)
-            message_id = ctx.message.id
-            channel = str(ctx.channel)
-            channel_id = ctx.channel.id
-
-            em = self.bot.Embed()
-
-            em.set_author(name=user, icon_url=user.avatar.url)
-            em.add_field(name="Command used", value=message_content, inline=False)
-            em.timestamp = datetime.datetime.utcnow()
-            if ctx.guild:
-                server = ctx.guild.name
-                server_id = ctx.guild.id
-                em.add_field(
-                    name="Go to",
-                    value=f"[Warp](https://discord.com/channels/{server_id}/{channel_id}/{message_id})",
-                )
-                em.set_footer(text=f"{server} | #{channel}")
-            else:
-                em.set_footer(text="Direct messages")
-            await log_ch.send(embed=em)
-
-        except Exception as e:
-            raise e
+        em.set_author(name=user, icon_url=user.avatar.url)
+        em.add_field(name="Command used", value=ctx.message.content, inline=False)
+        em.timestamp = datetime.datetime.utcnow()
+        em.add_field(
+            name="Go to",
+            value=f"[Warp]({ctx.message.jump_url})",
+        )
+        em.set_footer(text=f"{ctx.guild.name if ctx.guild else 'Direct Message'} | #{ctx.channel.name}")
+        await log_ch.send(embed=em)
 
     # prefix
     @commands.command(
@@ -171,4 +156,4 @@ class Bot(commands.Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(Bot(bot))
+   await bot.add_cog(Bot(bot))
