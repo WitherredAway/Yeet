@@ -57,8 +57,8 @@ class Channel(commands.Cog):
     @commands.group(
         name="channel",
         aliases=["ch"],
-        brief="Useful channel management commands",
-        help="Channel management commands, use the help command for a list of commands",
+        brief="Useful channel management commands, use the help command for a list of subcommands",
+        help="Channel management commands for doing useful things related to channels.",
         invoke_without_command=True,
         case_insensitive=True,
     )
