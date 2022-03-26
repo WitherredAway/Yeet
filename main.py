@@ -44,12 +44,12 @@ class Bot(commands.Bot):
 
 TOKEN = os.getenv("botTOKEN")
 
-# checks for rate-limit
+# Checks for rate-limit
 r = requests.head(url="https://discord.com/api/v1")
 if r.headers.get("Retry-After", None):
     print(f"Rate limit {round(int(r.headers['Retry-After']) / 60, 2)} minutes left")
 
-# no rate-limit, run
+# No rate-limit, run
 elif __name__ == "__main__":
     bot = Bot(
         command_prefix=get_prefix,

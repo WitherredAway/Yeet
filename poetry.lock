@@ -165,7 +165,7 @@ resolved_reference = "fbb8803779373357e274e1540b368365fd9d8074"
 
 [[package]]
 name = "discord.py"
-version = "2.0.0a3959+g181fc42b"
+version = "2.0.0a3967+g985f5732"
 description = "A Python wrapper for the Discord API"
 category = "main"
 optional = false
@@ -185,7 +185,7 @@ voice = ["PyNaCl (>=1.3.0,<1.6)"]
 type = "git"
 url = "https://github.com/Rapptz/discord.py"
 reference = "master"
-resolved_reference = "181fc42b9ba71692226400b9c5008fb126c84aa0"
+resolved_reference = "985f5732c0ad720e5008ec36019bec6fc15cfc3a"
 
 [[package]]
 name = "durations-nlp"
@@ -275,7 +275,7 @@ test = ["pytest", "pytest-cov"]
 
 [[package]]
 name = "itsdangerous"
-version = "2.1.1"
+version = "2.1.2"
 description = "Safely pass data to untrusted environments and back."
 category = "main"
 optional = false
@@ -283,11 +283,11 @@ python-versions = ">=3.7"
 
 [[package]]
 name = "jinja2"
-version = "3.0.3"
+version = "3.1.0"
 description = "A very fast and expressive template engine."
 category = "main"
 optional = false
-python-versions = ">=3.6"
+python-versions = ">=3.7"
 
 [package.dependencies]
 MarkupSafe = ">=2.0"
@@ -899,12 +899,12 @@ import-expression = [
     {file = "import_expression-1.1.4.tar.gz", hash = "sha256:06086a6ab3bfa528b1c478e633d6adf2b3a990e31440f6401b0f3ea12b0659a9"},
 ]
 itsdangerous = [
-    {file = "itsdangerous-2.1.1-py3-none-any.whl", hash = "sha256:935642cd4b987cdbee7210080004033af76306757ff8b4c0a506a4b6e06f02cf"},
-    {file = "itsdangerous-2.1.1.tar.gz", hash = "sha256:7b7d3023cd35d9cb0c1fd91392f8c95c6fa02c59bf8ad64b8849be3401b95afb"},
+    {file = "itsdangerous-2.1.2-py3-none-any.whl", hash = "sha256:2c2349112351b88699d8d4b6b075022c0808887cb7ad10069318a8b0bc88db44"},
+    {file = "itsdangerous-2.1.2.tar.gz", hash = "sha256:5dbbc68b317e5e42f327f9021763545dc3fc3bfe22e6deb96aaf1fc38874156a"},
 ]
 jinja2 = [
-    {file = "Jinja2-3.0.3-py3-none-any.whl", hash = "sha256:077ce6014f7b40d03b47d1f1ca4b0fc8328a692bd284016f806ed0eaca390ad8"},
-    {file = "Jinja2-3.0.3.tar.gz", hash = "sha256:611bb273cd68f3b993fabdc4064fc858c5b47a973cb5aa7999ec1ba405c87cd7"},
+    {file = "Jinja2-3.1.0-py3-none-any.whl", hash = "sha256:da424924c069a4013730d8dd010cbecac7e7bb752be388db3741688bffb48dc6"},
+    {file = "Jinja2-3.1.0.tar.gz", hash = "sha256:a2f09a92f358b96b5f6ca6ecb4502669c4acb55d8733bbb2b2c9c4af5564c605"},
 ]
 jishaku = [
     {file = "jishaku-2.3.2-py3-none-any.whl", hash = "sha256:a395781b152a63b38c3cf48ffe94b218b49327f3d22536f3ab9a8b0c7ed62576"},
