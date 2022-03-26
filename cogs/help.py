@@ -464,7 +464,7 @@ class PaginatedHelpCommand(commands.HelpCommand):
         embed_like.title = (
             f"`{ctx.clean_prefix}`{PaginatedHelpCommand.get_command_signature(command)}"
         )
-        embed_like.url = source(bot, command=command.name)
+        embed_like.url = source(bot, command=command.qualified_name)
         embed_like.add_field(
             name="Help",
             value=f"{command.help if command.help else 'No help found.'}",
