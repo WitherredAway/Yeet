@@ -95,15 +95,15 @@ class Channel(commands.Cog):
         menu = BotPages(source, ctx=ctx)
         await menu.start()
 
-    # startswith
+    # contains
     @_list.command(
-        name="starts_with",
-        aliases=["startswith", "sw"],
-        brief="Lists all channels with message starting with <phrase>.",
-        help="Lists all channels with last message starting with the word/phrase specified.",
+        name="contains",
+        aliases=("contain", "last_message", "lm"),
+        brief="Lists all channels with last message containing <phrase>.",
+        help="Lists all channels with last message containing the word/phrase specified. `<phrase>` can also be a regex pattern.",
         case_insensitive=True,
     )
-    async def _starts_with(self, ctx, *, phrase):
+    async def _contains(self, ctx: commands.Context, *, phrase: str):
         key = re.compile(phrase.lower())
         top_msg = f"Channels with last message starting with `{key.pattern}`"
         channels = []
