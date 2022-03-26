@@ -111,12 +111,12 @@ class Channel(commands.Cog):
             for channel in ctx.guild.text_channels:
                 async for message in channel.history(limit=1):
                     message_content = message.content
-                    if len(message.embeds) > 0:
-                        if len(message.embeds[0].title) > 0:
+                    if message.embeds:
+                        if message.embeds[0].title:
                             message_content = message.embeds[0].title
-                        elif len(message.embeds[0].author) > 0:
+                        elif message.embeds[0].author:
                             message_content = message.embeds[0].author
-                        elif len(message.embeds[0].description) > 0:
+                        elif message.embeds[0].description:
                             message_content = message.embeds[0].description
                     if key.search(message_content.lower()):
                         channels.append(channel)
