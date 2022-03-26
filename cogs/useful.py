@@ -101,7 +101,7 @@ class Useful(commands.Cog):
         class TimerStopView(discord.ui.View):
             @discord.ui.button(label="Stop", style=discord.ButtonStyle.danger)
             async def confirm(
-                _self, button: discord.ui.Button, interaction: discord.Interaction
+                _self, interaction: discord.Interaction, button: discord.ui.Button
             ):
                 if interaction.user != ctx.author:
                     await interaction.response.send_message(

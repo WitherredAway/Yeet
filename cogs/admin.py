@@ -23,7 +23,7 @@ class RepeatView(discord.ui.View):
         await self.message.edit(view=None)
 
     @discord.ui.button(label="Run again", style=discord.ButtonStyle.blurple)
-    async def repeat(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def repeat(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         await self.ctx.bot.process_commands(self.ctx.message)
 

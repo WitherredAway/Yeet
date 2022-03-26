@@ -120,7 +120,7 @@ class DrawButtons(discord.ui.View):
             ),
         ],
     )
-    async def colour_picker(self, select, interaction):
+    async def colour_picker(self, interaction: discord.Interaction, select: discord.ui.SelectMenu):
         await interaction.response.defer()
         if select.values[0] == "emoji":
             res = await interaction.channel.send(
@@ -266,7 +266,7 @@ class DrawButtons(discord.ui.View):
     @discord.ui.button(
         emoji="<:stop:921864670145552444>", style=discord.ButtonStyle.danger
     )
-    async def cancel(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         self.clear_cursors()
         embed = make_embed(self.ctx, self.board, self.bg, self.row_list, self.col_list)
@@ -276,7 +276,7 @@ class DrawButtons(discord.ui.View):
     @discord.ui.button(
         emoji="<:clear:922414780193579009>", style=discord.ButtonStyle.danger
     )
-    async def clear(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def clear(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         self.auto = False
         self.auto_colour.style = discord.ButtonStyle.gray
@@ -299,13 +299,13 @@ class DrawButtons(discord.ui.View):
 
     @discord.ui.button(label="\u200b", style=discord.ButtonStyle.gray)
     async def placeholder1(
-        self, button: discord.ui.Button, interaction: discord.Interaction
+        self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
 
     @discord.ui.button(label="\u200b", style=discord.ButtonStyle.gray)
     async def placeholder2(
-        self, button: discord.ui.Button, interaction: discord.Interaction
+        self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
 
@@ -313,7 +313,7 @@ class DrawButtons(discord.ui.View):
         emoji="<:fill:930832869692149790>", style=discord.ButtonStyle.gray
     )
     async def fill_bucket(
-        self, button: discord.ui.Button, interaction: discord.Interaction
+        self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
         if self.fill == False:
@@ -337,7 +337,7 @@ class DrawButtons(discord.ui.View):
 
     @discord.ui.button(label="\u200b", style=discord.ButtonStyle.gray)
     async def placeholder3(
-        self, button: discord.ui.Button, interaction: discord.Interaction
+        self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
 
@@ -345,7 +345,7 @@ class DrawButtons(discord.ui.View):
         emoji="<:up_left:920896021700161547>", style=discord.ButtonStyle.blurple
     )
     async def up_right(
-        self, button: discord.ui.Button, interaction: discord.Interaction
+        self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
         row_move = -1
@@ -355,7 +355,7 @@ class DrawButtons(discord.ui.View):
     @discord.ui.button(
         emoji="<:up:920895538696704053>", style=discord.ButtonStyle.blurple
     )
-    async def up(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def up(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         row_move = -1
         col_move = 0
@@ -365,7 +365,7 @@ class DrawButtons(discord.ui.View):
         emoji="<:up_right:920895852128657480>", style=discord.ButtonStyle.blurple
     )
     async def up_left(
-        self, button: discord.ui.Button, interaction: discord.Interaction
+        self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
         row_move = -1
@@ -374,21 +374,21 @@ class DrawButtons(discord.ui.View):
 
     @discord.ui.button(label="\u200b", style=discord.ButtonStyle.gray)
     async def placeholder5(
-        self, button: discord.ui.Button, interaction: discord.Interaction
+        self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
 
     @discord.ui.button(
         emoji="<:erase:927526530052132894>", style=discord.ButtonStyle.gray
     )
-    async def erase(self, button: discord.Button, interaction: discord.Interaction):
+    async def erase(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         await self.edit_draw(interaction, self.cur_cle[self.bg])
 
     @discord.ui.button(
         emoji="<:left:920895993145327628>", style=discord.ButtonStyle.blurple
     )
-    async def left(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def left(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         row_move = 0
         col_move = -1
@@ -398,7 +398,7 @@ class DrawButtons(discord.ui.View):
         emoji="<:auto_cursor:921352341427470347>", style=discord.ButtonStyle.gray
     )
     async def auto_colour(
-        self, button: discord.ui.Button, interaction: discord.Interaction
+        self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
         if self.auto == False:
@@ -412,7 +412,7 @@ class DrawButtons(discord.ui.View):
     @discord.ui.button(
         emoji="<:right:920895888229036102>", style=discord.ButtonStyle.blurple
     )
-    async def right(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def right(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         row_move = 0
         col_move = 1
@@ -420,14 +420,14 @@ class DrawButtons(discord.ui.View):
 
     @discord.ui.button(label="\u200b", style=discord.ButtonStyle.gray)
     async def placeholder6(
-        self, button: discord.ui.Button, interaction: discord.Interaction
+        self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
 
     @discord.ui.button(
         emoji="<:middle:920897054060998676>", style=discord.ButtonStyle.green
     )
-    async def draw(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def draw(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         await self.edit_draw(interaction, self.cursor)
 
@@ -435,7 +435,7 @@ class DrawButtons(discord.ui.View):
         emoji="<:down_left:920895965987242025>", style=discord.ButtonStyle.blurple
     )
     async def down_left(
-        self, button: discord.ui.Button, interaction: discord.Interaction
+        self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
         row_move = 1
@@ -445,7 +445,7 @@ class DrawButtons(discord.ui.View):
     @discord.ui.button(
         emoji="<:down:920895939030429696>", style=discord.ButtonStyle.blurple
     )
-    async def down(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def down(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         row_move = 1
         col_move = 0
@@ -455,7 +455,7 @@ class DrawButtons(discord.ui.View):
         emoji="<:down_right:920895913608765551>", style=discord.ButtonStyle.blurple
     )
     async def down_right(
-        self, button: discord.ui.Button, interaction: discord.Interaction
+        self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
         row_move = 1
@@ -466,7 +466,7 @@ class DrawButtons(discord.ui.View):
         emoji="<:ABCD:920896121285537832>", style=discord.ButtonStyle.blurple
     )
     async def set_cursor(
-        self, button: discord.Button, interaction: discord.Interaction
+        self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
         res = await self.ctx.send(

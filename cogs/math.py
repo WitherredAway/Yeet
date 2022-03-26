@@ -67,7 +67,7 @@ class Calculator(discord.ui.View):
         await interaction.edit_original_message(content=result)
 
     @discord.ui.button(label="■", style=discord.ButtonStyle.danger)
-    async def cancel(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         if self.text == "":
             await interaction.delete_original_message()
@@ -76,7 +76,7 @@ class Calculator(discord.ui.View):
         self.stop()
 
     @discord.ui.button(label="C", style=discord.ButtonStyle.danger)
-    async def clear(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def clear(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         self.history += f"\n__Cleared__:\n{calculate(self.text)}"
         self.text = ""
@@ -84,7 +84,7 @@ class Calculator(discord.ui.View):
 
     @discord.ui.button(label="⌫", style=discord.ButtonStyle.danger)
     async def backspace(
-        self, button: discord.ui.Button, interaction: discord.Interaction
+        self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
         self.text = self.text[:-1]
@@ -92,7 +92,7 @@ class Calculator(discord.ui.View):
 
     @discord.ui.button(label="R%", style=discord.ButtonStyle.gray)
     async def _modulus(
-        self, button: discord.ui.Button, interaction: discord.Interaction
+        self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
         # self.text += "%"
@@ -100,39 +100,39 @@ class Calculator(discord.ui.View):
 
     @discord.ui.button(label="÷", style=discord.ButtonStyle.gray)
     async def _divide(
-        self, button: discord.ui.Button, interaction: discord.Interaction
+        self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
         # self.text += "/"
         await self.new_edit("/", interaction)
 
     @discord.ui.button(label="𝓍ʸ", style=discord.ButtonStyle.gray)
-    async def _power(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def _power(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         # self.text += "**"
         await self.new_edit("**", interaction)
 
     @discord.ui.button(label="7", style=discord.ButtonStyle.blurple)
-    async def _seven(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def _seven(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         # self.text += "7"
         await self.new_edit("7", interaction)
 
     @discord.ui.button(label="8", style=discord.ButtonStyle.blurple)
-    async def _eight(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def _eight(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         # self.text += "8"
         await self.new_edit("8", interaction)
 
     @discord.ui.button(label="9", style=discord.ButtonStyle.blurple)
-    async def _nine(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def _nine(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         # self.text += "9"
         await self.new_edit("9", interaction)
 
     @discord.ui.button(label="×", style=discord.ButtonStyle.gray)
     async def _multiply(
-        self, button: discord.ui.Button, interaction: discord.Interaction
+        self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
         # self.text += "*"
@@ -140,7 +140,7 @@ class Calculator(discord.ui.View):
 
     @discord.ui.button(label="π", style=discord.ButtonStyle.gray)
     async def _placeholder(
-        self, button: discord.ui.Button, interaction: discord.Interaction
+        self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
         append = ""
@@ -151,91 +151,91 @@ class Calculator(discord.ui.View):
         await self.new_edit(append, interaction)
 
     @discord.ui.button(label="4", style=discord.ButtonStyle.blurple)
-    async def _four(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def _four(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         # self.text += "4"
         await self.new_edit("4", interaction)
 
     @discord.ui.button(label="5", style=discord.ButtonStyle.blurple)
-    async def _five(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def _five(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         # self.text += "5"
         await self.new_edit("5", interaction)
 
     @discord.ui.button(label="6", style=discord.ButtonStyle.blurple)
-    async def _six(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def _six(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         # self.text += "6"
         await self.new_edit("6", interaction)
 
     @discord.ui.button(label="-", style=discord.ButtonStyle.gray)
-    async def _minus(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def _minus(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         # self.text += "-"
         await self.new_edit("-", interaction)
 
     @discord.ui.button(label="%", style=discord.ButtonStyle.gray)
     async def _percent(
-        self, button: discord.ui.Button, interaction: discord.Interaction
+        self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
         # self.text += "/100"
         await self.new_edit("/100", interaction)
 
     @discord.ui.button(label="1", style=discord.ButtonStyle.blurple)
-    async def _one(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def _one(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         # self.text += "1"
         await self.new_edit("1", interaction)
 
     @discord.ui.button(label="2", style=discord.ButtonStyle.blurple)
-    async def _two(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def _two(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         # self.text += "2"
         await self.new_edit("2", interaction)
 
     @discord.ui.button(label="3", style=discord.ButtonStyle.blurple)
-    async def _three(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def _three(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         # self.text += "3"
         await self.new_edit("3", interaction)
 
     @discord.ui.button(label="+", style=discord.ButtonStyle.gray)
-    async def _plus(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def _plus(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         # self.text += "+"
         await self.new_edit("+", interaction)
 
     @discord.ui.button(label="//", style=discord.ButtonStyle.gray)
-    async def _floor(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def _floor(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         # self.text += "//"
         await self.new_edit("//", interaction)
 
     @discord.ui.button(label=".", style=discord.ButtonStyle.gray)
-    async def _period(
-        self, button: discord.ui.Button, interaction: discord.Interaction
+    async def _point(
+        self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
         # self.text += "."
         await self.new_edit(".", interaction)
 
     @discord.ui.button(label="0", style=discord.ButtonStyle.blurple)
-    async def _zero(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def _zero(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         # self.text += "0"
         await self.new_edit("0", interaction)
 
     @discord.ui.button(label="↻", style=discord.ButtonStyle.green)
     async def _history(
-        self, button: discord.ui.Button, interaction: discord.Interaction
+        self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
         await interaction.edit_original_message(content=self.history)
 
     @discord.ui.button(label="=", style=discord.ButtonStyle.green)
     async def _equals(
-        self, button: discord.ui.Button, interaction: discord.Interaction
+        self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
         self.history += "\n__Equalled__:\n" + calculate(self.text)
