@@ -399,6 +399,31 @@ class PaginatedHelpCommand(commands.HelpCommand):
             alias = command.name if not parent else f"{parent} {command.name}"
         return (f"{alias} `{command.signature}`") if command.signature else (f"{alias}")
 
+    @staticmethod
+    def common_command_formatting(ctx, embed_like, command):
+        bot = ctx.bot
+        embed_like.title = (
+            f"`{ctx.clean_prefix}`{PaginatedHelpCommand.get_command_signature(command)}"
+        )
+        embed_like.url = source(bot, command=command.qualified_name)
+        if command.help:
+            embed_like.add_field(
+                name="Help",
+                value=command.help,
+                inline=False,
+            )
+        if command.description:
+            embed_like.add_field(
+                name="Description",
+                value=command.description,
+                inline=False,
+            )
+        embed_like.add_field(
+            name="Category",
+            value=f"`{command.cog_name if command.cog else 'None'}`",
+            inline=False,
+        )
+
     async def send_bot_help(self, mapping):
         bot = self.context.bot
 
@@ -457,29 +482,6 @@ class PaginatedHelpCommand(commands.HelpCommand):
         menu.add_categories_and_commands(all_commands_dict, cog_commands)
         # start the menu
         await menu.start()
-
-    @staticmethod
-    def common_command_formatting(ctx, embed_like, command):
-        bot = ctx.bot
-        embed_like.title = (
-            f"`{ctx.clean_prefix}`{PaginatedHelpCommand.get_command_signature(command)}"
-        )
-        embed_like.url = source(bot, command=command.qualified_name)
-        embed_like.add_field(
-            name="Help",
-            value=f"{command.help if command.help else 'No help found.'}",
-            inline=False,
-        )
-        embed_like.add_field(
-            name="Description",
-            value=f"{command.description if command.description else 'No description found.'}",
-            inline=False,
-        )
-        embed_like.add_field(
-            name="Category",
-            value=f"`{command.cog_name if command.cog else 'None'}`",
-            inline=False,
-        )
 
     async def send_command_help(self, command):
         embed = self.context.bot.Embed()
