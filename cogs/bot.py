@@ -13,8 +13,8 @@ class Bot(commands.Cog):
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        
-    display_emoji = "👾"
+
+    display_emoji: discord.PartialEmoji = "👾"
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -26,7 +26,7 @@ class Bot(commands.Cog):
             await webhook.send(embed=self.bot.Embed(title=msg))
 
     @commands.Cog.listener()
-    async def on_message_edit(self, before, after):
+    async def on_message_edit(self, before: discord.Message, after: discord.Message):
         await self.bot.process_commands(after)
 
     @commands.Cog.listener()
@@ -50,7 +50,7 @@ class Bot(commands.Cog):
         elif isinstance(error, commands.MissingPermissions):
             missing = [
                 "`" + perm.replace("_", " ").replace("guild", "server").title() + "`"
-                for perm in error.missing_perms
+                for perm in error.missing_permissions
             ]
             fmt = "\n".join(missing)
             message = f"You need the following permissions to run this command:\n{fmt}."
@@ -59,7 +59,7 @@ class Bot(commands.Cog):
         elif isinstance(error, commands.BotMissingPermissions):
             missing = [
                 "`" + perm.replace("_", " ").replace("guild", "server").title() + "`"
-                for perm in error.missing_perms
+                for perm in error.missing_permissions
             ]
             fmt = "\n".join(missing)
             message = f"I need the following permissions to run this command:\n{fmt}."
@@ -84,10 +84,10 @@ class Bot(commands.Cog):
 
     # logs
     @commands.Cog.listener(name="on_command")
-    async def on_command(self, ctx):
+    async def on_command(self, ctx: commands.Context):
         log_ch = self.bot.LOG_CHANNEL
         user = ctx.author
-        
+
         em = self.bot.Embed()
 
         em.set_author(name=user, icon_url=user.avatar.url)
@@ -97,17 +97,20 @@ class Bot(commands.Cog):
             name="Go to",
             value=f"[Warp]({ctx.message.jump_url})",
         )
-        em.set_footer(text=f"{ctx.guild.name if ctx.guild else 'Direct Message'} | #{ctx.channel.name}")
+        em.set_footer(
+            text=f"{ctx.guild.name if ctx.guild else 'Direct Message'} | #{ctx.channel.name}"
+        )
         await log_ch.send(embed=em)
 
     # prefix
+    @commands.has_permissions(manage_messages=True)
     @commands.command(
         name="prefix",
-        aliases=["prefixes"],
+        aliases=("prefixes",),
         brief="Shows prefixes.",
         help="Shows the prefixes of the bot. Cannot be changed.",
     )
-    async def _prefix(self, ctx):
+    async def _prefix(self, ctx: commands.Context):
         n = "\n> "
         await ctx.send(
             f"My prefixes are:\n> {n.join(get_prefix(ctx.bot, ctx)[1:])}\nThey cannot be changed."
@@ -119,7 +122,7 @@ class Bot(commands.Cog):
         brief="Bot's latency.",
         help="Responds with 'Pong!' and the bot's latency",
     )
-    async def ping(self, ctx):
+    async def ping(self, ctx: commands.Context):
         message = await ctx.send("Pong!")
         ms = int((message.created_at - ctx.message.created_at).total_seconds() * 1000)
         await message.edit(content=f"Pong! {ms} ms")
@@ -130,7 +133,7 @@ class Bot(commands.Cog):
         brief="Bot's uptime.",
         help="Shows how long it has been since the bot last went offline.",
     )
-    async def uptime(self, ctx):
+    async def uptime(self, ctx: commands.Context):
         embed = self.bot.Embed(
             title="Bot's uptime",
             description=f"The bot has been up for `{humanize.precisedelta(datetime.datetime.utcnow() - self.bot.uptime)}`.",
@@ -141,19 +144,15 @@ class Bot(commands.Cog):
     @commands.command(
         name="invite", brief="Bot's invite link", help="Sends the bot's invite link."
     )
-    async def invite(self, ctx):
+    async def invite(self, ctx: commands.Context):
         embed = self.bot.Embed(
-            title="Add the bot to your server using the following link."
+            title="Add the bot to your server using the following link.",
+            description=f"[Invite link.](https://discord.com/api/oauth2/authorize?client_id={self.bot.user.id}&permissions=8&scope=bot%20applications.commands)",
         )
         embed.set_thumbnail(url=self.bot.user.avatar.url)
-        embed.add_field(
-            name="Invite Bot",
-            value=f"[Invite link.](https://discord.com/api/oauth2/authorize?client_id={self.bot.user.id}&permissions=8&scope=bot%20applications.commands)",
-            inline=False,
-        )
 
         await ctx.send(embed=embed)
 
 
-async def setup(bot):
-   await bot.add_cog(Bot(bot))
+async def setup(bot: commands.Bot):
+    await bot.add_cog(Bot(bot))
