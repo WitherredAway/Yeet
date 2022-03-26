@@ -20,7 +20,7 @@ idna==3.3
 import-expression==1.1.4
 itsdangerous==2.1.1
 Jinja2==3.0.3
-jishaku==2.3.2
+jishaku @ git+https://github.com/Gorialis/jishaku
 lxml==4.8.0
 MarkupSafe==2.1.0
 multidict==6.0.2
