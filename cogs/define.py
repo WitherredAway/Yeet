@@ -15,7 +15,7 @@ T = TypeVar("T", bound="Term")
 
 class TermSelectMenu(discord.ui.Select):
     """The select menu for different words and their information."""
-    
+
     def __init__(self, entries: typing.List, bot: commands.Bot):
         super().__init__(placeholder="Jump to definition", row=0)
         self.entries = entries[:25]
@@ -76,12 +76,12 @@ class TermPageSource(menus.ListPageSource):
         if (example := entry.get("example", "")) != "":
             self.embed.add_field(name="example", value=example, inline=True)
 
-        if (antonyms := entry["antonyms"]):
+        if antonyms := entry["antonyms"]:
             self.embed.add_field(
                 name="antonyms", value=", ".join(antonyms), inline=True
             )
 
-        if (synonyms := entry["synonyms"]):
+        if synonyms := entry["synonyms"]:
             self.embed.add_field(
                 name="synonyms", value=", ".join(synonyms), inline=True
             )
@@ -101,7 +101,7 @@ class Term:
 
     async def __new__(cls, *args, **kwargs):
         """Makes the __init__ function asynchronous."""
-        
+
         instance = super().__new__(cls)
         await instance.__init__(*args, **kwargs)
         return instance

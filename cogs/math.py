@@ -213,9 +213,7 @@ class Calculator(discord.ui.View):
         await self.new_edit("//", interaction)
 
     @discord.ui.button(label=".", style=discord.ButtonStyle.gray)
-    async def _point(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ):
+    async def _point(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         # self.text += "."
         await self.new_edit(".", interaction)

@@ -120,7 +120,9 @@ class DrawButtons(discord.ui.View):
             ),
         ],
     )
-    async def colour_picker(self, interaction: discord.Interaction, select: discord.ui.Select):
+    async def colour_picker(
+        self, interaction: discord.Interaction, select: discord.ui.Select
+    ):
         await interaction.response.defer()
         if select.values[0] == "emoji":
             res = await interaction.channel.send(
