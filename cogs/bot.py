@@ -98,7 +98,9 @@ class Bot(commands.Cog):
             value=f"[Warp]({ctx.message.jump_url})",
         )
         em.set_footer(
-            text=f"{ctx.guild.name if ctx.guild else 'Direct Message'} | #{ctx.channel.name}"
+            text=f"{ctx.guild.name} | #{ctx.channel.name}"
+            if ctx.guild
+            else "Direct Messages"
         )
         await log_ch.send(embed=em)
 
