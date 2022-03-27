@@ -24,9 +24,7 @@ class Github:
         self.access_token = access_token
         self._req_lock = asyncio.Lock()
 
-    async def request(
-        self, method, url, *, params=None, data=None, headers=None
-    ):
+    async def request(self, method, url, *, params=None, data=None, headers=None):
         hdrs = {
             "Accept": "application/vnd.github.inertia-preview+json",
             "User-Agent": "WitherredAway",
@@ -41,7 +39,9 @@ class Github:
         await self._req_lock.acquire()
         try:
             async with aiohttp.ClientSession() as session:
-                response = await session.request(method, request_url, params=params, json=data, headers=hdrs)
+                response = await session.request(
+                    method, request_url, params=params, json=data, headers=hdrs
+                )
                 remaining = response.headers.get("X-Ratelimit-Remaining")
                 json_data = await response.json()
                 if response.status == 429 or remaining == "0":
@@ -82,7 +82,7 @@ class Gist:
         """Re-fetch data and update the instance."""
         updated_gist_data = await self.fetch_data(self.id, self.access_token)
         self.__dict__.update(updated_gist_data)
-    
+
     @classmethod
     async def get_gist(cls, access_token: str, gist_id: str):
         gist_obj = cls(access_token)
@@ -111,13 +111,13 @@ class Gist:
 
         github = Github(access_token)
         js = await github.request(
-           "POST", "gists", data=data, headers=headers, params=params
+            "POST", "gists", data=data, headers=headers, params=params
         )
         return await cls.get_gist(access_token, js["id"])
 
     async def edit(
         self,
-        files: typing.Dict, # e.g. {"output.txt": {"content": "Content if the file"}}
+        files: typing.Dict,  # e.g. {"output.txt": {"content": "Content if the file"}}
         *,
         description: str = None,
     ):
@@ -125,15 +125,13 @@ class Gist:
             "Accept": "application/vnd.github.v3+json",
         }
 
-        data = {
-            "files": files
-        }
+        data = {"files": files}
 
         if description:
             data["description"] = description
 
         url = "gists/%s" % self.id
-        
+
         js = await self.github.request("PATCH", url, data=data, headers=headers)
 
     async def delete(
@@ -156,13 +154,15 @@ class CreateGistModal(discord.ui.Modal):
         placeholder="output.txt",
         default="output.txt",
     )
-    description = discord.ui.TextInput(label="Description", max_length=1000, placeholder="Description")
+    description = discord.ui.TextInput(
+        label="Description", max_length=1000, placeholder="Description"
+    )
     content = discord.ui.TextInput(label="Content", style=discord.TextStyle.paragraph)
 
     def __init__(self, view: discord.ui.View):
         super().__init__(title="Create a new gist")
         self.view = view
-        
+
     async def on_submit(self, interaction: discord.Interaction):
         self.gist = await Gist.create_gist(
             GITHUB_ACCESS_TOKEN,
@@ -173,11 +173,14 @@ class CreateGistModal(discord.ui.Modal):
         self.view.gist = self.gist
         self.view._update_buttons()
 
-        await interaction.response.edit_message(content=self.gist.html_url, view=self.view)
+        await interaction.response.edit_message(
+            content=self.gist.html_url, view=self.view
+        )
 
 
 class EditGistModal(discord.ui.Modal):
     """The modal for executing various functions on a gist"""
+
     def __init__(self, view: discord.ui.View, gist: Gist):
         super().__init__(title="Edit gist (only shows the first 2 files)")
         self.view = view
@@ -191,19 +194,19 @@ class EditGistModal(discord.ui.Modal):
                 placeholder="Edit the gist's description",
                 style=discord.TextStyle.paragraph,
                 default=self.gist.description,
-                custom_id="gist_description"
+                custom_id="gist_description",
             )
         )
-        
+
         self.add_item(
             discord.ui.TextInput(
                 label="Edit a specific file",
                 style=discord.TextStyle.short,
                 placeholder="Input existing filename to edit file,\nInput new filename to create a new file.",
-                custom_id="new_filename"
+                custom_id="new_filename",
             )
         )
-        
+
         self.add_item(
             discord.ui.TextInput(
                 label="The specific file's content",
@@ -213,7 +216,7 @@ class EditGistModal(discord.ui.Modal):
                 custom_id="new_filecontent",
             )
         )
-        
+
         for idx, file in enumerate(list(self.gist.files.values())[:2]):
             filename = file["filename"]
             content = file["content"]
@@ -228,15 +231,13 @@ class EditGistModal(discord.ui.Modal):
             )
 
     def children_dict(self):
-        ch_dict = {
-            child.custom_id: child.__dict__ for child in self.children
-        }
+        ch_dict = {child.custom_id: child.__dict__ for child in self.children}
         return ch_dict
-      
+
     async def on_submit(self, interaction: discord.Interaction):
         children_dict = self.children_dict()
         data_files = self.gist.files
-        
+
         description = children_dict["gist_description"]["_value"]
         for child_custom_id, child_value in children_dict.items():
             value = child_value["_value"]
@@ -248,29 +249,18 @@ class EditGistModal(discord.ui.Modal):
                 content = children_dict["new_filecontent"]["_value"]
                 # Set its values as the new file's name and content in the gist
                 try:
-                    data_files[filename].update(
-                        {
-                             "content": content
-                        }
-                    )
+                    data_files[filename].update({"content": content})
                 except KeyError:
-                    data_files[filename] = {
-                        "filename": filename,
-                        "content": content
-                    }
-            
+                    data_files[filename] = {"filename": filename, "content": content}
+
             # If the child's custom_id ends with content
             elif child_custom_id.endswith("_content"):
                 # It is the content of a file
                 content = value
                 # Set its value as the corresponding file's content
                 filename = child_custom_id.split("_")[0]
-                data_files[filename].update(
-                    {
-                        "content": content
-                    }
-                )
-                
+                data_files[filename].update({"content": content})
+
         await self.gist.edit(
             data_files,
             description=description,
@@ -292,7 +282,7 @@ class GistView(discord.ui.View):
 
     async def on_timeout(self):
         await self.response.edit(view=None)
-        
+
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user != self.ctx.author:
             await interaction.response.send_message(
@@ -320,7 +310,9 @@ class GistView(discord.ui.View):
     async def _delete_gist(
         self, interaction: discord.Interaction, button: discord.Button
     ):
-        await interaction.response.edit_message(content="Deleted gist %s" % self.gist.id, view=None)
+        await interaction.response.edit_message(
+            content="Deleted gist %s" % self.gist.id, view=None
+        )
         await self.gist.delete()
         await self.stop()
 
@@ -339,11 +331,6 @@ class Test(commands.Cog):
         self.UCP_GIST_ID = "2206767186c249f17b07ad9a299f068c"
         self.UCP_FILENAME = "Unclaimed Pokemon.txt"
 
-        #self.update_unclaimed_pokemon.start()
-
-    #def cog_unload(self):
-        #self.update_unclaimed_pokemon.cancel()
-
     display_emoji = "🧪"
 
     @commands.command()
@@ -351,51 +338,15 @@ class Test(commands.Cog):
         embed = self.bot.Embed(title="Gist")
         gist = None
         if validators.url(str(gist_url_or_id)):
-            gist_url_or_id = gist_url_or_id.split("/")[-2 if gist_url_or_id.endswith("/") else -1]
+            gist_url_or_id = gist_url_or_id.split("/")[
+                -2 if gist_url_or_id.endswith("/") else -1
+            ]
             try:
                 gist = await Gist.get_gist(GITHUB_ACCESS_TOKEN, gist_url_or_id)
             except aiohttp.ClientResponseError:
                 embed.description = "Gist not found."
         view = GistView(ctx, gist)
         view.response = await ctx.send(embed=embed, view=view)
-        
-
-    async def get_unclaimed(self):
-        pk = pd.read_csv(
-            "https://docs.google.com/spreadsheets/d/1-FBEjg5p6WxICTGLn0rvqwSdk30AmZqZgOOwsI2X1a4/export?gid=0&format=csv",
-            index_col=0,
-            header=6,
-        )
-
-        msg = "\n".join(sorted(list(pk["Name"][pk["Person in Charge"].isna()])))
-        return msg
-
-    # The task that updates the unclaimed pokemon gist
-    @tasks.loop(minutes=5)
-    async def update_unclaimed_pokemon(self):
-        content = await self.get_unclaimed()
-        amount = len(content.split("\n"))
-        if hasattr(self, "amount"):
-            if self.amount == amount:
-                return
-        else:
-            self.amount = amount
-
-        github = Github(self.bot)
-        date = (datetime.datetime.utcnow()).strftime("%I:%M%p, %d/%m/%Y")
-
-        gist_url = await github.edit_gist(
-            self.UCP_GIST_ID,
-            content,
-            description="%s unclaimed pokemon as of %s GMT (Checks every 5 minutes, and updates only if there is a change)"
-            % (amount, date),
-            filename=self.UCP_FILENAME,
-        )
-        await self.bot.update_channel.send("Updated! %s (%s)" % (gist_url, amount))
-
-    @update_unclaimed_pokemon.before_loop
-    async def before_update(self):
-        await self.bot.wait_until_ready()
 
 
 async def setup(bot):
