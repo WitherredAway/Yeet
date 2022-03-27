@@ -31,6 +31,7 @@ class Bot(commands.Bot):
     async def setup_hook(self):
         self.update_channel = await self.fetch_channel(798247389219127297)
         self.LOG_CHANNEL = await self.fetch_channel(os.getenv("logCHANNEL"))
+
         self.session = aiohttp.ClientSession(loop=self.loop)
         
         # self.load_extension("jishaku")
