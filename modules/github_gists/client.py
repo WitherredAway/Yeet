@@ -43,7 +43,10 @@ class Client:
                     method, request_url, params=params, json=data, headers=hdrs
                 ) as response:
                 remaining = response.headers.get("X-Ratelimit-Remaining")
-                json_data = await response.json()
+                try:
+                    data = await response.json()
+                except aiohttp.client_exceptions.ContentTypeError:
+                    data = response.content
                 if response.status == 429 or remaining == "0":
                     reset_after = float(response.headers.get("X-Ratelimit-Reset-After"))
                     await asyncio.sleep(reset_after)
@@ -52,7 +55,7 @@ class Client:
                         method, request_url, params=params, data=data, headers=headers
                     )
                 elif 300 > response.status >= 200:
-                    return json_data
+                    return data
                 else:
                     raise response.raise_for_status()
         finally:
@@ -102,7 +105,7 @@ class Client:
         updated_gist_data = await self.fetch_data(gist.id)
         gist._update(updated_gist_data)
 
-    async def edit(
+    async def edit_gist(
         self,
         gist: Gist,
         *,
@@ -118,7 +121,7 @@ class Client:
         edited_gist_data = await self.request("PATCH", gist.request_url, data=data)
         gist._update(edited_gist_data)
 
-    async def delete(self, gist: Gist):
+    async def delete_gist(self, gist: Gist):
         """Delete the gist."""
         await self.request("DELETE", gist.request_url)
         del gist

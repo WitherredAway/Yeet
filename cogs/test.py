@@ -162,7 +162,7 @@ class EditGistModal(discord.ui.Modal):
                 filename = child_custom_id.split("_")[0]
                 data_files[filename].update({"content": content})
 
-        await self.client.edit(
+        await self.client.edit_gist(
             self.gist,
             files=data_files,
             description=description,
@@ -216,9 +216,8 @@ class GistView(discord.ui.View):
         await interaction.response.edit_message(
             content="Deleted gist %s" % self.gist.id, view=None
         )
-        await self.client.delete(self.gist)
-        await self.stop()
-
+        await self.client.delete_gist(self.gist)
+        
     @staticmethod
     async def format_embed(embed, gist: github_gists.Gist):
         embed.title = gist.id
