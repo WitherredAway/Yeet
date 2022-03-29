@@ -1,4 +1,5 @@
 import typing
+from typing import Optional
 import os
 import yarl
 import asyncio
@@ -19,130 +20,115 @@ GITHUB_API = "https://api.github.com"
 GITHUB_ACCESS_TOKEN = os.getenv("githubTOKEN")
 
 
-class Github:
-    def __init__(self, access_token: str):
+class GistClient:
+    def __init__(self, *, username: str, access_token: str, session: Optional[aiohttp.ClientSession] = None):
+        self.username = username
         self.access_token = access_token
-        self._req_lock = asyncio.Lock()
+        self.session = session
 
-    async def request(self, method, url, *, params=None, data=None, headers=None):
+        self.URL = "gists"
+        self._request_lock = asyncio.Lock()
+
+    async def _generate_session(self):
+        self.session = aiohttp.ClientSession()
+
+    async def request(self, method, gist_id: Optional[str] = None, *, params=None, data=None, headers=None):
         hdrs = {
-            "Accept": "application/vnd.github.inertia-preview+json",
-            "User-Agent": "WitherredAway",
-            "Authorization": "token %s" % self.access_token,
+            'Accept': "application/vnd.github.v3+json",
+            'User-Agent': self.username,
+            'Authorization': "token %s" % self.access_token,
         }
 
-        request_url = yarl.URL(GITHUB_API) / url
+        url = f'{self.URL}/{gist_id if gist_id else ""}'
+        request_url = yarl.URL(API_URL) / url
 
         if headers is not None and isinstance(headers, dict):
             hdrs.update(headers)
 
-        await self._req_lock.acquire()
+        if not self.session:
+            await self._generate_session()
+
+        await self._request_lock.acquire()
         try:
-            async with aiohttp.ClientSession() as session:
-                response = await session.request(
+            async with self.session.request(
                     method, request_url, params=params, json=data, headers=hdrs
-                )
+                ) as response:
                 remaining = response.headers.get("X-Ratelimit-Remaining")
                 json_data = await response.json()
                 if response.status == 429 or remaining == "0":
-                    delta = discord.utils._parse_ratelimit_header(response)
-                    await asyncio.sleep(delta)
-                    self._req_lock.release()
+                    reset_after = float(response.headers.get("X-Ratelimit-Reset-After"))
+                    await asyncio.sleep(reset_after)
+                    self._request_lock.release()
                     return await self.request(
-                        method, url, params=params, data=data, headers=headers
+                        method, gist_id, params=params, data=data, headers=headers
                     )
                 elif 300 > response.status >= 200:
                     return json_data
                 else:
                     raise response.raise_for_status()
         finally:
-            if self._req_lock.locked():
-                self._req_lock.release()
+            if self._request_lock.locked():
+                self._request_lock.release()
 
-
-class Gist:
-    def __init__(self, access_token: str = os.getenv("githubTOKEN")):
-        self.access_token = access_token
-        self.github = Github(self.access_token)
-
-    @staticmethod
-    async def fetch_data(gist_id: str, access_token: str):
+    async def fetch_data(self, gist_id: str):
         """Fetch data of a Gist"""
-        headers = {
-            "Accept": "application/vnd.github.v3+json",
-        }
-
-        url = "gists/%s" % gist_id
-
-        github = Github(access_token)
-        gist_data_json = await github.request("GET", url, headers=headers)
+        
+        gist_data_json = await self.request("GET", gist_id)
         return gist_data_json
 
-    async def update(self):
-        """Re-fetch data and update the instance."""
-        updated_gist_data = await self.fetch_data(self.id, self.access_token)
-        self.__dict__.update(updated_gist_data)
+    async def get_gist(cls, gist_id: str):
+        
 
-    @classmethod
-    async def get_gist(cls, access_token: str, gist_id: str):
-        gist_obj = cls(access_token)
-        gist_obj.__dict__.update(await cls.fetch_data(gist_id, access_token))
-        return gist_obj
-
-    @classmethod
     async def create_gist(
         cls,
-        access_token: str,
-        content: str,
+        files: typing.Dict,  # e.g. {"output.txt": {"content": "Content of the file"}}
         *,
         description: str = None,
-        filename: str = "output.txt",
         public: bool = True,
-    ):
-        headers = {
-            "Accept": "application/vnd.github.v3+json",
-        }
-
-        data = {"public": public, "files": {filename: {"content": content}}}
+    ) -> Gist:
+        
+        data = {"public": public, "files": files}
         params = {"scope": "gist"}
 
         if description:
             data["description"] = description
 
-        github = Github(access_token)
-        js = await github.request(
-            "POST", "gists", data=data, headers=headers, params=params
+        js = await self.request(
+            "POST", data=data, params=params
         )
-        return await cls.get_gist(access_token, js["id"])
+        return Gist(js, client=self)
+    
+class Gist:
+    def __init__(self, data: typing.Dict, *, client: GistClient):
+        self.data = data
+        # Set the data dict's items as attributes
+        self.__dict__.update(data)
+        self.client = client
+
+    async def update(self):
+        """Re-fetch data and update the instance."""
+        updated_gist_data = await self.client.fetch_data(self.id)
+        self.__dict__.update(updated_gist_data)
 
     async def edit(
         self,
-        files: typing.Dict,  # e.g. {"output.txt": {"content": "Content if the file"}}
+        files: typing.Dict,  # e.g. {"output.txt": {"content": "Content of the file"}}
         *,
         description: str = None,
     ):
-        headers = {
-            "Accept": "application/vnd.github.v3+json",
-        }
 
         data = {"files": files}
 
         if description:
             data["description"] = description
 
-        url = "gists/%s" % self.id
-
-        js = await self.github.request("PATCH", url, data=data, headers=headers)
+        await self.client.request("PATCH", self.id, data=data)
 
     async def delete(
         self,
     ):
-        headers = {
-            "Accept": "application/vnd.github.v3+json",
-        }
-
-        url = "gists/%s" % self.id
-        js = await self.github.request("DELETE", url, headers=headers)
+        
+        await self.client.request("DELETE", self.id)
 
 
 class CreateGistModal(discord.ui.Modal):

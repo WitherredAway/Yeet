@@ -154,17 +154,6 @@ optional = false
 python-versions = ">=3.5"
 
 [[package]]
-name = "discord"
-version = "1.7.3"
-description = "A mirror package for discord.py. Please install that instead."
-category = "main"
-optional = false
-python-versions = "*"
-
-[package.dependencies]
-"discord.py" = ">=1.7.3"
-
-[[package]]
 name = "discord-ext-menus"
 version = "1.0.0a31+gfbb8803"
 description = "An extension module to make reaction based menus with discord.py"
@@ -184,7 +173,7 @@ resolved_reference = "fbb8803779373357e274e1540b368365fd9d8074"
 
 [[package]]
 name = "discord.py"
-version = "2.0.0a3972+g0bcb0d0e"
+version = "2.0.0a3981+g8524bfb5"
 description = "A Python wrapper for the Discord API"
 category = "main"
 optional = false
@@ -204,7 +193,7 @@ voice = ["PyNaCl (>=1.3.0,<1.6)"]
 type = "git"
 url = "https://github.com/Rapptz/discord.py"
 reference = "master"
-resolved_reference = "0bcb0d0e3ce395d42a5b1dae61b0090791ee018d"
+resolved_reference = "8524bfb54db977c74c7da31765fa36e49753eb3e"
 
 [[package]]
 name = "durations-nlp"
@@ -658,7 +647,7 @@ socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
 [[package]]
 name = "validators"
 version = "0.18.2"
-description = "Python Data Validation for Humans™."
+description = "Python Data Validation for Humansâ¢."
 category = "main"
 optional = false
 python-versions = ">=3.4"
@@ -736,7 +725,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "d8a0f1ca623679a9e037a7bd32ab16cefdb9d42f9af5d5794f5013ee9bc68f76"
+content-hash = "bc0d931c0b180a4228e40777720ea1e8072f06d2a533993642456fe9d8d324c7"
 
 [metadata.files]
 aiohttp = [
@@ -881,10 +870,6 @@ colorama = [
 decorator = [
     {file = "decorator-5.1.1-py3-none-any.whl", hash = "sha256:b8c3f85900b9dc423225913c5aace94729fe1fa9763b38939a95226f02d37186"},
     {file = "decorator-5.1.1.tar.gz", hash = "sha256:637996211036b6385ef91435e4fae22989472f9d571faba8927ba8253acbc330"},
-]
-discord = [
-    {file = "discord-1.7.3-py3-none-any.whl", hash = "sha256:248d728356e149c818a81b94659047a19305ea1623d4810bbb342f6b7df55f36"},
-    {file = "discord-1.7.3.tar.gz", hash = "sha256:846dd3d66888c2e0a8bd9120d8778a0fe088c003a7f6451668497f14e322a304"},
 ]
 discord-ext-menus = []
 "discord.py" = []
