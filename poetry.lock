@@ -173,7 +173,7 @@ resolved_reference = "fbb8803779373357e274e1540b368365fd9d8074"
 
 [[package]]
 name = "discord.py"
-version = "2.0.0a3981+g8524bfb5"
+version = "2.0.0a3983+g9f83eb60"
 description = "A Python wrapper for the Discord API"
 category = "main"
 optional = false
@@ -193,7 +193,7 @@ voice = ["PyNaCl (>=1.3.0,<1.6)"]
 type = "git"
 url = "https://github.com/Rapptz/discord.py"
 reference = "master"
-resolved_reference = "8524bfb54db977c74c7da31765fa36e49753eb3e"
+resolved_reference = "9f83eb6032ac2865582076c974f5ff3be1ead962"
 
 [[package]]
 name = "durations-nlp"

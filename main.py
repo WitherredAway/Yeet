@@ -29,7 +29,6 @@ class Bot(commands.Bot):
         self.status = discord.Status.online
 
     async def setup_hook(self):
-        self.update_channel = await self.fetch_channel(798247389219127297)
         self.LOG_CHANNEL = await self.fetch_channel(os.getenv("logCHANNEL"))
 
         self.session = aiohttp.ClientSession(loop=self.loop)
@@ -65,3 +64,4 @@ elif __name__ == "__main__":
     print(f"No rate limit.")
     keep_alive()
     bot.run(TOKEN)
+    
