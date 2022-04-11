@@ -24,7 +24,7 @@ GITHUB_ACCESS_TOKEN = os.getenv("githubTOKEN")
 
 class CreateGistModal(discord.ui.Modal):
     """Interactive modal to create gists."""
-    
+
     description = discord.ui.TextInput(
         label="Description", max_length=1000, placeholder="Description"
     )
@@ -43,21 +43,17 @@ class CreateGistModal(discord.ui.Modal):
         self.client = self.view.client
 
     async def on_submit(self, interaction: discord.Interaction):
-        #description = "Author ID: %s\n%s" % (self.view.ctx.author.id, self.description.value)
+        # description = "Author ID: %s\n%s" % (self.view.ctx.author.id, self.description.value)
         description = self.description.value
         filename = self.filename.value
         content = self.content.value
-        
-        files = {
-            filename: {
-                'filename': filename,
-                'content': content
-            }
-        }
-        
+
+        files = {filename: {"filename": filename, "content": content}}
+
         self.gist = await self.client.create_gist(
             files,
             description=description,
+            public=True
         )
         self.view.gist = self.gist
         self.view._update_buttons()
@@ -91,7 +87,7 @@ class EditGistModal(discord.ui.Modal):
                 placeholder="Description of the gist.",
                 default=self.gist.description,
                 custom_id="gist_description",
-                required=False
+                required=False,
             )
         )
 
@@ -101,7 +97,7 @@ class EditGistModal(discord.ui.Modal):
                 style=discord.TextStyle.short,
                 placeholder="Input existing filename to edit file,\nInput new filename to create a new file.",
                 custom_id="new_filename",
-                required=False
+                required=False,
             )
         )
 
@@ -112,7 +108,7 @@ class EditGistModal(discord.ui.Modal):
                 style=discord.TextStyle.paragraph,
                 min_length=1,
                 custom_id="new_filecontent",
-                required=False
+                required=False,
             )
         )
 
@@ -126,7 +122,7 @@ class EditGistModal(discord.ui.Modal):
                     style=discord.TextStyle.paragraph,
                     default=content,
                     custom_id="%s_content" % filename,
-                    required=False
+                    required=False,
                 )
             )
 
@@ -166,12 +162,18 @@ class EditGistModal(discord.ui.Modal):
             self.gist,
             files=data_files,
             description=description,
+            public=False
         )
         await interaction.response.edit_message(content=self.gist.html_url)
 
 
 class GistView(discord.ui.View):
-    def __init__(self, ctx: commands.Context, client: github_gists.Client, gist: github_gists.Gist):
+    def __init__(
+        self,
+        ctx: commands.Context,
+        client: github_gists.Client,
+        gist: github_gists.Gist,
+    ):
         super().__init__(timeout=300)
         self.ctx = ctx
         self.client = client
@@ -217,7 +219,7 @@ class GistView(discord.ui.View):
             content="Deleted gist %s" % self.gist.id, view=None
         )
         await self.client.delete_gist(self.gist)
-        
+
     @staticmethod
     async def format_embed(embed, gist: github_gists.Gist):
         embed.title = gist.id
@@ -232,15 +234,12 @@ class Test(commands.Cog):
 
     display_emoji = "🧪"
 
-    @commands.command(
-        name="gist",
-        brief="GitHub Gists utilities"
-    )
+    @commands.command(name="gist", brief="GitHub Gists utilities")
     async def _gist(self, ctx, gist_url_or_id: str = None):
         embed = self.bot.Embed(title="Gist")
         gist = None
         client = github_gists.Client()
-        await client.authenticate(access_token=GITHUB_ACCESS_TOKEN)
+        await client.authorize(access_token=GITHUB_ACCESS_TOKEN)
         if validators.url(str(gist_url_or_id)):
             gist_url_or_id = gist_url_or_id.split("/")[
                 -2 if gist_url_or_id.endswith("/") else -1

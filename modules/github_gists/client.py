@@ -15,21 +15,28 @@ class Client:
 
         self._request_lock = asyncio.Lock()
 
-    async def authenticate(self, *, access_token: str):
+    async def authorize(self, access_token: str):
         self.access_token = access_token
         if not self.session:
             self.session = aiohttp.ClientSession()
         
         self.user_data = await self.fetch_user()
 
-    async def request(self, method: str, url: str, *, params=None, data=None, headers=None) -> typing.Dict:
+    async def request(
+        self, method: str, url: str, *, params=None, data=None, headers=None
+    ) -> typing.Dict:
+        """The method to make asynchronous requests to the GitHub API"""
         if not hasattr(self, "access_token"):
-            raise ClientAuthenticateError("Please authenticate this GistClient instance using the authenticate method first.")
-            
+            raise ClientAuthenticateError(
+                "Please authenticate this GistClient instance using the authenticate method first."
+            )
+
         hdrs = {
-            'Accept': "application/vnd.github.v3+json",
-            'User-Agent': (self.user_data["login"] if hasattr(self, "user_data") else "User-Agent"),
-            'Authorization': "token %s" % self.access_token,
+            "Accept": "application/vnd.github.v3+json",
+            "User-Agent": (
+                self.user_data["login"] if hasattr(self, "user_data") else "User-Agent"
+            ),
+            "Authorization": "token %s" % self.access_token,
         }
 
         request_url = yarl.URL(API_URL) / url
@@ -40,8 +47,8 @@ class Client:
         await self._request_lock.acquire()
         try:
             async with self.session.request(
-                    method, request_url, params=params, json=data, headers=hdrs
-                ) as response:
+                method, request_url, params=params, json=data, headers=hdrs
+            ) as response:
                 remaining = response.headers.get("X-Ratelimit-Remaining")
                 try:
                     data = await response.json()
@@ -71,12 +78,13 @@ class Client:
 
     async def fetch_data(self, gist_id: str) -> typing.Dict:
         """Fetch data of a Gist"""
-        
+
         url = "gists/%s" % gist_id
         gist_data: typing.Dict = await self.request("GET", url)
         return gist_data
 
     async def get_gist(self, gist_id: str) -> Gist:
+        """Get a Gist object associated with the provided gist_id"""
         data = await self.fetch_data(gist_id)
         return Gist(data)
 
@@ -87,7 +95,8 @@ class Client:
         description: str = None,
         public: bool = True,
     ) -> Gist:
-        
+        """Create a new gist and return a Gist object associated with that gist"""
+
         data = {"public": public, "files": files}
         params = {"scope": "gist"}
 
@@ -95,13 +104,12 @@ class Client:
             data["description"] = description
 
         url = "gists"
-        js = await self.request(
-            "POST", url, data=data, params=params
-        )
+        js = await self.request("POST", url, data=data, params=params)
         return Gist(js)
 
     async def update_gist(self, gist: Gist):
-        """Re-fetch data and update the instance."""
+        """Re-fetch data and update the provided Gist object."""
+
         updated_gist_data = await self.fetch_data(gist.id)
         gist._update(updated_gist_data)
 
@@ -111,17 +119,23 @@ class Client:
         *,
         files: typing.Dict,  # e.g. {"output.txt": {"content": "Content of the file"}}
         description: str = None,
+        public: bool = None
     ):
+        """Edit the gist associated with the provided Gist object, and update the object"""
 
         data = {"files": files}
 
         if description:
             data["description"] = description
 
+        if public:
+            data["public"] = public
+
         edited_gist_data = await self.request("PATCH", gist.request_url, data=data)
         gist._update(edited_gist_data)
 
     async def delete_gist(self, gist: Gist):
-        """Delete the gist."""
+        """Delete the gist associated with the provided Gist object, and delete the object"""
+
         await self.request("DELETE", gist.request_url)
         del gist
