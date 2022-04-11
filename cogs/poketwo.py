@@ -1,19 +1,21 @@
-import discord
 import asyncio
-import wikipedia
 import random
-import pandas as pd
 import itertools
-import numpy as np
 import os
-
+import typing
 from typing import Counter, Union, Optional
+
+import discord
 from discord.ext import commands
+import numpy as np
+import pandas as pd
+import wikipedia
+
 from cogs.utils.paste import paste_to_bin
 from constants import NEW_LINE
 
 
-class Poketwo(commands.Cog):
+class PoketwoChances(commands.Cog):
     """Commands related to the poketwo bot."""
 
     def __init__(self, bot):
@@ -206,5 +208,59 @@ class Poketwo(commands.Cog):
         await ctx.send(result)
 
 
+class PoketwoMoves(commands.Cog):
+    """The cog for poketwo moves"""
+
+    def __init__(self, bot):
+        self.bot = bot
+
+        self.mv = pd.read_csv(
+            "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/moves.csv",
+            index_col=0,
+            dtype=object,
+        )
+        self.pkm_mv = pd.read_csv(
+            "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/move_names.csv",
+            index_col=False,
+            dtype=object,
+        )
+        self.mv_names = pd.read_csv(
+            "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/move_names.csv",
+            index_col=False,
+            dtype=object,
+        )
+        self.pkm_names = pd.read_csv(
+            "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/pokemon_species_names.csv",
+            index_col=False,
+            dtype=object,
+        )
+        self.type_names = pd.read_csv(
+            "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/type_names.csv",
+            index_col=False,
+            dtype=object,
+        )
+
+    def format_move(
+        self, move_name: str, move_type: str, move_class: str, pokemon: typing.List
+    ):
+        format = f"""
+        __**{move_name}**__
+        **Type:** {move_type}
+        **Class:** {move_class}
+        **Pokemon that learn it:** {", ".join(pokemon)}
+        """
+        return format
+
+    @commands.command(
+        name="moveinfo",
+        aliases=("mi", "move", "mv"),
+        brief="See extended info of a move.",
+        help="See the name, type and the pokemon that have a certain move.",
+    )
+    async def moveinfo(self, ctx: commands.Context, move_name: str):
+        move_name = move_name.capitalize()
+
+
 async def setup(bot):
-    await bot.add_cog(Poketwo(bot))
+    await bot.add_cog(PoketwoChances(bot))
+    await bot.add_cog(PoketwoMoves(bot))

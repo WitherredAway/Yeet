@@ -64,4 +64,3 @@ elif __name__ == "__main__":
     print(f"No rate limit.")
     keep_alive()
     bot.run(TOKEN)
-    

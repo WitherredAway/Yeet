@@ -17,7 +17,6 @@ typing-extensions = "^3.7.4.3"
 simpleeval = "^0.9.11"
 emojis = "^0.6.0"
 pandas = "^1.4.0"
-black = "^22.1.0"
 parsedatetime = "^2.6"
 lxml = "^4.8.0"
 humanize = "^4.0.0"
@@ -28,6 +27,7 @@ aiohttp = "^3.8.1"
 validators = "^0.18.2"
 numpy = "^1.22.3"
 requests = "^2.27.1"
+"gists.py" = "^1.0.0"
 
 [tool.poetry.dev-dependencies]
 

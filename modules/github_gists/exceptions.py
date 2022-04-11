@@ -1,2 +1,0 @@
-class ClientAuthenticateError(Exception):
-    pass
