@@ -90,8 +90,8 @@ class Bot(commands.Cog):
 
         em = self.bot.Embed()
 
+        em.description = ctx.message.content
         em.set_author(name=user, icon_url=user.avatar.url)
-        em.add_field(name="Command used", value=ctx.message.content, inline=False)
         em.timestamp = datetime.datetime.utcnow()
         em.add_field(
             name="Go to",
