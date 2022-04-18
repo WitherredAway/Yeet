@@ -250,7 +250,7 @@ class CommandSelectMenu(discord.ui.Select):
                 await self.view.rebind(source, interaction)
             else:
                 embed = self.bot.Embed()
-                PaginatedHelpCommand.common_command_formatting(self, embed, command)
+                PaginatedHelpCommand.common_command_formatting(self.ctx, embed, command)
                 await interaction.response.edit_message(embed=embed, view=self.view)
 
 
