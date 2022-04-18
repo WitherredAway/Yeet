@@ -113,6 +113,7 @@ class GroupHelpPageSource(menus.ListPageSource):
         return len(self.entries) > self.per_page
 
     async def format_page(self, menu, entries):
+        menu.command_select_menu.commands = entries
         embed = self.bot.Embed()
         maximum = self.get_max_pages()
 
@@ -185,13 +186,30 @@ class CommandSelectMenu(discord.ui.Select):
             min_values=1,
             max_values=1,
         )
-        self.commands = list(commands)[:25]
+        self._commands = commands
         self.ctx = ctx
         self.context = self.ctx
         self.bot = self.ctx.bot
         self.__fill_options()
 
+    @property
+    def commands(self):
+        return self._commands
+
+    @commands.setter
+    def commands(self, value: typing.List[commands.command]):
+        self._commands = value
+        self.__fill_options()
+
+    def clear_options(self):
+        self._underlying.options.clear()
+        return self
+        
     def __fill_options(self) -> None:
+        if not self.commands:
+            return
+
+        self.clear_options()
         self.add_option(
             label="Index",
             emoji="⭕",
@@ -330,7 +348,8 @@ class HelpMenu(BotPages):
 
     def add_commands(self, commands: List[commands.Command]) -> None:
         self.clear_items()
-        self.add_item(CommandSelectMenu(self.ctx, commands))
+        self.command_select_menu = CommandSelectMenu(self.ctx, None)
+        self.add_item(self.command_select_menu)
         self.fill_items()
 
     def add_categories_and_commands(
@@ -340,7 +359,8 @@ class HelpMenu(BotPages):
     ) -> None:
         self.clear_items()
         self.add_item(HelpSelectMenu(self.ctx, cogs_and_commands, cmd_select=True))
-        self.add_item(CommandSelectMenu(self.ctx, commands))
+        self.command_select_menu = CommandSelectMenu(self.ctx, None)
+        self.add_item(self.command_select_menu)
         self.fill_items()
 
     async def rebind(
