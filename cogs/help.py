@@ -277,7 +277,7 @@ class HelpSelectMenu(discord.ui.Select["HelpMenu"]):
     def __fill_options(self) -> None:
         self.add_option(
             label="Index",
-            emoji="\N{WAVING HAND SIGN}",
+            emoji="⭕",
             value="__index",
             description="The help page showing how to use the bot.",
         )
