@@ -1,22 +1,14 @@
 import typing
 from typing import Optional, TypeVar
 import os
-import yarl
-import asyncio
-import aiohttp
-import json
-import datetime
-import re
-from dataclasses import dataclass
+import gists
 
 import discord
-import random
 from discord.ext import commands, menus, tasks
 import pandas as pd
 import validators
 
 from .utils.paginator import BotPages
-import modules.github_gists as github_gists
 
 
 GITHUB_ACCESS_TOKEN = os.getenv("githubTOKEN")
@@ -26,7 +18,7 @@ class CreateGistModal(discord.ui.Modal):
     """Interactive modal to create gists."""
 
     description = discord.ui.TextInput(
-        label="Description", max_length=1000, placeholder="Description"
+        label="Description", min_length=0, placeholder="Description", required=False
     )
     filename = discord.ui.TextInput(
         label="Filename",
@@ -35,7 +27,9 @@ class CreateGistModal(discord.ui.Modal):
         placeholder="Name of the new file",
         default="output.txt",
     )
-    content = discord.ui.TextInput(label="Content", style=discord.TextStyle.paragraph)
+    content = discord.ui.TextInput(
+        label="Content", min_length=0, style=discord.TextStyle.paragraph, required=False
+    )
 
     def __init__(self, view: discord.ui.View):
         super().__init__(title="Create a new gist")
@@ -48,25 +42,21 @@ class CreateGistModal(discord.ui.Modal):
         filename = self.filename.value
         content = self.content.value
 
-        files = {filename: {"filename": filename, "content": content}}
+        files = gists.File(name=filename, content=content)
 
         self.gist = await self.client.create_gist(
-            files,
-            description=description,
-            public=True
+            files=[files], description=description, public=True
         )
         self.view.gist = self.gist
         self.view._update_buttons()
 
-        await interaction.response.edit_message(
-            content=self.gist.html_url, view=self.view
-        )
+        await interaction.response.edit_message(embed=self.view.embed, view=self.view)
 
 
 class EditGistModal(discord.ui.Modal):
     """The modal for executing various functions on a gist"""
 
-    def __init__(self, view: discord.ui.View, gist: github_gists.Gist):
+    def __init__(self, view: discord.ui.View, gist: gists.Gist):
         super().__init__(title="Edit gist (only shows the first 2 files)")
         self.view = view
         self.client = self.view.client
@@ -112,15 +102,15 @@ class EditGistModal(discord.ui.Modal):
             )
         )
 
-        for idx, file in enumerate(list(self.gist.files.values())[:2]):
-            filename = file["filename"]
-            content = file["content"]
+        for idx, file in enumerate(self.gist.files[:2]):
+            filename = file.name
+            content = file.content
             self.add_item(
                 discord.ui.TextInput(
                     label="File: %s's content" % filename,
                     placeholder="Edit content of file %s." % filename,
                     style=discord.TextStyle.paragraph,
-                    default=content,
+                    default=f"{content[:3997]}..." if len(content) > 4000 else content,
                     custom_id="%s_content" % filename,
                     required=False,
                 )
@@ -132,7 +122,7 @@ class EditGistModal(discord.ui.Modal):
 
     async def on_submit(self, interaction: discord.Interaction):
         children_dict = self.children_dict()
-        data_files = self.gist.files
+        file_objs = self.gist.files
 
         description = "Author: %s\n\n" % self.view.ctx.author
         description += children_dict["gist_description"]["_value"]
@@ -145,10 +135,7 @@ class EditGistModal(discord.ui.Modal):
                 filename = value
                 content = children_dict["new_filecontent"]["_value"]
                 # Set its values as the new file's name and content in the gist
-                try:
-                    data_files[filename].update({"content": content})
-                except KeyError:
-                    data_files[filename] = {"filename": filename, "content": content}
+                file_objs.append(gists.File(name=filename, content=content))
 
             # If the child's custom_id ends with _content
             elif child_custom_id.endswith("_content"):
@@ -156,31 +143,38 @@ class EditGistModal(discord.ui.Modal):
                 content = value
                 # Set its value as the corresponding file's content
                 filename = child_custom_id.split("_")[0]
-                data_files[filename].update({"content": content})
+                file_objs.append(gists.File(name=filename, content=content))
 
-        await self.client.edit_gist(
-            self.gist,
-            files=data_files,
+        await self.gist.edit(
+            files=file_objs,
             description=description,
-            public=False
         )
-        await interaction.response.edit_message(content=self.gist.html_url)
+        await interaction.response.edit_message(embed=self.view.embed)
 
 
 class GistView(discord.ui.View):
     def __init__(
         self,
         ctx: commands.Context,
-        client: github_gists.Client,
-        gist: github_gists.Gist,
+        client: gists.Client,
+        gist: gists.Gist,
     ):
         super().__init__(timeout=300)
+
         self.ctx = ctx
         self.client = client
         self.gist = gist
+
+        self._jump_button = discord.ui.Button(
+            label="Jump",
+            url=self.gist.url if self.gist else "https://gist.github.com/None",
+        )
+        self.add_item(self._jump_button)
+
         self._update_buttons()
 
     def _update_buttons(self):
+        self._jump_button.disabled = False if self.gist else True
         self._create_gist.disabled = True if self.gist else False
         self._edit_gist.disabled = False if self.gist else True
         self._delete_gist.disabled = False if self.gist else True
@@ -196,33 +190,51 @@ class GistView(discord.ui.View):
             return False
         return True
 
-    @discord.ui.button(label="Create a gist", style=discord.ButtonStyle.green)
+    @discord.ui.button(label="Create a gist", style=discord.ButtonStyle.green, row=1)
     async def _create_gist(
         self, interaction: discord.Interaction, button: discord.Button
     ):
         modal = CreateGistModal(self)
         await interaction.response.send_modal(modal)
 
-    @discord.ui.button(label="Edit gist", style=discord.ButtonStyle.blurple)
+    @discord.ui.button(label="Edit gist", style=discord.ButtonStyle.blurple, row=1)
     async def _edit_gist(
         self, interaction: discord.Interaction, button: discord.Button
     ):
-        await self.client.update_gist(self.gist)
         modal = EditGistModal(self, self.gist)
         await interaction.response.send_modal(modal)
 
-    @discord.ui.button(label="Delete gist", style=discord.ButtonStyle.danger)
+    @discord.ui.button(label="Delete gist", style=discord.ButtonStyle.danger, row=1)
     async def _delete_gist(
         self, interaction: discord.Interaction, button: discord.Button
     ):
-        await interaction.response.edit_message(
-            content="Deleted gist %s" % self.gist.id, view=None
-        )
-        await self.client.delete_gist(self.gist)
+        await self.gist.delete()
+        embed = self.embed
+        embed.title += " [DELETED]"
+        embed.color = 0xFF0000
 
-    @staticmethod
-    async def format_embed(embed, gist: github_gists.Gist):
+        self.gist = None
+        self._update_buttons()
+
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    @property
+    def embed(self):
+        embed = self.ctx.bot.Embed()
+        gist = self.gist
+        if not gist:
+            embed.title = "Gist not found."
+            return embed
+
         embed.title = gist.id
+        embed.description = gist.description
+        embed.set_footer(text="Created at")
+        embed.timestamp = gist.created_at
+
+        embed.add_field(
+            name="Last updated at", value=gist.updated_at.strftime("%b %d, %Y %H:%M")
+        )
+        return embed
 
 
 class Test(commands.Cog):
@@ -236,19 +248,20 @@ class Test(commands.Cog):
 
     @commands.command(name="gist", brief="GitHub Gists utilities")
     async def _gist(self, ctx, gist_url_or_id: str = None):
-        embed = self.bot.Embed(title="Gist")
         gist = None
-        client = github_gists.Client()
-        await client.authorize(access_token=GITHUB_ACCESS_TOKEN)
+        client = gists.Client()
+        await client.authorize(GITHUB_ACCESS_TOKEN)
         if validators.url(str(gist_url_or_id)):
             gist_url_or_id = gist_url_or_id.split("/")[
                 -2 if gist_url_or_id.endswith("/") else -1
             ]
-            try:
-                gist = await client.get_gist(gist_url_or_id)
-            except aiohttp.ClientResponseError:
-                embed.description = "Gist not found."
+        try:
+            gist = await client.get_gist(gist_url_or_id)
+        except gists.NotFound:
+            gist = None
+
         view = GistView(ctx, client, gist)
+        embed = view.embed
         view.response = await ctx.send(embed=embed, view=view)
 
 
