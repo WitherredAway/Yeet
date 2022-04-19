@@ -251,6 +251,7 @@ class Test(commands.Cog):
         gist = None
         client = gists.Client()
         await client.authorize(GITHUB_ACCESS_TOKEN)
+
         if validators.url(str(gist_url_or_id)):
             gist_url_or_id = gist_url_or_id.split("/")[
                 -2 if gist_url_or_id.endswith("/") else -1
