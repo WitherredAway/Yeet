@@ -177,6 +177,8 @@ class CommandSelectMenu(discord.ui.Select):
         self,
         ctx,
         commands: List[commands.Command],
+        *,
+        help_command: commands.HelpCommand,
     ):
         super().__init__(
             custom_id="cmd_select",
@@ -188,6 +190,8 @@ class CommandSelectMenu(discord.ui.Select):
         self.ctx = ctx
         self.context = self.ctx
         self.bot = self.ctx.bot
+        self.help_command = help_command
+
         self.__fill_options()
 
     @property
@@ -202,7 +206,7 @@ class CommandSelectMenu(discord.ui.Select):
     def clear_options(self):
         self._underlying.options.clear()
         return self
-        
+
     def __fill_options(self) -> None:
         if not self.commands:
             return
@@ -239,10 +243,14 @@ class CommandSelectMenu(discord.ui.Select):
                 return
 
             if isinstance(command, commands.Group):
+                subcommands = await self.help_command.filter_commands(
+                    command.commands, sort=True
+                )
+
                 source = GroupHelpPageSource(
                     self.ctx,
                     command,
-                    list(command.commands),
+                    subcommands,
                 )
                 await self.view.rebind(source, interaction)
             else:
@@ -256,7 +264,8 @@ class HelpSelectMenu(discord.ui.Select["HelpMenu"]):
         self,
         ctx,
         commands: Dict[commands.Cog, List[commands.Command]],
-        cmd_select: bool = False,
+        *,
+        help_command: commands.HelpCommand,
     ):
         super().__init__(
             custom_id="cat_select",
@@ -265,10 +274,10 @@ class HelpSelectMenu(discord.ui.Select["HelpMenu"]):
             max_values=1,
             row=0,
         )
-        self.commands = commands
         self.ctx = ctx
         self.bot = self.ctx.bot
-        self.cmd_select = cmd_select
+        self.commands = commands
+        self.help_command = help_command
         self.__fill_options()
 
     def __fill_options(self) -> None:
@@ -309,7 +318,9 @@ class HelpSelectMenu(discord.ui.Select["HelpMenu"]):
                 )
                 return
 
-            commands = [command for command in self.commands[cog] if not command.hidden]
+            commands = await self.help_command.filter_commands(
+                self.commands[cog], sort=True
+            )
             if not commands:
                 await interaction.response.send_message(
                     "This category has no commands for you", ephemeral=True
@@ -322,11 +333,11 @@ class HelpSelectMenu(discord.ui.Select["HelpMenu"]):
                     self.view.add_item(CommandSelectMenu(self.view.ctx, commands))
                     break
             else:
-                self.view.add_categories_and_commands(self.commands, commands)
+                self.view.add_categories_and_commands(
+                    self.commands, commands, help_command=self.help_command
+                )
 
-            source = GroupHelpPageSource(
-                self.ctx, cog, commands
-            )
+            source = GroupHelpPageSource(self.ctx, cog, commands)
             self.view.initial_source = source
             await self.view.rebind(source, interaction)
 
@@ -337,15 +348,22 @@ class HelpMenu(BotPages):
         self.initial_source = source
 
     def add_categories(
-        self, commands: Dict[commands.Cog, List[commands.Command]]
+        self,
+        commands: Dict[commands.Cog, List[commands.Command]],
+        *,
+        help_command: commands.HelpCommand,
     ) -> None:
         self.clear_items()
-        self.add_item(HelpSelectMenu(self.ctx, commands))
+        self.add_item(HelpSelectMenu(self.ctx, commands, help_command=help_command))
         self.fill_items()
 
-    def add_commands(self, commands: List[commands.Command]) -> None:
+    def add_commands(
+        self, commands: List[commands.Command], *, help_command: commands.HelpCommand
+    ) -> None:
         self.clear_items()
-        self.command_select_menu = CommandSelectMenu(self.ctx, None)
+        self.command_select_menu = CommandSelectMenu(
+            self.ctx, None, help_command=help_command
+        )
         self.add_item(self.command_select_menu)
         self.fill_items()
 
@@ -353,10 +371,16 @@ class HelpMenu(BotPages):
         self,
         cogs_and_commands: Dict[commands.Cog, List[commands.Command]],
         commands: List[commands.Command],
+        *,
+        help_command: commands.HelpCommand,
     ) -> None:
         self.clear_items()
-        self.add_item(HelpSelectMenu(self.ctx, cogs_and_commands, cmd_select=True))
-        self.command_select_menu = CommandSelectMenu(self.ctx, None)
+        self.add_item(
+            HelpSelectMenu(self.ctx, cogs_and_commands, help_command=help_command)
+        )
+        self.command_select_menu = CommandSelectMenu(
+            self.ctx, None, help_command=help_command
+        )
         self.add_item(self.command_select_menu)
         self.fill_items()
 
@@ -467,15 +491,13 @@ class PaginatedHelpCommand(commands.HelpCommand):
         initial = FrontPageSource()
         initial.bot = self.context.bot
         menu = HelpMenu(initial, ctx=self.context)
-        menu.add_categories(all_commands)
+        menu.add_categories(all_commands, help_command=self)
         await menu.start()
 
     async def send_cog_help(self, cog):
         # For the cog help
         cog_commands = await self.filter_commands(cog.get_commands(), sort=True)
-        source = GroupHelpPageSource(
-            self.context, cog, cog_commands
-        )
+        source = GroupHelpPageSource(self.context, cog, cog_commands)
         menu = HelpMenu(source, ctx=self.context)
         menu.initial_source = source
 
@@ -499,7 +521,9 @@ class PaginatedHelpCommand(commands.HelpCommand):
             cog = bot.get_cog(name)
             all_commands_dict[cog] = children
 
-        menu.add_categories_and_commands(all_commands_dict, cog_commands)
+        menu.add_categories_and_commands(
+            all_commands_dict, cog_commands, help_command=self
+        )
         await menu.start()
 
     async def send_command_help(self, command):
@@ -516,11 +540,9 @@ class PaginatedHelpCommand(commands.HelpCommand):
         if len(entries) == 0:
             return await self.send_command_help(group)
 
-        source = GroupHelpPageSource(
-            self.context, group, entries
-        )
+        source = GroupHelpPageSource(self.context, group, entries)
         menu = HelpMenu(source, ctx=self.context)
-        menu.add_commands(entries)
+        menu.add_commands(entries, help_command=self)
         await menu.start()
 
 
