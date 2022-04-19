@@ -459,6 +459,9 @@ class PaginatedHelpCommand(commands.HelpCommand):
                 continue
 
             cog = bot.get_cog(name)
+            if any((getattr(cog, "hidden", False), len(cog.commands) == 0)):
+                continue
+
             all_commands[cog] = children
 
         initial = FrontPageSource()
