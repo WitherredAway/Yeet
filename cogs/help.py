@@ -99,15 +99,13 @@ class GroupHelpPageSource(menus.ListPageSource):
         ctx,
         group: Union[commands.Group, commands.Cog],
         _commands: List[commands.Command],
-        *,
-        prefix: str,
     ):
         super().__init__(entries=_commands, per_page=8)
         self.entries = _commands
         self.ctx = ctx
         self.bot = self.ctx.bot
         self.group = group
-        self.prefix = prefix
+        self.prefix = self.ctx.clean_prefix
 
     def is_paginating(self) -> bool:
         return len(self.entries) > self.per_page
@@ -245,7 +243,6 @@ class CommandSelectMenu(discord.ui.Select):
                     self.ctx,
                     command,
                     list(command.commands),
-                    prefix=self.view.ctx.clean_prefix,
                 )
                 await self.view.rebind(source, interaction)
             else:
@@ -328,7 +325,7 @@ class HelpSelectMenu(discord.ui.Select["HelpMenu"]):
                 self.view.add_categories_and_commands(self.commands, commands)
 
             source = GroupHelpPageSource(
-                self.ctx, cog, commands, prefix=self.view.ctx.clean_prefix
+                self.ctx, cog, commands
             )
             self.view.initial_source = source
             await self.view.rebind(source, interaction)
@@ -471,15 +468,15 @@ class PaginatedHelpCommand(commands.HelpCommand):
         await menu.start()
 
     async def send_cog_help(self, cog):
-        # cog help
+        # For the cog help
         cog_commands = await self.filter_commands(cog.get_commands(), sort=True)
         source = GroupHelpPageSource(
-            self.context, cog, cog_commands, prefix=self.context.clean_prefix
+            self.context, cog, cog_commands
         )
         menu = HelpMenu(source, ctx=self.context)
         menu.initial_source = source
 
-        # for the selectmenu
+        # For the selectmenu
         bot = self.context.bot
 
         def key(command) -> str:
@@ -500,7 +497,6 @@ class PaginatedHelpCommand(commands.HelpCommand):
             all_commands_dict[cog] = children
 
         menu.add_categories_and_commands(all_commands_dict, cog_commands)
-        # start the menu
         await menu.start()
 
     async def send_command_help(self, command):
@@ -518,11 +514,9 @@ class PaginatedHelpCommand(commands.HelpCommand):
             return await self.send_command_help(group)
 
         source = GroupHelpPageSource(
-            self.context, group, entries, prefix=self.context.clean_prefix
+            self.context, group, entries
         )
-        # self.common_command_formatting(source, group)
         menu = HelpMenu(source, ctx=self.context)
-        # menu.initial_source = source
         menu.add_commands(entries)
         await menu.start()
 
