@@ -483,7 +483,7 @@ class PaginatedHelpCommand(commands.HelpCommand):
                 continue
 
             cog = bot.get_cog(name)
-            if any((getattr(cog, "hidden", False), len(cog.commands) == 0)):
+            if getattr(cog, "hidden", False):
                 continue
 
             all_commands[cog] = children
