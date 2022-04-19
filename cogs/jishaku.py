@@ -1,9 +1,16 @@
+import os
+import sys
 import discord
-
 from discord.ext import menus, commands
+
 from jishaku.cog import Jishaku
-from jishaku.codeblocks import codeblock_converter
+from jishaku.flags import Flags
+from jishaku.codeblocks import Codeblock, codeblock_converter
 from jishaku.features.baseclass import Feature
+
+
+os.environ["JISHAKU_RETAIN"] = "True"
+os.environ["JISHAKU_NO_DM_TRACEBACK"] = "True"
 
 
 class Jishaku(Jishaku):
@@ -46,6 +53,20 @@ class Jishaku(Jishaku):
 
         self.hidden = False
         await ctx.send("Jishaku is now visible.")
+
+    @Feature.Command(parent="jsk", name="restart")
+    async def jsk_restart(self, ctx: commands.Context):
+        """
+        Restarts the bot by killing the process with the 'jsk shell' command, which invokes the system shell.
+        """
+
+        main_file = sys.argv[0]
+        kill_cmd = f"kill 1"
+        restart_cmd = f"python3 {main_file}"
+
+        cmd = f"{kill_cmd} && {restart_cmd}"
+
+        return await ctx.invoke(self.jsk_shell, argument=codeblock_converter(cmd))
 
 
 async def setup(bot):
