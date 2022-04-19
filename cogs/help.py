@@ -327,11 +327,8 @@ class HelpSelectMenu(discord.ui.Select["HelpMenu"]):
                 )
                 return
 
-            for idx, item in enumerate(self.view.children):
-                if isinstance(item, CommandSelectMenu):
-                    self.view.remove_item(item)
-                    self.view.add_item(CommandSelectMenu(self.view.ctx, commands))
-                    break
+            if hasattr(self.view, "command_select_menu"):
+                self.view.command_select_menu.commands = commands
             else:
                 self.view.add_categories_and_commands(
                     self.commands, commands, help_command=self.help_command
