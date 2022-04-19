@@ -1,4 +1,5 @@
 import os
+import sys
 import discord
 import requests
 import json
@@ -48,19 +49,16 @@ class Bot(commands.Bot):
 
 TOKEN = os.getenv("botTOKEN")
 
-# Checks for rate-limit
-r = requests.head(url="https://discord.com/api/v1")
-if r.headers.get("Retry-After", None):
-    print(f"Rate limit {round(int(r.headers['Retry-After']) / 60, 2)} minutes left")
-
-# No rate-limit, run
-elif __name__ == "__main__":
+if __name__ == "__main__":
     bot = Bot(
         command_prefix=get_prefix,
         owner_ids=[267550284979503104, 761944238887272481],
         case_insensitive=True,
         intents=discord.Intents.all(),
     )
-    print(f"No rate limit.")
     keep_alive()
-    bot.run(TOKEN)
+    try:
+        bot.run(TOKEN)
+    except discord.errors.HTTPException:
+        print("Rate-limit detected, restarting process.")
+        os.system(f"kill 1 && python3 {sys.argv[0]}")
