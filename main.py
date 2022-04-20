@@ -1,14 +1,13 @@
 import os
 import sys
-import discord
-import requests
 import json
 import datetime
-import humanize
+
+import discord
+from discord.ext import commands
 import aiohttp
 
 from keep_alive import keep_alive
-from discord.ext import commands
 
 
 def get_prefix(bot, message):
