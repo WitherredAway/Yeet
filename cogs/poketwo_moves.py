@@ -194,7 +194,7 @@ class Data:
             moves[index] = Move(
                 id=index,
                 name=move_names.loc[index, "name"],
-                pokemon=move_pokemon,
+                pokemon_objs=move_pokemon,
                 power=move.loc["power"],
                 pp=move.loc["pp"],
                 accuracy=move.loc["accuracy"],
@@ -207,19 +207,11 @@ class Data:
 
     @cached_property
     def types(self) -> typing.Dict[int, str]:
-        type_names = self.type_names_data
-
-        types = {index: type.loc["name"] for index, type in type_names.iterrows()}
-        return types
+        return TYPES
 
     @cached_property
     def damage_classes(self) -> typing.Dict[int, str]:
-        damage_classes = self.damage_classes_data
-
-        return {
-            index: row.loc["identifier"].capitalize()
-            for index, row in damage_classes.iterrows()
-        }
+        return DAMAGE_CLASSES
 
     def get_move_pokemon(self, move_id) -> typing.List[str]:
         pkm_grouped = self.pkm_grouped
@@ -227,13 +219,17 @@ class Data:
         pokemon = {7: [], 8: []}
         for gen, grouped in pkm_grouped.items():
             pkm_names = self.pkm_names_data[gen]
-            move_group = grouped.groups.get(move_id, None)
-
+            move_group = grouped.get_group(move_id) if move_id in grouped.groups else None
             if move_group is not None:
-                for pkm_id in move_group:
-                    pokemon[gen].append(pkm_names.loc[pkm_id, "name"])
+                for pkm_id, row in move_group.iterrows():
+                    pokemon[gen].append(
+                        Pokemon(
+                            id=pkm_id,
+                            name=pkm_names.loc[pkm_id, 'name'],
+                            level=row.loc['level']
+                        )
+                    )
 
-        pokemon = {gen: list(set(pkm_list)) for gen, pkm_list in pokemon.items()}
         return pokemon
 
 
@@ -250,14 +246,20 @@ class PoketwoMoves(commands.Cog):
         return self.bot.data
 
     def format_message(self, move: Move):
+        gen_7_pokemon = move.pokemon[7]
+        len_gen_7 = len(gen_7_pokemon)
+
+        gen_8_pokemon = move.pokemon[8]
+        len_gen_8 = len(gen_8_pokemon)
+        
         format = (
-            f"__**{move.name}**__ [`{move.id}`]\n"
+            f"`{move.id}`  __**{move.name}**__\n"
             f"**Type:** {move.type}\n"
             f"**Class:** {move.damage_class}\n\n"
-            f"**Pokemon that learn it in *Poketwo - Gen 7 (Alola)***\n"
-            f'```\n{", ".join(move.pokemon[7]) if len(move.pokemon[7]) > 0 else "None"}\n```\n'
-            f"**Pokemon that learn it in *Gen 8 (Galar)***"
-            f'```\n{", ".join(move.pokemon[8]) if len(move.pokemon[8]) > 0 else "None"}\n```'
+            f"**Pokemon that learn it by leveling up in *Poketwo - Gen 7 (Alola)*** [`{len_gen_7}`]\n"
+            f'```\n{", ".join(gen_7_pokemon) if len_gen_7 > 0 else "None"}\n```\n'
+            f"**Pokemon that learn it by leveling up in *Gen 8 (Galar)*** [`{len_gen_8}`]"
+            f'```\n{", ".join(gen_8_pokemon) if len_gen_8 > 0 else "None"}\n```'
         )
         return format
 
@@ -269,14 +271,14 @@ class PoketwoMoves(commands.Cog):
         invoke_without_command=True
     )
     async def moveinfo(self, ctx: commands.Context, *, move_name: str):
-        async with ctx.typing():
+        async with ctx.channel.typing():
             try:
                 move = self.data.move_by_name(move_name)
             except KeyError:
                 return await ctx.send(f"No move named {move_name} exists!")
 
         await ctx.send(self.format_message(move))
-
+        
     @moveinfo.command(
         name="resync",
         aliases=("sync",),
@@ -284,9 +286,9 @@ class PoketwoMoves(commands.Cog):
         description="Resync the data that the moveinfo command uses."
     )
     async def resync(self, ctx):
-        async with ctx.typing():
+        async with ctx.channel.typing():
             self.data.resync()
-        await ctx.send("Resynced data.")
+        await ctx.send("Resynced data!")
 
 
 async def setup(bot):
