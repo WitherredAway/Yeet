@@ -6,7 +6,6 @@ from functools import cached_property
 import discord
 from discord.ext import commands
 import pandas as pd
-import numpy as np
 
 
 D = TypeVar("D", bound="Data")

@@ -1,6 +1,4 @@
 import asyncio
-import random
-import itertools
 import os
 import typing
 from typing import Counter, Union, Optional
@@ -9,7 +7,6 @@ import discord
 from discord.ext import commands, tasks
 import numpy as np
 import pandas as pd
-import wikipedia
 
 from cogs.utils.paste import paste_to_bin
 from constants import NEW_LINE
