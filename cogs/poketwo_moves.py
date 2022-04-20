@@ -19,10 +19,45 @@ POKETWO_MOVES = (
 MOVE_NAMES = "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/move_names.csv"
 POKEMON_NAMES = "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/pokemon_species_names.csv"
 POKETWO_NAMES = "https://raw.githubusercontent.com/poketwo/data/master/csv/pokemon.csv"
-TYPE_NAMES = "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/type_names.csv"
-DAMAGE_CLASSES = "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/move_damage_classes.csv"
 
 ENGLISH_ID = 9
+
+
+TYPES = {
+    1: 'Normal',
+    2: 'Fighting',
+    3: 'Flying',
+    4: 'Poison',
+    5: 'Ground',
+    6: 'Rock',
+    7: 'Bug',
+    8: 'Ghost',
+    9: 'Steel',
+    10: 'Fire',
+    11: 'Water',
+    12: 'Grass',
+    13: 'Electric',
+    14: 'Psychic',
+    15: 'Ice',
+    16: 'Dragon',
+    17: 'Dark',
+    18: 'Fairy',
+    10001: '???',
+    10002: 'Shadow'
+}
+
+DAMAGE_CLASSES = {
+    1: 'Status',
+    2: 'Physical',
+    3: 'Special'
+}
+
+
+@dataclass
+class Pokemon:
+    id: int
+    name: str
+    level: int
 
 
 @dataclass
