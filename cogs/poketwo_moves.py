@@ -64,7 +64,7 @@ class Pokemon:
 class Move:
     id: int
     name: str
-    pokemon: typing.Dict[str, typing.List[str]]
+    pokemon_objs: typing.Dict[int, typing.List[Pokemon]]
     power: int
     pp: int
     accuracy: int
@@ -74,6 +74,14 @@ class Move:
 
     data: D
 
+    @cached_property
+    def pokemon(self) -> typing.Dict[str, typing.List[str]]:
+        pokemon = {}
+        for gen, pokemon_obj_list in self.pokemon_objs.items():
+            pokemon_dict = {pkm.name: pkm.id for pkm in sorted(pokemon_obj_list, key=lambda p: p.name)}
+            pokemon[gen] = list(pokemon_dict.keys())
+
+        return pokemon
 
 class Data:
     def __init__(self):
