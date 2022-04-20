@@ -208,7 +208,7 @@ class PoketwoMoves(commands.Cog):
 
     def format_message(self, move: Move):
         format = (
-            f"__**{move.name}**__\n"
+            f"__**{move.name}**__ [`{move.id}`]\n"
             f"**Type:** {move.type}\n"
             f"**Class:** {move.damage_class}\n\n"
             f"**Pokemon that learn it in *Poketwo - Gen 7 (Alola)***\n"
@@ -218,19 +218,32 @@ class PoketwoMoves(commands.Cog):
         )
         return format
 
-    @commands.command(
+    @commands.group(
         name="moveinfo",
         aliases=("mi", "move", "mv"),
         brief="See extended info of a move.",
         help="See the name, type and the pokemon that have a certain move.",
+        invoke_without_command=True
     )
     async def moveinfo(self, ctx: commands.Context, *, move_name: str):
-        try:
-            move = self.data.move_by_name(move_name)
-        except KeyError:
-            return await ctx.send(f"No move named {move_name} exists!")
+        async with ctx.typing():
+            try:
+                move = self.data.move_by_name(move_name)
+            except KeyError:
+                return await ctx.send(f"No move named {move_name} exists!")
 
         await ctx.send(self.format_message(move))
+
+    @moveinfo.command(
+        name="resync",
+        aliases=("sync",),
+        brief="Resync data",
+        description="Resync the data that the moveinfo command uses."
+    )
+    async def resync(self, ctx):
+        async with ctx.typing():
+            self.data.resync()
+        await ctx.send("Resynced data.")
 
 
 async def setup(bot):
