@@ -202,7 +202,8 @@ class PoketwoMoves(commands.Cog):
 
     @cached_property
     def data(self) -> Data:
-        self.bot.data = Data()
+        if not hasattr(self.bot, "data"):
+            self.bot.data = Data()
         return self.bot.data
 
     def format_message(self, move: Move):
