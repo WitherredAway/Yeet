@@ -18,6 +18,7 @@ POKETWO_MOVES = (
 )
 MOVE_NAMES = "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/move_names.csv"
 POKEMON_NAMES = "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/pokemon_species_names.csv"
+POKEMON_FORM_NAMES = "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/pokemon_form_names.csv"
 POKETWO_NAMES = "https://raw.githubusercontent.com/poketwo/data/master/csv/pokemon.csv"
 
 ENGLISH_ID = 9
@@ -78,7 +79,7 @@ class Move:
     def pokemon(self) -> typing.Dict[str, typing.List[str]]:
         pokemon = {}
         for gen, pokemon_obj_list in self.pokemon_objs.items():
-            pokemon_dict = {pkm.name: pkm.id for pkm in sorted(pokemon_obj_list, key=lambda p: p.name)}
+            pokemon_dict = {pkm.name: pkm.id for pkm in sorted(pokemon_obj_list, key=lambda p: p.id)}
             pokemon[gen] = list(pokemon_dict.keys())
 
         return pokemon
@@ -113,23 +114,15 @@ class Data:
         self.pkm_moves_data = pd.read_csv(
             POKEMON_MOVES,
             index_col=0,
-            usecols=[
-                "pokemon_id",
-                "version_group_id",
-                "move_id",
-                "pokemon_move_method_id",
-                "level",
-            ],
         )
         self.pkm_moves_data.query(
-            "pokemon_move_method_id == 1 & version_group_id == 1", inplace=True
+            "pokemon_move_method_id == 1 & version_group_id == 20", inplace=True
         )
 
         # pokemon_moves.csv, poketwo's gen7 data
         self.pkm_moves_data_7 = pd.read_csv(
-            POKEMON_MOVES,
+            POKETWO_MOVES,
             index_col=0,
-            usecols=["pokemon_id", "move_id", "pokemon_move_method_id", "level"],
         )
         self.pkm_moves_data_7.query("pokemon_move_method_id == 1", inplace=True)
 
@@ -137,6 +130,16 @@ class Data:
             7: self.pkm_moves_data_7.groupby("move_id"),
             8: self.pkm_moves_data.groupby("move_id"),
         }
+        
+        # pokemon_form_names.csv
+        self.pkm_form_names_data = pd.read_csv(
+            POKEMON_FORM_NAMES,
+            index_col=0,
+            usecols=["pokemon_form_id", "local_language_id", "pokemon_name"]
+        )
+        self.pkm_form_names_data.query("local_language_id == @ENGLISH_ID & pokemon_name == pokemon_name", inplace=True)
+        self.pkm_form_names_data.columns = ["local_language_id", "name"]
+
         # pokemon_species_names.csv
         self.pkm_names_data_8 = pd.read_csv(
             POKEMON_NAMES,
@@ -145,6 +148,11 @@ class Data:
         )
         self.pkm_names_data_8.query("local_language_id == @ENGLISH_ID", inplace=True)
 
+        con = pd.concat([self.pkm_names_data_8, self.pkm_form_names_data])
+        con = con[~con.index.duplicated(keep='first')]  # Keep the first instance of duplicate indices
+
+        self.pkm_names_data_8 = con
+        
         # pokemon.csv, poketwo's gen7 data
         self.pkm_names_data_7 = pd.read_csv(
             POKETWO_NAMES,
@@ -153,22 +161,13 @@ class Data:
         )
         self.pkm_names_data_7.columns = ["name"]
 
+        #con = pd.concat([self.pkm_names_data_7, self.pkm_form_names_data])
+        #con = con[~con.index.duplicated(keep='first')]  # Keep the first instance of duplicate indices
+
+        #self.pkm_names_data_7 = con
+
         self.pkm_names_data = {7: self.pkm_names_data_7, 8: self.pkm_names_data_8}
-
-        # type_names.csv
-        self.type_names_data = pd.read_csv(
-            TYPE_NAMES,
-            index_col=0,
-        )
-        self.type_names_data.query("local_language_id == @ENGLISH_ID", inplace=True)
-
-        # move_damage_classes.csv
-        self.damage_classes_data = pd.read_csv(
-            DAMAGE_CLASSES,
-            index_col=0,
-        )
-        self.moves_by_index = self.moves_by_index
-
+        
     def resync(self):
         self.fetch_data()
 
@@ -177,7 +176,7 @@ class Data:
         return self.moves_by_index[move_name]
 
     @cached_property
-    def moves_by_index(self) -> typing.Dict[str, Move]:
+    def moves_by_index(self) -> typing.Dict[int, Move]:
         return {move.name.lower(): move for move in self.moves.values()}
 
     @cached_property
@@ -219,13 +218,16 @@ class Data:
         pokemon = {7: [], 8: []}
         for gen, grouped in pkm_grouped.items():
             pkm_names = self.pkm_names_data[gen]
+            
             move_group = grouped.get_group(move_id) if move_id in grouped.groups else None
             if move_group is not None:
                 for pkm_id, row in move_group.iterrows():
+                    pkm_name = pkm_names.loc[pkm_id, 'name']
+                    
                     pokemon[gen].append(
                         Pokemon(
                             id=pkm_id,
-                            name=pkm_names.loc[pkm_id, 'name'],
+                            name=pkm_name,
                             level=row.loc['level']
                         )
                     )
@@ -246,10 +248,10 @@ class PoketwoMoves(commands.Cog):
         return self.bot.data
 
     def format_message(self, move: Move):
-        gen_7_pokemon = move.pokemon[7]
+        gen_7_pokemon = [f'({pkm.id}) {pkm.name}' for pkm in move.pokemon_objs[7]]
         len_gen_7 = len(gen_7_pokemon)
 
-        gen_8_pokemon = move.pokemon[8]
+        gen_8_pokemon = [f'({pkm.id}) {pkm.name}' for pkm in move.pokemon_objs[8]]
         len_gen_8 = len(gen_8_pokemon)
         
         format = (
@@ -271,12 +273,11 @@ class PoketwoMoves(commands.Cog):
         invoke_without_command=True
     )
     async def moveinfo(self, ctx: commands.Context, *, move_name: str):
-        async with ctx.channel.typing():
-            try:
-                move = self.data.move_by_name(move_name)
-            except KeyError:
-                return await ctx.send(f"No move named {move_name} exists!")
-
+        async with ctx.typing():
+            #try:
+            move = self.data.move_by_name(move_name)
+            #except KeyError:
+                #return await ctx.send(f"No move named {move_name} exists!")
         await ctx.send(self.format_message(move))
         
     @moveinfo.command(
