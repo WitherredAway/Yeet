@@ -79,7 +79,7 @@ class Bot(commands.Cog):
             await ctx.send_help(ctx.command)
 
         else:
-            await ctx.send(str(error))
+            await ctx.send(str(error)[:2000])
             raise error
 
     # logs
