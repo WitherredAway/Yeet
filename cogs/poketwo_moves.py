@@ -1,25 +1,30 @@
+import io
+import asyncio
 import typing
 from typing import Optional, TypeVar
 from dataclasses import dataclass
 from functools import cached_property
 
 import discord
+import aiohttp
 from discord.ext import commands
 import pandas as pd
+
+import time
 
 
 D = TypeVar("D", bound="Data")
 
 
-MOVES = "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/moves.csv"
-POKEMON_MOVES = "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/pokemon_moves.csv"
-POKETWO_MOVES = (
+_MOVES = "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/moves.csv"
+_POKEMON_MOVES = "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/pokemon_moves.csv"
+_POKETWO_MOVES = (
     "https://raw.githubusercontent.com/poketwo/data/master/csv/pokemon_moves.csv"
 )
-MOVE_NAMES = "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/move_names.csv"
-POKEMON_NAMES = "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/pokemon_species_names.csv"
-POKEMON_FORM_NAMES = "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/pokemon_form_names.csv"
-POKETWO_NAMES = "https://raw.githubusercontent.com/poketwo/data/master/csv/pokemon.csv"
+_MOVE_NAMES = "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/move_names.csv"
+_POKEMON_NAMES = "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/pokemon_species_names.csv"
+_POKEMON_FORM_NAMES = "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/pokemon_form_names.csv"
+_POKETWO_NAMES = "https://raw.githubusercontent.com/poketwo/data/master/csv/pokemon.csv"
 
 ENGLISH_ID = 9
 
@@ -79,16 +84,26 @@ class Move:
     def pokemon(self) -> typing.Dict[str, typing.List[str]]:
         pokemon = {}
         for gen, pokemon_obj_list in self.pokemon_objs.items():
-            pokemon_dict = {pkm.name: pkm.id for pkm in sorted(pokemon_obj_list, key=lambda p: p.id)}
+            pokemon_dict = {pkm.name: pkm.id for pkm in sorted(pokemon_obj_list, key=lambda p: p.name)}
             pokemon[gen] = list(pokemon_dict.keys())
 
         return pokemon
 
 class Data:
-    def __init__(self):
-        self.fetch_data()
-
-    def fetch_data(self):
+    async def get_csv(self, session, url):
+        async with session.get(url) as response:
+            return io.StringIO(await response.text())
+            
+    async def fetch_data(self):
+        async with aiohttp.ClientSession() as session:
+            MOVES = await self.get_csv(session, _MOVES)
+            MOVE_NAMES = await self.get_csv(session, _MOVE_NAMES)
+            POKEMON_MOVES = await self.get_csv(session, _POKEMON_MOVES)
+            POKETWO_MOVES = await self.get_csv(session, _POKETWO_MOVES)
+            POKEMON_FORM_NAMES = await self.get_csv(session, _POKEMON_FORM_NAMES)
+            POKEMON_NAMES = await self.get_csv(session, _POKEMON_NAMES)
+            POKETWO_NAMES = await self.get_csv(session, _POKETWO_NAMES)
+            
         # moves.csv
         self.moves_data = pd.read_csv(
             MOVES,
@@ -168,47 +183,39 @@ class Data:
 
         self.pkm_names_data = {7: self.pkm_names_data_7, 8: self.pkm_names_data_8}
         
-    def resync(self):
-        self.fetch_data()
+    async def resync(self):
+        await self.fetch_data()
 
     def move_by_name(self, move_name: str) -> Move:
         move_name = move_name.lower()
-        return self.moves_by_index[move_name]
-
-    @cached_property
-    def moves_by_index(self) -> typing.Dict[int, Move]:
-        return {move.name.lower(): move for move in self.moves.values()}
-
-    @cached_property
-    def moves(self) -> typing.Dict[int, Move]:
+        
         moves_data = self.moves_data
         move_names = self.move_names_data
 
-        moves = {}
-        for index, move in moves_data.iterrows():
-            move_pokemon = self.get_move_pokemon(index)
-            move_type = self.types[move.loc["type_id"]]
-            move_class = self.damage_classes[move.loc["damage_class_id"]]
+        index = (move_names.loc[move_names['name'].str.lower() == move_name]).index[0]
+        move_row = moves_data.loc[index]
+        move_pokemon = self.get_move_pokemon(index)
+        move_type = self.types[move_row.loc["type_id"]]
+        move_class = self.damage_classes[move_row.loc["damage_class_id"]]
 
-            moves[index] = Move(
-                id=index,
-                name=move_names.loc[index, "name"],
-                pokemon_objs=move_pokemon,
-                power=move.loc["power"],
-                pp=move.loc["pp"],
-                accuracy=move.loc["accuracy"],
-                priority=move.loc["priority"],
-                damage_class=move_class,
-                type=move_type,
-                data=self,
-            )
-        return moves
+        return Move(
+            id=index,
+            name=move_names.loc[index, "name"],
+            pokemon_objs=move_pokemon,
+            power=move_row.loc["power"],
+            pp=move_row.loc["pp"],
+            accuracy=move_row.loc["accuracy"],
+            priority=move_row.loc["priority"],
+            damage_class=move_class,
+            type=move_type,
+            data=self,
+        )
 
-    @cached_property
+    @property
     def types(self) -> typing.Dict[int, str]:
         return TYPES
 
-    @cached_property
+    @property
     def damage_classes(self) -> typing.Dict[int, str]:
         return DAMAGE_CLASSES
 
@@ -241,17 +248,17 @@ class PoketwoMoves(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @cached_property
-    def data(self) -> Data:
+    async def data(self) -> Data:
         if not hasattr(self.bot, "data"):
             self.bot.data = Data()
+            await self.bot.data.fetch_data()
         return self.bot.data
-
+    
     def format_message(self, move: Move):
-        gen_7_pokemon = [f'({pkm.id}) {pkm.name}' for pkm in move.pokemon_objs[7]]
+        gen_7_pokemon = move.pokemon[7]
         len_gen_7 = len(gen_7_pokemon)
 
-        gen_8_pokemon = [f'({pkm.id}) {pkm.name}' for pkm in move.pokemon_objs[8]]
+        gen_8_pokemon = move.pokemon[8]
         len_gen_8 = len(gen_8_pokemon)
         
         format = (
@@ -273,11 +280,12 @@ class PoketwoMoves(commands.Cog):
         invoke_without_command=True
     )
     async def moveinfo(self, ctx: commands.Context, *, move_name: str):
+        data = await self.data()
         async with ctx.typing():
-            #try:
-            move = self.data.move_by_name(move_name)
-            #except KeyError:
-                #return await ctx.send(f"No move named {move_name} exists!")
+            try:
+                move = data.move_by_name(move_name)
+            except IndexError:
+                return await ctx.send(f"No move named `{move_name}` exists!")
         await ctx.send(self.format_message(move))
         
     @moveinfo.command(
@@ -287,8 +295,9 @@ class PoketwoMoves(commands.Cog):
         description="Resync the data that the moveinfo command uses."
     )
     async def resync(self, ctx):
+        data = await self.data()
         async with ctx.channel.typing():
-            self.data.resync()
+            await data.resync()
         await ctx.send("Resynced data!")
 
 
