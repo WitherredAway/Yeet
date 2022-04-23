@@ -280,8 +280,8 @@ class PoketwoMoves(commands.Cog):
         invoke_without_command=True
     )
     async def moveinfo(self, ctx: commands.Context, *, move_name: str):
-        data = await self.data()
         async with ctx.typing():
+            data = await self.data()
             try:
                 move = data.move_by_name(move_name)
             except IndexError:
@@ -295,8 +295,8 @@ class PoketwoMoves(commands.Cog):
         description="Resync the data that the moveinfo command uses."
     )
     async def resync(self, ctx):
-        data = await self.data()
         async with ctx.channel.typing():
+            data = await self.data()
             await data.resync()
         await ctx.send("Resynced data!")
 
