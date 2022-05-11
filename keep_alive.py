@@ -16,5 +16,8 @@ def run():
 
 
 def keep_alive():
+    # Make it so it only runs on replit
+    if not os.getenv("REPL_ID"):
+        return
     t = Thread(target=run)
     t.start()
