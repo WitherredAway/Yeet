@@ -163,7 +163,7 @@ class Documentations(commands.Cog):
             return
 
         if not hasattr(self, "_rtfm_cache"):
-            await ctx.trigger_typing()
+            await ctx.typing()
             await self.build_rtfm_lookup_table(page_types)
 
         obj = re.sub(r"^(?:discord\.(?:ext\.)?)?(?:commands\.)?(.+)", r"\1", obj)
