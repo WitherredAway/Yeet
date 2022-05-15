@@ -16,15 +16,15 @@ import time
 D = TypeVar("D", bound="Data")
 
 
-_MOVES = "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/moves.csv"
-_POKEMON_MOVES = "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/pokemon_moves.csv"
-_POKETWO_MOVES = (
+MOVES = "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/moves.csv"
+POKEMON_MOVES = "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/pokemon_moves.csv"
+POKETWO_MOVES = (
     "https://raw.githubusercontent.com/poketwo/data/master/csv/pokemon_moves.csv"
 )
-_MOVE_NAMES = "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/move_names.csv"
-_POKEMON_NAMES = "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/pokemon_species_names.csv"
-_POKEMON_FORM_NAMES = "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/pokemon_form_names.csv"
-_POKETWO_NAMES = "https://raw.githubusercontent.com/poketwo/data/master/csv/pokemon.csv"
+MOVE_NAMES = "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/move_names.csv"
+POKEMON_NAMES = "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/pokemon_species_names.csv"
+POKEMON_FORM_NAMES = "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/pokemon_form_names.csv"
+POKETWO_NAMES = "https://raw.githubusercontent.com/poketwo/data/master/csv/pokemon.csv"
 
 ENGLISH_ID = 9
 
@@ -90,20 +90,7 @@ class Move:
         return pokemon
 
 class Data:
-    async def get_csv(self, session, url):
-        async with session.get(url) as response:
-            return io.StringIO(await response.text())
-            
     async def fetch_data(self):
-        async with aiohttp.ClientSession() as session:
-            MOVES = await self.get_csv(session, _MOVES)
-            MOVE_NAMES = await self.get_csv(session, _MOVE_NAMES)
-            POKEMON_MOVES = await self.get_csv(session, _POKEMON_MOVES)
-            POKETWO_MOVES = await self.get_csv(session, _POKETWO_MOVES)
-            POKEMON_FORM_NAMES = await self.get_csv(session, _POKEMON_FORM_NAMES)
-            POKEMON_NAMES = await self.get_csv(session, _POKEMON_NAMES)
-            POKETWO_NAMES = await self.get_csv(session, _POKETWO_NAMES)
-            
         # moves.csv
         self.moves_data = pd.read_csv(
             MOVES,
