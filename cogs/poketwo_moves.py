@@ -259,7 +259,7 @@ class PoketwoMoves(commands.Cog):
         len_gen_8 = len(gen_8_pokemon)
         
         format = (
-            f"`{move.id}`  __**{move.name}**__\n"
+            f"__**{move.name}**__\n"
             f"**Type:** {move.type}\n"
             f"**Class:** {move.damage_class}\n\n"
             f"**Pokemon that learn it by leveling up in *Poketwo - Gen 7 (Alola)*** [`{len_gen_7}`]\n"
