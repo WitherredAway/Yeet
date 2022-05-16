@@ -178,11 +178,6 @@ class Data:
         )
         self.pkm_names_data_7.columns = ["name"]
 
-        #con = pd.concat([self.pkm_names_data_7, self.pkm_form_names_data])
-        #con = con[~con.index.duplicated(keep='first')]  # Keep the first instance of duplicate indices
-
-        #self.pkm_names_data_7 = con
-
         self.pkm_names_data = {7: self.pkm_names_data_7, 8: self.pkm_names_data_8}
         
     async def resync(self):
