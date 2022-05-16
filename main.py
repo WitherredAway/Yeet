@@ -2,6 +2,7 @@ import os
 import sys
 import json
 import datetime
+import gists
 
 import discord
 from discord.ext import commands
@@ -28,10 +29,15 @@ class Bot(commands.Bot):
         self.activity = discord.Game(f"{self.PREFIXES[0]}help")
         self.status = discord.Status.online
 
+        self.gists_client = gists.Client()
+        
     async def setup_hook(self):
         self.LOG_CHANNEL = await self.fetch_channel(os.getenv("logCHANNEL"))
 
         self.session = aiohttp.ClientSession(loop=self.loop)
+
+        self.gists_client = gists.Client()
+        await self.gists_client.authorize(os.getenv("githubTOKEN"))
 
         # self.load_extension("jishaku")
         for filename in os.listdir("./cogs"):
