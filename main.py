@@ -62,8 +62,4 @@ if __name__ == "__main__":
         intents=discord.Intents.all(),
     )
     keep_alive()
-    try:
-        bot.run(TOKEN)
-    except discord.errors.HTTPException:
-        print("Rate-limit detected, restarting process.")
-        os.system(f"kill 1 && python3 {sys.argv[0]}")
+    bot.run(TOKEN)
