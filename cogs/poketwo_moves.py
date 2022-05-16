@@ -257,10 +257,10 @@ class PoketwoMoves(commands.Cog):
         return self.bot.data
     
     def format_message(self, move: Move):
-        gen_7_pokemon = [f'{pkm.name} [L{int(pkm.level)}]' for pkm in move.pokemon_objs[7]]
+        gen_7_pokemon = move.pokemon[7]
         len_gen_7 = len(gen_7_pokemon)
 
-        gen_8_pokemon = [f'{pkm.name} [L{int(pkm.level)}]' for pkm in move.pokemon_objs[8]]
+        gen_8_pokemon = move.pokemon[8]
         len_gen_8 = len(gen_8_pokemon)
         
         format = (
