@@ -23,6 +23,7 @@ POKETWO_MOVES = (
 )
 MOVE_NAMES = "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/move_names.csv"
 POKEMON_NAMES = "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/pokemon_species_names.csv"
+POKEMON_FORMS = "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/pokemon_forms.csv"
 POKEMON_FORM_NAMES = "https://raw.githubusercontent.com/poketwo/pokedex/master/pokedex/data/csv/pokemon_form_names.csv"
 POKETWO_NAMES = "https://raw.githubusercontent.com/poketwo/data/master/csv/pokemon.csv"
 
@@ -143,6 +144,18 @@ class Data:
         )
         self.pkm_form_names_data.query("local_language_id == @ENGLISH_ID & pokemon_name == pokemon_name", inplace=True)
         self.pkm_form_names_data.columns = ["local_language_id", "name"]
+
+        # pokemon_forms.csv
+        self.pkm_forms_data = pd.read_csv(
+            POKEMON_FORMS,
+            index_col=0,
+            usecols=['id', 'pokemon_id'],
+        )
+
+        # Here the 'pokemon_id' column in pkm_forms_data
+        # replaces the corresponding index column of pkm_form_names_data
+        self.pkm_form_names_data = self.pkm_form_names_data.reset_index()
+        self.pkm_form_names_data = self.pkm_form_names_data.assign(pokemon_form_id=self.pkm_form_names_data.pokemon_form_id.map(self.pkm_forms_data.pokemon_id).combine_first(self.pkm_form_names_data.pokemon_form_id)).set_index("pokemon_form_id")
 
         # pokemon_species_names.csv
         self.pkm_names_data_8 = pd.read_csv(
