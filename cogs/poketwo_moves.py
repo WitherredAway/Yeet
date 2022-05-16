@@ -81,9 +81,11 @@ class Move:
     data: D
 
     @cached_property
-    def pokemon(self) -> typing.Dict[str, typing.List[str]]:
+    def pokemon(self) -> typing.Dict[int, typing.List[str]]:
         pokemon = {}
         for gen, pokemon_obj_list in self.pokemon_objs.items():
+            # This is a dict first so that there can only be one
+            # instead of set(), to keep the order
             pokemon_dict = {pkm.name: pkm.id for pkm in sorted(pokemon_obj_list, key=lambda p: p.name)}
             pokemon[gen] = list(pokemon_dict.keys())
 
@@ -121,7 +123,7 @@ class Data:
             "pokemon_move_method_id == 1 & version_group_id == 20", inplace=True
         )
 
-        # pokemon_moves.csv, poketwo's gen7 data
+        # poketwo_moves.csv, poketwo's gen7 data
         self.pkm_moves_data_7 = pd.read_csv(
             POKETWO_MOVES,
             index_col=0,
