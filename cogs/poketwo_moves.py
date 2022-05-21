@@ -4,6 +4,7 @@ import typing
 from typing import Optional, TypeVar
 from dataclasses import dataclass
 from functools import cached_property
+import gists
 
 import discord
 import aiohttp
@@ -251,21 +252,46 @@ class PoketwoMoves(commands.Cog):
             await self.bot.data.fetch_data()
         return self.bot.data
     
-    def format_message(self, move: Move):
-        gen_7_pokemon = move.pokemon[7]
-        len_gen_7 = len(gen_7_pokemon)
-
-        gen_8_pokemon = move.pokemon[8]
-        len_gen_8 = len(gen_8_pokemon)
+    async def format_message(self, move: Move):
+        CODE_BLOCK_FMT = '```\n%s\n```'
         
+        gen_7_pokemon = move.pokemon[7] # [f'{pkm.name}:{pkm.level}' for pkm in move.pokemon_objs[7]]
+        len_gen_7 = len(gen_7_pokemon)
+        gen_7_list = ", ".join(gen_7_pokemon) if len_gen_7 > 0 else "None"
+
+        gen_8_pokemon = move.pokemon[8] # [f'{pkm.name}:{pkm.level}' for pkm in move.pokemon_objs[8]]
+        len_gen_8 = len(gen_8_pokemon)
+        gen_8_list = ", ".join(gen_8_pokemon) if len_gen_8 > 0 else "None"
+
+        if (len(gen_7_list) + len(gen_8_list)) > 1819:  # Character limit
+            df = pd.DataFrame.from_dict(
+                {
+                    'Poketwo - Generation 7 (Alola)': gen_7_pokemon,
+                    'Generation 8 (Galar)': gen_8_pokemon,
+                },
+                orient='index'
+            )
+            df = df.transpose()
+            
+            files = [
+                gists.File(name="gen_wise_table.csv", content=df.to_csv(index=False)),
+            ]
+            description = f'Pokemon that learn the move {move.name} by leveling.'
+            gist = await self.bot.gists_client.create_gist(files=files, description=description, public=False)
+
+            gen_7_list = gen_8_list = f'<{gist.url}>'
+        else:
+            gen_7_list = CODE_BLOCK_FMT % gen_7_list
+            gen_8_list = CODE_BLOCK_FMT % gen_8_list
+            
         format = (
             f"__**{move.name}**__\n"
             f"**Type:** {move.type}\n"
             f"**Class:** {move.damage_class}\n\n"
-            f"**Pokemon that learn it by leveling up in *Poketwo - Gen 7 (Alola)*** [`{len_gen_7}`]\n"
-            f'```\n{", ".join(gen_7_pokemon) if len_gen_7 > 0 else "None"}\n```\n'
-            f"**Pokemon that learn it by leveling up in *Gen 8 (Galar)*** [`{len_gen_8}`]"
-            f'```\n{", ".join(gen_8_pokemon) if len_gen_8 > 0 else "None"}\n```'
+            f"**Leveling learnset, in *Poketwo - Gen 7 (Alola)*** [`{len_gen_7}`]\n"
+            f'{gen_7_list}\n'
+            f"**Leveling learnset, in *Gen 8 (Galar)*** [`{len_gen_8}`]\n"
+            f'{gen_8_list}'
         )
         return format
 
@@ -283,7 +309,7 @@ class PoketwoMoves(commands.Cog):
                 move = data.move_by_name(move_name)
             except IndexError:
                 return await ctx.send(f"No move named `{move_name}` exists!")
-        await ctx.send(self.format_message(move))
+        await ctx.send(await self.format_message(move))
         
     @moveinfo.command(
         name="resync",
