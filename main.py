@@ -30,7 +30,7 @@ class Bot(commands.Bot):
         self.status = discord.Status.online
 
         self.gists_client = gists.Client()
-        
+
     async def setup_hook(self):
         self.LOG_CHANNEL = await self.fetch_channel(os.getenv("logCHANNEL"))
 

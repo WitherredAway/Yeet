@@ -175,6 +175,9 @@ class GistView(discord.ui.View):
 
     def _update_buttons(self):
         self._jump_button.disabled = False if self.gist else True
+        if self.gist:
+            self._jump_button.url = self.gist.url
+
         self._create_gist.disabled = True if self.gist else False
         self._edit_gist.disabled = False if self.gist else True
         self._delete_gist.disabled = False if self.gist else True
