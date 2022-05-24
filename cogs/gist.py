@@ -1,7 +1,9 @@
 import typing
-from typing import Optional, TypeVar
+from typing import Optional, TypeVar, Union
+import asyncio
 import os
 import gists
+import re
 
 import discord
 from discord.ext import commands, menus, tasks
@@ -9,9 +11,6 @@ import pandas as pd
 import validators
 
 from .utils.paginator import BotPages
-
-
-GITHUB_ACCESS_TOKEN = os.getenv("githubTOKEN")
 
 
 class CreateGistModal(discord.ui.Modal):
@@ -37,8 +36,8 @@ class CreateGistModal(discord.ui.Modal):
         self.client = self.view.client
 
     async def on_submit(self, interaction: discord.Interaction):
-        # description = "Author ID: %s\n%s" % (self.view.ctx.author.id, self.description.value)
         description = self.description.value
+        description += self.view.AUTHOR_WATERMARK
         filename = self.filename.value
         content = self.content.value
 
@@ -64,18 +63,12 @@ class EditGistModal(discord.ui.Modal):
         self._fill_items()
 
     def _fill_items(self):
-        # Pattern to group the author id and the description content from the description
-        # (\d+) groups the ID
-        # (?:\n) is a non-capturing group to detect 1 or more newlines
-        # (.*) groups the content
-        # pattern = re.compile(r"Author ID: (\d+)(?:\n)+(.*)")
-        # self.author_id, default_desc = (pattern.match(self.gist.description)).groups()
         self.add_item(
             discord.ui.TextInput(
                 label="Description",
                 style=discord.TextStyle.paragraph,
                 placeholder="Description of the gist.",
-                default=self.gist.description,
+                default=self.view.description,
                 custom_id="gist_description",
                 required=False,
             )
@@ -124,8 +117,9 @@ class EditGistModal(discord.ui.Modal):
         children_dict = self.children_dict()
         file_objs = self.gist.files
 
-        description = "Author: %s\n\n" % self.view.ctx.author
-        description += children_dict["gist_description"]["_value"]
+        description = children_dict["gist_description"]["_value"]
+        self.view.description = description
+        description += self.view.AUTHOR_WATERMARK
         for child_custom_id, child_value in children_dict.items():
             value = child_value["_value"]
             # If the child's custom_id is that of the new filename text input
@@ -152,6 +146,70 @@ class EditGistModal(discord.ui.Modal):
         await interaction.response.edit_message(embed=self.view.embed)
 
 
+class GistPages(BotPages):
+    def __init__(self, source: menus.PageSource, ctx: commands.Context, compact: bool):
+        
+        super().__init__(source, ctx=ctx, compact=compact)
+        #if source.is_paginating():
+            #self.add_view(source.entries)
+            
+    def add_view(self, entries: typing.List) -> None:
+        self.clear_items()
+       # self.add_item(GistSelectMenu)
+        self.fill_items()
+
+
+class GistPageSource(menus.ListPageSource):
+    def __init__(self, gist: gists.Gist, *, ctx: commands.Context, per_page: int = 1):
+        self.ctx = ctx
+        self.bot: discord.Bot = self.ctx.bot
+        self.embed = self.bot.Embed()
+        self.gist: gists.Gist = gist
+        
+        self.view = GistView(self.ctx, self.gist.client, self.gist)
+        self.description = self.view.description
+
+        self.entries: typing.List = self.gist.files
+        self.per_page = per_page
+        super().__init__(self.entries, per_page=per_page)
+
+    def is_paginating(self) -> bool:
+        return len(self.entries) > self.per_page
+
+    async def format_page(self, menu, entry: gists.File) -> discord.Embed:
+        embed = self.embed
+        embed.clear_fields()
+        gist = self.gist
+        if not gist:
+            embed.title = "Gist not found/provided."
+            return embed
+
+        embed.title = gist.id
+        embed.url = gist.url
+        embed.description = self.description
+        embed.add_field(
+            name="Updates",
+            value=(
+                f'**Last updated at**: {gist.updated_at.strftime("%b %d, %Y %H:%M")}\n'
+                f"**Created at**: {gist.created_at}"
+            )
+        )
+
+        embed.add_field(
+            name=entry.name,
+            value=f"{entry.content[:1020]}..."
+        )
+        
+        maximum = self.get_max_pages()
+        if maximum > 1:
+            text = (
+                f"File {menu.current_page + 1}/{maximum} ({len(self.entries)} entries)"
+            )
+            self.embed.set_footer(text=text)
+
+        return self.embed
+
+
 class GistView(discord.ui.View):
     def __init__(
         self,
@@ -165,23 +223,54 @@ class GistView(discord.ui.View):
         self.client = client
         self.gist = gist
 
+        self.AUTHOR_WATERMARK = f" - {self.ctx.author.id}"
+        
         self._jump_button = discord.ui.Button(
             label="Jump",
             url=self.gist.url if self.gist else "https://gist.github.com/None",
         )
         self.add_item(self._jump_button)
-
+        
         self._update_buttons()
 
+    def validate_author(self):
+        # Pattern to group the author id and the description content from the description
+        pattern = re.compile(r"(.*) - (\d+)")
+
+        desc = self.gist.description
+        finds = pattern.search(desc)
+
+        if finds is None:
+            self.description = self.gist.description
+            return False
+        author_id, self.description = int(finds.group(2)), finds.group(1)
+
+        if author_id == self.ctx.author.id:
+            return True
+        return False
+        
     def _update_buttons(self):
+        belongs = None
+
         self._jump_button.disabled = False if self.gist else True
         if self.gist:
+            belongs = self.validate_author()
+            if belongs:
+                self._create_gist.disabled = True
+                self._edit_gist.disabled = False
+                self._delete_gist.disabled = False
+            else:
+                self._create_gist.disabled = False
+                self._edit_gist.disabled = True
+                self._delete_gist.disabled = True
+            
             self._jump_button.url = self.gist.url
+            return
+        self._create_gist.disabled = False
+        self._edit_gist.disabled = True
+        self._delete_gist.disabled = True
 
-        self._create_gist.disabled = True if self.gist else False
-        self._edit_gist.disabled = False if self.gist else True
-        self._delete_gist.disabled = False if self.gist else True
-
+        
     async def on_timeout(self):
         await self.response.edit(view=None)
 
@@ -219,55 +308,46 @@ class GistView(discord.ui.View):
         self.gist = None
         self._update_buttons()
 
-        await interaction.response.edit_message(embed=embed, view=self)
-
-    @property
-    def embed(self):
-        embed = self.ctx.bot.Embed()
-        gist = self.gist
-        if not gist:
-            embed.title = "Gist not found."
-            return embed
-
-        embed.title = gist.id
-        embed.description = gist.description
-        embed.set_footer(text="Created at")
-        embed.timestamp = gist.created_at
-
-        embed.add_field(
-            name="Last updated at", value=gist.updated_at.strftime("%b %d, %Y %H:%M")
-        )
-        return embed
+        await interaction.response.edit_message(embed=embed, view=self) 
 
 
-class Test(commands.Cog):
+class Gist(commands.Cog):
     """Commands for testing."""
 
     def __init__(self, bot):
         self.bot = bot
-        self.hidden = True
 
-    display_emoji = "🧪"
+    display_emoji = "📋"
 
-    @commands.command(name="gist", brief="GitHub Gists utilities")
-    async def _gist(self, ctx, gist_url_or_id: str = None):
+    @commands.command(
+        name="gist",
+        brief="GitHub Gists utilities",
+        help=("Create a new gist or pass in the link/ID of a gist initially created through this command"
+              " to Edit or Delete the list with the help of Modals and Buttons"),
+        description=("Gists are a way to share text, code, etc with others and acts like a paste service.\n"
+                     "This command is intended to assist you in making such by using discord as a User Interface.\n\n"
+                     "When using this command please keep the Github Gists' [ToS](https://docs.github.com/en/github/site-policy/github-terms-of-service), [Privacy Policy](https://docs.github.com/en/github/site-policy/github-privacy-statement) and [Security documents](https://github.com/security) in mind. Any violation of these is not my responsibility."
+                    )
+    )
+    async def gist(self, ctx, gist_url_or_id: Optional[str] = None):
+        client = self.bot.gists_client
         gist = None
-        client = gists.Client()
-        await client.authorize(GITHUB_ACCESS_TOKEN)
-
-        if validators.url(str(gist_url_or_id)):
-            gist_url_or_id = gist_url_or_id.split("/")[
-                -2 if gist_url_or_id.endswith("/") else -1
-            ]
-        try:
-            gist = await client.get_gist(gist_url_or_id)
-        except gists.NotFound:
-            gist = None
-
-        view = GistView(ctx, client, gist)
-        embed = view.embed
-        view.response = await ctx.send(embed=embed, view=view)
+        
+        if gist_url_or_id is not None:
+            if validators.url(str(gist_url_or_id)):
+                gist_url_or_id = gist_url_or_id.split("/")[
+                    -2 if gist_url_or_id.endswith("/") else -1
+                ]
+            try:
+                gist = await client.get_gist(gist_url_or_id)
+            except gists.NotFound:
+                gist = None
+                
+        formatter = GistPageSource(gist, ctx=ctx, per_page=1)
+        menu = GistPages(formatter, ctx=ctx, compact=False)
+        await menu.start()
+        # view.response = await ctx.send(embed=embed, view=view)
 
 
 async def setup(bot):
-    await bot.add_cog(Test(bot))
+    await bot.add_cog(Gist(bot))
