@@ -295,7 +295,7 @@ class PoketwoMoves(commands.Cog):
 
     @cached_property
     def data(self) -> Data:
-        if not hasattr(self.bot, 'p2_data'):
+        if not hasattr(self.bot, "p2_data"):
             self.bot.p2_data = Data()
         return self.bot.p2_data
 
