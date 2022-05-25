@@ -381,8 +381,7 @@ class PoketwoMoves(commands.Cog):
     )
     async def resync(self, ctx):
         async with ctx.channel.typing():
-            data = self.data
-            data.resync
+            self.data.resync()
         await ctx.send("Resynced data!")
 
 
