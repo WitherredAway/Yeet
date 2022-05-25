@@ -155,7 +155,6 @@ class Documentations(commands.Cog):
         page_types = {
             "latest": "https://discordpy.readthedocs.io/en/latest",
             "python": "https://docs.python.org/3",
-            "master": "https://discordpy.readthedocs.io/en/master",
         }
 
         if obj is None:
@@ -202,7 +201,7 @@ class Documentations(commands.Cog):
         Events, objects, and functions are all supported through
         a cruddy fuzzy algorithm.
         """
-        key = "master"
+        key = "latest"
         await self.do_rtfm(ctx, key, obj)
 
     @docs.command(name="python", aliases=["py"])
@@ -211,7 +210,7 @@ class Documentations(commands.Cog):
         key = "python"
         await self.do_rtfm(ctx, key, obj)
 
-    @docs.command(name="latest", aliases=["1.7.3"])
+    @docs.command(name="1.7.3")
     async def docs_master(self, ctx, *, obj: str = None):
         """Gives you a documentation link for a discord.py entity (master branch)"""
         await self.do_rtfm(ctx, "latest", obj)
