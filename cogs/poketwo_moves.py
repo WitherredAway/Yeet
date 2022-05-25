@@ -1,6 +1,5 @@
 import io
 import os
-import asyncio
 import typing
 from typing import Optional, TypeVar
 from dataclasses import dataclass
@@ -12,7 +11,7 @@ import aiohttp
 from discord.ext import commands, tasks
 import pandas as pd
 
-import time
+from constants import CODE_BLOCK_FMT
 
 
 D = TypeVar("D", bound="Data")
@@ -300,8 +299,6 @@ class PoketwoMoves(commands.Cog):
         return self.bot.p2_data
 
     async def format_message(self, move: Move):
-        CODE_BLOCK_FMT = "```\n%s\n```"
-
         gen_7_pokemon = move.pokemon[7]
         len_gen_7 = len(gen_7_pokemon)
         gen_7_list = ", ".join(gen_7_pokemon) if len_gen_7 > 0 else "None"
