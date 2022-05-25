@@ -11,6 +11,7 @@ import pandas as pd
 import validators
 
 from .utils.paginator import BotPages
+from constants import CODE_BLOCK_FMT
 
 
 class CreateGistModal(discord.ui.Modal):
@@ -43,23 +44,19 @@ class CreateGistModal(discord.ui.Modal):
 
         files = gists.File(name=filename, content=content)
 
-        self.gist = await self.client.create_gist(
+        gist = await self.client.create_gist(
             files=[files], description=description, public=True
         )
-        self.view.gist = self.gist
-        self.view._update_buttons()
-
-        await interaction.response.edit_message(embed=self.view.embed, view=self.view)
-
+        await self.view.update_page(interaction, gist)
 
 class EditGistModal(discord.ui.Modal):
     """The modal for executing various functions on a gist"""
 
-    def __init__(self, view: discord.ui.View, gist: gists.Gist):
+    def __init__(self, view: discord.ui.View):
         super().__init__(title="Edit gist (only shows the first 2 files)")
         self.view = view
         self.client = self.view.client
-        self.gist = gist
+        self.gist = self.view.gist
         self._fill_items()
 
     def _fill_items(self):
@@ -143,62 +140,227 @@ class EditGistModal(discord.ui.Modal):
             files=file_objs,
             description=description,
         )
-        await interaction.response.edit_message(embed=self.view.embed)
+        await self.view.update_page(interaction)
 
 
-class GistPages(BotPages):
-    def __init__(self, source: menus.PageSource, ctx: commands.Context, compact: bool):
+class GistView(BotPages):
+    def __init__(self, source: menus.PageSource, ctx: commands.Context, client: gists.Client, compact: bool):
+        self.source = source
+        self.ctx = ctx
+        self.compact = compact
+        self.client = client
+        self.gist = self.source.gist
+        # self._jump_button = discord.ui.Button(
+        #     label="Jump",
+        #     url=self.gist.url if self.gist else "https://gist.github.com/None",
+        # )
+        self.description = self.source.description
+        super().__init__(source, ctx=ctx, compact=compact, timeout=600)
+        # self.client = self.gist.client
+        self.embed = self.source.embed
         
-        super().__init__(source, ctx=ctx, compact=compact)
+        self.AUTHOR_WATERMARK = f" - {self.ctx.author.id}"
+
         #if source.is_paginating():
             #self.add_view(source.entries)
             
+    def fill_items(self) -> None:
+        if self.source.is_paginating():
+            max_pages = self.source.get_max_pages()
+            use_last_and_first = max_pages is not None and max_pages >= 2
+            self.add_item(self.go_to_first_page)  # type: ignore
+            self.go_to_first_page.label = f"1 ⏮"
+            self.add_item(self.go_to_previous_page)  # type: ignore
+            # self.add_item(self.stop_pages)   type: ignore
+            self.add_item(self.go_to_current_page)  # type: ignore
+            self.add_item(self.go_to_next_page)  # type: ignore
+            self.add_item(self.go_to_last_page)  # type: ignore
+            self.go_to_last_page.label = f"⏭ {max_pages}"
+            if not self.compact:
+                self.add_item(self.numbered_page)  # type: ignore
+            if not use_last_and_first:
+                self.go_to_first_page.disabled = True
+                self.go_to_last_page.disabled = True
+                self.numbered_page.disabled = True
+       # self.add_item(self._jump_button)
+        self.add_item(self._create_gist)
+        self.add_item(self._edit_gist)
+        self.add_item(self._delete_gist)
+        self._update_buttons()
+
     def add_view(self, entries: typing.List) -> None:
         self.clear_items()
        # self.add_item(GistSelectMenu)
         self.fill_items()
 
+    async def show_page(
+        self, interaction: discord.Interaction, page_number: int
+    ) -> None:
+        page = await self.source.get_page(page_number)
+        self.current_page = page_number
+        kwargs = await self._get_kwargs_from_page(page)
+        self._update_labels(page_number)
+        self._update_buttons()
+        if kwargs:
+            if interaction.response.is_done():
+                if self.message:
+                    await self.message.edit(**kwargs, view=self)
+            else:
+                await interaction.response.edit_message(**kwargs, view=self)
 
+    async def update_page(self, interaction, gist=None):
+        if gist:
+            self.gist = gist
+            self.source.gist = gist
+        self.source.reload()
+        super().__init__(self.source, ctx=self.ctx, compact=self.compact)
+        await self.show_page(interaction, self.current_page)
+
+    def _update_labels(self, page_number: int) -> None:
+        self.go_to_first_page.disabled = page_number == 0
+        if self.compact:
+            max_pages = self.source.get_max_pages()
+            self.go_to_last_page.disabled = (
+                max_pages is None or (page_number + 1) >= max_pages
+            )
+            self.go_to_next_page.disabled = (
+                max_pages is not None and (page_number + 1) >= max_pages
+            )
+            self.go_to_previous_page.disabled = page_number == 0
+            return
+
+        self.go_to_previous_page.label = f"{page_number} ᐊ"
+        self.go_to_current_page.label = str(page_number + 1)
+        self.go_to_next_page.label = f"ᐅ {page_number + 2}"
+
+        self.go_to_next_page.disabled = False
+        self.go_to_previous_page.disabled = False
+        # self.go_to_first_page.disabled = False
+
+        max_pages = self.source.get_max_pages()
+        if max_pages is not None:
+            self.go_to_last_page.disabled = (page_number + 1) >= max_pages
+            if (page_number + 1) >= max_pages:
+                self.go_to_next_page.disabled = True
+                self.go_to_next_page.label = "ᐅ"
+            if page_number == 0:
+                self.go_to_previous_page.disabled = True
+                self.go_to_previous_page.label = "ᐊ"
+
+    def _update_buttons(self):
+        # self._jump_button.disabled = False if self.gist else True
+        if self.gist:
+            belongs = self.source.belongs
+            if belongs:
+                self._create_gist.disabled = True
+                self._edit_gist.disabled = False
+                self._delete_gist.disabled = False
+            else:
+                self._create_gist.disabled = False
+                self._edit_gist.disabled = True
+                self._delete_gist.disabled = True
+            
+            # self._jump_button.url = self.gist.url
+            return
+        self._create_gist.disabled = False
+        self._edit_gist.disabled = True
+        self._delete_gist.disabled = True
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user and interaction.user.id in (
+            self.ctx.bot.owner_id,
+            self.ctx.author.id,
+        ):
+            return True
+        await interaction.response.send_message(
+            "This instance does not belong to you!", ephemeral=True
+        )
+        return False
+
+    async def on_timeout(self) -> None:
+        if self.message:
+            await self.message.edit(view=None)
+
+    @discord.ui.button(label="Create a gist", style=discord.ButtonStyle.green, row=1)
+    async def _create_gist(
+        self, interaction: discord.Interaction, button: discord.Button
+    ):
+        modal = CreateGistModal(self)
+        await interaction.response.send_modal(modal)
+
+    @discord.ui.button(label="Edit gist", style=discord.ButtonStyle.blurple, row=1)
+    async def _edit_gist(
+        self, interaction: discord.Interaction, button: discord.Button
+    ):
+        modal = EditGistModal(self)
+        await interaction.response.send_modal(modal)
+
+    @discord.ui.button(label="Delete gist", style=discord.ButtonStyle.danger, row=1)
+    async def _delete_gist(
+        self, interaction: discord.Interaction, button: discord.Button
+    ):
+        await self.gist.delete()
+        embed = self.embed
+        embed.title += " [DELETED]"
+        embed.color = 0xFF0000
+
+        self.gist = None
+
+        await self.update_page(interaction)
+    
 class GistPageSource(menus.ListPageSource):
     def __init__(self, gist: gists.Gist, *, ctx: commands.Context, per_page: int = 1):
-        self.ctx = ctx
-        self.bot: discord.Bot = self.ctx.bot
-        self.embed = self.bot.Embed()
         self.gist: gists.Gist = gist
-        
-        self.view = GistView(self.ctx, self.gist.client, self.gist)
-        self.description = self.view.description
-
-        self.entries: typing.List = self.gist.files
+        self.ctx = ctx
+        self.bot = self.ctx.bot
         self.per_page = per_page
-        super().__init__(self.entries, per_page=per_page)
+        
+        self.embed = self.bot.Embed()
+        self.description = None
+        self.reload()
 
+    def reload(self):
+        self.update_attrs()
+        super().__init__(self.entries, per_page=self.per_page)
+        
+    def update_attrs(self):
+        if self.gist is not None:
+            self.entries = self.gist.files
+            self.belongs = self.validate_author()
+        else:
+            self.entries = [None]
+        
     def is_paginating(self) -> bool:
-        return len(self.entries) > self.per_page
+        return len(self.entries) > self.per_page and self.gist is not None
 
-    async def format_page(self, menu, entry: gists.File) -> discord.Embed:
+    async def format_page(self, menu, file: Union[gists.File, None]) -> discord.Embed:
         embed = self.embed
         embed.clear_fields()
         gist = self.gist
         if not gist:
             embed.title = "Gist not found/provided."
+            self.description = None
             return embed
 
         embed.title = gist.id
         embed.url = gist.url
         embed.description = self.description
+        updated_at = f'{discord.utils.format_dt(gist.updated_at)}, {discord.utils.format_dt(gist.updated_at, style="R")}'
+        created_at = f'{discord.utils.format_dt(gist.created_at)}, {discord.utils.format_dt(gist.created_at, style="R")}'
         embed.add_field(
             name="Updates",
             value=(
-                f'**Last updated at**: {gist.updated_at.strftime("%b %d, %Y %H:%M")}\n'
-                f"**Created at**: {gist.created_at}"
+                f'**Last updated at**: {updated_at}\n'
+                f"**Created at**: {created_at}"
             )
         )
 
-        embed.add_field(
-            name=entry.name,
-            value=f"{entry.content[:1020]}..."
-        )
+        if file is not None:
+            content = file.content
+            embed.add_field(
+                name=file.name,
+                value=CODE_BLOCK_FMT % (f"{content[:1020]}..." if len(content) > 1024 else content)
+            )
         
         maximum = self.get_max_pages()
         if maximum > 1:
@@ -208,30 +370,6 @@ class GistPageSource(menus.ListPageSource):
             self.embed.set_footer(text=text)
 
         return self.embed
-
-
-class GistView(discord.ui.View):
-    def __init__(
-        self,
-        ctx: commands.Context,
-        client: gists.Client,
-        gist: gists.Gist,
-    ):
-        super().__init__(timeout=300)
-
-        self.ctx = ctx
-        self.client = client
-        self.gist = gist
-
-        self.AUTHOR_WATERMARK = f" - {self.ctx.author.id}"
-        
-        self._jump_button = discord.ui.Button(
-            label="Jump",
-            url=self.gist.url if self.gist else "https://gist.github.com/None",
-        )
-        self.add_item(self._jump_button)
-        
-        self._update_buttons()
 
     def validate_author(self):
         # Pattern to group the author id and the description content from the description
@@ -249,67 +387,6 @@ class GistView(discord.ui.View):
             return True
         return False
         
-    def _update_buttons(self):
-        belongs = None
-
-        self._jump_button.disabled = False if self.gist else True
-        if self.gist:
-            belongs = self.validate_author()
-            if belongs:
-                self._create_gist.disabled = True
-                self._edit_gist.disabled = False
-                self._delete_gist.disabled = False
-            else:
-                self._create_gist.disabled = False
-                self._edit_gist.disabled = True
-                self._delete_gist.disabled = True
-            
-            self._jump_button.url = self.gist.url
-            return
-        self._create_gist.disabled = False
-        self._edit_gist.disabled = True
-        self._delete_gist.disabled = True
-
-        
-    async def on_timeout(self):
-        await self.response.edit(view=None)
-
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        if interaction.user != self.ctx.author:
-            await interaction.response.send_message(
-                f"This instance does not belong to you, please create your own instance."
-            )
-            return False
-        return True
-
-    @discord.ui.button(label="Create a gist", style=discord.ButtonStyle.green, row=1)
-    async def _create_gist(
-        self, interaction: discord.Interaction, button: discord.Button
-    ):
-        modal = CreateGistModal(self)
-        await interaction.response.send_modal(modal)
-
-    @discord.ui.button(label="Edit gist", style=discord.ButtonStyle.blurple, row=1)
-    async def _edit_gist(
-        self, interaction: discord.Interaction, button: discord.Button
-    ):
-        modal = EditGistModal(self, self.gist)
-        await interaction.response.send_modal(modal)
-
-    @discord.ui.button(label="Delete gist", style=discord.ButtonStyle.danger, row=1)
-    async def _delete_gist(
-        self, interaction: discord.Interaction, button: discord.Button
-    ):
-        await self.gist.delete()
-        embed = self.embed
-        embed.title += " [DELETED]"
-        embed.color = 0xFF0000
-
-        self.gist = None
-        self._update_buttons()
-
-        await interaction.response.edit_message(embed=embed, view=self) 
-
 
 class Gist(commands.Cog):
     """Commands for testing."""
@@ -344,7 +421,7 @@ class Gist(commands.Cog):
                 gist = None
                 
         formatter = GistPageSource(gist, ctx=ctx, per_page=1)
-        menu = GistPages(formatter, ctx=ctx, compact=False)
+        menu = GistView(formatter, ctx=ctx, client=client, compact=True)
         await menu.start()
         # view.response = await ctx.send(embed=embed, view=view)
 

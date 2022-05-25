@@ -2,4 +2,4 @@ COMMAND_COOLDOWN = 2  # seconds
 
 NEW_LINE = "\n"
 
-API_URL = "https://api.github.com"
+CODE_BLOCK_FMT = "```\n%s\n```"
