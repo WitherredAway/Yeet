@@ -286,11 +286,8 @@ class PoketwoMoves(commands.Cog):
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.session = aiohttp.ClientSession()
-
-    async def cog_unload(self):
-        self.send_tag.stop()
-        self.session.close()
+        
+    display_emoji = "🔠"
 
     @cached_property
     def data(self) -> Data:
@@ -364,7 +361,7 @@ class PoketwoMoves(commands.Cog):
         name="moveinfo",
         aliases=("mi", "move", "mv"),
         brief="See extended info of a move.",
-        help="See the name, type and the pokemon that have a certain move.",
+        help="See the class, type and the pokemon that have a certain move.",
         invoke_without_command=True,
     )
     async def moveinfo(self, ctx: commands.Context, *, move_name: str):
