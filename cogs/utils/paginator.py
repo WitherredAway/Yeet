@@ -16,7 +16,7 @@ class BotPages(discord.ui.View):
         ctx: commands.Context,
         check_embeds: bool = True,
         compact: bool = False,
-        timeout: Optional[int] = 300
+        timeout: Optional[int] = 300,
     ):
         super().__init__(timeout=timeout)
         self.source: menus.ListPageSource = source

@@ -286,7 +286,7 @@ class PoketwoMoves(commands.Cog):
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        
+
     display_emoji = "🔠"
 
     @cached_property

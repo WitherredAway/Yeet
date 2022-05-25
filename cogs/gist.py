@@ -49,6 +49,7 @@ class CreateGistModal(discord.ui.Modal):
         )
         await self.view.update_page(interaction, gist)
 
+
 class EditGistModal(discord.ui.Modal):
     """The modal for executing various functions on a gist"""
 
@@ -144,7 +145,13 @@ class EditGistModal(discord.ui.Modal):
 
 
 class GistView(BotPages):
-    def __init__(self, source: menus.PageSource, ctx: commands.Context, client: gists.Client, compact: bool):
+    def __init__(
+        self,
+        source: menus.PageSource,
+        ctx: commands.Context,
+        client: gists.Client,
+        compact: bool,
+    ):
         self.source = source
         self.ctx = ctx
         self.compact = compact
@@ -158,12 +165,12 @@ class GistView(BotPages):
         super().__init__(source, ctx=ctx, compact=compact, timeout=600)
         # self.client = self.gist.client
         self.embed = self.source.embed
-        
+
         self.AUTHOR_WATERMARK = f" - {self.ctx.author.id}"
 
-        #if source.is_paginating():
-            #self.add_view(source.entries)
-            
+        # if source.is_paginating():
+        # self.add_view(source.entries)
+
     def fill_items(self) -> None:
         if self.source.is_paginating():
             max_pages = self.source.get_max_pages()
@@ -182,7 +189,7 @@ class GistView(BotPages):
                 self.go_to_first_page.disabled = True
                 self.go_to_last_page.disabled = True
                 self.numbered_page.disabled = True
-       # self.add_item(self._jump_button)
+        # self.add_item(self._jump_button)
         self.add_item(self._create_gist)
         self.add_item(self._edit_gist)
         self.add_item(self._delete_gist)
@@ -190,7 +197,7 @@ class GistView(BotPages):
 
     def add_view(self, entries: typing.List) -> None:
         self.clear_items()
-       # self.add_item(GistSelectMenu)
+        # self.add_item(GistSelectMenu)
         self.fill_items()
 
     async def show_page(
@@ -259,7 +266,7 @@ class GistView(BotPages):
                 self._create_gist.disabled = False
                 self._edit_gist.disabled = True
                 self._delete_gist.disabled = True
-            
+
             # self._jump_button.url = self.gist.url
             return
         self._create_gist.disabled = False
@@ -307,14 +314,15 @@ class GistView(BotPages):
         self.gist = None
 
         await self.update_page(interaction)
-    
+
+
 class GistPageSource(menus.ListPageSource):
     def __init__(self, gist: gists.Gist, *, ctx: commands.Context, per_page: int = 1):
         self.gist: gists.Gist = gist
         self.ctx = ctx
         self.bot = self.ctx.bot
         self.per_page = per_page
-        
+
         self.embed = self.bot.Embed()
         self.description = None
         self.reload()
@@ -322,14 +330,14 @@ class GistPageSource(menus.ListPageSource):
     def reload(self):
         self.update_attrs()
         super().__init__(self.entries, per_page=self.per_page)
-        
+
     def update_attrs(self):
         if self.gist is not None:
             self.entries = self.gist.files
             self.belongs = self.validate_author()
         else:
             self.entries = [None]
-        
+
     def is_paginating(self) -> bool:
         return len(self.entries) > self.per_page and self.gist is not None
 
@@ -350,18 +358,18 @@ class GistPageSource(menus.ListPageSource):
         embed.add_field(
             name="Updates",
             value=(
-                f'**Last updated at**: {updated_at}\n'
-                f"**Created at**: {created_at}"
-            )
+                f"**Last updated at**: {updated_at}\n" f"**Created at**: {created_at}"
+            ),
         )
 
         if file is not None:
             content = file.content
             embed.add_field(
                 name=file.name,
-                value=CODE_BLOCK_FMT % (f"{content[:1020]}..." if len(content) > 1024 else content)
+                value=CODE_BLOCK_FMT
+                % (f"{content[:1020]}..." if len(content) > 1024 else content),
             )
-        
+
         maximum = self.get_max_pages()
         if maximum > 1:
             text = (
@@ -386,7 +394,7 @@ class GistPageSource(menus.ListPageSource):
         if author_id == self.ctx.author.id:
             return True
         return False
-        
+
 
 class Gist(commands.Cog):
     """Commands for testing."""
@@ -399,12 +407,15 @@ class Gist(commands.Cog):
     @commands.command(
         name="gist",
         brief="GitHub Gists utilities",
-        help=("Create a new gist or pass in the link/ID of a gist initially created through this command"
-              " to Edit or Delete the list with the help of Modals and Buttons"),
-        description=("Gists are a way to share text, code, etc with others and acts like a paste service.\n"
-                     "This command is intended to assist you in making such by using discord as a User Interface.\n\n"
-                     "When using this command please keep the Github Gists' [ToS](https://docs.github.com/en/github/site-policy/github-terms-of-service), [Privacy Policy](https://docs.github.com/en/github/site-policy/github-privacy-statement) and [Security documents](https://github.com/security) in mind. Any violation of these is not my responsibility."
-                    )
+        help=(
+            "Create a new gist or pass in the link/ID of a gist initially created through this command"
+            " to Edit or Delete the list with the help of Modals and Buttons"
+        ),
+        description=(
+            "Gists are a way to share text, code, etc with others and acts like a paste service.\n"
+            "This command is intended to assist you in making such by using discord as a User Interface.\n\n"
+            "When using this command please keep the Github Gists' [ToS](https://docs.github.com/en/github/site-policy/github-terms-of-service), [Privacy Policy](https://docs.github.com/en/github/site-policy/github-privacy-statement) and [Security documents](https://github.com/security) in mind. Any violation of these is not my responsibility."
+        ),
     )
     async def gist(self, ctx, gist_url_or_id: Optional[str] = None):
         client = self.bot.gists_client
@@ -419,7 +430,7 @@ class Gist(commands.Cog):
                 gist = await client.get_gist(gist_url_or_id)
             except gists.NotFound:
                 gist = None
-                
+
         formatter = GistPageSource(gist, ctx=ctx, per_page=1)
         menu = GistView(formatter, ctx=ctx, client=client, compact=True)
         await menu.start()
