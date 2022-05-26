@@ -38,6 +38,7 @@ class CreateGistModal(discord.ui.Modal):
 
     async def on_submit(self, interaction: discord.Interaction):
         description = self.description.value
+        self.view.description = description
         description += self.view.AUTHOR_WATERMARK
         filename = self.filename.value
         content = self.content.value
@@ -154,22 +155,30 @@ class GistView(BotPages):
     ):
         self.source = source
         self.ctx = ctx
-        self.compact = compact
         self.client = client
+        self.compact = compact
+        
         self.gist = self.source.gist
-        # self._jump_button = discord.ui.Button(
-        #     label="Jump",
-        #     url=self.gist.url if self.gist else "https://gist.github.com/None",
-        # )
         self.description = self.source.description
-        super().__init__(source, ctx=ctx, compact=compact, timeout=600)
-        # self.client = self.gist.client
+        self._super()
         self.embed = self.source.embed
 
         self.AUTHOR_WATERMARK = f" - {self.ctx.author.id}"
 
         # if source.is_paginating():
         # self.add_view(source.entries)
+
+    def _super(self):
+        super().__init__(self.source, ctx=self.ctx, compact=self.compact)
+        
+    async def update_page(self, interaction, gist=None):
+        if gist:
+            self.gist = gist
+            self.source.gist = gist
+            
+        self.source.reload()
+        self._super()
+        await self.show_page(interaction, self.current_page)
 
     def fill_items(self) -> None:
         if self.source.is_paginating():
@@ -178,7 +187,6 @@ class GistView(BotPages):
             self.add_item(self.go_to_first_page)  # type: ignore
             self.go_to_first_page.label = f"1 ⏮"
             self.add_item(self.go_to_previous_page)  # type: ignore
-            # self.add_item(self.stop_pages)   type: ignore
             self.add_item(self.go_to_current_page)  # type: ignore
             self.add_item(self.go_to_next_page)  # type: ignore
             self.add_item(self.go_to_last_page)  # type: ignore
@@ -189,12 +197,12 @@ class GistView(BotPages):
                 self.go_to_first_page.disabled = True
                 self.go_to_last_page.disabled = True
                 self.numbered_page.disabled = True
-        # self.add_item(self._jump_button)
         self.add_item(self._create_gist)
         self.add_item(self._edit_gist)
         self.add_item(self._delete_gist)
         self._update_buttons()
 
+    # TODO
     def add_view(self, entries: typing.List) -> None:
         self.clear_items()
         # self.add_item(GistSelectMenu)
@@ -214,14 +222,6 @@ class GistView(BotPages):
                     await self.message.edit(**kwargs, view=self)
             else:
                 await interaction.response.edit_message(**kwargs, view=self)
-
-    async def update_page(self, interaction, gist=None):
-        if gist:
-            self.gist = gist
-            self.source.gist = gist
-        self.source.reload()
-        super().__init__(self.source, ctx=self.ctx, compact=self.compact)
-        await self.show_page(interaction, self.current_page)
 
     def _update_labels(self, page_number: int) -> None:
         self.go_to_first_page.disabled = page_number == 0
@@ -255,7 +255,6 @@ class GistView(BotPages):
                 self.go_to_previous_page.label = "ᐊ"
 
     def _update_buttons(self):
-        # self._jump_button.disabled = False if self.gist else True
         if self.gist:
             belongs = self.source.belongs
             if belongs:
@@ -267,7 +266,6 @@ class GistView(BotPages):
                 self._edit_gist.disabled = True
                 self._delete_gist.disabled = True
 
-            # self._jump_button.url = self.gist.url
             return
         self._create_gist.disabled = False
         self._edit_gist.disabled = True
@@ -288,7 +286,7 @@ class GistView(BotPages):
         if self.message:
             await self.message.edit(view=None)
 
-    @discord.ui.button(label="Create a gist", style=discord.ButtonStyle.green, row=1)
+    @discord.ui.button(label="Create new gist", style=discord.ButtonStyle.green, row=1)
     async def _create_gist(
         self, interaction: discord.Interaction, button: discord.Button
     ):
@@ -315,14 +313,13 @@ class GistView(BotPages):
 
         await self.update_page(interaction)
 
-
 class GistPageSource(menus.ListPageSource):
     def __init__(self, gist: gists.Gist, *, ctx: commands.Context, per_page: int = 1):
-        self.gist: gists.Gist = gist
+        self.gist = gist
         self.ctx = ctx
-        self.bot = self.ctx.bot
         self.per_page = per_page
 
+        self.bot = self.ctx.bot
         self.embed = self.bot.Embed()
         self.description = None
         self.reload()
@@ -363,11 +360,12 @@ class GistPageSource(menus.ListPageSource):
         )
 
         if file is not None:
-            content = file.content
+            content = (f"{file.content[:1010]}..." if len(file.content) > 1024 else file.content)
+            if not file.name.endswith(".md"):
+                content = CODE_BLOCK_FMT % content
             embed.add_field(
                 name=file.name,
-                value=CODE_BLOCK_FMT
-                % (f"{content[:1020]}..." if len(content) > 1024 else content),
+                value=content,
             )
 
         maximum = self.get_max_pages()
