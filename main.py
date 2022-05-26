@@ -61,5 +61,12 @@ if __name__ == "__main__":
         case_insensitive=True,
         intents=discord.Intents.all(),
     )
-    keep_alive()
-    bot.run(TOKEN)
+    if os.getenv("REPL_ID") is not None:
+        keep_alive()
+        try:
+            bot.run(TOKEN)
+        except discord.errors.HTTPException:
+            print("Rate-limit detected, restarting process.")
+            os.system(f"kill 1 && python3 {sys.argv[0]}")
+    else:
+        bot.run(TOKEN)
