@@ -2,34 +2,48 @@ import typing
 from typing import Optional, TypeVar, Union
 import asyncio
 import os
+import copy
 import gists
 import re
 
 import discord
 from discord.ext import commands, menus, tasks
-import pandas as pd
 import validators
 
 from .utils.paginator import BotPages
 from constants import CODE_BLOCK_FMT
 
 
+def new_file_name(*, default: Optional[str] = "", required: Optional[bool] = False):
+    return discord.ui.TextInput(
+        label="Create a new file",
+        placeholder="New file's name e.g. output.txt",
+        default=default,
+        style=discord.TextStyle.short,
+        custom_id="new_file_name",
+        required=required
+    )
+
+def new_file_content(*, default: Optional[str] = "", required: Optional[bool] = False):
+    return discord.ui.TextInput(
+        label="Content",
+        placeholder="New file's content",
+        default=default,
+        style=discord.TextStyle.paragraph,
+        custom_id="new_file_content",
+        required=required
+    )
+
 class CreateGistModal(discord.ui.Modal):
     """Interactive modal to create gists."""
 
     description = discord.ui.TextInput(
-        label="Description", min_length=0, placeholder="Description", required=False
+        label="Description of gist",
+        placeholder="Description of the gist.",
+        required=False
     )
-    filename = discord.ui.TextInput(
-        label="Filename",
-        min_length=1,
-        max_length=100,
-        placeholder="Name of the new file",
-        default="output.txt",
-    )
-    content = discord.ui.TextInput(
-        label="Content", min_length=0, style=discord.TextStyle.paragraph, required=False
-    )
+    filename = new_file_name(default="output.txt", required=True)
+    content = new_file_content(required=True)
 
     def __init__(self, view: discord.ui.View):
         super().__init__(title="Create a new gist")
@@ -59,6 +73,7 @@ class EditGistModal(discord.ui.Modal):
         self.view = view
         self.client = self.view.client
         self.gist = self.view.gist
+        self.file = self.view.source.file
         self._fill_items()
 
     def _fill_items(self):
@@ -73,71 +88,56 @@ class EditGistModal(discord.ui.Modal):
             )
         )
 
+        filename = self.file.name
+        content = self.file.content
         self.add_item(
             discord.ui.TextInput(
-                label="Edit a specific file",
+                label="Filename",
+                placeholder=filename,
                 style=discord.TextStyle.short,
-                placeholder="Input existing filename to edit file,\nInput new filename to create a new file.",
-                custom_id="new_filename",
-                required=False,
+                default=filename,
+                custom_id=f"old_file_name",
+                required=True,
             )
         )
-
+        files_amt = len(self.gist.files)
         self.add_item(
             discord.ui.TextInput(
-                label="The specific file's content",
-                placeholder="New content of the specific file.",
+                label=f"{filename}'s content",
+                placeholder=f"Edit content of file {filename}. {'Cannot delete last file' if files_amt == 1 else 'Leave empty to delete file'}.",
                 style=discord.TextStyle.paragraph,
-                min_length=1,
-                custom_id="new_filecontent",
-                required=False,
+                default=content,
+                custom_id=f"old_file_content",
+                required=files_amt == 1,  # Makes it so that you can't delete the last file
             )
         )
 
-        for idx, file in enumerate(self.gist.files[:2]):
-            filename = file.name
-            content = file.content
-            self.add_item(
-                discord.ui.TextInput(
-                    label="File: %s's content" % filename,
-                    placeholder="Edit content of file %s." % filename,
-                    style=discord.TextStyle.paragraph,
-                    default=f"{content[:3997]}..." if len(content) > 4000 else content,
-                    custom_id="%s_content" % filename,
-                    required=False,
-                )
-            )
+        self.add_item(new_file_name())
 
-    def children_dict(self) -> typing.Dict:
-        ch_dict = {child.custom_id: child.__dict__ for child in self.children}
+        self.add_item(new_file_content())
+
+    def children_dict(self) -> typing.Dict[str, discord.ui.TextInput]:
+        ch_dict = {child.custom_id: child for child in self.children}
         return ch_dict
 
     async def on_submit(self, interaction: discord.Interaction):
-        children_dict = self.children_dict()
+        children = self.children_dict()
         file_objs = self.gist.files
 
-        description = children_dict["gist_description"]["_value"]
+        description = children["gist_description"].value
         self.view.description = description
         description += self.view.AUTHOR_WATERMARK
-        for child_custom_id, child_value in children_dict.items():
-            value = child_value["_value"]
-            # If the child's custom_id is that of the new filename text input
-            # and if it is not None
-            if all((child_custom_id == "new_filename", value != "")):
-                # Set values to input into data
-                filename = value
-                content = children_dict["new_filecontent"]["_value"]
-                # Set its values as the new file's name and content in the gist
-                file_objs.append(gists.File(name=filename, content=content))
 
-            # If the child's custom_id ends with _content
-            elif child_custom_id.endswith("_content"):
-                # It is the content of a file
-                content = value
-                # Set its value as the corresponding file's content
-                filename = child_custom_id.split("_")[0]
-                file_objs.append(gists.File(name=filename, content=content))
+        old_file_name = children["old_file_name"].default
+        old_file_new_name = children["old_file_name"].value
+        old_file_content = children["old_file_content"].value
+        file_objs.append(gists.File(name=old_file_name, content=old_file_content, new_name=old_file_new_name))
 
+        new_file_name = children["new_file_name"].value
+        new_file_content = children["new_file_content"].value
+        if all((new_file_name != "", new_file_content != "")):
+            file_objs.append(gists.File(name=new_file_name, content=new_file_content))
+            
         await self.gist.edit(
             files=file_objs,
             description=description,
@@ -175,10 +175,15 @@ class GistView(BotPages):
         if gist:
             self.gist = gist
             self.source.gist = gist
-            
+
+        current_page = self.current_page
         self.source.reload()
+        # This resets self.current_page to the beginning
         self._super()
-        await self.show_page(interaction, self.current_page)
+        try:
+            await self.show_page(interaction, current_page)
+        except IndexError:
+            await self.show_page(interaction, self.current_page)
 
     def fill_items(self) -> None:
         if self.source.is_paginating():
@@ -293,7 +298,7 @@ class GistView(BotPages):
         modal = CreateGistModal(self)
         await interaction.response.send_modal(modal)
 
-    @discord.ui.button(label="Edit gist", style=discord.ButtonStyle.blurple, row=1)
+    @discord.ui.button(label="Edit file", style=discord.ButtonStyle.blurple, row=1)
     async def _edit_gist(
         self, interaction: discord.Interaction, button: discord.Button
     ):
@@ -339,6 +344,7 @@ class GistPageSource(menus.ListPageSource):
         return len(self.entries) > self.per_page and self.gist is not None
 
     async def format_page(self, menu, file: Union[gists.File, None]) -> discord.Embed:
+        self.file = file
         embed = self.embed
         embed.clear_fields()
         gist = self.gist
@@ -369,9 +375,9 @@ class GistPageSource(menus.ListPageSource):
             )
 
         maximum = self.get_max_pages()
-        if maximum > 1:
+        if maximum > 0:
             text = (
-                f"File {menu.current_page + 1}/{maximum} ({len(self.entries)} entries)"
+                f"File {menu.current_page + 1}/{maximum}"
             )
             self.embed.set_footer(text=text)
 
