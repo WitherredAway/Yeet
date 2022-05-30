@@ -20,7 +20,8 @@ class PoketwoChances(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.pokemon_csv = (
-            "https://raw.githubusercontent.com/poketwo/data/master/csv/pokemon.csv"
+            # "https://raw.githubusercontent.com/poketwo/data/master/csv/pokemon.csv"
+            os.getenv("POKEMON_CSV")
         )
 
     display_emoji = "🔣"
@@ -34,9 +35,20 @@ class PoketwoChances(commands.Cog):
         df.drop(columns=['abundance', 'catchable'], inplace=True)
         df.rename(columns={'name.en': "Pokemon", 'dex_number': "Dex"}, inplace=True)
 
-        file = gists.File(name=f'{title.casefold()}_chances.csv', content=df.to_csv(index=False))
+        df_groupby = df.set_index("Pokemon").groupby("Chance percentage")
+        df_groupby = [(float(chance[:-1]), pokemons) for chance, pokemons in df_groupby.groups.items()]
+        df_groupby.sort(key=lambda x: x[0], reverse=True)
+        df_groupby = {f'{chance}% - 1/{round(1/chance*100)} [{len(pokemons)}]': sorted(pokemons) for chance, pokemons in df_groupby}
 
-        g = await self.bot.gists_client.create_gist(files=[file], description=f"Chances of {title} pokémon", public=False)
+        df_grouped = pd.DataFrame.from_dict(df_groupby, orient='index')
+        df_grouped = df_grouped.transpose()
+
+        files = [
+            gists.File(name=f'{title.casefold()}_chances.csv', content=df.to_csv(index=False)),
+            gists.File(name=f'{title.casefold()}_chances_grouped.csv', content=df_grouped.to_csv(index=False)), 
+        ]
+
+        g = await self.bot.gists_client.create_gist(files=files, description=f"Chances of {title} pokémon", public=False)
         return g
 
     async def format_msg(
@@ -102,10 +114,10 @@ class PoketwoChances(commands.Cog):
 
     @chance.command(
         name="form",
-        help="See the chances of a form and the individual pokémon. Options: Alolan, Galarian.",
+        help="See the chances of a form and the individual pokémon. Options: Alolan, Galarian & Hisuian.",
     )
     async def _form(self, ctx, form):
-        options = ["Alolans", "Galarians"]
+        options = ["Alolans", "Galarians", "Hisuians"]
         for option in options:
             if form.lower() in option.lower():
                 form = option.lower()[:5]
