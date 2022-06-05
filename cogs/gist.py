@@ -21,8 +21,9 @@ def new_file_name(*, default: Optional[str] = "", required: Optional[bool] = Fal
         default=default,
         style=discord.TextStyle.short,
         custom_id="new_file_name",
-        required=required
+        required=required,
     )
+
 
 def new_file_content(*, default: Optional[str] = "", required: Optional[bool] = False):
     return discord.ui.TextInput(
@@ -31,8 +32,9 @@ def new_file_content(*, default: Optional[str] = "", required: Optional[bool] = 
         default=default,
         style=discord.TextStyle.paragraph,
         custom_id="new_file_content",
-        required=required
+        required=required,
     )
+
 
 class CreateGistModal(discord.ui.Modal):
     """Interactive modal to create gists."""
@@ -40,7 +42,7 @@ class CreateGistModal(discord.ui.Modal):
     description = discord.ui.TextInput(
         label="Description of gist",
         placeholder="Description of the gist.",
-        required=False
+        required=False,
     )
     filename = new_file_name(default="output.txt", required=True)
     content = new_file_content(required=True)
@@ -108,7 +110,8 @@ class EditGistModal(discord.ui.Modal):
                 style=discord.TextStyle.paragraph,
                 default=content,
                 custom_id=f"old_file_content",
-                required=files_amt == 1,  # Makes it so that you can't delete the last file
+                required=files_amt
+                == 1,  # Makes it so that you can't delete the last file
             )
         )
 
@@ -131,13 +134,17 @@ class EditGistModal(discord.ui.Modal):
         old_file_name = children["old_file_name"].default
         old_file_new_name = children["old_file_name"].value
         old_file_content = children["old_file_content"].value
-        file_objs.append(gists.File(name=old_file_name, content=old_file_content, new_name=old_file_new_name))
+        file_objs.append(
+            gists.File(
+                name=old_file_name, content=old_file_content, new_name=old_file_new_name
+            )
+        )
 
         new_file_name = children["new_file_name"].value
         new_file_content = children["new_file_content"].value
         if all((new_file_name != "", new_file_content != "")):
             file_objs.append(gists.File(name=new_file_name, content=new_file_content))
-            
+
         await self.gist.edit(
             files=file_objs,
             description=description,
@@ -157,7 +164,7 @@ class GistView(BotPages):
         self.ctx = ctx
         self.client = client
         self.compact = compact
-        
+
         self.gist = self.source.gist
         self.description = self.source.description
         self._super()
@@ -170,7 +177,7 @@ class GistView(BotPages):
 
     def _super(self):
         super().__init__(self.source, ctx=self.ctx, compact=self.compact)
-        
+
     async def update_page(self, interaction, gist=None):
         if gist:
             self.gist = gist
@@ -318,6 +325,7 @@ class GistView(BotPages):
 
         await self.update_page(interaction)
 
+
 class GistPageSource(menus.ListPageSource):
     def __init__(self, gist: gists.Gist, *, ctx: commands.Context, per_page: int = 1):
         self.gist = gist
@@ -366,7 +374,11 @@ class GistPageSource(menus.ListPageSource):
         )
 
         if file is not None:
-            content = (f"{file.content[:1010]}..." if len(file.content) > 1024 else file.content)
+            content = (
+                f"{file.content[:1010]}..."
+                if len(file.content) > 1024
+                else file.content
+            )
             if not file.name.endswith(".md"):
                 content = CODE_BLOCK_FMT % content
             embed.add_field(
@@ -376,9 +388,7 @@ class GistPageSource(menus.ListPageSource):
 
         maximum = self.get_max_pages()
         if maximum > 0:
-            text = (
-                f"File {menu.current_page + 1}/{maximum}"
-            )
+            text = f"File {menu.current_page + 1}/{maximum}"
             self.embed.set_footer(text=text)
 
         return self.embed
