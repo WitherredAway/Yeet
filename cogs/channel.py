@@ -105,7 +105,7 @@ class Channel(commands.Cog):
     )
     async def _contains(self, ctx: commands.Context, *, phrase: str):
         key = re.compile(phrase.lower())
-        top_msg = f"Channels with last message starting with `{key.pattern}`"
+        top_msg = f"Channels with last message matching pattern `{key.pattern}`"
         channels = []
         async with ctx.channel.typing():
             for channel in ctx.guild.text_channels:
