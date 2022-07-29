@@ -152,7 +152,7 @@ class Draw(commands.Cog):
         name="copy",
         brief="Copy a drawing.",
         help="Copy a drawing from an embed by replying to with message ID and channel.",
-        description="Allows you to copy a drawing that was done with the `draw` command.",
+        description="Allows you to copy a drawing that was done with the `draw` command. This will also copy the palette!",
     )
     async def copy(
         self,
