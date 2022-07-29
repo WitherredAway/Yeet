@@ -269,6 +269,9 @@ class Data:
             )
             if move_group is not None:
                 for pkm_id, row in move_group.iterrows():
+                    if gen == 7:
+                        if not (self.pk.loc[pkm_id, "enabled"] > 0):
+                            continue
                     pkm_name = pkm_names.loc[pkm_id, "name"]
 
                     pokemon[gen].append(
