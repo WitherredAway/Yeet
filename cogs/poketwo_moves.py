@@ -94,8 +94,12 @@ class Move:
 
 
 class Data:
-    def __init__(self):
-        self.fetch_data()
+    def __init__(self, bot):
+        self.bot = bot
+        self.pk = self.bot.get_cog("PoketwoChances").pk.set_index("id")
+
+    async def init(self):
+        await self.bot.loop.run_in_executor(None, self.fetch_data)
 
     def fetch_data(self):
         # moves.csv
@@ -193,9 +197,6 @@ class Data:
 
         self.pkm_names_data = {7: self.pkm_names_data_7, 8: self.pkm_names_data_8}
 
-    def resync(self):
-        self.fetch_data()
-
     @cached_property
     def moves(self) -> typing.Dict[int, Move]:
         moves_data = self.moves_data
@@ -289,10 +290,10 @@ class PoketwoMoves(commands.Cog):
 
     display_emoji = "🔠"
 
-    @cached_property
-    def data(self) -> Data:
+    async def data(self) -> Data:
         if not hasattr(self.bot, "p2_data"):
-            self.bot.p2_data = Data()
+            self.bot.p2_data = Data(self.bot)
+            await self.bot.p2_data.init()
         return self.bot.p2_data
 
     async def format_message(self, move: Move):
@@ -366,7 +367,7 @@ class PoketwoMoves(commands.Cog):
     )
     async def moveinfo(self, ctx: commands.Context, *, move_name: str):
         async with ctx.typing():
-            data = self.data
+            data = await self.data()
             try:
                 move = data.move_by_name(move_name)
             except IndexError:
@@ -381,7 +382,7 @@ class PoketwoMoves(commands.Cog):
     )
     async def resync(self, ctx):
         async with ctx.channel.typing():
-            self.data.resync()
+            self.data().resync()
         await ctx.send("Resynced data!")
 
 
