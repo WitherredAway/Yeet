@@ -128,7 +128,7 @@ class PoketwoChances(commands.Cog):
             all_pokemon = f"> All pokémon: <{gist_link}>"
             extra = f" (Includes all catchable forms)\n{all_pokemon}\n**Total pokemon**: {len(pkm_df)}"
 
-        result = f"__**{title}**__{extra}\n{total_chances}"
+        result = f"__**{title} spawn-chance**__{extra}\n{total_chances}"
         return result
 
     @commands.group(
