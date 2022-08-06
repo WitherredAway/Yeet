@@ -453,7 +453,7 @@ class DrawButtons(discord.ui.View):
 
         # The actual board
         embed.add_field(
-            name=f"{self.bg}  {u200b.join(col_list)}",
+            name=f"{self.cursor}  {u200b.join(col_list)}",
             value="\n".join(
                 [
                     f"{row_list[idx]}  {u200b.join(cell)}"
@@ -461,14 +461,7 @@ class DrawButtons(discord.ui.View):
                 ]
             ),
         )
-        embed.add_field(
-            name=f"Cursor - {self.cursor}",
-            value=", ".join(
-                [ABC[cell_tuple[0]] + str(cell_tuple[1]) for cell_tuple in self.cells]
-            )
-            or None,
-        )
-
+        
         embed.set_footer(
             text=(
                 f"The board looks wack? Try decreasing its size! Do {self.ctx.clean_prefix}help draw for more info."
