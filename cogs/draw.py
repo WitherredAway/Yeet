@@ -151,35 +151,20 @@ class Draw(commands.Cog):
     @draw.command(
         name="copy",
         brief="Copy a drawing.",
-        help="Copy a drawing from an embed by replying to with message ID and channel.",
-        description="Allows you to copy a drawing that was done with the `draw` command. This will also copy the palette!",
+        help="Copy a drawing from an embed by replying to the message or using message link.",
+        description="Allows you to copy a drawing that was done with the `draw` command. This will also copy the palette! You can copy by replying to such a message or by providing the message link (or ID).",
     )
     async def copy(
         self,
         ctx,
-        message: Union[int, discord.Message] = None,
-        message_channel: Union[int, discord.TextChannel] = None,
+        message_link: discord.Message = None,
     ):
+        message = message_link
         if ctx.message.reference:
             message = await ctx.channel.fetch_message(ctx.message.reference.message_id)
-        elif message is not None:
-            if message_channel is None:
-                message_channel = ctx.channel
-            else:
-                message_channel = await ctx.bot.fetch_channel(
-                    message_channel
-                    if type(message_channel) == int
-                    else message_channel.id
-                )
-            try:
-                message = await message_channel.fetch_message(
-                    message if type(message) == int else message.id
-                )
-            except:
-                return await ctx.send(
-                    "Please provide a valid message ID or reply to a message!"
-                )
-
+        elif message_link is None or not isinstance(message_link, discord.Message):
+            return await ctx.send_help(ctx.command)
+        
         if all(
             (
                 message.embeds,
