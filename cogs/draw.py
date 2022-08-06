@@ -176,9 +176,8 @@ class Draw(commands.Cog):
             value = message.embeds[0].fields[0].value
             board = []
             for line in value.split("\n"):
-                board.append(line[3:].split("\u200b"))
+                board.append(line.split("  ")[1].split("\u200b"))
             board = np.array(board, dtype="object")
-            bg = name[0]
         else:
             return await ctx.send(
                 "Invalid message, make sure it's a draw embed and a message from the bot."
@@ -193,9 +192,14 @@ class Draw(commands.Cog):
         except KeyError:
             pass
         options = discord.ui.View.from_message(message, timeout=0).children[0].options
+        for option in options:
+            if option.label.endswith(" (base)"):
+                bg = str(option.emoji)
+
         view = DrawButtons(
             bg, board, row_list, col_list, ctx=ctx, selectmenu_options=options
         )
+        view.cursor = name.split("  ")[0]
         view.clear_cursors()
         view.draw_cursor()
 
@@ -243,7 +247,7 @@ class AddedEmoji:
 
 
 class DrawSelectMenu(discord.ui.Select):
-    def __init__(self, *, options: Optional[typing.List[discord.SelectOption]] = None):
+    def __init__(self, *, options: Optional[typing.List[discord.SelectOption]] = None, bg: str):
         options = (
             options
             if options
@@ -264,6 +268,10 @@ class DrawSelectMenu(discord.ui.Select):
                 ),
             ]
         )
+        for option in options:
+            if str(option.emoji) == bg and not option.label.endswith(" (base)"):
+                option.label += " (base)"
+
         super().__init__(
             placeholder="🎨 Palette",
             min_values=1,
@@ -308,12 +316,6 @@ class DrawSelectMenu(discord.ui.Select):
                     for em in [opt.emoji for opt in select.options]
                 ]
                 if emoji_identifier in existing_emojis:
-                    # This list comprehension mess checks if the emoji
-                    # you're trying to add already exists in the options
-                    # of the select menu. It uses the emoji's ID if it's
-                    # a custom emoji, otherwise it uses the name which is
-                    # the unicode emoji to see if it already exists in an option
-
                     added_emojis[emoji_identifier] = AddedEmoji(
                         status="Already exists", emoji=emoji, sent_emoji=sent_emoji
                     )
@@ -393,7 +395,7 @@ class DrawButtons(discord.ui.View):
         super().__init__(timeout=600)
         children = self.children.copy()
         self.clear_items()
-        self.add_item(DrawSelectMenu(options=selectmenu_options))
+        self.add_item(DrawSelectMenu(options=selectmenu_options, bg=bg))
         for item in children:
             self.add_item(item)
 
