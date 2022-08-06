@@ -263,15 +263,15 @@ class DrawSelectMenu(discord.ui.Select):
             options
             if options
             else [
-                discord.SelectOption(label="Red", emoji="🟥", value="🔴"),
-                discord.SelectOption(label="Orange", emoji="🟧", value="🟠"),
-                discord.SelectOption(label="Yellow", emoji="🟨", value="🟡"),
-                discord.SelectOption(label="Green", emoji="🟩", value="🟢"),
-                discord.SelectOption(label="Blue", emoji="🟦", value="🔵"),
-                discord.SelectOption(label="Purple", emoji="🟪", value="🟣"),
-                discord.SelectOption(label="Brown", emoji="🟫", value="🟤"),
-                discord.SelectOption(label="Black", emoji="⬛", value="⚫"),
-                discord.SelectOption(label="White", emoji="⬜", value="⚪"),
+                discord.SelectOption(label="Red", emoji="🟥", value="🟥"),
+                discord.SelectOption(label="Orange", emoji="🟧", value="🟧"),
+                discord.SelectOption(label="Yellow", emoji="🟨", value="🟨"),
+                discord.SelectOption(label="Green", emoji="🟩", value="🟩"),
+                discord.SelectOption(label="Blue", emoji="🟦", value="🟦"),
+                discord.SelectOption(label="Purple", emoji="🟪", value="🟪"),
+                discord.SelectOption(label="Brown", emoji="🟫", value="🟫"),
+                discord.SelectOption(label="Black", emoji="⬛", value="⬛"),
+                discord.SelectOption(label="White", emoji="⬜", value="⬜"),
                 discord.SelectOption(
                     label="Add Emoji(s)",
                     emoji="<:emojismiley:920902406336815104>",
@@ -422,7 +422,7 @@ class DrawButtons(discord.ui.View):
         self.ctx = ctx
         self.response = None
         self.cells = [(self.cursor_row, self.cursor_col)]
-        self.cursor = self.board[self.cursor_row, self.cursor_col]
+        self.cursor = self.bg
         self.cursor_row_max = row_list.index(row_list[-1])
         self.cursor_col_max = col_list.index(col_list[-1])
         self.initial_cell = (None, None)
@@ -533,7 +533,7 @@ class DrawButtons(discord.ui.View):
         if draw is None:
             draw = self.board[self.cursor_row, self.cursor_col]
         for cell_tuple in self.cells:
-            self.board[cell_tuple[0], cell_tuple[1]] = draw
+            self.board[cell_tuple[0], cell_tuple[1]] = get_cursor.get(draw, draw)
         await interaction.edit_original_message(embed=self.embed, view=self)
 
     async def move_cursor(
