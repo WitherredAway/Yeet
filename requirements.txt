@@ -27,7 +27,7 @@ cryptography==35.0.0
 debugpy==1.2.1
 decorator==5.1.1
 discord-ext-menus @ git+https://github.com/Rapptz/discord-ext-menus@fbb8803779373357e274e1540b368365fd9d8074
-discord.py @ git+https://github.com/Rapptz/discord.py
+discord.py @ git+https://github.com/Rapptz/discord.py@a106201a
 distlib==0.3.3
 docopt==0.6.2
 docutils==0.18.1
