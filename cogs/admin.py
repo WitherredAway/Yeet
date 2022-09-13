@@ -33,7 +33,7 @@ class Developer(commands.Cog):
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.hidden = True
+        # self.hidden = True
 
     display_emoji: discord.PartialEmoji = "⚒️"
 
@@ -80,8 +80,9 @@ class Developer(commands.Cog):
     )
     async def _load(self, ctx: commands.Context, cog: str):
         try:
-            await self.bot.load_extension(f"cogs.{cog}")
-        except commands.ExtensionNotFound:
+            cog = self.bot.COGS[cog]
+            await self.bot.load_extension(f"cogs.{self.bot.COGS[cog]}")
+        except (KeyError, commands.ExtensionNotFound):
             message = f":x: Cog `{cog}` not found."
         except commands.ExtensionAlreadyLoaded:
             message = f"Cog `{cog}` is already loaded."
@@ -100,17 +101,16 @@ class Developer(commands.Cog):
         help="Unloads a cog with the name, dev only command.",
     )
     async def _unload(self, ctx: commands.Context, cog: str):
-        if cog.lower() == "admin":
-            message = ":x: Cannot unload this cog"
-        else:
-            try:
-                await self.bot.unload_extension(f"cogs.{cog}")
-            except commands.ExtensionNotLoaded:
-                message = f":x: Cog `{cog}` not found."
-            except Exception as e:
-                raise e
+        try:
+            cog = self.bot.COGS[cog]
+            if cog.lower() == "admin":
+                message = ":x: Cannot unload this cog"
             else:
-                message = f":outbox_tray: Unloaded cog `{cog}`"
+                await self.bot.unload_extension(f"cogs.{self.bot.COGS[cog]}")
+        except (KeyError, commands.ExtensionNotFound):
+            message = f":x: Cog `{cog}` not found."
+        else:
+            message = f":outbox_tray: Unloaded cog `{cog}`"
 
         view = RepeatView(ctx)
         view.message = await ctx.send(message, view=view)
@@ -133,8 +133,9 @@ class Developer(commands.Cog):
             message = ", ".join(cogs)
         else:
             try:
+                cog = self.bot.COGS[cog]
                 await self.bot.reload_extension(f"cogs.{cog}")
-            except commands.ExtensionNotLoaded:
+            except (KeyError, commands.ExtensionNotLoaded):
                 message = f":x: Cog `{cog}` not found."
             else:
                 message = f":repeat: Reloaded cog `{cog}`"

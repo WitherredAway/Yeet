@@ -22,6 +22,27 @@ class Bot(commands.Bot):
     PREFIXES = json.loads(os.getenv("PREFIXES"))
     PREFIX = PREFIXES[0]
 
+    COGS = {
+        "admin": "admin",
+        "bot": "bot",
+        "channel": "channel",
+        "define": "define",
+        "docs": "docs",
+        "draw": "draw",
+        "fun": "fun",
+        "gist": "gist",
+        "help": "help",
+        "jishaku": "jishaku",
+        "jsk": "jishaku",
+        "math": "math",
+        "poketwo_chances": "poketwo_chances",
+        "p2c": "poketwo_chances",
+        "poketwo_moves": "poketwo_moves",
+        "p2m": "poketwo_moves",
+        "test": "test",
+        "useful": "useful",
+}
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -37,10 +58,8 @@ class Bot(commands.Bot):
         self.gists_client = gists.Client()
         await self.gists_client.authorize(os.getenv("githubTOKEN"))
 
-        # self.load_extension("jishaku")
-        for filename in os.listdir("./cogs"):
-            if filename.endswith(".py"):
-                await self.load_extension(f"cogs.{filename[:-3]}")
+        for filename in set(self.COGS.values()):
+            await self.load_extension(f"cogs.{filename}")
 
     class Embed(discord.Embed):
         def __init__(self, **kwargs):

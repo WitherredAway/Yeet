@@ -21,9 +21,8 @@ class Bot(commands.Cog):
         msg = f"Running.\n{self.bot.user}"
         url = os.getenv("webhookURL")
         print(msg)
-        async with aiohttp.ClientSession() as session:
-            webhook = discord.Webhook.from_url(url, session=session)
-            await webhook.send(embed=self.bot.Embed(title=msg))
+        webhook = discord.Webhook.from_url(url, session=self.bot.session)
+        await webhook.send(embed=self.bot.Embed(title=msg))
 
     @commands.Cog.listener()
     async def on_message_edit(self, before: discord.Message, after: discord.Message):
