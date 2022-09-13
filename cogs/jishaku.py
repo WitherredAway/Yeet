@@ -8,6 +8,9 @@ from jishaku.flags import Flags
 from jishaku.codeblocks import Codeblock, codeblock_converter
 from jishaku.features.baseclass import Feature
 
+from constants import CODE_BLOCK_FMT
+from .jishaku_py_modal import CodeView
+
 
 os.environ["JISHAKU_RETAIN"] = "True"
 os.environ["JISHAKU_NO_DM_TRACEBACK"] = "True"
@@ -17,11 +20,6 @@ os.environ["JISHAKU_NO_UNDERSCORE"] = "True"
 class Jishaku(Jishaku):
     __doc__ = Jishaku.__doc__
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.bot = kwargs.pop("bot")
-        self.hidden = False
-
     @commands.command(
         name="git",
         brief="Shortcut to the jishaku git command.",
@@ -30,6 +28,14 @@ class Jishaku(Jishaku):
     async def _git(self, ctx: commands.Context, *, argument: codeblock_converter):
         jsk_git_command = self.bot.get_command("jishaku git")
         return await ctx.invoke(jsk_git_command, argument=argument)
+
+    @Feature.Command(parent="jsk", name="py_modal")
+    async def jsk_py_modal(self, ctx: commands.Context):
+        """
+        Direct evaluation of python code, uses a modal for input
+        """
+        view = CodeView(ctx)
+        await ctx.send(view=view)
 
     @Feature.Command(parent="jsk", name="hide")
     async def jsk_hide(self, ctx: commands.Context):
