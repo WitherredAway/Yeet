@@ -15,80 +15,38 @@ from collections import OrderedDict, deque, Counter
 from typing import Any, Dict, List, Optional, Union
 from .utils.source import source
 
+from constants import NEW_LINE
 
-class FrontPageSource(menus.PageSource):
-    new_line = "\n"
+
+class FrontPageSource(menus.ListPageSource):
+    def __init__(self, cogs_and_commands: Dict[commands.Cog, List[commands.Command]], *, per_page: Optional[int] = 8):
+        self.cogs_and_commands: List[Tuple[commands.Cog, List[commands.Command]]] = list(cogs_and_commands.items())
+        super().__init__(self.cogs_and_commands, per_page=per_page)
 
     def is_paginating(self) -> bool:
         return True
 
-    def get_max_pages(self) -> Optional[int]:
-        return 2
-
-    async def get_page(self, page_number: int) -> Any:
-        # The front page is a dummy
-        self.index = page_number
-        return self
-
-    def format_page(self, menu: HelpMenu, page):
+    async def format_page(self, menu: HelpMenu, entries: List[Tuple[commands.Cog, List[commands.Command]]]):
         embed = self.bot.Embed(
             title="Help Interface",
             description=f"**[Invite the bot here!](https://discord.com/api/oauth2/authorize?client_id=634409171114262538&permissions=8&scope=bot)**\n——————————————————————————————\nDo `,help <command>` for more info on a command.\nDo `,help <category>` (case sensitive) for more info on a category.\n——————————————————————————————",
         )
-
-        if self.index == 0:
-            cog_names = sorted(self.bot.cogs.keys())
-            for cog_name in cog_names:
-                cog = self.bot.cogs[cog_name]
-                cog_commands = sorted(
-                    cog.get_commands(), key=lambda x: x.qualified_name
-                )
-                if any((getattr(cog, "hidden", False), len(cog_commands) == 0)):
-                    continue
-                description = (
-                    cog.description.split("\n", 1)[0] or "No description found."
-                )
-                emoji = getattr(cog, "display_emoji", "🟡")
-                category_commands = []
-                for command in cog_commands:
-                    if not command.hidden:
-                        com = command.qualified_name
-                        com_src = source(self.bot, command=com)
-                        category_commands.append(
-                            f"**[{com}]({com_src})**{(' (' + str(len(command.commands)) + ')') if isinstance(command, commands.Group) else ''}: {command.brief or command.description or 'No description found.'}"
-                        )
-
-                embed.add_field(
-                    name=f"{emoji} **{cog.qualified_name}**: {description}",
-                    value=f"{self.new_line.join(category_commands)}",
-                )
-
-        elif self.index == 1:
-            entries = (
-                ("<argument>", "This means the argument is __**required**__."),
-                ("[argument]", "This means the argument is __**optional**__."),
-                (
-                    "[A|B]",
-                    "This means that it can be __**either A or B**__. If one is **bold**, that means that it is the **main option**.",
-                ),
-                (
-                    "[argument=value]",
-                    "This means that the argument defaults to **value** if nothing is passed.",
-                ),
-                (
-                    "[argument...]",
-                    "This means you can have multiple arguments.\n"
-                    "__**Remember not to include the brackets (<> or [])!**__",
-                ),
+        for cog, _commands in entries:
+            description = (
+                cog.description.split("\n", 1)[0] or "No description found."
             )
-
+            emoji = getattr(cog, "display_emoji", "🟡")
+            command_texts = []
+            for command in _commands:
+                name = command.qualified_name
+                src = source(self.bot, command=name)
+                command_texts.append(
+                    f"**[{name}]({src})**{(' (' + str(len(command.commands)) + ')') if isinstance(command, commands.Group) else ''}: {command.brief or command.description or 'No description found.'}"
+                )
             embed.add_field(
-                name="How do I use this bot?",
-                value="Reading the bot signature is pretty simple.",
+                name=f"{emoji} **{cog.qualified_name}**: {description}",
+                value=f"{NEW_LINE.join(command_texts)}",
             )
-
-            for name, value in entries:
-                embed.add_field(name=name, value=value, inline=False)
 
         return embed
 
@@ -99,19 +57,21 @@ class GroupHelpPageSource(menus.ListPageSource):
         ctx,
         group: Union[commands.Group, commands.Cog],
         _commands: List[commands.Command],
+        *,
+        per_page: Optional[int] = 8
     ):
-        super().__init__(entries=_commands, per_page=8)
+        super().__init__(entries=_commands, per_page=per_page)
         self.entries = _commands
+        self.per_page = per_page
         self.ctx = ctx
         self.bot = self.ctx.bot
         self.group = group
         self.prefix = self.ctx.clean_prefix
 
     def is_paginating(self) -> bool:
-        return len(self.entries) > self.per_page
+        return True
 
     async def format_page(self, menu, entries):
-        menu.command_select_menu.commands = entries
         embed = self.bot.Embed()
         maximum = self.get_max_pages()
 
@@ -125,7 +85,7 @@ class GroupHelpPageSource(menus.ListPageSource):
 
             embed.set_footer(
                 text=f"Do {self.ctx.clean_prefix}help <command> for more info on a command."
-                f'\nPage {menu.current_page + 1}/{maximum} ({(no_commands := len(self.entries))} {"subcommand" if no_commands <= 1 else "subcommands"})'
+                f'\nPage {menu.current_page + 1}/{maximum} ({(no_commands := len(self.entries))} {"subcommand" if no_commands == 1 else "subcommands"})'
             )
         elif isinstance(self.group, commands.Cog):
             group_cog = self.group
@@ -139,9 +99,13 @@ class GroupHelpPageSource(menus.ListPageSource):
             )
             embed.set_footer(
                 text=f"Do {self.ctx.clean_prefix}help <command> for more info on a command."
-                f'\nPage {menu.current_page + 1}/{maximum} ({(no_commands := len(self.entries))} {"command" if no_commands <= 1 else "commands"})'
+                f'\nPage {menu.current_page + 1}/{maximum} ({(no_commands := len(self.entries))} {"command" if no_commands == 1 else "commands"})'
             )
 
+        if not len(entries) > 0:
+            return embed
+
+        menu.command_select_menu.commands = entries
         value = []
         for command in entries:
             # signature = f"{self.prefix}{PaginatedHelpCommand.get_command_signature(self, command)}"
@@ -304,11 +268,12 @@ class HelpSelectMenu(discord.ui.Select["HelpMenu"]):
         assert self.view is not None
         value = self.values[0]
         if value == "__index":
-            index = FrontPageSource()
+            index = FrontPageSource(self.commands)
             index.bot = self.bot
-            for idx, item in enumerate(self.view.children):
-                if isinstance(item, CommandSelectMenu):
-                    self.view.remove_item(item)
+
+            self.view.remove_item(self.view.command_select_menu)
+            del self.view.command_select_menu
+            
             await self.view.rebind(index, interaction)
         else:
             cog = self.bot.get_cog(value)
@@ -327,12 +292,9 @@ class HelpSelectMenu(discord.ui.Select["HelpMenu"]):
                 )
                 return
 
-            if hasattr(self.view, "command_select_menu"):
-                self.view.command_select_menu.commands = commands
-            else:
-                self.view.add_categories_and_commands(
-                    self.commands, commands, help_command=self.help_command
-                )
+            self.view.add_categories_and_commands(
+                self.commands, commands, help_command=self.help_command
+            )
 
             source = GroupHelpPageSource(self.ctx, cog, commands)
             self.view.initial_source = source
@@ -346,22 +308,24 @@ class HelpMenu(BotPages):
 
     def add_categories(
         self,
-        commands: Dict[commands.Cog, List[commands.Command]],
+        all_commands: Dict[commands.Cog, List[commands.Command]],
         *,
         help_command: commands.HelpCommand,
     ) -> None:
         self.clear_items()
-        self.add_item(HelpSelectMenu(self.ctx, commands, help_command=help_command))
+        if len(all_commands) > 0:
+            self.add_item(HelpSelectMenu(self.ctx, all_commands, help_command=help_command))
         self.fill_items()
 
     def add_commands(
-        self, commands: List[commands.Command], *, help_command: commands.HelpCommand
+        self, all_commands: List[commands.Command], *, help_command: commands.HelpCommand
     ) -> None:
         self.clear_items()
-        self.command_select_menu = CommandSelectMenu(
-            self.ctx, None, help_command=help_command
-        )
-        self.add_item(self.command_select_menu)
+        if len(all_commands) > 0:
+            self.command_select_menu = CommandSelectMenu(
+                self.ctx, None, help_command=help_command
+            )
+            self.add_item(self.command_select_menu)
         self.fill_items()
 
     def add_categories_and_commands(
@@ -372,13 +336,15 @@ class HelpMenu(BotPages):
         help_command: commands.HelpCommand,
     ) -> None:
         self.clear_items()
-        self.add_item(
-            HelpSelectMenu(self.ctx, cogs_and_commands, help_command=help_command)
-        )
-        self.command_select_menu = CommandSelectMenu(
-            self.ctx, None, help_command=help_command
-        )
-        self.add_item(self.command_select_menu)
+        if len(cogs_and_commands.keys()) > 0:
+            self.add_item(
+                HelpSelectMenu(self.ctx, cogs_and_commands, help_command=help_command)
+            )
+        if len(commands) > 0:
+            self.command_select_menu = CommandSelectMenu(
+                self.ctx, None, help_command=help_command
+            )
+            self.add_item(self.command_select_menu)
         self.fill_items()
 
     async def rebind(
@@ -413,17 +379,6 @@ class PaginatedHelpCommand(commands.HelpCommand):
             }
         )
 
-    async def on_help_command_error(self, ctx, error):
-        if isinstance(error, commands.CommandInvokeError):
-            # Ignore missing permission errors
-            if (
-                isinstance(error.original, discord.HTTPException)
-                and error.original.code == 50013
-            ):
-                return
-
-            await ctx.send(str(error.original))
-
     @staticmethod
     def get_command_signature(command):
         parent = command.full_parent_name
@@ -434,8 +389,8 @@ class PaginatedHelpCommand(commands.HelpCommand):
                 fmt = f"{parent} {fmt}"
             alias = fmt
         else:
-            alias = command.name if not parent else f"{parent} {command.name}"
-        return (f"{alias} `{command.signature}`") if command.signature else (f"{alias}")
+            alias = f"**{command.name}**" if not parent else f"{parent} **{command.name}**"
+        return (f"{alias} `{command.signature}`") if command.signature else alias
 
     @staticmethod
     def common_command_formatting(ctx, embed_like, command):
@@ -480,12 +435,10 @@ class PaginatedHelpCommand(commands.HelpCommand):
                 continue
 
             cog = bot.get_cog(name)
-            if getattr(cog, "hidden", False):
-                continue
-
+            
             all_commands[cog] = children
 
-        initial = FrontPageSource()
+        initial = FrontPageSource(all_commands)
         initial.bot = self.context.bot
         menu = HelpMenu(initial, ctx=self.context)
         menu.add_categories(all_commands, help_command=self)
@@ -534,9 +487,7 @@ class PaginatedHelpCommand(commands.HelpCommand):
             return await self.send_command_help(group)
 
         entries = await self.filter_commands(subcommands, sort=True)
-        if len(entries) == 0:
-            return await self.send_command_help(group)
-
+ 
         source = GroupHelpPageSource(self.context, group, entries)
         menu = HelpMenu(source, ctx=self.context)
         menu.add_commands(entries, help_command=self)

@@ -98,6 +98,7 @@ class BotPages(discord.ui.View):
         max_pages = self.source.get_max_pages()
         if max_pages is not None:
             self.go_to_last_page.disabled = (page_number + 1) >= max_pages
+            self.go_to_last_page.label = f"⏭ {max_pages}"
             if (page_number + 1) >= max_pages:
                 self.go_to_next_page.disabled = True
                 self.go_to_next_page.label = "ᐅ"
