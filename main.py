@@ -82,8 +82,9 @@ if __name__ == "__main__":
         keep_alive()
         try:
             bot.run(TOKEN)
-        except discord.errors.HTTPException:
-            print("Rate-limit detected, restarting process.")
-            os.system(f"kill 1 && python3 {sys.argv[0]}")
+        except discord.errors.HTTPException as error:
+            if error.response.status == 429:
+                print("\033[0;31mRate-limit detected, restarting process.\033[0m")
+                os.system(f"kill 1 && python3 -m {sys.argv[0]}")
     else:
         bot.run(TOKEN)
