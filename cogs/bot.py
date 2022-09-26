@@ -18,7 +18,7 @@ class Bot(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        msg = f"Running.\n{self.bot.user}"
+        msg = f"\033[0;32mRunning.\n{self.bot.user}\033[0m"
         url = os.getenv("webhookURL")
         print(msg)
         webhook = discord.Webhook.from_url(url, session=self.bot.session)
