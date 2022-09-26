@@ -256,19 +256,16 @@ class DrawSelectMenu(discord.ui.Select):
             content = msg.content
             # Get any unicode emojis from the content
             # and list them as SentEmoji objects
-            unicode_emojis = [SentEmoji(emoji=emoji, index=content.index(emoji)) for emoji in emojis.get(content)]
+            unicode_emojis = [SentEmoji(emoji=emoji, index=content.index(emoji), emoji_type="unicode") for emoji in emojis.get(content)]
             # Get any flag/regional indicator emojis from the content
             # and list them as SentEmoji objects
-            flag_emojis = [SentEmoji(emoji=emoji.group(0), index=emoji.start()) for emoji in re.finditer("[\U0001F1E6-\U0001F1FF]", content)]
+            flag_emojis = [SentEmoji(emoji=emoji.group(0), index=emoji.start(), emoji_type="regional_indicator") for emoji in re.finditer("[\U0001F1E6-\U0001F1FF]", content)]
             # Get any custom emojis from the content
             # and list them as SentEmoji objects
-            custom_emojis = [SentEmoji(emoji=emoji.group(0), index=emoji.start()) for emoji in re.finditer(r"<a?:[a-zA-Z0-9_]+:\d+>", content)]
-            # Get any emoji ids from the content
-            # and list them as SentEmoji objects
-            emoji_ids = [SentEmoji(emoji=f"{emoji.group(0)}:{emoji.group(0)}", index=emoji.start()) for emoji in re.finditer(r"(?<![\:\d])(\d+)", content)]
+            custom_emojis = [SentEmoji(emoji=emoji.group(0), index=emoji.start(), emoji_type="custom") for emoji in re.finditer(r"<a?:[a-zA-Z0-9_]+:\d+>", content)]
             
             # Gather all the emojis and sort them by index
-            sent_emojis = sorted(unicode_emojis + flag_emojis + custom_emojis + emoji_ids, key=lambda emoji: emoji.index)
+            sent_emojis = sorted(unicode_emojis + flag_emojis + custom_emojis, key=lambda emoji: emoji.index)
             
             added_emojis = {}
             for num, sent_emoji in enumerate(sent_emojis):
@@ -321,33 +318,26 @@ class DrawSelectMenu(discord.ui.Select):
                     value=str(added_emoji.emoji),
                 )
                 select.append_option(option)
-
+                
             added_emojis.update(replaced_emojis)
 
             if len(select.options[10:]) > 0:
                 self.view.cursor = select.options[-1].value
-                self.placeholder = select.options[-1].label
 
             response = [
                 f"%s - {added_emoji.status}"
                 % (
-                    f"{added_emoji.emoji} ({added_emoji.id})"
-                    if added_emoji.sent_emoji in emoji_ids
-                    else added_emoji.emoji
+                    added_emoji.emoji
                 )
                 for added_emoji in added_emojis.values()
             ]
             
             try:
-                await interaction.edit_original_message(view=self.view)
+                await interaction.edit_original_message(embed=self.view.embed, view=self.view)
             except discord.HTTPException as error:
                 await interaction.followup.send(content=error)
                 raise error
             await res.edit(content="\n".join(response) or "Aborted")
-        else:
-            self.view.cursor = select.values[0]
-            self.placeholder = self.view.cursor
-        await interaction.edit_original_message(embed=self.view.embed)
 
 
 class DrawButtons(discord.ui.View):
@@ -359,12 +349,12 @@ class DrawButtons(discord.ui.View):
         col_list,
         *,
         ctx: commands.Context,
-        selectmenu_options: Optional[typing.List[discord.SelectOption]] = None,
+        selectmenu_options: Optional[List[discord.SelectOption]] = None,
     ):
         super().__init__(timeout=600)
         children = self.children.copy()
         self.clear_items()
-        self.add_item(DrawSelectMenu(options=selectmenu_options, bg=bg))
+        self.add_item(DrawSelectMenu(options=selectmenu_options, bg=bg, ctx=ctx))
         for item in children:
             self.add_item(item)
 
