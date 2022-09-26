@@ -146,64 +146,81 @@ class Draw(commands.Cog):
         await view.wait()
 
 
-class SentEmoji:
-    def __init__(
-        self,
-        *,
-        emoji: str,
-        index: Optional[int] = None,
-    ):
-        self.emoji = emoji
-        self.index = index
-
-    def __repr__(self) -> str:
-        return f'<{self.__class__.__name__} emoji={self.emoji!r} index={self.index}>'
-
-    def __str__(self) -> str:
-        return str(self.emoji)
+C = TypeVar("C", bound="Colour")
 
 
-class AddedEmoji(SentEmoji):
-    def __init__(
-        self,
-        *,
-        sent_emoji: SentEmoji,
-        emoji: discord.PartialEmoji,
-        status: Optional[str] = None,
-        name: Optional[str] = None,
-    ):
-        self.sent_emoji = sent_emoji
-        self.emoji = emoji
-        self.status = status
-        self.name = name or emoji.name
-        
-        self.original_name = emoji.name
-        self.emoji.name = self.name
-        
-    def __repr__(self) -> str:
-        return f'<{self.__class__.__name__} sent_emoji={self.sent_emoji} emoji={self.emoji} status={self.status} name={self.name}>'
+class Colour:
+    # RGB_A accepts RGB values and an optional Alpha value
+    def __init__(self, RGB_A: Tuple[int], *, bot: commands.Bot):
+        self.RGBA = RGB_A if len(RGB_A) == 4 else (*RGB_A, 255)
+        self.RGB = self.RGBA[:3]
+        self.R, self.G, self.B, self.A = self.RGBA
 
-    @property
-    def id(self):
-        return self.emoji.id
+        self.bot = bot
+        self.loop = self.bot.loop
 
-    @id.setter
-    def id(self, value: int):
-        self.emoji.id = value
+    @cached_property
+    def hex(self) -> str:
+        return "%02x%02x%02x" % self.RGB
+
+    @cached_property
+    def base_emoji(self) -> Image:
+        return draw_emoji("🟪")
+
+    async def to_bytes(self) -> io.BytesIO():
+        return await self.loop.run_in_executor(None, self._to_bytes)
+
+    def _to_bytes(self) -> io.BytesIO():
+        image = self._to_image()
+        with io.BytesIO() as image_bytes:
+            image.save(image_bytes, "PNG")
+            # image_bytes.seek(0)
+            return image_bytes.getvalue()
+
+    async def to_file(self) -> discord.File:
+        return await self.loop.run_in_executor(None, self._to_file)
+
+    def _to_file(self) -> discord.File:
+        image_bytes = io.BytesIO(self._to_bytes())
+        return discord.File(image_bytes, filename=f"{self.hex}.png")
+
+    async def to_image(self, base_emoji: Optional[str] = None) -> Image:
+        return await self.loop.run_in_executor(None, self._to_image, base_emoji)
+
+    def _to_image(self, base_emoji: Optional[str] = None) -> Image:
+        # If you pass in an emoji, it uses that as base
+        # Else it uses the base_emoji property which uses 🟪
+        base_emoji = draw_emoji(base_emoji) if base_emoji else self.base_emoji
+        data = np.array(base_emoji)
+        r, g, b, a = data.T
+
+        data[...][a != 0] = self.RGBA
+
+        image = Image.fromarray(data)
+        return image
+
+    async def to_emoji(self, guild: discord.Guild):
+        return await guild.create_custom_emoji(name=self.hex, image=await self.to_bytes())
 
     @classmethod
-    def from_option(
-        cls,
-        option: discord.SelectOption,
-        *,
-        sent_emoji: SentEmoji,
-        status: Optional[str] = None,
-    ):
-        return cls(status=status, emoji=option.emoji, sent_emoji=sent_emoji)
+    async def from_emoji(cls, emoji: str, *, bot: commands.Bot) -> C:
+        image = await bot.loop.run_in_executor(None, draw_emoji, emoji)
+        colors = [color for color in sorted(image.getcolors(image.size[0]*image.size[1]), key=lambda c: c[0], reverse=True) if color[1][-1] > 0]
+
+        return cls(colors[0][1], bot=bot)
+
+    @classmethod
+    def mix_colours(cls, colours: List[Tuple[int]], *, bot: commands.Bot) -> C:
+        colours = [colour.RGBA if isinstance(colour, Colour) else colour for colour in colours]
+        total_weight = len(colours)
+
+        return cls(tuple(round(sum(colour)/total_weight) for colour in zip(*colours)), bot=bot)
 
 
 class DrawSelectMenu(discord.ui.Select):
-    def __init__(self, *, options: Optional[typing.List[discord.SelectOption]] = None, bg: str):
+    def __init__(self, *, options: Optional[List[discord.SelectOption]] = None, bg: str, ctx: commands.Context):
+        self.ctx = ctx
+        self.bot = self.ctx.bot
         options = (
             options
             if options
@@ -231,15 +248,16 @@ class DrawSelectMenu(discord.ui.Select):
         super().__init__(
             placeholder="🎨 Palette",
             min_values=1,
-            max_values=1,
+            max_values=len(options),
             options=options,
         )
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
+        
         self.ctx = self.view.ctx
         select = self
-        if select.values[0] == "emoji":
+        if "emoji" in select.values:
             res = await interaction.followup.send(
                 content="Please send a message containing the emojis you want to add to your palette. E.g. `😎 I like turtles 🐢`"
             )
@@ -339,6 +357,21 @@ class DrawSelectMenu(discord.ui.Select):
                 raise error
             await res.edit(content="\n".join(response) or "Aborted")
 
+        elif len(select.values) > 1:
+            # This list comprehension is the equivalent of
+            # selected_options = []
+            # for value in self.values:
+            #     for option in self.options:
+            #         if option.value == value:
+            #             selected_options.append(option)
+            selected_options = [option for option in self.options for value in self.values if option.value == value]
+            colours = [await Colour.from_emoji(str(option.emoji), bot=self.bot) for option in selected_options]
+
+            await interaction.followup.send(colours)
+
+        elif self.view.cursor != select.values[0]:
+            self.view.cursor = select.values[0]
+            await interaction.edit_original_message(embed=self.view.embed)
 
 class DrawButtons(discord.ui.View):
     def __init__(
