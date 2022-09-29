@@ -103,7 +103,7 @@ class Draw(commands.Cog):
     async def copy(
         self,
         ctx: commands.Context,
-        message_link: discord.Message = None,
+        message_link: Optional[discord.Message] = None,
     ):
         message = message_link
         if ctx.message.reference:
@@ -218,7 +218,7 @@ class Colour:
         return cls(colors[0][1], bot=bot)
 
     @classmethod
-    def mix_colours(cls, colours: List[Tuple[int]], *, bot: commands.Bot) -> C:
+    def mix_colours(cls, colours: List[Tuple[int, C]], *, bot: commands.Bot) -> C:
         colours = [colour.RGBA if isinstance(colour, Colour) else colour for colour in colours]
         total_weight = len(colours)
 
