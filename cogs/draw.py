@@ -876,7 +876,7 @@ class DrawButtons(discord.ui.View):
     ):
         await interaction.response.defer()
         res = await interaction.followup.send(
-            content='Please type the cell you want to move the cursor to. e.g. "A1", "a8", "A10", etc.',
+            content='Please type the cell you want to move the cursor to. e.g. "A1", "a1", "A10", "A", "10", etc.',
             ephemeral=True,
         )
 
@@ -890,17 +890,28 @@ class DrawButtons(discord.ui.View):
             return await res.edit(content="Timed out.")
         cell = msg.content.upper()
 
-        row_key = cell[0]
-        try:
-            col_key = int(cell[1:])
-        except ValueError:
-            col_key = cell[1:]
+        ABC = ALPHABETS[: self.cursor_row_max + 1]
+        NUM = NUMBERS[: self.cursor_col_max + 1]
+        CELL_REGEX = f"^(?P<row>[A-{ABC[-1]}])(?P<col>[0-9]|(?:1[0-{NUM[-1] % 10}]))$"
+        ROW_OR_CELL_REGEX = (
+            f"(?:^(?P<row>[A-{ABC[-1]}])$)|(?:^(?P<col>[0-9]|(?:1[0-{NUM[-1] % 10}]))$)"
+        )
 
-        if (
-            row_key not in ALPHABETS[: self.cursor_row_max + 1]
-            or col_key not in NUMBERS[: self.cursor_col_max + 1]
-        ):
+        match = re.match(CELL_REGEX, cell)
+        if match:
+            row_key = match.group("row")
+            col_key = int(match.group("col"))
+        else:
+            match = re.match(ROW_OR_CELL_REGEX, cell)
+            row_key = match.group("row")
+            row_key = row_key if row_key is not None else ABC[self.cursor_row]
+            
+            col_key = match.group("col")
+            col_key = int(col_key) if col_key is not None else self.cursor_col
+
+        if row_key not in ABC or col_key not in NUM:
             return await res.edit(content="Aborted.")
+
         row_move = LETTER_TO_NUMBER[row_key] - self.cursor_row
         col_move = col_key - self.cursor_col
         await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
