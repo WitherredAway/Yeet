@@ -770,7 +770,11 @@ class DrawButtons(discord.ui.View):
         cell = msg.content.upper()
 
         row_key = cell[0]
-        col_key = int(cell[1:])
+        try:
+            col_key = int(cell[1:])
+        except ValueError:
+            col_key = cell[1:]
+
         if (
             row_key not in ALPHABETS[: self.cursor_row_max + 1]
             or col_key not in NUMBERS[: self.cursor_col_max + 1]
