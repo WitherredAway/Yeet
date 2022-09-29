@@ -202,9 +202,14 @@ class Colour:
         data = np.array(base_emoji)
         r, g, b, a = data.T
 
-        data[...][a != 0] = self.RGBA
+        data[..., :-1][a != 0] = self.RGB
+
+        # Set the alpha relatively, to respect individual alpha values
+        alpha_percent = self.A / 255
+        data[..., -1] = alpha_percent * data[..., -1]
 
         image = Image.fromarray(data)
+
         return image
 
     async def to_emoji(self, guild: discord.Guild):
