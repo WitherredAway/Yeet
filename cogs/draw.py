@@ -269,6 +269,10 @@ class DrawSelectMenu(discord.ui.Select):
     def option_values_dict(self) -> Dict[str, discord.SelectOption]:
         return {option.value: option for option in self.options}
 
+    @property
+    def option_emojis_dict(self) -> Dict[str, discord.SelectOption]:
+        return {option.emoji.name if option.emoji.is_unicode_emoji() else option.emoji.id: option for option in self.options}
+
     async def upload_emoji(self, colour: Colour) -> discord.Emoji:
         # Look if emoji already exists
         for guild in self.bot.EMOJI_SERVERS:
@@ -378,9 +382,7 @@ class DrawSelectMenu(discord.ui.Select):
 
             response = [
                 f"%s - {added_emoji.status}"
-                % (
-                    added_emoji.emoji
-                )
+                % added_emoji.emoji
                 for added_emoji in added_emojis.values()
             ]
             
@@ -392,12 +394,6 @@ class DrawSelectMenu(discord.ui.Select):
             await res.edit(content="\n".join(response) or "Aborted")
 
         elif len(select.values) > 1:
-            # This list comprehension is the equivalent of
-            # selected_options = []
-            # for value in self.values:
-            #     for option in self.options:
-            #         if option.value == value:
-            #             selected_options.append(option)
             selected_options = [self.option_values_dict.get(value) for value in self.values]
                 
             selected_emojis = [str(option.emoji) for option in selected_options]
@@ -407,6 +403,23 @@ class DrawSelectMenu(discord.ui.Select):
 
             emoji = await self.upload_emoji(mixed_colour)
 
+            option = self.option_emojis_dict.get(emoji.id)
+            if option is not None:
+                self.view.cursor = option.value
+            else:
+                option = discord.SelectOption(
+                    label=" + ".join([str(option.emoji) if option.emoji.is_unicode_emoji() else option.emoji.name for option in selected_options]),  # mixed_colour.hex,
+                    emoji=emoji,
+                    value=str(emoji),
+                )
+                select.append_option(option)
+                self.view.cursor = select.options[-1].value
+
+            try:
+                await interaction.edit_original_message(embed=self.view.embed, view=self.view)
+            except discord.HTTPException as error:
+                await interaction.followup.send(content=error)
+                raise error
             await interaction.followup.send(content=f'Mixed colours:\n{" + ".join(selected_emojis)} = {emoji}')
 
         elif self.view.cursor != select.values[0]:
