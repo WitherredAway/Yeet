@@ -341,7 +341,7 @@ class DrawSelectMenu(discord.ui.Select):
             # Get any unicode emojis from the content
             # and list them as SentEmoji objects
             unicode_emojis = [
-                SentEmoji(emoji=emoji, index=content.index(emoji), emoji_type="unicode")
+                SentEmoji(emoji=emoji, index=content.index(emoji))
                 for emoji in emojis.get(content)
             ]
             # Get any flag/regional indicator emojis from the content
@@ -350,7 +350,6 @@ class DrawSelectMenu(discord.ui.Select):
                 SentEmoji(
                     emoji=emoji.group(0),
                     index=emoji.start(),
-                    emoji_type="regional_indicator",
                 )
                 for emoji in re.finditer("[\U0001F1E6-\U0001F1FF]", content)
             ]
@@ -358,7 +357,7 @@ class DrawSelectMenu(discord.ui.Select):
             # and list them as SentEmoji objects
             custom_emojis = [
                 SentEmoji(
-                    emoji=emoji.group(0), index=emoji.start(), emoji_type="custom"
+                    emoji=emoji.group(0), index=emoji.start()
                 )
                 for emoji in re.finditer(r"<a?:[a-zA-Z0-9_]+:\d+>", content)
             ]

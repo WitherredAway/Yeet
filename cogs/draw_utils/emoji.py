@@ -22,7 +22,7 @@ def draw_emoji(emoji: str) -> Image:
 
 
 class SentEmoji:
-    def __init__(self, *, emoji: str, index: Optional[int] = None, emoji_type: str):
+    def __init__(self, *, emoji: str, index: Optional[int] = None):
         self.emoji = emoji
         self.index = index
         self.emoji_type = emoji_type
