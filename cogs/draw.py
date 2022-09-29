@@ -562,11 +562,17 @@ class DrawButtons(discord.ui.View):
     async def edit_draw(self, interaction, draw=None):
         if all(self.board[cell_tuple[0], cell_tuple[1]] == draw for cell_tuple in self.cells) and self.auto is False:
             return
+        backup_board = copy.deepcopy(self.board)
         if draw is None:
             draw = self.board[self.cursor_row, self.cursor_col]
         for cell_tuple in self.cells:
             self.board[cell_tuple[0], cell_tuple[1]] = CURSOR.get(draw, draw)
-        await interaction.edit_original_message(embed=self.embed, view=self)
+        try:
+            await interaction.edit_original_message(embed=self.embed, view=self)
+        except discord.HTTPException:
+            self.board = backup_board
+            await interaction.edit_original_message(embed=self.embed, view=self)
+            await interaction.followup.send(content="Max characters reached. Please remove some custom emojis from the board.\nCustom emojis take up more than 20 characters each, while most unicode/default ones take up 1! Maximum is 1024 characters due to discord limitations.")
 
     async def move_cursor(
         self, interaction: discord.Interaction, row_move: int = 0, col_move: int = 0
