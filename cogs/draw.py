@@ -378,9 +378,12 @@ class DrawSelectMenu(discord.ui.Select):
             #         if option.value == value:
             #             selected_options.append(option)
             selected_options = [option for option in self.options for value in self.values if option.value == value]
-            colours = [await Colour.from_emoji(str(option.emoji), bot=self.bot) for option in selected_options]
+            selected_emojis = [str(option.emoji) for option in selected_options]
+            colours = [await Colour.from_emoji(emoji, bot=self.bot) for emoji in selected_emojis]
 
-            await interaction.followup.send(colours)
+            mixed_colour = Colour.mix_colours(colours, bot=self.bot)
+
+            await interaction.followup.send(content=f'Mixed colours:\n{" + ".join(selected_emojis)}', file=await mixed_colour.to_file())
 
         elif self.view.cursor != select.values[0]:
             self.view.cursor = select.values[0]
