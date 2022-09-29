@@ -15,7 +15,7 @@ import PIL
 from PIL import Image
 from pilmoji import Pilmoji
 
-from constants import u200b
+from constants import u200b, NEW_LINE
 from .draw_utils.constants import (
     ROW_ICONS_DICT,
     ROW_ICONS,
@@ -356,9 +356,7 @@ class DrawSelectMenu(discord.ui.Select):
             # Get any custom emojis from the content
             # and list them as SentEmoji objects
             custom_emojis = [
-                SentEmoji(
-                    emoji=emoji.group(0), index=emoji.start()
-                )
+                SentEmoji(emoji=emoji.group(0), index=emoji.start())
                 for emoji in re.finditer(r"<a?:[a-zA-Z0-9_]+:\d+>", content)
             ]
 
@@ -545,15 +543,14 @@ class DrawButtons(discord.ui.View):
         ]
 
         # The actual board
-        embed.add_field(
-            name=f"{self.cursor}  {u200b.join(col_list)}",
-            value="\n".join(
-                [
-                    f"{row_list[idx]}  {u200b.join(cell)}"
-                    for idx, cell in enumerate(self.board)
-                ]
-            ),
-        )
+        embed.description = f"""{self.cursor}      {u200b.join(col_list)}
+
+{NEW_LINE.join(
+    [
+        f"{row_list[idx]}      {u200b.join(row)}"
+        for idx, row in enumerate(self.board)
+    ]
+)}"""
 
         embed.set_footer(
             text=(
@@ -597,16 +594,10 @@ class DrawButtons(discord.ui.View):
         return self.inv_CURSOR.get(value, value)
 
     def draw_cursor(self, row: Optional[int] = None, col: Optional[int] = None):
+        row = row if row is not None else self.cursor_row
+        col = col if col is not None else self.cursor_col
         try:
-            self.board[
-                row if row is not None else self.cursor_row,
-                col if col is not None else self.cursor_col,
-            ] = CURSOR[
-                self.board[
-                    row if row is not None else self.cursor_row,
-                    col if col is not None else self.cursor_col,
-                ]
-            ]
+            self.board[row, col] = CURSOR[self.board[row, col]]
         except KeyError:
             pass
 
@@ -640,7 +631,7 @@ class DrawButtons(discord.ui.View):
             self.board = backup_board
             await interaction.edit_original_message(embed=self.embed, view=self)
             await interaction.followup.send(
-                content="Max characters reached. Please remove some custom emojis from the board.\nCustom emojis take up more than 20 characters each, while most unicode/default ones take up 1! Maximum is 1024 characters due to discord limitations."
+                content="Max characters reached. Please remove some custom emojis from the board.\nCustom emojis take up more than 20 characters each, while most unicode/default ones take up 1!\nMaximum is 4096 characters due to discord limitations."
             )
 
     async def move_cursor(
@@ -904,7 +895,7 @@ class DrawButtons(discord.ui.View):
             match = re.match(ROW_OR_CELL_REGEX, cell)
             row_key = match.group("row")
             row_key = row_key if row_key is not None else ABC[self.cursor_row]
-            
+
             col_key = match.group("col")
             col_key = int(col_key) if col_key is not None else self.cursor_col
 

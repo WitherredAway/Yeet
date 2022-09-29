@@ -25,7 +25,6 @@ class SentEmoji:
     def __init__(self, *, emoji: str, index: Optional[int] = None):
         self.emoji = emoji
         self.index = index
-        self.emoji_type = emoji_type
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} emoji={self.emoji!r} index={self.index} emoji_type={self.emoji_type}>"
