@@ -560,7 +560,7 @@ class DrawButtons(discord.ui.View):
         self.cells = [(self.cursor_row, self.cursor_col)] if empty is False else []
 
     async def edit_draw(self, interaction, draw=None):
-        if all(self.board[cell_tuple[0], cell_tuple[1]] == draw for cell_tuple in self.cells):
+        if all(self.board[cell_tuple[0], cell_tuple[1]] == draw for cell_tuple in self.cells) and self.auto is False:
             return
         if draw is None:
             draw = self.board[self.cursor_row, self.cursor_col]
