@@ -33,6 +33,14 @@ from .draw_utils.emoji import (
 )
 
 
+lock = asyncio.Lock()
+
+
+async def wait_for(ctx: commands.Context, *, check):
+    async with lock:
+        return await ctx.bot.wait_for("message", timeout=30, check=check)
+
+
 def make_board(bg: str, height: int, width: int) -> Tuple[np.array, Tuple[str], Tuple[str]]:
     board = np.full((height, width), bg, dtype="object")
     row_labels = ROW_ICONS[:height]
@@ -266,7 +274,7 @@ class DrawSelectMenu(discord.ui.Select):
                 return m.author == interaction.user
 
             try:
-                msg = await self.ctx.bot.wait_for("message", timeout=30, check=check)
+                msg = await wait_for(self.ctx, check=check)
                 await msg.delete()
             except asyncio.TimeoutError:
                 return await res.edit(content="Timed out.")
@@ -755,7 +763,7 @@ class DrawButtons(discord.ui.View):
             return m.author == interaction.user
 
         try:
-            msg = await self.ctx.bot.wait_for("message", timeout=30, check=check)
+            msg = await wait_for(self.ctx, check=check)
             await msg.delete()
         except asyncio.TimeoutError:
             return await res.edit(content="Timed out.")
