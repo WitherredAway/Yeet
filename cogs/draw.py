@@ -41,7 +41,9 @@ async def wait_for(ctx: commands.Context, *, check):
         return await ctx.bot.wait_for("message", timeout=30, check=check)
 
 
-def make_board(bg: str, height: int, width: int) -> Tuple[np.array, Tuple[str], Tuple[str]]:
+def make_board(
+    bg: str, height: int, width: int
+) -> Tuple[np.array, Tuple[str], Tuple[str]]:
     board = np.full((height, width), bg, dtype="object")
     row_labels = ROW_ICONS[:height]
     col_labels = COLUMN_ICONS[:width]
@@ -110,7 +112,7 @@ class Draw(commands.Cog):
             message = await ctx.channel.fetch_message(ctx.message.reference.message_id)
         elif message_link is None or not isinstance(message_link, discord.Message):
             return await ctx.send_help(ctx.command)
-        
+
         if all(
             (
                 message.embeds,
@@ -213,25 +215,46 @@ class Colour:
         return image
 
     async def to_emoji(self, guild: discord.Guild):
-        return await guild.create_custom_emoji(name=self.hex, image=await self.to_bytes())
+        return await guild.create_custom_emoji(
+            name=self.hex, image=await self.to_bytes()
+        )
 
     @classmethod
     async def from_emoji(cls, emoji: str, *, bot: commands.Bot) -> C:
         image = await bot.loop.run_in_executor(None, draw_emoji, emoji)
-        colors = [color for color in sorted(image.getcolors(image.size[0]*image.size[1]), key=lambda c: c[0], reverse=True) if color[1][-1] > 0]
+        colors = [
+            color
+            for color in sorted(
+                image.getcolors(image.size[0] * image.size[1]),
+                key=lambda c: c[0],
+                reverse=True,
+            )
+            if color[1][-1] > 0
+        ]
 
         return cls(colors[0][1], bot=bot)
 
     @classmethod
     def mix_colours(cls, colours: List[Tuple[int, C]], *, bot: commands.Bot) -> C:
-        colours = [colour.RGBA if isinstance(colour, Colour) else colour for colour in colours]
+        colours = [
+            colour.RGBA if isinstance(colour, Colour) else colour for colour in colours
+        ]
         total_weight = len(colours)
 
-        return cls(tuple(round(sum(colour)/total_weight) for colour in zip(*colours)), bot=bot)
+        return cls(
+            tuple(round(sum(colour) / total_weight) for colour in zip(*colours)),
+            bot=bot,
+        )
 
 
 class DrawSelectMenu(discord.ui.Select):
-    def __init__(self, *, options: Optional[List[discord.SelectOption]] = None, bg: str, ctx: commands.Context):
+    def __init__(
+        self,
+        *,
+        options: Optional[List[discord.SelectOption]] = None,
+        bg: str,
+        ctx: commands.Context,
+    ):
         self.ctx = ctx
         self.bot = self.ctx.bot
         options = (
@@ -271,7 +294,12 @@ class DrawSelectMenu(discord.ui.Select):
 
     @property
     def option_emojis_dict(self) -> Dict[str, discord.SelectOption]:
-        return {option.emoji.name if option.emoji.is_unicode_emoji() else option.emoji.id: option for option in self.options}
+        return {
+            option.emoji.name
+            if option.emoji.is_unicode_emoji()
+            else option.emoji.id: option
+            for option in self.options
+        }
 
     async def upload_emoji(self, colour: Colour) -> discord.Emoji:
         # Look if emoji already exists
@@ -292,7 +320,7 @@ class DrawSelectMenu(discord.ui.Select):
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
-        
+
         self.ctx = self.view.ctx
         select = self
         if "emoji" in select.values:
@@ -312,17 +340,35 @@ class DrawSelectMenu(discord.ui.Select):
             content = msg.content
             # Get any unicode emojis from the content
             # and list them as SentEmoji objects
-            unicode_emojis = [SentEmoji(emoji=emoji, index=content.index(emoji), emoji_type="unicode") for emoji in emojis.get(content)]
+            unicode_emojis = [
+                SentEmoji(emoji=emoji, index=content.index(emoji), emoji_type="unicode")
+                for emoji in emojis.get(content)
+            ]
             # Get any flag/regional indicator emojis from the content
             # and list them as SentEmoji objects
-            flag_emojis = [SentEmoji(emoji=emoji.group(0), index=emoji.start(), emoji_type="regional_indicator") for emoji in re.finditer("[\U0001F1E6-\U0001F1FF]", content)]
+            flag_emojis = [
+                SentEmoji(
+                    emoji=emoji.group(0),
+                    index=emoji.start(),
+                    emoji_type="regional_indicator",
+                )
+                for emoji in re.finditer("[\U0001F1E6-\U0001F1FF]", content)
+            ]
             # Get any custom emojis from the content
             # and list them as SentEmoji objects
-            custom_emojis = [SentEmoji(emoji=emoji.group(0), index=emoji.start(), emoji_type="custom") for emoji in re.finditer(r"<a?:[a-zA-Z0-9_]+:\d+>", content)]
-            
+            custom_emojis = [
+                SentEmoji(
+                    emoji=emoji.group(0), index=emoji.start(), emoji_type="custom"
+                )
+                for emoji in re.finditer(r"<a?:[a-zA-Z0-9_]+:\d+>", content)
+            ]
+
             # Gather all the emojis and sort them by index
-            sent_emojis = sorted(unicode_emojis + flag_emojis + custom_emojis, key=lambda emoji: emoji.index)
-            
+            sent_emojis = sorted(
+                unicode_emojis + flag_emojis + custom_emojis,
+                key=lambda emoji: emoji.index,
+            )
+
             added_emojis = {}
             for num, sent_emoji in enumerate(sent_emojis):
                 emoji_check = discord.PartialEmoji.from_str(sent_emoji.emoji)
@@ -335,19 +381,17 @@ class DrawSelectMenu(discord.ui.Select):
                 ]
                 if emoji_identifier in existing_emojis:
                     added_emoji = AddedEmoji(
-                        sent_emoji=sent_emoji,
-                        emoji=emoji,
-                        status="Already exists."
+                        sent_emoji=sent_emoji, emoji=emoji, status="Already exists."
                     )
-        
+
                 else:
                     added_emoji = AddedEmoji(
                         sent_emoji=sent_emoji,
                         emoji=emoji,
                         status="Added.",
-                        name="_" if emoji.is_custom_emoji() else emoji.name
+                        name="_" if emoji.is_custom_emoji() else emoji.name,
                     )
-                
+
                 added_emojis[emoji_identifier] = added_emoji
 
             replaced_emojis = {}
@@ -374,30 +418,36 @@ class DrawSelectMenu(discord.ui.Select):
                     value=str(added_emoji.emoji),
                 )
                 select.append_option(option)
-                
+
             added_emojis.update(replaced_emojis)
 
             if len(select.options[10:]) > 0:
                 self.view.cursor = select.options[-1].value
 
             response = [
-                f"%s - {added_emoji.status}"
-                % added_emoji.emoji
+                f"%s - {added_emoji.status}" % added_emoji.emoji
                 for added_emoji in added_emojis.values()
             ]
-            
+
             try:
-                await interaction.edit_original_message(embed=self.view.embed, view=self.view)
+                await interaction.edit_original_message(
+                    embed=self.view.embed, view=self.view
+                )
             except discord.HTTPException as error:
                 await interaction.followup.send(content=error)
                 raise error
             await res.edit(content="\n".join(response) or "Aborted")
 
         elif len(select.values) > 1:
-            selected_options = [self.option_values_dict.get(value) for value in self.values]
-                
+            selected_options = [
+                self.option_values_dict.get(value) for value in self.values
+            ]
+
             selected_emojis = [str(option.emoji) for option in selected_options]
-            colours = [await Colour.from_emoji(emoji, bot=self.bot) for emoji in selected_emojis]
+            colours = [
+                await Colour.from_emoji(emoji, bot=self.bot)
+                for emoji in selected_emojis
+            ]
 
             mixed_colour = Colour.mix_colours(colours, bot=self.bot)
 
@@ -408,7 +458,14 @@ class DrawSelectMenu(discord.ui.Select):
                 self.view.cursor = option.value
             else:
                 option = discord.SelectOption(
-                    label=" + ".join([str(option.emoji) if option.emoji.is_unicode_emoji() else option.emoji.name for option in selected_options]),  # mixed_colour.hex,
+                    label=" + ".join(
+                        [
+                            str(option.emoji)
+                            if option.emoji.is_unicode_emoji()
+                            else option.emoji.name
+                            for option in selected_options
+                        ]
+                    ),  # mixed_colour.hex,
                     emoji=emoji,
                     value=str(emoji),
                 )
@@ -416,15 +473,20 @@ class DrawSelectMenu(discord.ui.Select):
                 self.view.cursor = select.options[-1].value
 
             try:
-                await interaction.edit_original_message(embed=self.view.embed, view=self.view)
+                await interaction.edit_original_message(
+                    embed=self.view.embed, view=self.view
+                )
             except discord.HTTPException as error:
                 await interaction.followup.send(content=error)
                 raise error
-            await interaction.followup.send(content=f'Mixed colours:\n{" + ".join(selected_emojis)} = {emoji}')
+            await interaction.followup.send(
+                content=f'Mixed colours:\n{" + ".join(selected_emojis)} = {emoji}'
+            )
 
         elif self.view.cursor != select.values[0]:
             self.view.cursor = select.values[0]
             await interaction.edit_original_message(embed=self.view.embed)
+
 
 class DrawButtons(discord.ui.View):
     def __init__(
@@ -493,7 +555,7 @@ class DrawButtons(discord.ui.View):
                 ]
             ),
         )
-        
+
         embed.set_footer(
             text=(
                 f"The board looks wack? Try decreasing its size! Do {self.ctx.clean_prefix}help draw for more info."
@@ -560,7 +622,13 @@ class DrawButtons(discord.ui.View):
         self.cells = [(self.cursor_row, self.cursor_col)] if empty is False else []
 
     async def edit_draw(self, interaction, draw=None):
-        if all(self.board[cell_tuple[0], cell_tuple[1]] == draw for cell_tuple in self.cells) and self.auto is False:
+        if (
+            all(
+                self.board[cell_tuple[0], cell_tuple[1]] == draw
+                for cell_tuple in self.cells
+            )
+            and self.auto is False
+        ):
             return
         backup_board = copy.deepcopy(self.board)
         if draw is None:
@@ -572,7 +640,9 @@ class DrawButtons(discord.ui.View):
         except discord.HTTPException:
             self.board = backup_board
             await interaction.edit_original_message(embed=self.embed, view=self)
-            await interaction.followup.send(content="Max characters reached. Please remove some custom emojis from the board.\nCustom emojis take up more than 20 characters each, while most unicode/default ones take up 1! Maximum is 1024 characters due to discord limitations.")
+            await interaction.followup.send(
+                content="Max characters reached. Please remove some custom emojis from the board.\nCustom emojis take up more than 20 characters each, while most unicode/default ones take up 1! Maximum is 1024 characters due to discord limitations."
+            )
 
     async def move_cursor(
         self, interaction: discord.Interaction, row_move: int = 0, col_move: int = 0

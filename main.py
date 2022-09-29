@@ -41,7 +41,7 @@ class Bot(commands.Bot):
         "p2m": "poketwo_moves",
         "test": "test",
         "useful": "useful",
-}
+    }
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -51,9 +51,18 @@ class Bot(commands.Bot):
         self.status = discord.Status.online
 
     async def setup_hook(self):
-        self.EMOJI_SERVER_IDS = [999995949634048030, 1019908440786735144, 1019908649293979718, 1019908721343741952, 1019908780617633804, 1019908871717933077]
-        self.EMOJI_SERVERS = [await self.fetch_guild(_id) for _id in self.EMOJI_SERVER_IDS]
-        
+        self.EMOJI_SERVER_IDS = [
+            999995949634048030,
+            1019908440786735144,
+            1019908649293979718,
+            1019908721343741952,
+            1019908780617633804,
+            1019908871717933077,
+        ]
+        self.EMOJI_SERVERS = [
+            await self.fetch_guild(_id) for _id in self.EMOJI_SERVER_IDS
+        ]
+
         self.LOG_CHANNEL = await self.fetch_channel(os.getenv("logCHANNEL"))
 
         self.session = aiohttp.ClientSession(loop=self.loop)

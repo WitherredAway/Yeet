@@ -19,22 +19,29 @@ from constants import NEW_LINE
 
 
 class FrontPageSource(menus.ListPageSource):
-    def __init__(self, cogs_and_commands: Dict[commands.Cog, List[commands.Command]], *, per_page: Optional[int] = 8):
-        self.cogs_and_commands: List[Tuple[commands.Cog, List[commands.Command]]] = list(cogs_and_commands.items())
+    def __init__(
+        self,
+        cogs_and_commands: Dict[commands.Cog, List[commands.Command]],
+        *,
+        per_page: Optional[int] = 8,
+    ):
+        self.cogs_and_commands: List[
+            Tuple[commands.Cog, List[commands.Command]]
+        ] = list(cogs_and_commands.items())
         super().__init__(self.cogs_and_commands, per_page=per_page)
 
     def is_paginating(self) -> bool:
         return True
 
-    async def format_page(self, menu: HelpMenu, entries: List[Tuple[commands.Cog, List[commands.Command]]]):
+    async def format_page(
+        self, menu: HelpMenu, entries: List[Tuple[commands.Cog, List[commands.Command]]]
+    ):
         embed = self.bot.Embed(
             title="Help Interface",
             description=f"**[Invite the bot here!](https://discord.com/api/oauth2/authorize?client_id=634409171114262538&permissions=8&scope=bot)**\n——————————————————————————————\nDo `,help <command>` for more info on a command.\nDo `,help <category>` (case sensitive) for more info on a category.\n——————————————————————————————",
         )
         for cog, _commands in entries:
-            description = (
-                cog.description.split("\n", 1)[0] or "No description found."
-            )
+            description = cog.description.split("\n", 1)[0] or "No description found."
             emoji = getattr(cog, "display_emoji", "🟡")
             command_texts = []
             for command in _commands:
@@ -58,7 +65,7 @@ class GroupHelpPageSource(menus.ListPageSource):
         group: Union[commands.Group, commands.Cog],
         _commands: List[commands.Command],
         *,
-        per_page: Optional[int] = 8
+        per_page: Optional[int] = 8,
     ):
         super().__init__(entries=_commands, per_page=per_page)
         self.entries = _commands
@@ -273,7 +280,7 @@ class HelpSelectMenu(discord.ui.Select["HelpMenu"]):
 
             self.view.remove_item(self.view.command_select_menu)
             del self.view.command_select_menu
-            
+
             await self.view.rebind(index, interaction)
         else:
             cog = self.bot.get_cog(value)
@@ -314,11 +321,16 @@ class HelpMenu(BotPages):
     ) -> None:
         self.clear_items()
         if len(all_commands) > 0:
-            self.add_item(HelpSelectMenu(self.ctx, all_commands, help_command=help_command))
+            self.add_item(
+                HelpSelectMenu(self.ctx, all_commands, help_command=help_command)
+            )
         self.fill_items()
 
     def add_commands(
-        self, all_commands: List[commands.Command], *, help_command: commands.HelpCommand
+        self,
+        all_commands: List[commands.Command],
+        *,
+        help_command: commands.HelpCommand,
     ) -> None:
         self.clear_items()
         if len(all_commands) > 0:
@@ -389,7 +401,9 @@ class PaginatedHelpCommand(commands.HelpCommand):
                 fmt = f"{parent} {fmt}"
             alias = fmt
         else:
-            alias = f"**{command.name}**" if not parent else f"{parent} **{command.name}**"
+            alias = (
+                f"**{command.name}**" if not parent else f"{parent} **{command.name}**"
+            )
         return (f"{alias} `{command.signature}`") if command.signature else alias
 
     @staticmethod
@@ -435,7 +449,7 @@ class PaginatedHelpCommand(commands.HelpCommand):
                 continue
 
             cog = bot.get_cog(name)
-            
+
             all_commands[cog] = children
 
         initial = FrontPageSource(all_commands)
@@ -487,7 +501,7 @@ class PaginatedHelpCommand(commands.HelpCommand):
             return await self.send_command_help(group)
 
         entries = await self.filter_commands(subcommands, sort=True)
- 
+
         source = GroupHelpPageSource(self.context, group, entries)
         menu = HelpMenu(source, ctx=self.context)
         menu.add_commands(entries, help_command=self)

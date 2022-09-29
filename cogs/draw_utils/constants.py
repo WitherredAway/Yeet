@@ -84,4 +84,4 @@ ALPHABETS = tuple(LETTER_TO_NUMBER.keys())
 NUMBERS = tuple(LETTER_TO_NUMBER.values())
 
 
-FONT = ImageFont.truetype('fonts/arial.ttf', 1)
+FONT = ImageFont.truetype("fonts/arial.ttf", 1)
