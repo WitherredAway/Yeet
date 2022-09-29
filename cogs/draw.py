@@ -1,6 +1,6 @@
 import asyncio
 import typing
-from typing import Optional, Union, Literal, List, Tuple, TypeVar
+from typing import Optional, Union, Literal, List, Dict, Tuple, TypeVar
 import io
 from functools import cached_property
 import re
@@ -265,6 +265,27 @@ class DrawSelectMenu(discord.ui.Select):
             options=options,
         )
 
+    @property
+    def option_values_dict(self) -> Dict[str, discord.SelectOption]:
+        return {option.value: option for option in self.options}
+
+    async def upload_emoji(self, colour: Colour) -> discord.Emoji:
+        # Look if emoji already exists
+        for guild in self.bot.EMOJI_SERVERS:
+            guild_emojis = await guild.fetch_emojis()
+            for guild_emoji in guild_emojis:
+                if colour.hex == guild_emoji.name:
+                    return guild_emoji
+
+        # Emoji does not exist already, proceed to create
+        for guild in self.bot.EMOJI_SERVERS:
+            try:
+                emoji = await colour.to_emoji(guild)
+            except discord.HTTPException:
+                continue
+            else:
+                return emoji
+
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
         
@@ -377,13 +398,16 @@ class DrawSelectMenu(discord.ui.Select):
             #     for option in self.options:
             #         if option.value == value:
             #             selected_options.append(option)
-            selected_options = [option for option in self.options for value in self.values if option.value == value]
+            selected_options = [self.option_values_dict.get(value) for value in self.values]
+                
             selected_emojis = [str(option.emoji) for option in selected_options]
             colours = [await Colour.from_emoji(emoji, bot=self.bot) for emoji in selected_emojis]
 
             mixed_colour = Colour.mix_colours(colours, bot=self.bot)
 
-            await interaction.followup.send(content=f'Mixed colours:\n{" + ".join(selected_emojis)}', file=await mixed_colour.to_file())
+            emoji = await self.upload_emoji(mixed_colour)
+
+            await interaction.followup.send(content=f'Mixed colours:\n{" + ".join(selected_emojis)} = {emoji}')
 
         elif self.view.cursor != select.values[0]:
             self.view.cursor = select.values[0]
