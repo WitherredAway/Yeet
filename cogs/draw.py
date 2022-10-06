@@ -605,10 +605,8 @@ class DrawButtons(discord.ui.View):
         for x, row in enumerate(self.board):
             for y, _ in enumerate(row):
                 cell_tuple = (x, y)
-                try:
-                    self.board[cell_tuple] = self.un_cursor(self.board[cell_tuple])
-                except KeyError:
-                    continue
+                self.board[cell_tuple] = self.un_cursor(self.board[cell_tuple])
+
         self.cells = [(self.cursor_row, self.cursor_col)] if empty is False else []
 
     async def edit_draw(self, interaction: discord.Interaction, draw: Optional[str] = None):
