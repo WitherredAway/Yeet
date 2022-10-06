@@ -622,7 +622,7 @@ class DrawButtons(discord.ui.View):
         if draw is None:
             draw = self.board[self.cursor_row, self.cursor_col]
         for row, col in self.cells:
-            self.draw_cursor(row, col, cursor=draw)
+            self.board[row, col] = CURSOR.get(draw, draw)
         
         try:
             await interaction.edit_original_message(embed=self.embed, view=self)
