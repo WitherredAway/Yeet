@@ -632,7 +632,8 @@ class DrawButtons(discord.ui.View):
             self.board = backup_board
             await interaction.edit_original_message(embed=self.embed, view=self)
             await interaction.followup.send(
-                content="Max characters reached. Please remove some custom emojis from the board.\nCustom emojis take up more than 20 characters each, while most unicode/default ones take up 1!\nMaximum is 4096 characters due to discord limitations."
+                content="Max characters reached. Please remove some custom emojis from the board.\nCustom emojis take up more than 20 characters each, while most unicode/default ones take up 1!\nMaximum is 4096 characters due to discord limitations.",
+                ephemeral=True
             )
 
     async def move_cursor(
