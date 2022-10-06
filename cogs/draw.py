@@ -593,13 +593,12 @@ class DrawButtons(discord.ui.View):
     def un_cursor(self, value):
         return self.inv_CURSOR.get(value, value)
 
-    def draw_cursor(self, row: Optional[int] = None, col: Optional[int] = None):
+    def draw_cursor(self, row: Optional[int] = None, col: Optional[int] = None, *, draw: Optional[str] = None):
         row = row if row is not None else self.cursor_row
         col = col if col is not None else self.cursor_col
-        try:
-            self.board[row, col] = CURSOR[self.board[row, col]]
-        except KeyError:
-            pass
+        draw = draw if draw is not None else self.board[row, col]
+
+        self.board[row, col] = CURSOR.get(draw, draw)
 
     def clear_cursors(self, *, empty: Optional[bool] = False):
         for x, row in enumerate(self.board):
@@ -619,10 +618,11 @@ class DrawButtons(discord.ui.View):
         ):
             return
         backup_board = copy.deepcopy(self.board)
-        if draw is None:
-            draw = self.board[self.cursor_row, self.cursor_col]
+        if self.auto is True:
+            draw = self.cursor
+
         for row, col in self.cells:
-            self.board[row, col] = CURSOR.get(draw, draw)
+            self.draw_cursor(row, col, draw=draw)
         
         try:
             await interaction.edit_original_message(embed=self.embed, view=self)
@@ -663,14 +663,7 @@ class DrawButtons(discord.ui.View):
                 )
             ]
 
-        if self.auto is True:
-            await self.edit_draw(interaction, self.cursor)
-
-        for cell_tuple in self.cells:
-            self.draw_cursor(*cell_tuple)
-
-        if self.auto is not True:
-            await interaction.edit_original_message(embed=self.embed)
+        await self.edit_draw(interaction)
 
     # ------ buttons ------
 
