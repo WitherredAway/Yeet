@@ -611,11 +611,11 @@ class DrawButtons(discord.ui.View):
                     continue
         self.cells = [(self.cursor_row, self.cursor_col)] if empty is False else []
 
-    async def edit_draw(self, interaction, draw=None):
+    async def edit_draw(self, interaction: discord.Interaction, draw: Optional[str] = None):
         if (
             all(
-                self.board[cell_tuple[0], cell_tuple[1]] == draw
-                for cell_tuple in self.cells
+                self.board[row, col] == draw
+                for row, col in self.cells
             )
             and self.auto is False
         ):
@@ -623,8 +623,9 @@ class DrawButtons(discord.ui.View):
         backup_board = copy.deepcopy(self.board)
         if draw is None:
             draw = self.board[self.cursor_row, self.cursor_col]
-        for cell_tuple in self.cells:
-            self.board[cell_tuple[0], cell_tuple[1]] = CURSOR.get(draw, draw)
+        for row, col in self.cells:
+            self.draw_cursor(row, col, cursor=draw)
+        
         try:
             await interaction.edit_original_message(embed=self.embed, view=self)
         except discord.HTTPException:
