@@ -1,29 +1,23 @@
-aiohttp==3.8.3
+aiohttp==3.8.1
 aiosignal==1.2.0
-astunparse==1.6.3
 async-timeout==4.0.2
 attrs==22.1.0
 beautifulsoup4==4.11.1
-braceexpand==0.1.7
 certifi==2022.9.24
 charset-normalizer==2.1.1
 click==8.1.3
 decorator==5.1.1
-discord-ext-menus @ git+https://github.com/Rapptz/discord-ext-menus@fbb8803779373357e274e1540b368365fd9d8074
-discord.py @ git+https://github.com/Rapptz/discord.py@a106201a
-distlib==0.3.3
+discord.py @ git+https://github.com/Rapptz/discord.py@a106201ad394c207df222521842de796a460f27f
 docopt==0.6.2
 emoji==2.1.0
 emojis==0.6.0
 Flask==2.2.2
 frozenlist==1.3.1
-gists.py==1.2.6
+gists.py==1.2.5
 humanize==4.4.0
 idna==3.4
-import-expression==1.1.4
 itsdangerous==2.1.2
 Jinja2==3.1.2
-jishaku==2.4.0
 lxml==4.9.1
 MarkupSafe==2.1.1
 multidict==6.0.2
