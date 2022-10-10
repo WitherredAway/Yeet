@@ -25,6 +25,7 @@ from .draw_utils.constants import (
     LETTER_TO_NUMBER,
     ALPHABETS,
     NUMBERS,
+    PADDING,
 )
 from .draw_utils.emoji import (
     draw_emoji,
@@ -543,14 +544,10 @@ class DrawButtons(discord.ui.View):
         ]
 
         # The actual board
-        embed.description = f"""{self.cursor}      {u200b.join(col_list)}
-
-{NEW_LINE.join(
-    [
-        f"{row_list[idx]}      {u200b.join(row)}"
-        for idx, row in enumerate(self.board)
-    ]
-)}"""
+        embed.description = (
+            f"{self.cursor}{PADDING}{u200b.join(col_list)}\n"
+            f"\n{NEW_LINE.join([f'{row_list[idx]}{PADDING}{u200b.join(row)}' for idx, row in enumerate(self.board)])}"
+        )
 
         embed.set_footer(
             text=(
@@ -593,7 +590,13 @@ class DrawButtons(discord.ui.View):
     def un_cursor(self, value):
         return self.inv_CURSOR.get(value, value)
 
-    def draw_cursor(self, row: Optional[int] = None, col: Optional[int] = None, *, draw: Optional[str] = None):
+    def draw_cursor(
+        self,
+        row: Optional[int] = None,
+        col: Optional[int] = None,
+        *,
+        draw: Optional[str] = None,
+    ):
         row = row if row is not None else self.cursor_row
         col = col if col is not None else self.cursor_col
         draw = draw if draw is not None else self.board[row, col]
@@ -608,12 +611,11 @@ class DrawButtons(discord.ui.View):
 
         self.cells = [(self.cursor_row, self.cursor_col)] if empty is False else []
 
-    async def edit_draw(self, interaction: discord.Interaction, draw: Optional[str] = None):
+    async def edit_draw(
+        self, interaction: discord.Interaction, draw: Optional[str] = None
+    ):
         if (
-            all(
-                self.board[row, col] == draw
-                for row, col in self.cells
-            )
+            all(self.board[row, col] == draw for row, col in self.cells)
             and self.auto is False
         ):
             return
@@ -623,7 +625,7 @@ class DrawButtons(discord.ui.View):
 
         for row, col in self.cells:
             self.draw_cursor(row, col, draw=draw)
-        
+
         try:
             await interaction.edit_original_message(embed=self.embed, view=self)
         except discord.HTTPException:
@@ -631,7 +633,7 @@ class DrawButtons(discord.ui.View):
             await interaction.edit_original_message(embed=self.embed, view=self)
             await interaction.followup.send(
                 content="Max characters reached. Please remove some custom emojis from the board.\nCustom emojis take up more than 20 characters each, while most unicode/default ones take up 1!\nMaximum is 4096 characters due to discord limitations.",
-                ephemeral=True
+                ephemeral=True,
             )
 
     async def move_cursor(

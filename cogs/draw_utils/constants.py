@@ -1,5 +1,7 @@
 from PIL import ImageFont
 
+from constants import u200b
+
 
 ROW_ICONS_DICT = {
     "🇦": "<:aa:799628816846815233>",
@@ -85,3 +87,5 @@ NUMBERS = tuple(LETTER_TO_NUMBER.values())
 
 
 FONT = ImageFont.truetype("fonts/arial.ttf", 1)
+
+PADDING = (" " + u200b) * 6
