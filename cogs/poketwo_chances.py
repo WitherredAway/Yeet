@@ -11,7 +11,6 @@ import numpy as np
 import pandas as pd
 import gists
 
-from cogs.utils.paste import paste_to_bin
 from constants import NEW_LINE
 
 
