@@ -51,15 +51,10 @@ class Fun(commands.Cog):
         help="Repeats a <message> after <delay> seconds.",
     )
     @commands.max_concurrency(1, per=commands.BucketType.user, wait=False)
-    async def delaysay(self, ctx, delay: int, *, msg):
+    async def delaysay(self, ctx, delay: float, *, msg):
         await ctx.send(f"Delay message set, in **{delay}** seconds")
-        await asyncio.sleep(int(delay))
+        await asyncio.sleep(delay)
         await ctx.send(msg)
-
-    @delaysay.error
-    async def delaysay_error(self, error):
-        if isinstance(error, commands.BadArgument):
-            await ctx.send("The delay must be an integer.")
 
 
 async def setup(bot):
