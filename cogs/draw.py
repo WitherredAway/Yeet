@@ -640,12 +640,9 @@ class DrawButtons(discord.ui.View):
         self, interaction: discord.Interaction, row_move: int = 0, col_move: int = 0
     ):
         self.clear_cursors()
-        self.cursor_row += (
-            row_move if self.cursor_row + row_move <= self.cursor_row_max else 0
-        )
-        self.cursor_col += (
-            col_move if self.cursor_col + col_move <= self.cursor_col_max else 0
-        )
+        self.cursor_row = (self.cursor_row + row_move) % (self.cursor_row_max + 1)
+        self.cursor_col = (self.cursor_col + col_move) % (self.cursor_col_max + 1)
+
         if self.fill is not True:
             self.cells = [(self.cursor_row, self.cursor_col)]
         elif self.fill is True:
