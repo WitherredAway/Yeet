@@ -858,7 +858,7 @@ class DrawButtons(discord.ui.View):
         await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
 
     @discord.ui.button(
-        emoji="<:middle:920897054060998676>", style=discord.ButtonStyle.green
+        emoji="<:draw:1029460220386234388>", style=discord.ButtonStyle.green
     )
     async def draw(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
@@ -918,6 +918,8 @@ class DrawButtons(discord.ui.View):
 
         ABC = ALPHABETS[: self.cursor_row_max + 1]
         NUM = NUMBERS[: self.cursor_col_max + 1]
+
+        # There is absolutely no reason to use regex here but YOLO
         CELL_REGEX = f"^(?P<row>[A-{ABC[-1]}])(?P<col>[0-9]|(?:1[0-{NUM[-1] % 10}]))$"
         ROW_OR_CELL_REGEX = (
             f"(?:^(?P<row>[A-{ABC[-1]}])$)|(?:^(?P<col>[0-9]|(?:1[0-{NUM[-1] % 10}]))$)"
