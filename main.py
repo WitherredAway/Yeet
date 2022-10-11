@@ -2,11 +2,12 @@ import os
 import sys
 import json
 import datetime
-import gists
+import asyncio
+import aiohttp
 
 import discord
 from discord.ext import commands
-import aiohttp
+import gists
 
 from keep_alive import keep_alive
 
@@ -49,6 +50,8 @@ class Bot(commands.Bot):
         self.uptime = datetime.datetime.utcnow()
         self.activity = discord.Game(f"{self.PREFIXES[0]}help")
         self.status = discord.Status.online
+
+        self.lock = asyncio.Lock()
 
     async def setup_hook(self):
         self.EMOJI_SERVER_IDS = [

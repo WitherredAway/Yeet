@@ -1,6 +1,5 @@
 import asyncio
-import typing
-from typing import Optional, Union, Literal, List, Dict, Tuple, TypeVar
+from typing import Callable, Optional, Union, Literal, List, Dict, Tuple, TypeVar
 import io
 from functools import cached_property
 import re
@@ -9,11 +8,9 @@ import copy
 import emojis
 import numpy as np
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 from .utils.utils import invert_dict
-import PIL
 from PIL import Image
-from pilmoji import Pilmoji
 
 from constants import u200b, NEW_LINE
 from .draw_utils.constants import (
@@ -32,14 +29,6 @@ from .draw_utils.emoji import (
     SentEmoji,
     AddedEmoji,
 )
-
-
-lock = asyncio.Lock()
-
-
-async def wait_for(ctx: commands.Context, *, check):
-    async with lock:
-        return await ctx.bot.wait_for("message", timeout=30, check=check)
 
 
 def make_board(
@@ -254,10 +243,7 @@ class DrawSelectMenu(discord.ui.Select):
         *,
         options: Optional[List[discord.SelectOption]] = None,
         bg: str,
-        ctx: commands.Context,
     ):
-        self.ctx = ctx
-        self.bot = self.ctx.bot
         options = (
             options
             if options
@@ -322,21 +308,17 @@ class DrawSelectMenu(discord.ui.Select):
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
 
+        # These need to be defined here because it does not have a view when initiated
         self.ctx = self.view.ctx
+        self.bot = self.view.bot
         select = self
         if "emoji" in select.values:
-            res = await interaction.followup.send(
-                content="Please send a message containing the emojis you want to add to your palette. E.g. `😎 I like turtles 🐢`"
-            )
-
             def check(m):
                 return m.author == interaction.user
 
-            try:
-                msg = await wait_for(self.ctx, check=check)
-                await msg.delete()
-            except asyncio.TimeoutError:
-                return await res.edit(content="Timed out.")
+            res, msg = await self.view.wait_for("Please send a message containing the emojis you want to add to your palette. E.g. `😎 I like turtles 🐢`", interaction=interaction, check=check)
+            if msg is None:
+                return
 
             content = msg.content
             # Get any unicode emojis from the content
@@ -500,7 +482,7 @@ class DrawButtons(discord.ui.View):
         super().__init__(timeout=600)
         self.page = 0
 
-        self.selectmenu = DrawSelectMenu(options=selectmenu_options, bg=bg, ctx=ctx)
+        self.selectmenu = DrawSelectMenu(options=selectmenu_options, bg=bg)
         self.load_items()
 
         self.bg = bg
@@ -511,6 +493,7 @@ class DrawButtons(discord.ui.View):
         self.cursor_row = int(len(row_list) / 2)
         self.cursor_col = int(len(col_list) / 2)
         self.ctx = ctx
+        self.bot = self.ctx.bot
         self.response = None
         self.cells = [(self.cursor_row, self.cursor_col)]
         self.cursor = self.bg
@@ -523,6 +506,8 @@ class DrawButtons(discord.ui.View):
         self.final_row = self.final_cell[0]
         self.final_col = self.final_cell[1]
         self.inv_CURSOR = invert_dict(CURSOR)
+
+        self.lock = self.bot.lock
 
         self.auto = False
         self.fill = False
@@ -577,6 +562,24 @@ class DrawButtons(discord.ui.View):
         )
         await self.response.edit(embed=self.embed, view=self)
         self.stop()
+
+    async def wait_for(self, content: str = "", *, interaction: discord.Interaction, check: Callable = lambda x: x, delete_msg: bool = True, ephemeral: bool = False):
+        res = None
+        msg = None
+        if self.lock.locked():
+            await interaction.followup.send("Another message is being waited for, please wait until that process is complete.", ephemeral=True)
+            return res, msg
+
+        res = await interaction.followup.send(content=content, ephemeral=ephemeral)
+        async with self.lock:
+            try:
+                msg = await self.bot.wait_for("message", timeout=30, check=check)
+            except asyncio.TimeoutError:
+                await res.edit(content="Timed out.")
+            else:
+                if delete_msg is True:
+                    await msg.delete()
+            return res, msg
 
     def placeholder_button(self, custom_id: str) -> discord.ui.Button:
         button = discord.ui.Button(
@@ -897,19 +900,18 @@ class DrawButtons(discord.ui.View):
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
-        res = await interaction.followup.send(
-            content='Please type the cell you want to move the cursor to. e.g. "A1", "a1", "A10", "A", "10", etc.',
-            ephemeral=True,
-        )
 
         def check(m):
             return m.author == interaction.user
 
-        try:
-            msg = await wait_for(self.ctx, check=check)
-            await msg.delete()
-        except asyncio.TimeoutError:
-            return await res.edit(content="Timed out.")
+        res, msg = await self.wait_for(
+            'Please type the cell you want to move the cursor to. e.g. "A1", "a1", "A10", "A", "10", etc.',
+            interaction=interaction,
+            check=check,
+            ephemeral=True,
+        )
+        if msg is None:
+            return
         cell = msg.content.upper()
 
         ABC = ALPHABETS[: self.cursor_row_max + 1]
