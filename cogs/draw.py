@@ -408,6 +408,8 @@ class DrawSelectMenu(discord.ui.Select):
                 f"%s - {added_emoji.status}" % added_emoji.emoji
                 for added_emoji in added_emojis.values()
             ]
+            if len(response) == 0:
+                return await res.edit(content="Aborted")
 
             try:
                 await interaction.edit_original_message(
@@ -416,7 +418,7 @@ class DrawSelectMenu(discord.ui.Select):
             except discord.HTTPException as error:
                 await interaction.followup.send(content=error)
                 raise error
-            await res.edit(content="\n".join(response) or "Aborted")
+            await res.edit(content="\n".join(response))
 
         elif len(select.values) > 1:
             selected_options = [
@@ -922,16 +924,19 @@ class DrawButtons(discord.ui.View):
         )
 
         match = re.match(CELL_REGEX, cell)
-        if match:
+        if match is not None:
             row_key = match.group("row")
             col_key = int(match.group("col"))
         else:
             match = re.match(ROW_OR_CELL_REGEX, cell)
-            row_key = match.group("row")
-            row_key = row_key if row_key is not None else ABC[self.cursor_row]
+            if match is not None:
+                row_key = match.group("row")
+                row_key = row_key if row_key is not None else ABC[self.cursor_row]
 
-            col_key = match.group("col")
-            col_key = int(col_key) if col_key is not None else self.cursor_col
+                col_key = match.group("col")
+                col_key = int(col_key) if col_key is not None else self.cursor_col
+            else:
+                row_key = col_key = None
 
         if row_key not in ABC or col_key not in NUM:
             return await res.edit(content="Aborted.")
