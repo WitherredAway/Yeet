@@ -592,9 +592,10 @@ class DrawButtons(discord.ui.View):
                     await msg.delete()
             return res, msg
 
-    def placeholder_button(self, custom_id: str) -> discord.ui.Button:
+    @property
+    def placeholder_button(self) -> discord.ui.Button:
         button = discord.ui.Button(
-            label="\u200b", style=discord.ButtonStyle.gray, custom_id=custom_id
+            label="\u200b", style=discord.ButtonStyle.gray, custom_id=str(len(self.children))
         )
         button.callback = lambda interaction: interaction.response.defer()
 
@@ -608,21 +609,21 @@ class DrawButtons(discord.ui.View):
         if self.secondary is False:
             self.add_item(self.cancel)
             self.add_item(self.secondary_button)
-            self.add_item(self.placeholder_button("1"))
-            self.add_item(self.placeholder_button("2"))
+            self.add_item(self.placeholder_button)
+            self.add_item(self.placeholder_button)
             self.add_item(self.fill_bucket)
 
-            self.add_item(self.placeholder_button("3"))
+            self.add_item(self.placeholder_button)
             self.add_item(self.up_left)
             self.add_item(self.up)
             self.add_item(self.up_right)
-            self.add_item(self.placeholder_button("4"))
+            self.add_item(self.placeholder_button)
 
             self.add_item(self.erase)
             self.add_item(self.left)
             self.add_item(self.auto_colour)
             self.add_item(self.right)
-            self.add_item(self.placeholder_button("5"))
+            self.add_item(self.placeholder_button)
 
             self.add_item(self.draw)
             self.add_item(self.down_left)
@@ -633,21 +634,21 @@ class DrawButtons(discord.ui.View):
         elif self.secondary is True:
             self.add_item(self.cancel)
             self.add_item(self.secondary_button)
-            self.add_item(self.placeholder_button("1"))
-            self.add_item(self.placeholder_button("2"))
+            self.add_item(self.placeholder_button)
+            self.add_item(self.placeholder_button)
             self.add_item(self.fill_bucket)
 
-            self.add_item(self.placeholder_button("3"))
+            self.add_item(self.placeholder_button)
             self.add_item(self.up_left)
             self.add_item(self.up)
             self.add_item(self.up_right)
-            self.add_item(self.placeholder_button("4"))
+            self.add_item(self.placeholder_button)
 
             self.add_item(self.clear)
             self.add_item(self.left)
             self.add_item(self.auto_colour)
             self.add_item(self.right)
-            self.add_item(self.placeholder_button("5"))
+            self.add_item(self.placeholder_button)
 
             self.add_item(self.draw)
             self.add_item(self.down_left)
