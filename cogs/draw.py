@@ -607,7 +607,7 @@ class DrawButtons(discord.ui.View):
 
         # This is necessary for "paginating" the view and different buttons
         if self.secondary is False:
-            self.add_item(self.cancel)
+            self.add_item(self.stop)
             self.add_item(self.secondary_button)
             self.add_item(self.placeholder_button)
             self.add_item(self.placeholder_button)
@@ -632,7 +632,7 @@ class DrawButtons(discord.ui.View):
             self.add_item(self.set_cursor)
 
         elif self.secondary is True:
-            self.add_item(self.cancel)
+            self.add_item(self.clear)
             self.add_item(self.secondary_button)
             self.add_item(self.placeholder_button)
             self.add_item(self.placeholder_button)
@@ -644,7 +644,7 @@ class DrawButtons(discord.ui.View):
             self.add_item(self.up_right)
             self.add_item(self.placeholder_button)
 
-            self.add_item(self.clear)
+            self.add_item(self.erase)
             self.add_item(self.left)
             self.add_item(self.auto_colour)
             self.add_item(self.right)
@@ -752,11 +752,25 @@ class DrawButtons(discord.ui.View):
     @discord.ui.button(
         emoji="<:stop:921864670145552444>", style=discord.ButtonStyle.danger
     )
-    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def stop(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         self.stop_board()
         await interaction.edit_original_message(embed=self.embed, view=self)
         self.stop()
+
+    @discord.ui.button(
+        emoji="<:clear:922414780193579009>", style=discord.ButtonStyle.danger
+    )
+    async def clear(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        self.switch("auto", self.auto_colour)
+        self.switch("fill", self.fill_bucket)
+        self.cursor_row = int(len(self.row_list) / 2)
+        self.cursor_col = int(len(self.col_list) / 2)
+        self.board, _, _ = make_board(self.bg, len(self.col_list), len(self.row_list))
+        self.clear_cursors()
+        self.draw_cursor()
+        await self.edit_draw(interaction)
 
     @discord.ui.button(label="2nd", style=discord.ButtonStyle.grey)
     async def secondary_button(
@@ -829,22 +843,6 @@ class DrawButtons(discord.ui.View):
     async def erase(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         await self.edit_draw(interaction, CURSOR[self.bg])
-
-    @discord.ui.button(
-        emoji="<:clear:922414780193579009>", style=discord.ButtonStyle.danger
-    )
-    async def clear(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
-        self.auto = False
-        self.auto_colour.style = discord.ButtonStyle.gray
-        self.fill = False
-        self.fill_bucket.style = discord.ButtonStyle.grey
-        self.cursor_row = int(len(self.row_list) / 2)
-        self.cursor_col = int(len(self.col_list) / 2)
-        self.board, _, _ = make_board(self.bg, len(self.col_list), len(self.row_list))
-        self.clear_cursors()
-        self.draw_cursor()
-        await interaction.edit_original_message(embed=self.embed, view=self)
 
     @discord.ui.button(
         emoji="<:left:920895993145327628>", style=discord.ButtonStyle.blurple
