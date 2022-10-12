@@ -514,15 +514,6 @@ class DrawButtons(discord.ui.View):
         self.auto = False
         self.fill = False
 
-    def switch(self, attribute: str, button: discord.ui.Button):
-        attr_value = getattr(self, attribute)
-        setattr(self, attribute, not attr_value)
-
-        if attr_value is False:
-            button.style = discord.ButtonStyle.green
-        elif attr_value is True:
-            button.style = discord.ButtonStyle.grey
-
     @property
     def embed(self):
         embed = discord.Embed(title=f"{self.ctx.author}'s drawing board.")
@@ -746,6 +737,16 @@ class DrawButtons(discord.ui.View):
 
         await self.edit_draw(interaction)
 
+    def toggle(self, attribute: str, button: discord.ui.Button, *, switch_to: Optional[bool] = None):
+        attr_value = getattr(self, attribute)
+        switch_to = switch_to if switch_to is not None else not attr_value
+        setattr(self, attribute, switch_to)
+
+        if switch_to is True:
+            button.style = discord.ButtonStyle.green
+        elif switch_to is False:
+            button.style = discord.ButtonStyle.grey
+
     # ------ buttons ------
 
     # 1st row
@@ -763,8 +764,8 @@ class DrawButtons(discord.ui.View):
     )
     async def clear(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
-        self.switch("auto", self.auto_colour)
-        self.switch("fill", self.fill_bucket)
+        self.toggle("auto", self.auto_colour)
+        self.toggle("fill", self.fill_bucket)
         self.cursor_row = int(len(self.row_list) / 2)
         self.cursor_col = int(len(self.col_list) / 2)
         self.board, _, _ = make_board(self.bg, len(self.col_list), len(self.row_list))
@@ -777,7 +778,7 @@ class DrawButtons(discord.ui.View):
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
-        self.switch("secondary", button)
+        self.toggle("secondary", button)
 
         self.load_items()
         await interaction.edit_original_message(view=self)
@@ -796,7 +797,7 @@ class DrawButtons(discord.ui.View):
         elif self.fill is True:
             self.clear_cursors()
             self.draw_cursor()
-        self.switch("fill", button)
+        self.toggle("fill", button)
         await self.edit_draw(interaction)
 
     @discord.ui.button(emoji="<:fill_replace:1029777861768396911>", style=discord.ButtonStyle.grey)
@@ -860,7 +861,7 @@ class DrawButtons(discord.ui.View):
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
-        self.switch("auto", button)
+        self.toggle("auto", button)
         await self.edit_draw(interaction)
 
     @discord.ui.button(
