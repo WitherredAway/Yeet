@@ -636,7 +636,7 @@ class DrawButtons(discord.ui.View):
             self.add_item(self.secondary_button)
             self.add_item(self.placeholder_button)
             self.add_item(self.placeholder_button)
-            self.add_item(self.fill_bucket)
+            self.add_item(self.fill_replace)
 
             self.add_item(self.placeholder_button)
             self.add_item(self.up_left)
@@ -689,7 +689,7 @@ class DrawButtons(discord.ui.View):
         self.cells = [(self.cursor_row, self.cursor_col)] if empty is False else []
 
     async def edit_draw(
-        self, interaction: discord.Interaction, draw: Optional[str] = None
+        self, interaction: discord.Interaction, draw: Optional[str] = None, *, fill_replace: Optional[bool] = False
     ):
         if (
             all(self.board[row, col] == draw for row, col in self.cells)
@@ -697,8 +697,13 @@ class DrawButtons(discord.ui.View):
         ):
             return
         backup_board = copy.deepcopy(self.board)
-        if self.auto is True:
+        if self.auto is True and draw is None:
             draw = self.cursor
+
+        if fill_replace is True:
+            draw = self.cursor
+            to_replace = self.inv_CURSOR.get(self.board[self.cursor_row, self.cursor_col], self.board[self.cursor_row, self.cursor_col])
+            self.board[self.board == to_replace] = draw
 
         for row, col in self.cells:
             self.draw_cursor(row, col, draw=draw)
@@ -779,6 +784,11 @@ class DrawButtons(discord.ui.View):
             self.draw_cursor()
         self.switch("fill", button)
         await self.edit_draw(interaction)
+
+    @discord.ui.button(emoji="<:fill_replace:1029777861768396911>", style=discord.ButtonStyle.grey)
+    async def fill_replace(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        await self.edit_draw(interaction, self.cursor, fill_replace=True)
 
     # 2nd row
     @discord.ui.button(
