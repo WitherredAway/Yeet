@@ -607,7 +607,7 @@ class DrawButtons(discord.ui.View):
         # This is necessary for "paginating" the view and different buttons
         if self.secondary is False:
             self.add_item(self.cancel)
-            self.add_item(self.secondary)
+            self.add_item(self.secondary_button)
             self.add_item(self.placeholder_button("1"))
             self.add_item(self.placeholder_button("2"))
             self.add_item(self.fill_bucket)
@@ -632,7 +632,7 @@ class DrawButtons(discord.ui.View):
 
         elif self.secondary is True:
             self.add_item(self.cancel)
-            self.add_item(self.secondary)
+            self.add_item(self.secondary_button)
             self.add_item(self.placeholder_button("1"))
             self.add_item(self.placeholder_button("2"))
             self.add_item(self.fill_bucket)
@@ -753,7 +753,7 @@ class DrawButtons(discord.ui.View):
         self.stop()
 
     @discord.ui.button(label="2nd", style=discord.ButtonStyle.grey)
-    async def secondary(
+    async def secondary_button(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
