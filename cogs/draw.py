@@ -608,7 +608,7 @@ class DrawButtons(discord.ui.View):
 
             self.add_item(self.erase)
             self.add_item(self.left)
-            self.add_item(self.auto_colour)
+            self.add_item(self.auto_draw)
             self.add_item(self.right)
             self.add_item(self.placeholder_button)
 
@@ -633,7 +633,7 @@ class DrawButtons(discord.ui.View):
 
             self.add_item(self.erase)
             self.add_item(self.left)
-            self.add_item(self.auto_colour)
+            self.add_item(self.auto_draw)
             self.add_item(self.right)
             self.add_item(self.placeholder_button)
 
@@ -853,14 +853,14 @@ class DrawButtons(discord.ui.View):
         await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
 
     @discord.ui.button(
-        emoji="<:auto_cursor:921352341427470347>", style=discord.ButtonStyle.gray
+        emoji="<:auto_draw:921352341427470347>", style=discord.ButtonStyle.gray
     )
-    async def auto_colour(
+    async def auto_draw(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
         self.toggle("auto", button)
-        await self.edit_draw(interaction)
+        await interaction.edit_original_message(embed=self.embed, view=self)
 
     @discord.ui.button(
         emoji="<:right:920895888229036102>", style=discord.ButtonStyle.blurple
