@@ -412,9 +412,7 @@ class DrawSelectMenu(discord.ui.Select):
                 return await res.edit(content="Aborted")
 
             try:
-                await interaction.edit_original_message(
-                    embed=self.view.embed, view=self.view
-                )
+                await self.view.edit_draw(interaction)
             except discord.HTTPException as error:
                 await interaction.followup.send(content=error)
                 raise error
@@ -455,9 +453,7 @@ class DrawSelectMenu(discord.ui.Select):
                 self.view.cursor = select.options[-1].value
 
             try:
-                await interaction.edit_original_message(
-                    embed=self.view.embed, view=self.view
-                )
+                await self.view.edit_draw(interaction)
             except discord.HTTPException as error:
                 await interaction.followup.send(content=error)
                 raise error
@@ -467,7 +463,7 @@ class DrawSelectMenu(discord.ui.Select):
 
         elif self.view.cursor != select.values[0]:
             self.view.cursor = select.values[0]
-            await interaction.edit_original_message(embed=self.view.embed)
+            await self.view.edit_draw(interaction)
 
 
 class DrawButtons(discord.ui.View):
@@ -683,7 +679,7 @@ class DrawButtons(discord.ui.View):
         self, interaction: discord.Interaction, draw: Optional[str] = None, *, fill_replace: Optional[bool] = False
     ):
         if (
-            all(self.board[row, col] == draw for row, col in self.cells)
+            all(self.board[row, col] == CURSOR.get(draw, draw) for row, col in self.cells)
             and self.auto is False
         ):
             return
@@ -756,7 +752,7 @@ class DrawButtons(discord.ui.View):
     async def stop(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         self.stop_board()
-        await interaction.edit_original_message(embed=self.embed, view=self)
+        await self.edit_draw(interaction)
         self.stop()
 
     @discord.ui.button(
@@ -764,13 +760,15 @@ class DrawButtons(discord.ui.View):
     )
     async def clear(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
-        self.toggle("auto", self.auto_colour)
-        self.toggle("fill", self.fill_bucket)
+        self.toggle("secondary", self.secondary_button, switch_to=False)
+        self.toggle("auto", self.auto_colour, switch_to=False)
+        self.toggle("fill", self.fill_bucket, switch_to=False)
         self.cursor_row = int(len(self.row_list) / 2)
         self.cursor_col = int(len(self.col_list) / 2)
         self.board, _, _ = make_board(self.bg, len(self.col_list), len(self.row_list))
         self.clear_cursors()
         self.draw_cursor()
+        self.load_items()
         await self.edit_draw(interaction)
 
     @discord.ui.button(label="2nd", style=discord.ButtonStyle.grey)
@@ -781,7 +779,7 @@ class DrawButtons(discord.ui.View):
         self.toggle("secondary", button)
 
         self.load_items()
-        await interaction.edit_original_message(view=self)
+        await self.edit_draw(interaction)
 
     @discord.ui.button(
         emoji="<:fill:930832869692149790>", style=discord.ButtonStyle.gray
