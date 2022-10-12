@@ -20,7 +20,7 @@ def get_prefix(bot, message):
 
 
 class Bot(commands.Bot):
-    PREFIXES = json.loads(os.getenv("PREFIXES"))
+    PREFIXES = os.getenv("PREFIXES").split(", ")
     PREFIX = PREFIXES[0]
 
     COGS = {
