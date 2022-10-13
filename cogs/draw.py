@@ -110,11 +110,11 @@ class Draw(commands.Cog):
                 message.author == ctx.bot.user,
             )
         ):
-            name = message.embeds[0].fields[0].name
-            value = message.embeds[0].fields[0].value
+            description = message.embeds[0].description
+            lines = description.split("\n")[2:]
             board = []
-            for line in value.split("\n"):
-                board.append(line.split("  ")[1].split("\u200b"))
+            for line in lines:
+                board.append(line.split(PADDING)[-1].split("\u200b"))
             board = np.array(board, dtype="object")
         else:
             return await ctx.send(
@@ -137,7 +137,7 @@ class Draw(commands.Cog):
         view = DrawButtons(
             bg, board, row_list, col_list, ctx=ctx, selectmenu_options=options
         )
-        view.cursor = name.split("  ")[0]
+        view.cursor = description.split(PADDING)[0]
         view.clear_cursors()
         view.draw_cursor()
 
