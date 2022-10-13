@@ -417,7 +417,7 @@ class DrawSelectMenu(discord.ui.Select):
                 return await res.edit(content="Aborted")
 
             try:
-                await self.view.edit_draw(interaction)
+                await self.view.edit_draw(interaction, False)
             except discord.HTTPException as error:
                 await interaction.followup.send(content=error)
                 raise error
@@ -458,7 +458,7 @@ class DrawSelectMenu(discord.ui.Select):
                 self.view.cursor = select.options[-1].value
 
             try:
-                await self.view.edit_draw(interaction)
+                await self.view.edit_draw(interaction, False)
             except discord.HTTPException as error:
                 await interaction.followup.send(content=error)
                 raise error
@@ -468,7 +468,7 @@ class DrawSelectMenu(discord.ui.Select):
 
         elif self.view.cursor != select.values[0]:
             self.view.cursor = select.values[0]
-            await self.view.edit_draw(interaction)
+            await self.view.edit_draw(interaction, False)
 
 
 class DrawButtons(discord.ui.View):
@@ -696,7 +696,7 @@ class DrawButtons(discord.ui.View):
     async def edit_draw(
         self,
         interaction: discord.Interaction,
-        draw: Optional[str] = None,
+        draw: Optional[Union[str, bool]] = None,
         *,
         fill_replace: Optional[bool] = False,
     ):
@@ -708,7 +708,7 @@ class DrawButtons(discord.ui.View):
             and self.auto is False
         ):
             return
-        backup_board = copy.deepcopy(self.board)
+        
         if self.auto is True and draw is None:
             draw = self.cursor
 
@@ -720,9 +720,11 @@ class DrawButtons(discord.ui.View):
             )
             self.board[self.board == to_replace] = draw
 
-        for row, col in self.cells:
-            self.draw_cursor(row, col, draw=draw)
+        if draw is not False:
+            for row, col in self.cells:
+                self.draw_cursor(row, col, draw=draw)
 
+        backup_board = copy.deepcopy(self.board)
         try:
             await interaction.edit_original_message(embed=self.embed, view=self)
         except discord.HTTPException:
@@ -898,7 +900,7 @@ class DrawButtons(discord.ui.View):
     ):
         await interaction.response.defer()
         self.toggle("auto", button)
-        await interaction.edit_original_message(embed=self.embed, view=self)
+        await self.edit_draw(interaction, False)
 
     @discord.ui.button(
         emoji="<:right:920895888229036102>", style=discord.ButtonStyle.blurple
