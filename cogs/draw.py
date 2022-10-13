@@ -313,10 +313,15 @@ class DrawSelectMenu(discord.ui.Select):
         self.bot = self.view.bot
         select = self
         if "emoji" in select.values:
+
             def check(m):
                 return m.author == interaction.user
 
-            res, msg = await self.view.wait_for("Please send a message containing the emojis you want to add to your palette. E.g. `😎 I like turtles 🐢`", interaction=interaction, check=check)
+            res, msg = await self.view.wait_for(
+                "Please send a message containing the emojis you want to add to your palette. E.g. `😎 I like turtles 🐢`",
+                interaction=interaction,
+                check=check,
+            )
             if msg is None:
                 return
 
@@ -561,11 +566,22 @@ class DrawButtons(discord.ui.View):
         await self.response.edit(embed=self.embed, view=self)
         self.stop()
 
-    async def wait_for(self, content: str = "", *, interaction: discord.Interaction, check: Callable = lambda x: x, delete_msg: bool = True, ephemeral: bool = False):
+    async def wait_for(
+        self,
+        content: str = "",
+        *,
+        interaction: discord.Interaction,
+        check: Callable = lambda x: x,
+        delete_msg: bool = True,
+        ephemeral: bool = False,
+    ):
         res = None
         msg = None
         if self.lock.locked():
-            await interaction.followup.send("Another message is being waited for, please wait until that process is complete.", ephemeral=True)
+            await interaction.followup.send(
+                "Another message is being waited for, please wait until that process is complete.",
+                ephemeral=True,
+            )
             return res, msg
 
         res = await interaction.followup.send(content=content, ephemeral=ephemeral)
@@ -582,7 +598,9 @@ class DrawButtons(discord.ui.View):
     @property
     def placeholder_button(self) -> discord.ui.Button:
         button = discord.ui.Button(
-            label="\u200b", style=discord.ButtonStyle.gray, custom_id=str(len(self.children))
+            label="\u200b",
+            style=discord.ButtonStyle.gray,
+            custom_id=str(len(self.children)),
         )
         button.callback = lambda interaction: interaction.response.defer()
 
@@ -676,10 +694,17 @@ class DrawButtons(discord.ui.View):
         self.cells = [(self.cursor_row, self.cursor_col)] if empty is False else []
 
     async def edit_draw(
-        self, interaction: discord.Interaction, draw: Optional[str] = None, *, fill_replace: Optional[bool] = False
+        self,
+        interaction: discord.Interaction,
+        draw: Optional[str] = None,
+        *,
+        fill_replace: Optional[bool] = False,
     ):
         if (
-            all(self.board[row, col] == CURSOR.get(draw, draw) for row, col in self.cells)
+            all(
+                self.board[row, col] == CURSOR.get(draw, draw)
+                for row, col in self.cells
+            )
             and self.auto is False
         ):
             return
@@ -689,7 +714,10 @@ class DrawButtons(discord.ui.View):
 
         if fill_replace is True:
             draw = self.cursor
-            to_replace = self.inv_CURSOR.get(self.board[self.cursor_row, self.cursor_col], self.board[self.cursor_row, self.cursor_col])
+            to_replace = self.inv_CURSOR.get(
+                self.board[self.cursor_row, self.cursor_col],
+                self.board[self.cursor_row, self.cursor_col],
+            )
             self.board[self.board == to_replace] = draw
 
         for row, col in self.cells:
@@ -733,7 +761,13 @@ class DrawButtons(discord.ui.View):
 
         await self.edit_draw(interaction)
 
-    def toggle(self, attribute: str, button: discord.ui.Button, *, switch_to: Optional[bool] = None):
+    def toggle(
+        self,
+        attribute: str,
+        button: discord.ui.Button,
+        *,
+        switch_to: Optional[bool] = None,
+    ):
         attr_value = getattr(self, attribute)
         switch_to = switch_to if switch_to is not None else not attr_value
         setattr(self, attribute, switch_to)
@@ -798,8 +832,12 @@ class DrawButtons(discord.ui.View):
         self.toggle("fill", button)
         await self.edit_draw(interaction)
 
-    @discord.ui.button(emoji="<:fill_replace:1029777861768396911>", style=discord.ButtonStyle.grey)
-    async def fill_replace(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(
+        emoji="<:fill_replace:1029777861768396911>", style=discord.ButtonStyle.grey
+    )
+    async def fill_replace(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
         await interaction.response.defer()
         await self.edit_draw(interaction, self.cursor, fill_replace=True)
 
