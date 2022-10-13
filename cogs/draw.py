@@ -833,7 +833,7 @@ class DrawButtons(discord.ui.View):
         await self.edit_draw(interaction)
 
     @discord.ui.button(
-        emoji="<:fill_replace:1029777861768396911>", style=discord.ButtonStyle.grey
+        emoji="<:fill_replace:1030027968485015612>", style=discord.ButtonStyle.grey
     )
     async def fill_replace(
         self, interaction: discord.Interaction, button: discord.ui.Button
