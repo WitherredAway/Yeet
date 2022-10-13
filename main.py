@@ -66,6 +66,7 @@ class Bot(commands.Bot):
             await self.fetch_guild(_id) for _id in self.EMOJI_SERVER_IDS
         ]
 
+        self.STATUS_CHANNEL = await self.fetch_channel(os.getenv("statusCHANNEL"))
         self.LOG_CHANNEL = await self.fetch_channel(os.getenv("logCHANNEL"))
 
         self.session = aiohttp.ClientSession(loop=self.loop)
@@ -95,4 +96,11 @@ if __name__ == "__main__":
     )
     if os.getenv("REPL_ID") is not None:
         keep_alive()
-    bot.run(TOKEN)
+        try:
+            bot.run(TOKEN)
+        except discord.HTTPException as error:
+            if error.response.status == 429:
+                print("\033[0;31mRate-limit detected, restarting process.\033[0m")
+                os.system(f"kill 1 && cd yeet. && python3 {sys.argv[0]}")
+    else:
+        bot.run(TOKEN)

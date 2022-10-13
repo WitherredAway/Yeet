@@ -1,11 +1,7 @@
-import os
-import asyncio
 import datetime
-import sys
 
 import discord
 import humanize
-import aiohttp
 from discord.ext import commands
 
 
@@ -20,14 +16,7 @@ class Bot(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         msg = f"\033[0;32mRunning.\n{self.bot.user}\033[0m"
-        url = os.getenv("webhookURL")
-        webhook = discord.Webhook.from_url(url, session=self.bot.session)
-        try:
-            await webhook.send(embed=self.bot.Embed(title=msg))
-        except discord.HTTPException as error:
-            if os.getenv("REPL_ID") is not None and error.response.status == 429:
-                print("\033[0;31mRate-limit detected, restarting process.\033[0m")
-                os.system(f"kill 1 && python3 -m main")
+        await self.bot.STATUS_CHANNEL.send(f"```ansi\n{msg}\n```")
         print(msg)
 
     @commands.Cog.listener()
