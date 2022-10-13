@@ -612,7 +612,7 @@ class DrawButtons(discord.ui.View):
 
         # This is necessary for "paginating" the view and different buttons
         if self.secondary is False:
-            self.add_item(self.stop)
+            self.add_item(self.stop_button)
             self.add_item(self.secondary_button)
             self.add_item(self.placeholder_button)
             self.add_item(self.placeholder_button)
@@ -783,7 +783,7 @@ class DrawButtons(discord.ui.View):
     @discord.ui.button(
         emoji="<:stop:921864670145552444>", style=discord.ButtonStyle.danger
     )
-    async def stop(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def stop_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         self.stop_board()
         await self.edit_draw(interaction)
