@@ -304,7 +304,10 @@ class DrawSelectMenu(discord.ui.Select):
                 continue
             else:
                 return emoji
-            
+        else:  # If it exits without returning aka there was no space available
+            emoji_delete = await self.bot.EMOJI_SERVERS[0].fetch_emojis()[0]  # Get first emoji from the first emoji server
+            await emoji_delete.delete()  # Delete the emoji to make space for the new one
+            await self.upload_emoji(colour)  # Run again
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
@@ -417,19 +420,18 @@ class DrawSelectMenu(discord.ui.Select):
             if len(response) == 0:
                 return await res.edit(content="Aborted")
 
-            try:
-                await self.view.edit_draw(interaction, False)
-            except discord.HTTPException as error:
-                await interaction.followup.send(content=error)
-                raise error
+            await self.view.edit_draw(interaction, False)
             await res.edit(content="\n".join(response))
 
+        # If multiple options were selected
         elif len(select.values) > 1:
             selected_options = [
                 self.option_values_dict.get(value) for value in self.values
             ]
 
             selected_emojis = [str(option.emoji) for option in selected_options]
+            res = await interaction.followup.send(f'Mixing colours {" and ".join(selected_emojis)} ...')
+
             colours = [
                 await Colour.from_emoji(emoji, bot=self.bot)
                 for emoji in selected_emojis
@@ -443,6 +445,12 @@ class DrawSelectMenu(discord.ui.Select):
             if option is not None:
                 self.view.cursor = option.value
             else:
+                replaced_emoji = None
+                if len(select.options) == 25:
+                    replaced_option = select.options.pop(10)
+                    replaced_emoji = replaced_option.emoji
+                    replaced_emoji.name = replaced_option.label
+
                 option = discord.SelectOption(
                     label=" + ".join(
                         [
@@ -458,14 +466,8 @@ class DrawSelectMenu(discord.ui.Select):
                 select.append_option(option)
                 self.view.cursor = select.options[-1].value
 
-            try:
-                await self.view.edit_draw(interaction, False)
-            except discord.HTTPException as error:
-                await interaction.followup.send(content=error)
-                raise error
-            await interaction.followup.send(
-                content=f'Mixed colours:\n{" + ".join(selected_emojis)} = {emoji}'
-            )
+            await self.view.edit_draw(interaction, False)
+            await res.edit(content=f'Mixed colours:\n{" + ".join(selected_emojis)} = {emoji}' + (f'(replaced {replaced_emoji})' if replaced_emoji else ''))
 
         elif self.view.cursor != select.values[0]:
             self.view.cursor = select.values[0]
@@ -724,17 +726,31 @@ class DrawButtons(discord.ui.View):
         if draw is not False:
             for row, col in self.cells:
                 self.draw_cursor(row, col, draw=draw)
+        self.backup_board = copy.deepcopy(self.board)
+        await self.edit_message(interaction)
 
-        backup_board = copy.deepcopy(self.board)
+    async def edit_message(self, interaction: discord.Interaction):
         try:
             await interaction.edit_original_message(embed=self.embed, view=self)
-        except discord.HTTPException:
-            self.board = backup_board
-            await interaction.edit_original_message(embed=self.embed, view=self)
-            await interaction.followup.send(
-                content="Max characters reached. Please remove some custom emojis from the board.\nCustom emojis take up more than 20 characters each, while most unicode/default ones take up 1!\nMaximum is 4096 characters due to discord limitations.",
-                ephemeral=True,
-            )
+        except discord.HTTPException as error:
+            if match := re.search("In embeds\.\d+\.description: Must be 4096 or fewer in length\.", error.text):  # If the description reaches char limit
+                self.board = self.backup_board
+                await interaction.followup.send(
+                    content="Max characters reached. Please remove some custom emojis from the board.\nCustom emojis take up more than 20 characters each, while most unicode/default ones take up 1!\nMaximum is 4096 characters due to discord limitations.",
+                    ephemeral=True,
+                )
+                await self.edit_message(interaction)
+            elif match := re.search("In components\.\d+\.components\.\d+\.options\.(?P<option>\d+)\.emoji\.id: Invalid emoji", error.text):  # If the emoji of one of the options of the select menu is unavailable
+                removed_option = self.selectmenu.options.pop(int(match.group("option")))
+                self.cursor = self.bg
+                await interaction.followup.send(
+                    content=f"The {removed_option.emoji} emoji was removed for some reason, so the option was removed aswell. Please try again.",
+                    ephemeral=True,
+                )
+                await self.edit_message(interaction)
+            else:
+                await interaction.followup.send(error)
+                raise error
 
     async def move_cursor(
         self, interaction: discord.Interaction, row_move: int = 0, col_move: int = 0
