@@ -616,7 +616,7 @@ class DrawButtons(discord.ui.View):
             self.add_item(self.stop_button)
             self.add_item(self.secondary_button)
             self.add_item(self.placeholder_button)
-            self.add_item(self.placeholder_button)
+            self.add_item(self.fill_replace)
             self.add_item(self.fill_bucket)
 
             self.add_item(self.placeholder_button)
@@ -641,8 +641,8 @@ class DrawButtons(discord.ui.View):
             self.add_item(self.stop_button)
             self.add_item(self.secondary_button)
             self.add_item(self.placeholder_button)
-            self.add_item(self.placeholder_button)
             self.add_item(self.fill_replace)
+            self.add_item(self.fill_bucket)
 
             self.add_item(self.placeholder_button)
             self.add_item(self.up_left)
