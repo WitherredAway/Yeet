@@ -638,7 +638,7 @@ class DrawButtons(discord.ui.View):
             self.add_item(self.set_cursor)
 
         elif self.secondary is True:
-            self.add_item(self.clear)
+            self.add_item(self.stop_button)
             self.add_item(self.secondary_button)
             self.add_item(self.placeholder_button)
             self.add_item(self.placeholder_button)
@@ -650,7 +650,7 @@ class DrawButtons(discord.ui.View):
             self.add_item(self.up_right)
             self.add_item(self.placeholder_button)
 
-            self.add_item(self.erase)
+            self.add_item(self.clear)
             self.add_item(self.left)
             self.add_item(self.auto_draw)
             self.add_item(self.right)
