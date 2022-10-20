@@ -55,7 +55,6 @@ class Bot(commands.Bot):
 
     async def setup_hook(self):
         self.EMOJI_SERVER_IDS = [
-            999995949634048030,
             1019908440786735144,
             1019908649293979718,
             1019908721343741952,
