@@ -277,17 +277,23 @@ class DrawSelectMenu(discord.ui.Select):
         )
 
     @property
-    def option_values_dict(self) -> Dict[str, discord.SelectOption]:
+    def value_to_option_dict(self) -> Dict[str, discord.SelectOption]:
         return {option.value: option for option in self.options}
 
     @property
-    def option_emojis_dict(self) -> Dict[str, discord.SelectOption]:
+    def emoji_to_option_dict(self) -> Dict[Union[str, int], discord.SelectOption]:
         return {
             option.emoji.name
             if option.emoji.is_unicode_emoji()
             else option.emoji.id: option
             for option in self.options
         }
+
+    def value_to_option(self, value: Union[str, int]) -> Union[None, discord.SelectOption]:
+        return self.value_to_option_dict.get(value)
+
+    def emoji_to_option(self, emoji: Union[discord.Emoji, discord.PartialEmoji]) -> Union[None, discord.SelectOption]:
+        return self.emoji_to_option_dict.get(emoji.name if emoji.is_unicode_emoji() else emoji.id)
 
     async def upload_emoji(self, colour: Colour) -> discord.Emoji:
         # Look if emoji already exists
@@ -312,6 +318,9 @@ class DrawSelectMenu(discord.ui.Select):
 
     def append_option(self, option: discord.SelectOption) -> Union[discord.PartialEmoji, None]:
         replaced_option = None
+        if self.emoji_to_option(option.emoji) is not None:
+            return replaced_option
+
         if len(self.options) == 25:
             replaced_option = self.options.pop(self.END_INDEX)
             replaced_option.emoji.name = replaced_option.label
@@ -372,8 +381,7 @@ class DrawSelectMenu(discord.ui.Select):
                 emoji_check = discord.PartialEmoji.from_str(sent_emoji.emoji)
                 emoji = copy.copy(emoji_check)
 
-                emoji_identifier = emoji.id if emoji.id else emoji.name
-                if emoji_identifier in self.option_emojis_dict:
+                if self.emoji_to_option(emoji):
                     added_emoji = AddedEmoji(
                         sent_emoji=sent_emoji, emoji=emoji, status="Already exists."
                     )
@@ -386,7 +394,7 @@ class DrawSelectMenu(discord.ui.Select):
                         name="_" if emoji.is_custom_emoji() else emoji.name,
                     )
 
-                added_emojis[emoji_identifier] = added_emoji
+                added_emojis[emoji.name if emoji.is_unicode_emoji() else emoji.id] = added_emoji
 
             replaced_emojis = {}
             for added_emoji in added_emojis.values():
@@ -428,7 +436,7 @@ class DrawSelectMenu(discord.ui.Select):
         # If multiple options were selected
         elif len(self.values) > 1:
             selected_options = [
-                self.option_values_dict.get(value) for value in self.values
+                self.value_to_option(value) for value in self.values
             ]
 
             selected_emojis = [str(option.emoji) for option in selected_options]
@@ -443,7 +451,7 @@ class DrawSelectMenu(discord.ui.Select):
 
             emoji = await self.upload_emoji(mixed_colour)
 
-            option = self.option_emojis_dict.get(emoji.id)
+            option = self.emoji_to_option(emoji)
             if option is not None:
                 self.view.cursor = option.value
             else:
