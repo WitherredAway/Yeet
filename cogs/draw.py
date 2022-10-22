@@ -801,7 +801,7 @@ class DrawButtons(discord.ui.View):
 
     # 1st row
     @discord.ui.button(
-        emoji="<:stop:1032565232054321172>", style=discord.ButtonStyle.danger
+        emoji="<:stop:1032565237242667048>", style=discord.ButtonStyle.danger
     )
     async def stop_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
@@ -853,7 +853,7 @@ class DrawButtons(discord.ui.View):
         await self.edit_draw(interaction)
 
     @discord.ui.button(
-        emoji="<:fill_replace:1032565273515016232>", style=discord.ButtonStyle.grey
+        emoji="<:fill_replace:1032565283929456670>", style=discord.ButtonStyle.grey
     )
     async def fill_replace(
         self, interaction: discord.Interaction, button: discord.ui.Button
