@@ -365,11 +365,7 @@ class DrawSelectMenu(discord.ui.Select):
                 emoji = copy.copy(emoji_check)
 
                 emoji_identifier = emoji.id if emoji.id else emoji.name
-                existing_emojis = [
-                    (em.id if em.id else em.name)
-                    for em in [opt.emoji for opt in select.options]
-                ]
-                if emoji_identifier in existing_emojis:
+                if emoji_identifier in self.option_emojis_dict:
                     added_emoji = AddedEmoji(
                         sent_emoji=sent_emoji, emoji=emoji, status="Already exists."
                     )
