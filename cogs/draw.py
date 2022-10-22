@@ -412,12 +412,13 @@ class DrawSelectMenu(discord.ui.Select):
                         replaced_emoji.id if replaced_emoji.id else replaced_emoji.name
                     ] = AddedEmoji.from_option(
                         replaced_option,
-                        status=f"Replaced because limit reached (by {added_emoji}).",
+                        status=f"Replaced by {added_emoji}.",
                         sent_emoji=SentEmoji(emoji=replaced_emoji),
                     )
                     added_emoji.status = f"Added (replaced {replaced_emoji})."
 
-            added_emojis.update(replaced_emojis)
+            # added_emojis.update(replaced_emojis)
+            added_emojis = {k: v for k, v in added_emojis.items() if k not in replaced_emojis}
 
             if len(self.options[self.END_INDEX:]) > 0:
                 self.view.cursor = self.options[-1].value
@@ -430,7 +431,7 @@ class DrawSelectMenu(discord.ui.Select):
                 return await res.edit(content="Aborted")
 
             await self.view.edit_draw(interaction, False)
-            await res.edit(content="\n".join(response))
+            await res.edit(content=("\n".join(response))[:2000])
 
         # If multiple options were selected
         elif len(self.values) > 1:
