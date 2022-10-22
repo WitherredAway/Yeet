@@ -390,7 +390,7 @@ class DrawSelectMenu(discord.ui.Select):
                         sent_emoji=sent_emoji,
                         emoji=emoji,
                         status="Added.",
-                        name="_" if emoji.is_custom_emoji() else emoji.name,
+                        name="e" if emoji.is_custom_emoji() else emoji.name,
                     )
 
                 added_emojis[emoji.name if emoji.is_unicode_emoji() else emoji.id] = added_emoji
