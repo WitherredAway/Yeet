@@ -242,27 +242,28 @@ class DrawSelectMenu(discord.ui.Select):
         options: Optional[List[discord.SelectOption]] = None,
         bg: str,
     ):
+        default_options = [
+            discord.SelectOption(label="Red", emoji="🟥", value="🟥"),
+            discord.SelectOption(label="Orange", emoji="🟧", value="🟧"),
+            discord.SelectOption(label="Yellow", emoji="🟨", value="🟨"),
+            discord.SelectOption(label="Green", emoji="🟩", value="🟩"),
+            discord.SelectOption(label="Blue", emoji="🟦", value="🟦"),
+            discord.SelectOption(label="Purple", emoji="🟪", value="🟪"),
+            discord.SelectOption(label="Brown", emoji="🟫", value="🟫"),
+            discord.SelectOption(label="Black", emoji="⬛", value="⬛"),
+            discord.SelectOption(label="White", emoji="⬜", value="⬜"),
+            discord.SelectOption(
+                label="Add Emoji(s)",
+                emoji="<:emojismiley:1032565214606012416>",
+                value="emoji",
+            ),
+        ]
         options = (
             options
             if options
-            else [
-                discord.SelectOption(label="Red", emoji="🟥", value="🟥"),
-                discord.SelectOption(label="Orange", emoji="🟧", value="🟧"),
-                discord.SelectOption(label="Yellow", emoji="🟨", value="🟨"),
-                discord.SelectOption(label="Green", emoji="🟩", value="🟩"),
-                discord.SelectOption(label="Blue", emoji="🟦", value="🟦"),
-                discord.SelectOption(label="Purple", emoji="🟪", value="🟪"),
-                discord.SelectOption(label="Brown", emoji="🟫", value="🟫"),
-                discord.SelectOption(label="Black", emoji="⬛", value="⬛"),
-                discord.SelectOption(label="White", emoji="⬜", value="⬜"),
-                discord.SelectOption(
-                    label="Add Emoji(s)",
-                    emoji="<:emojismiley:1032565214606012416>",
-                    value="emoji",
-                ),
-            ]
+            else default_options
         )
-        self.END_INDEX = len(options)  # The ending index of default emojis
+        self.END_INDEX = len(default_options)  # The ending index of default options
         for option in options:
             if str(option.emoji) == bg and not option.label.endswith(" (base)"):
                 option.label += " (base)"
