@@ -264,6 +264,7 @@ class DrawSelectMenu(discord.ui.Select):
                 ),
             ]
         )
+        self.END_INDEX = len(options)  # The ending index of default emojis
         for option in options:
             if str(option.emoji) == bg and not option.label.endswith(" (base)"):
                 option.label += " (base)"
@@ -389,7 +390,7 @@ class DrawSelectMenu(discord.ui.Select):
                     continue
 
                 if len(select.options) == 25:
-                    replaced_option = select.options.pop(10)
+                    replaced_option = select.options.pop(self.END_INDEX)
                     replaced_emoji = replaced_option.emoji
                     replaced_emoji.name = replaced_option.label
                     replaced_emojis[
@@ -410,7 +411,7 @@ class DrawSelectMenu(discord.ui.Select):
 
             added_emojis.update(replaced_emojis)
 
-            if len(select.options[10:]) > 0:
+            if len(select.options[self.END_INDEX:]) > 0:
                 self.view.cursor = select.options[-1].value
 
             response = [
@@ -447,7 +448,7 @@ class DrawSelectMenu(discord.ui.Select):
             else:
                 replaced_emoji = None
                 if len(select.options) == 25:
-                    replaced_option = select.options.pop(10)
+                    replaced_option = select.options.pop(self.END_INDEX)
                     replaced_emoji = replaced_option.emoji
                     replaced_emoji.name = replaced_option.label
 
