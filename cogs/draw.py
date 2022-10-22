@@ -38,13 +38,47 @@ def make_board(
     row_labels = ROW_ICONS[:height]
     col_labels = COLUMN_ICONS[:width]
 
-    try:
-        board[int(height / 2), int(width / 2)] = CURSOR[
-            board[int(height / 2), int(width / 2)]
-        ]
-    except KeyError:
-        pass
     return board, row_labels, col_labels
+
+
+D = TypeVar("D", bound="DrawButtons")
+
+class StartView(discord.ui.View):
+    def __init__(self, *, ctx: commands.Context, draw_view: D):
+        super().__init__(timeout=30)
+        self.ctx = ctx
+        self.draw_view = draw_view
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user != self.ctx.author:
+            await interaction.response.send_message(
+                f"This instance does not belong to you, use the `{self.ctx.command}` command to create your own instance.",
+                ephemeral=True,
+            )
+            return False
+        return True
+
+    async def on_timeout(self):
+        await self.response.edit(view=None)
+        self.stop()
+
+    @discord.ui.button(label="Create", style=discord.ButtonStyle.green)
+    async def create(self, interaction: discord.Interaction, button: discord.Button):
+        await interaction.response.defer()
+
+        response = await interaction.followup.send(
+            embed=self.draw_view.embed, view=self.draw_view
+        )
+        self.draw_view.response = response
+        await response.edit(embed=self.draw_view.embed, view=self.draw_view)  # This is necessary because custom emojis only render when a followup is edited ◉_◉
+
+        await self.response.edit(view=None)
+        self.stop()
+
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.danger)
+    async def cancel(self, interaction: discord.Interaction, button: discord.Button):
+        await self.response.edit(view=None)
+        self.stop()
 
 
 class Draw(commands.Cog):
@@ -80,11 +114,14 @@ class Draw(commands.Cog):
             return await ctx.send("Width must be atleast 5 and atmost 17")
 
         board, row_list, col_list = make_board(bg, height, width)
-        view = DrawButtons(bg, board, row_list, col_list, ctx=ctx)
+        draw_view = DrawButtons(bg, board, row_list, col_list, ctx=ctx)
 
-        response = await ctx.send(embed=view.embed, view=view)
-        view.response = response
-        await view.wait()
+        start_view = StartView(ctx=ctx, draw_view=draw_view)
+        response = await ctx.send(
+            f"Create new draw board with `{height = }`, `{width = }` and `{bg = }`?",
+            view=start_view,
+        )
+        start_view.response = response
 
     @draw.command(
         name="copy",
@@ -132,15 +169,14 @@ class Draw(commands.Cog):
             if option.label.endswith(" (base)"):
                 bg = str(option.emoji)
 
-        view = DrawButtons(
+        draw_view = DrawButtons(
             bg, board, row_list, col_list, ctx=ctx, selectmenu_options=options
         )
-        view.cursor = description.split(PADDING)[0]
-        view.clear_cursors()
-        view.draw_cursor()
+        draw_view.cursor = description.split(PADDING)[0]
 
-        response = await ctx.send(embed=view.embed, view=view)
-        view.response = response
+        start_view = StartView(ctx=ctx, draw_view=draw_view)
+        response = await ctx.send(content="Create a copy of this board? (Due to discord limitations, custom emojis may not render here)", embed=draw_view.embed, view=start_view)
+        start_view.response = response
 
 
 C = TypeVar("C", bound="Colour")
@@ -534,6 +570,9 @@ class DrawButtons(discord.ui.View):
         self.final_row = self.final_cell[0]
         self.final_col = self.final_cell[1]
         self.inv_CURSOR = invert_dict(CURSOR)
+
+        self.clear_cursors()
+        self.draw_cursor()
 
         self.lock = self.bot.lock
 
