@@ -258,11 +258,7 @@ class DrawSelectMenu(discord.ui.Select):
                 value="emoji",
             ),
         ]
-        options = (
-            options
-            if options
-            else default_options
-        )
+        options = options if options else default_options
         self.END_INDEX = len(default_options)  # The ending index of default options
         for option in options:
             if str(option.emoji) == bg and not option.label.endswith(" (base)"):
@@ -288,11 +284,17 @@ class DrawSelectMenu(discord.ui.Select):
             for option in self.options
         }
 
-    def value_to_option(self, value: Union[str, int]) -> Union[None, discord.SelectOption]:
+    def value_to_option(
+        self, value: Union[str, int]
+    ) -> Union[None, discord.SelectOption]:
         return self.value_to_option_dict.get(value)
 
-    def emoji_to_option(self, emoji: Union[discord.Emoji, discord.PartialEmoji]) -> Union[None, discord.SelectOption]:
-        return self.emoji_to_option_dict.get(emoji.name if emoji.is_unicode_emoji() else emoji.id)
+    def emoji_to_option(
+        self, emoji: Union[discord.Emoji, discord.PartialEmoji]
+    ) -> Union[None, discord.SelectOption]:
+        return self.emoji_to_option_dict.get(
+            emoji.name if emoji.is_unicode_emoji() else emoji.id
+        )
 
     async def upload_emoji(self, colour: Colour) -> discord.Emoji:
         # Look if emoji already exists
@@ -311,11 +313,15 @@ class DrawSelectMenu(discord.ui.Select):
             else:
                 return emoji
         else:  # If it exits without returning aka there was no space available
-            emoji_delete = await self.bot.EMOJI_SERVERS[0].fetch_emojis()[0]  # Get first emoji from the first emoji server
+            emoji_delete = await self.bot.EMOJI_SERVERS[0].fetch_emojis()[
+                0
+            ]  # Get first emoji from the first emoji server
             await emoji_delete.delete()  # Delete the emoji to make space for the new one
             await self.upload_emoji(colour)  # Run again
 
-    def append_option(self, option: discord.SelectOption) -> Union[discord.PartialEmoji, None]:
+    def append_option(
+        self, option: discord.SelectOption
+    ) -> Union[discord.PartialEmoji, None]:
         replaced_option = None
         if self.emoji_to_option(option.emoji) is not None:
             return replaced_option
@@ -393,7 +399,9 @@ class DrawSelectMenu(discord.ui.Select):
                         name="e" if emoji.is_custom_emoji() else emoji.name,
                     )
 
-                added_emojis[emoji.name if emoji.is_unicode_emoji() else emoji.id] = added_emoji
+                added_emojis[
+                    emoji.name if emoji.is_unicode_emoji() else emoji.id
+                ] = added_emoji
 
             replaced_emojis = {}
             for added_emoji in added_emojis.values():
@@ -418,9 +426,11 @@ class DrawSelectMenu(discord.ui.Select):
                     added_emoji.status = f"Added (replaced {replaced_emoji})."
 
             # added_emojis.update(replaced_emojis)
-            added_emojis = {k: v for k, v in added_emojis.items() if k not in replaced_emojis}
+            added_emojis = {
+                k: v for k, v in added_emojis.items() if k not in replaced_emojis
+            }
 
-            if len(self.options[self.END_INDEX:]) > 0:
+            if len(self.options[self.END_INDEX :]) > 0:
                 self.view.cursor = self.options[-1].value
 
             response = [
@@ -435,12 +445,12 @@ class DrawSelectMenu(discord.ui.Select):
 
         # If multiple options were selected
         elif len(self.values) > 1:
-            selected_options = [
-                self.value_to_option(value) for value in self.values
-            ]
+            selected_options = [self.value_to_option(value) for value in self.values]
 
             selected_emojis = [str(option.emoji) for option in selected_options]
-            res = await interaction.followup.send(f'Mixing colours {" and ".join(selected_emojis)} ...')
+            res = await interaction.followup.send(
+                f'Mixing colours {" and ".join(selected_emojis)} ...'
+            )
 
             colours = [
                 await Colour.from_emoji(emoji, bot=self.bot)
@@ -449,7 +459,9 @@ class DrawSelectMenu(discord.ui.Select):
 
             mixed_colour = Colour.mix_colours(colours, bot=self.bot)
 
-            emoji = discord.PartialEmoji.from_str(str(await self.upload_emoji(mixed_colour)))
+            emoji = discord.PartialEmoji.from_str(
+                str(await self.upload_emoji(mixed_colour))
+            )
 
             option = self.emoji_to_option(emoji)
             if option is not None:
@@ -471,7 +483,14 @@ class DrawSelectMenu(discord.ui.Select):
                 self.view.cursor = self.options[-1].value
 
             await self.view.edit_draw(interaction, False)
-            await res.edit(content=f'Mixed colours:\n{" + ".join(selected_emojis)} = {emoji}' + (f' (replaced {replaced_option.emoji}).' if replaced_option is not None else ''))
+            await res.edit(
+                content=f'Mixed colours:\n{" + ".join(selected_emojis)} = {emoji}'
+                + (
+                    f" (replaced {replaced_option.emoji})."
+                    if replaced_option is not None
+                    else ""
+                )
+            )
 
         elif self.view.cursor != self.values[0]:
             self.view.cursor = self.values[0]
@@ -715,7 +734,7 @@ class DrawButtons(discord.ui.View):
             and self.auto is False
         ):
             return
-        
+
         if self.auto is True and draw is None:
             draw = self.cursor
 
@@ -737,14 +756,20 @@ class DrawButtons(discord.ui.View):
         try:
             await interaction.edit_original_message(embed=self.embed, view=self)
         except discord.HTTPException as error:
-            if match := re.search("In embeds\.\d+\.description: Must be 4096 or fewer in length\.", error.text):  # If the description reaches char limit
+            if match := re.search(
+                "In embeds\.\d+\.description: Must be 4096 or fewer in length\.",
+                error.text,
+            ):  # If the description reaches char limit
                 self.board = self.backup_board
                 await interaction.followup.send(
                     content="Max characters reached. Please remove some custom emojis from the board.\nCustom emojis take up more than 20 characters each, while most unicode/default ones take up 1!\nMaximum is 4096 characters due to discord limitations.",
                     ephemeral=True,
                 )
                 await self.edit_message(interaction)
-            elif match := re.search("In components\.\d+\.components\.\d+\.options\.(?P<option>\d+)\.emoji\.id: Invalid emoji", error.text):  # If the emoji of one of the options of the select menu is unavailable
+            elif match := re.search(
+                "In components\.\d+\.components\.\d+\.options\.(?P<option>\d+)\.emoji\.id: Invalid emoji",
+                error.text,
+            ):  # If the emoji of one of the options of the select menu is unavailable
                 removed_option = self.selectmenu.options.pop(int(match.group("option")))
                 self.cursor = self.bg
                 await interaction.followup.send(
@@ -806,7 +831,9 @@ class DrawButtons(discord.ui.View):
     @discord.ui.button(
         emoji="<:stop:1032565237242667048>", style=discord.ButtonStyle.danger
     )
-    async def stop_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def stop_button(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
         await interaction.response.defer()
         self.stop_board()
         await self.edit_draw(interaction)
@@ -865,18 +892,32 @@ class DrawButtons(discord.ui.View):
         await self.edit_draw(interaction, self.cursor, fill_replace=True)
 
     # 2nd row
-    @discord.ui.button(emoji="<:eyedropper:1033248590988066886>", style=discord.ButtonStyle.grey)
-    async def eyedropper(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(
+        emoji="<:eyedropper:1033248590988066886>", style=discord.ButtonStyle.grey
+    )
+    async def eyedropper(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
         await interaction.response.defer()
 
         cursor_cell = self.board[self.cursor_row, self.cursor_col]
-        emoji = discord.PartialEmoji.from_str(self.inv_CURSOR.get(cursor_cell, cursor_cell))
+        emoji = discord.PartialEmoji.from_str(
+            self.inv_CURSOR.get(cursor_cell, cursor_cell)
+        )
 
         # Check if the option already exists
         option = self.selectmenu.emoji_to_option(emoji)
-        eyedropped_options = [option for option in self.selectmenu.options if option.label.startswith("Eyedropped option")]
+        eyedropped_options = [
+            option
+            for option in self.selectmenu.options
+            if option.label.startswith("Eyedropped option")
+        ]
         if option is None:
-            option = discord.SelectOption(label=f"Eyedropped option #{len(eyedropped_options)}", emoji=emoji, value=str(emoji))
+            option = discord.SelectOption(
+                label=f"Eyedropped option #{len(eyedropped_options)}",
+                emoji=emoji,
+                value=str(emoji),
+            )
 
         self.selectmenu.append_option(option)
         self.cursor = option.value
