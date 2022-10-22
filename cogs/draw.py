@@ -448,7 +448,7 @@ class DrawSelectMenu(discord.ui.Select):
 
             mixed_colour = Colour.mix_colours(colours, bot=self.bot)
 
-            emoji = await self.upload_emoji(mixed_colour)
+            emoji = discord.PartialEmoji.from_str(str(await self.upload_emoji(mixed_colour)))
 
             option = self.emoji_to_option(emoji)
             if option is not None:
