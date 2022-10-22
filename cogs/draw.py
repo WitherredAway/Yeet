@@ -141,7 +141,6 @@ class Draw(commands.Cog):
 
         response = await ctx.send(embed=view.embed, view=view)
         view.response = response
-        await view.wait()
 
 
 C = TypeVar("C", bound="Colour")
@@ -571,6 +570,13 @@ class DrawButtons(discord.ui.View):
         )
         return embed
 
+    def stop_board(self):
+        self.selectmenu.disabled = True
+
+        self.clear_items()
+        self.add_item(self.selectmenu)
+        self.clear_cursors(empty=True)
+
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user != self.ctx.author:
             await interaction.response.send_message(
@@ -687,14 +693,6 @@ class DrawButtons(discord.ui.View):
             self.add_item(self.down_right)
             self.add_item(self.set_cursor)
 
-    def stop_board(self):
-        selectmenu = self.children[0]
-        selectmenu.disabled = True
-
-        self.clear_items()
-        self.add_item(selectmenu)
-        self.clear_cursors(empty=True)
-
     def un_cursor(self, value):
         return self.inv_CURSOR.get(value, value)
 
@@ -726,12 +724,15 @@ class DrawButtons(discord.ui.View):
         *,
         fill_replace: Optional[bool] = False,
     ):
-        if (
-            all(
-                self.board[row, col] == CURSOR.get(draw, draw)
-                for row, col in self.cells
+        if all(
+            (
+                draw is not None,
+                all(
+                    self.board[row, col] == CURSOR.get(draw, draw)
+                    for row, col in self.cells
+                ),
+                self.auto is False,
             )
-            and self.auto is False
         ):
             return
 
@@ -740,10 +741,7 @@ class DrawButtons(discord.ui.View):
 
         if fill_replace is True:
             draw = self.cursor
-            to_replace = self.inv_CURSOR.get(
-                self.board[self.cursor_row, self.cursor_col],
-                self.board[self.cursor_row, self.cursor_col],
-            )
+            to_replace = self.un_cursor(self.board[self.cursor_row, self.cursor_col])
             self.board[self.board == to_replace] = draw
 
         if draw is not False:
@@ -901,9 +899,7 @@ class DrawButtons(discord.ui.View):
         await interaction.response.defer()
 
         cursor_cell = self.board[self.cursor_row, self.cursor_col]
-        emoji = discord.PartialEmoji.from_str(
-            self.inv_CURSOR.get(cursor_cell, cursor_cell)
-        )
+        emoji = discord.PartialEmoji.from_str(self.un_cursor(cursor_cell))
 
         # Check if the option already exists
         option = self.selectmenu.emoji_to_option(emoji)
