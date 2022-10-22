@@ -471,7 +471,7 @@ class DrawSelectMenu(discord.ui.Select):
                 self.view.cursor = self.options[-1].value
 
             await self.view.edit_draw(interaction, False)
-            await res.edit(content=f'Mixed colours:\n{" + ".join(selected_emojis)} = {emoji}' + (f' (replaced {replaced_option.emoji})' if replaced_option is not None else ''))
+            await res.edit(content=f'Mixed colours:\n{" + ".join(selected_emojis)} = {emoji}' + (f' (replaced {replaced_option.emoji}).' if replaced_option is not None else ''))
 
         elif self.view.cursor != self.values[0]:
             self.view.cursor = self.values[0]
@@ -625,7 +625,7 @@ class DrawButtons(discord.ui.View):
             self.add_item(self.fill_replace)
             self.add_item(self.fill_bucket)
 
-            self.add_item(self.placeholder_button)
+            self.add_item(self.eyedropper)
             self.add_item(self.up_left)
             self.add_item(self.up)
             self.add_item(self.up_right)
@@ -865,6 +865,23 @@ class DrawButtons(discord.ui.View):
         await self.edit_draw(interaction, self.cursor, fill_replace=True)
 
     # 2nd row
+    @discord.ui.button(emoji="<:eyedropper:1033248590988066886>", style=discord.ButtonStyle.grey)
+    async def eyedropper(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+
+        cursor_cell = self.board[self.cursor_row, self.cursor_col]
+        emoji = discord.PartialEmoji.from_str(self.inv_CURSOR.get(cursor_cell, cursor_cell))
+
+        # Check if the option already exists
+        option = self.selectmenu.emoji_to_option(emoji)
+        eyedropped_options = [option for option in self.selectmenu.options if option.label.startswith("Eyedropped option")]
+        if option is None:
+            option = discord.SelectOption(label=f"Eyedropped option #{len(eyedropped_options)}", emoji=emoji, value=str(emoji))
+
+        self.selectmenu.append_option(option)
+        self.cursor = option.value
+        return await self.edit_draw(interaction, False)
+
     @discord.ui.button(
         emoji="<:up_left:1032565175930343484>", style=discord.ButtonStyle.blurple
     )
