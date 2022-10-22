@@ -310,6 +310,15 @@ class DrawSelectMenu(discord.ui.Select):
             await emoji_delete.delete()  # Delete the emoji to make space for the new one
             await self.upload_emoji(colour)  # Run again
 
+    def append_option(self, option: discord.SelectOption) -> Union[discord.PartialEmoji, None]:
+        replaced_option = None
+        if len(self.options) == 25:
+            replaced_option = self.options.pop(self.END_INDEX)
+            replaced_option.emoji.name = replaced_option.label
+
+        super().append_option(option)
+        return replaced_option
+
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
 
@@ -384,10 +393,14 @@ class DrawSelectMenu(discord.ui.Select):
                 if added_emoji.status != "Added.":
                     continue
 
-                if len(self.options) == 25:
-                    replaced_option = self.options.pop(self.END_INDEX)
+                option = discord.SelectOption(
+                    label=added_emoji.original_name,
+                    emoji=added_emoji.emoji,
+                    value=str(added_emoji.emoji),
+                )
+                replaced_option = self.append_option(option)
+                if replaced_option is not None:
                     replaced_emoji = replaced_option.emoji
-                    replaced_emoji.name = replaced_option.label
                     replaced_emojis[
                         replaced_emoji.id if replaced_emoji.id else replaced_emoji.name
                     ] = AddedEmoji.from_option(
@@ -396,13 +409,6 @@ class DrawSelectMenu(discord.ui.Select):
                         sent_emoji=SentEmoji(emoji=replaced_emoji),
                     )
                     added_emoji.status = f"Added (replaced {replaced_emoji})."
-
-                option = discord.SelectOption(
-                    label=added_emoji.original_name,
-                    emoji=added_emoji.emoji,
-                    value=str(added_emoji.emoji),
-                )
-                self.append_option(option)
 
             added_emojis.update(replaced_emojis)
 
@@ -441,12 +447,6 @@ class DrawSelectMenu(discord.ui.Select):
             if option is not None:
                 self.view.cursor = option.value
             else:
-                replaced_emoji = None
-                if len(self.options) == 25:
-                    replaced_option = self.options.pop(self.END_INDEX)
-                    replaced_emoji = replaced_option.emoji
-                    replaced_emoji.name = replaced_option.label
-
                 option = discord.SelectOption(
                     label=" + ".join(
                         [
@@ -459,11 +459,11 @@ class DrawSelectMenu(discord.ui.Select):
                     emoji=emoji,
                     value=str(emoji),
                 )
-                self.append_option(option)
+                replaced_option = self.append_option(option)
                 self.view.cursor = self.options[-1].value
 
             await self.view.edit_draw(interaction, False)
-            await res.edit(content=f'Mixed colours:\n{" + ".join(selected_emojis)} = {emoji}' + (f'(replaced {replaced_emoji})' if replaced_emoji else ''))
+            await res.edit(content=f'Mixed colours:\n{" + ".join(selected_emojis)} = {emoji}' + (f' (replaced {replaced_option.emoji})' if replaced_option is not None else ''))
 
         elif self.view.cursor != self.values[0]:
             self.view.cursor = self.values[0]
