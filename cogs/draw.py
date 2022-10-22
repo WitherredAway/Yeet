@@ -316,8 +316,7 @@ class DrawSelectMenu(discord.ui.Select):
         # These need to be defined here because it does not have a view when initiated
         self.ctx = self.view.ctx
         self.bot = self.view.bot
-        select = self
-        if "emoji" in select.values:
+        if "emoji" in self.values:
 
             def check(m):
                 return m.author == interaction.user
@@ -385,8 +384,8 @@ class DrawSelectMenu(discord.ui.Select):
                 if added_emoji.status != "Added.":
                     continue
 
-                if len(select.options) == 25:
-                    replaced_option = select.options.pop(self.END_INDEX)
+                if len(self.options) == 25:
+                    replaced_option = self.options.pop(self.END_INDEX)
                     replaced_emoji = replaced_option.emoji
                     replaced_emoji.name = replaced_option.label
                     replaced_emojis[
@@ -403,12 +402,12 @@ class DrawSelectMenu(discord.ui.Select):
                     emoji=added_emoji.emoji,
                     value=str(added_emoji.emoji),
                 )
-                select.append_option(option)
+                self.append_option(option)
 
             added_emojis.update(replaced_emojis)
 
-            if len(select.options[self.END_INDEX:]) > 0:
-                self.view.cursor = select.options[-1].value
+            if len(self.options[self.END_INDEX:]) > 0:
+                self.view.cursor = self.options[-1].value
 
             response = [
                 f"%s - {added_emoji.status}" % added_emoji.emoji
@@ -421,7 +420,7 @@ class DrawSelectMenu(discord.ui.Select):
             await res.edit(content="\n".join(response))
 
         # If multiple options were selected
-        elif len(select.values) > 1:
+        elif len(self.values) > 1:
             selected_options = [
                 self.option_values_dict.get(value) for value in self.values
             ]
@@ -443,8 +442,8 @@ class DrawSelectMenu(discord.ui.Select):
                 self.view.cursor = option.value
             else:
                 replaced_emoji = None
-                if len(select.options) == 25:
-                    replaced_option = select.options.pop(self.END_INDEX)
+                if len(self.options) == 25:
+                    replaced_option = self.options.pop(self.END_INDEX)
                     replaced_emoji = replaced_option.emoji
                     replaced_emoji.name = replaced_option.label
 
@@ -460,14 +459,14 @@ class DrawSelectMenu(discord.ui.Select):
                     emoji=emoji,
                     value=str(emoji),
                 )
-                select.append_option(option)
-                self.view.cursor = select.options[-1].value
+                self.append_option(option)
+                self.view.cursor = self.options[-1].value
 
             await self.view.edit_draw(interaction, False)
             await res.edit(content=f'Mixed colours:\n{" + ".join(selected_emojis)} = {emoji}' + (f'(replaced {replaced_emoji})' if replaced_emoji else ''))
 
-        elif self.view.cursor != select.values[0]:
-            self.view.cursor = select.values[0]
+        elif self.view.cursor != self.values[0]:
+            self.view.cursor = self.values[0]
             await self.view.edit_draw(interaction, False)
 
 
