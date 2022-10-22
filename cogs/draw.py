@@ -103,23 +103,21 @@ class Draw(commands.Cog):
         elif message_link is None or not isinstance(message_link, discord.Message):
             return await ctx.send_help(ctx.command)
 
-        if all(
-            (
-                message.embeds,
-                "drawing board" in message.embeds[0].title,
-                message.author == ctx.bot.user,
-            )
-        ):
-            description = message.embeds[0].description
-            lines = description.split("\n")[2:]
-            board = []
-            for line in lines:
-                board.append(line.split(PADDING)[-1].split("\u200b"))
-            board = np.array(board, dtype="object")
-        else:
+        if len(message.embeds) == 0 or message.author != ctx.bot.user:
             return await ctx.send(
                 "Invalid message, make sure it's a draw embed and a message from the bot."
             )
+        if "drawing board" not in message.embeds[0].title:
+            return await ctx.send(
+                "Invalid message, make sure it's a draw embed and a message from the bot."
+            )
+
+        description = message.embeds[0].description
+        lines = description.split("\n")[2:]
+        board = []
+        for line in lines:
+            board.append(line.split(PADDING)[-1].split("\u200b"))
+        board = np.array(board, dtype="object")
 
         row_list = ROW_ICONS[: len(board)]
         col_list = COLUMN_ICONS[: len(board[0])]
