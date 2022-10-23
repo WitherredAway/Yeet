@@ -41,7 +41,7 @@ def make_board(
     return board, row_labels, col_labels
 
 
-D = TypeVar("D", bound="DrawButtons")
+D = TypeVar("D", bound="DrawView")
 
 class StartView(discord.ui.View):
     def __init__(self, *, ctx: commands.Context, draw_view: D):
@@ -114,7 +114,7 @@ class Draw(commands.Cog):
             return await ctx.send("Width must be atleast 5 and atmost 17")
 
         board, row_list, col_list = make_board(bg, height, width)
-        draw_view = DrawButtons(bg, board, row_list, col_list, ctx=ctx)
+        draw_view = DrawView(bg, board, row_list, col_list, ctx=ctx)
 
         start_view = StartView(ctx=ctx, draw_view=draw_view)
         response = await ctx.send(
@@ -169,7 +169,7 @@ class Draw(commands.Cog):
             if option.label.endswith(" (base)"):
                 bg = str(option.emoji)
 
-        draw_view = DrawButtons(
+        draw_view = DrawView(
             bg, board, row_list, col_list, ctx=ctx, selectmenu_options=options
         )
         draw_view.cursor = description.split(PADDING)[0]
@@ -532,7 +532,7 @@ class DrawSelectMenu(discord.ui.Select):
             await self.view.edit_draw(interaction, False)
 
 
-class DrawButtons(discord.ui.View):
+class DrawView(discord.ui.View):
     def __init__(
         self,
         bg,
