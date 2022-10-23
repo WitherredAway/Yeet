@@ -43,6 +43,7 @@ def make_board(
 
 D = TypeVar("D", bound="DrawView")
 
+
 class StartView(discord.ui.View):
     def __init__(self, *, ctx: commands.Context, draw_view: D):
         super().__init__(timeout=30)
@@ -70,7 +71,9 @@ class StartView(discord.ui.View):
             embed=self.draw_view.embed, view=self.draw_view
         )
         self.draw_view.response = response
-        await response.edit(embed=self.draw_view.embed, view=self.draw_view)  # This is necessary because custom emojis only render when a followup is edited ◉_◉
+        await response.edit(
+            embed=self.draw_view.embed, view=self.draw_view
+        )  # This is necessary because custom emojis only render when a followup is edited ◉_◉
 
         await self.response.edit(view=None)
         self.stop()
@@ -175,7 +178,11 @@ class Draw(commands.Cog):
         draw_view.cursor = description.split(PADDING)[0]
 
         start_view = StartView(ctx=ctx, draw_view=draw_view)
-        response = await ctx.send(content="Create a copy of this board? (Due to discord limitations, custom emojis may not render here)", embed=draw_view.embed, view=start_view)
+        response = await ctx.send(
+            content="Create a copy of this board? (Due to discord limitations, custom emojis may not render here)",
+            embed=draw_view.embed,
+            view=start_view,
+        )
         start_view.response = response
 
 
