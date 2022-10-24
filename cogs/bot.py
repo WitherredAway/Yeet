@@ -74,6 +74,7 @@ class Bot(commands.Cog):
 
         else:
             await ctx.send(str(error)[:2000])
+            raise error
 
     # logs
     @commands.Cog.listener(name="on_command")
