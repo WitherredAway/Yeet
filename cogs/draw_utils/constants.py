@@ -1,6 +1,7 @@
 from PIL import ImageFont
 
 from constants import u200b
+from ..utils.utils import invert_dict
 
 
 ROW_ICONS_DICT = {
@@ -59,6 +60,9 @@ CURSOR = {
     "⬛": "⚫",
     "⬜": "⚪",
 }
+
+
+inv_CURSOR = invert_dict(CURSOR)
 
 
 LETTER_TO_NUMBER = {

@@ -9,7 +9,6 @@ import emojis
 import numpy as np
 import discord
 from discord.ext import commands
-from .utils.utils import invert_dict
 from PIL import Image
 
 from constants import u200b, NEW_LINE
@@ -19,6 +18,7 @@ from .draw_utils.constants import (
     COLUMN_ICONS_DICT,
     COLUMN_ICONS,
     CURSOR,
+    inv_CURSOR,
     LETTER_TO_NUMBER,
     ALPHABETS,
     NUMBERS,
@@ -29,16 +29,6 @@ from .draw_utils.emoji import (
     SentEmoji,
     AddedEmoji,
 )
-
-
-def make_board(
-    bg: str, height: int, width: int
-) -> Tuple[np.array, Tuple[str], Tuple[str]]:
-    board = np.full((height, width), bg, dtype="object")
-    row_labels = ROW_ICONS[:height]
-    col_labels = COLUMN_ICONS[:width]
-
-    return board, row_labels, col_labels
 
 
 D = TypeVar("D", bound="DrawView")
@@ -116,8 +106,8 @@ class Draw(commands.Cog):
         if width < 5 or width > 17:
             return await ctx.send("Width must be atleast 5 and atmost 17")
 
-        board, row_list, col_list = make_board(bg, height, width)
-        draw_view = DrawView(bg, board, row_list, col_list, ctx=ctx)
+        board = Board(height=height, width=width, background=background)
+        draw_view = DrawView(board, ctx=ctx)
 
         start_view = StartView(ctx=ctx, draw_view=draw_view)
         response = await ctx.send(
@@ -159,23 +149,16 @@ class Draw(commands.Cog):
             board.append(line.split(PADDING)[-1].split("\u200b"))
         board = np.array(board, dtype="object")
 
-        row_list = ROW_ICONS[: len(board)]
-        col_list = COLUMN_ICONS[: len(board[0])]
-        try:
-            board[int(len(row_list) / 2), int(len(col_list) / 2)] = CURSOR[
-                board[int(len(row_list) / 2), int(len(col_list) / 2)]
-            ]
-        except KeyError:
-            pass
         options = discord.ui.View.from_message(message, timeout=0).children[0].options
         for option in options:
             if option.label.endswith(" (base)"):
                 bg = str(option.emoji)
 
+        board_obj = Board.from_board(board=board, background=bg)
         draw_view = DrawView(
-            bg, board, row_list, col_list, ctx=ctx, selectmenu_options=options
+            board_obj, ctx=ctx, selectmenu_options=options
         )
-        draw_view.cursor = description.split(PADDING)[0]
+        draw_view.board.cursor = description.split(PADDING)[0]
 
         start_view = StartView(ctx=ctx, draw_view=draw_view)
         response = await ctx.send(
@@ -184,6 +167,140 @@ class Draw(commands.Cog):
             view=start_view,
         )
         start_view.response = response
+
+
+B = TypeVar("B", bound="Board")
+
+
+class Board():
+    def __init__(
+        self,
+        *,
+        height: Optional[int] = 9,
+        width: Optional[int] = 9,
+        background: Literal["🟥", "🟧", "🟨", "🟩", "🟦", "🟪", "🟫", "⬛", "⬜"] = "⬜",
+    ) -> None:
+        self.height: int = height
+        self.width: int = width
+        self.background: str = background
+
+        self.initial_board: np.array = np.full((height, width), background, dtype="object")
+        self.board: np.array = self.initial_board.copy()
+        self.backup_board: np.array = self.initial_board.copy()
+        self.row_labels: Tuple[str] = ROW_ICONS[:height]
+        self.col_labels: Tuple[str] = COLUMN_ICONS[:width]
+
+        self.cursor: str = self.background
+        self.cursor_row: int = int(len(self.row_labels) / 2)
+        self.cursor_row_max = len(self.row_labels) - 1
+        self.cursor_col: int = int(len(self.col_labels) / 2)
+        self.cursor_col_max = len(self.col_labels) - 1
+        self.cursor_cells: List[Tuple[int, int]] = [(self.cursor_row, self.cursor_col)]
+
+        # This is for fill_bucket.
+        self.initial_cell: Tuple[int, int]
+        self.final_cell: Tuple[int, int]
+
+        self.clear_cursors()
+        self.draw_cursor()
+
+        self.auto = False
+        self.fill = False
+
+    @classmethod
+    def from_board(cls, board: np.array, *, background: Optional[str] = "⬜"):
+        height = len(board)
+        width = len(board[0])
+
+        board_obj = cls(height=height, width=width, background=background)
+        board_obj.board = board
+
+        return board_obj
+
+    def clear(self):
+        self.board[:] = self.background
+        self.clear_cursors()
+        self.draw_cursor()
+
+    def un_cursor(self, value):
+        return inv_CURSOR.get(value, value)
+
+    def draw_cursor(
+        self,
+        row: Optional[int] = None,
+        col: Optional[int] = None,
+        *,
+        draw: Optional[str] = None,
+    ):
+        row = row if row is not None else self.cursor_row
+        col = col if col is not None else self.cursor_col
+        draw = draw if draw is not None else self.board[row, col]
+
+        self.board[row, col] = CURSOR.get(draw, draw)
+
+    def clear_cursors(self, *, empty: Optional[bool] = False):
+        for x, row in enumerate(self.board):
+            for y, _ in enumerate(row):
+                cell_tuple = (x, y)
+                self.board[cell_tuple] = self.un_cursor(self.board[cell_tuple])
+
+        self.cursor_cells = [(self.cursor_row, self.cursor_col)] if empty is False else []
+
+    def move_cursor(
+        self, row_move: Optional[int] = 0, col_move: Optional[int] = 0
+    ):
+        self.clear_cursors()
+        self.cursor_row = (self.cursor_row + row_move) % (self.cursor_row_max + 1)
+        self.cursor_col = (self.cursor_col + col_move) % (self.cursor_col_max + 1)
+
+        if self.fill is not True:
+            self.cursor_cells = [(self.cursor_row, self.cursor_col)]
+        elif self.fill is True:
+            self.final_cell = (self.cursor_row, self.cursor_col)
+            self.final_row, self.final_col = self.final_cell
+
+            self.cursor_cells = [
+                (row, col)
+                for col in range(
+                    min(self.initial_col, self.final_col),
+                    max(self.initial_col, self.final_col) + 1,
+                )
+                for row in range(
+                    min(self.initial_row, self.final_row),
+                    max(self.initial_row, self.final_row) + 1,
+                )
+            ]
+
+    def draw(
+        self,
+        draw: Optional[Union[str, bool]] = None,
+        *,
+        fill_replace: Optional[bool] = False,
+    ):
+        if all(
+            (
+                draw is not None,
+                all(
+                    self.board[row, col] == CURSOR.get(draw, draw)
+                    for row, col in self.cursor_cells
+                ),
+                self.auto is False,
+            )
+        ):
+            return
+
+        if self.auto is True and draw is None:
+            draw = self.cursor
+
+        if fill_replace is True:
+            draw = self.cursor
+            to_replace = self.un_cursor(self.board[self.cursor_row, self.cursor_col])
+            self.board[self.board == to_replace] = draw
+
+        if draw is not False:
+            for row, col in self.cursor_cells:
+                self.draw_cursor(row, col, draw=draw)
+        self.backup_board = self.board.copy()
 
 
 C = TypeVar("C", bound="Colour")
@@ -282,7 +399,7 @@ class DrawSelectMenu(discord.ui.Select):
         self,
         *,
         options: Optional[List[discord.SelectOption]] = None,
-        bg: str,
+        background: str,
     ):
         default_options = [
             discord.SelectOption(label="Red", emoji="🟥", value="🟥"),
@@ -303,7 +420,7 @@ class DrawSelectMenu(discord.ui.Select):
         options = options if options else default_options
         self.END_INDEX = len(default_options)  # The ending index of default options
         for option in options:
-            if str(option.emoji) == bg and not option.label.endswith(" (base)"):
+            if str(option.emoji) == background and not option.label.endswith(" (base)"):
                 option.label += " (base)"
 
         super().__init__(
@@ -381,6 +498,7 @@ class DrawSelectMenu(discord.ui.Select):
         # These need to be defined here because it does not have a view when initiated
         self.ctx = self.view.ctx
         self.bot = self.view.bot
+        self.board = self.view.board
         if "emoji" in self.values:
 
             def check(m):
@@ -473,7 +591,7 @@ class DrawSelectMenu(discord.ui.Select):
             }
 
             if len(self.options[self.END_INDEX :]) > 0:
-                self.view.cursor = self.options[-1].value
+                self.board.cursor = self.options[-1].value
 
             response = [
                 f"%s - {added_emoji.status}" % added_emoji.emoji
@@ -507,7 +625,7 @@ class DrawSelectMenu(discord.ui.Select):
 
             option = self.emoji_to_option(emoji)
             if option is not None:
-                self.view.cursor = option.value
+                self.board.cursor = option.value
             else:
                 option = discord.SelectOption(
                     label=" + ".join(
@@ -522,7 +640,7 @@ class DrawSelectMenu(discord.ui.Select):
                     value=str(emoji),
                 )
                 replaced_option = self.append_option(option)
-                self.view.cursor = self.options[-1].value
+                self.board.cursor = self.options[-1].value
 
             await self.view.edit_draw(interaction, False)
             await res.edit(
@@ -534,18 +652,15 @@ class DrawSelectMenu(discord.ui.Select):
                 )
             )
 
-        elif self.view.cursor != self.values[0]:
-            self.view.cursor = self.values[0]
+        elif self.board.cursor != self.values[0]:
+            self.board.cursor = self.values[0]
             await self.view.edit_draw(interaction, False)
 
 
 class DrawView(discord.ui.View):
     def __init__(
         self,
-        bg,
-        board,
-        row_list,
-        col_list,
+        board: Board,
         *,
         ctx: commands.Context,
         selectmenu_options: Optional[List[discord.SelectOption]] = None,
@@ -553,75 +668,52 @@ class DrawView(discord.ui.View):
         super().__init__(timeout=600)
         self.secondary = False
 
-        self.selectmenu = DrawSelectMenu(options=selectmenu_options, bg=bg)
+        self.selectmenu: DrawSelectMenu = DrawSelectMenu(options=selectmenu_options, background=board.background)
         self.load_items()
 
-        self.bg = bg
-        self.initial_board = board
-        self.board = self.initial_board.copy()
-        self.row_list = row_list
-        self.col_list = col_list
-        self.cursor_row = int(len(row_list) / 2)
-        self.cursor_col = int(len(col_list) / 2)
-        self.ctx = ctx
-        self.bot = self.ctx.bot
-        self.response = None
-        self.cells = [(self.cursor_row, self.cursor_col)]
-        self.cursor = self.bg
-        self.cursor_row_max = row_list.index(row_list[-1])
-        self.cursor_col_max = col_list.index(col_list[-1])
-        self.initial_cell = (None, None)
-        self.initial_row = self.initial_cell[0]
-        self.initial_col = self.initial_cell[1]
-        self.final_cell = (None, None)
-        self.final_row = self.final_cell[0]
-        self.final_col = self.final_cell[1]
-        self.inv_CURSOR = invert_dict(CURSOR)
+        self.board: Board = board
 
-        self.clear_cursors()
-        self.draw_cursor()
-
+        self.ctx: commands.Context = ctx
+        self.bot: commands.Bot = self.ctx.bot
+        self.response: discord.Message = None
         self.lock = self.bot.lock
-
-        self.auto = False
-        self.fill = False
 
     @property
     def embed(self):
         embed = discord.Embed(title=f"{self.ctx.author}'s drawing board.")
 
-        cursor_rows = tuple(cell_tuple[0] for cell_tuple in self.cells)
-        cursor_cols = tuple(cell_tuple[1] for cell_tuple in self.cells)
-        row_list = [
+        cursor_rows = tuple(row for row, col in self.board.cursor_cells)
+        cursor_cols = tuple(col for row, col in self.board.cursor_cells)
+        row_labels = [
             (row if idx not in cursor_rows else ROW_ICONS_DICT[row])
-            for idx, row in enumerate(self.row_list)
+            for idx, row in enumerate(self.board.row_labels)
         ]
-        col_list = [
+        col_labels = [
             (col if idx not in cursor_cols else COLUMN_ICONS_DICT[col])
-            for idx, col in enumerate(self.col_list)
+            for idx, col in enumerate(self.board.col_labels)
         ]
 
         # The actual board
         embed.description = (
-            f"{self.cursor}{PADDING}{u200b.join(col_list)}\n"
-            f"\n{NEW_LINE.join([f'{row_list[idx]}{PADDING}{u200b.join(row)}' for idx, row in enumerate(self.board)])}"
+            f"{self.board.cursor}{PADDING}{u200b.join(col_labels)}\n"
+            f"\n{NEW_LINE.join([f'{row_labels[idx]}{PADDING}{u200b.join(row)}' for idx, row in enumerate(self.board.board)])}"
         )
 
         embed.set_footer(
             text=(
                 f"The board looks wack? Try decreasing its size! Do {self.ctx.clean_prefix}help draw for more info."
-                if all((len(self.row_list) >= 10, len(self.col_list) >= 10))
+                if any((len(self.board.row_labels) >= 10, len(self.board.col_labels) >= 10))
                 else f"You can customize this board! Do {self.ctx.clean_prefix}help draw for more info."
             )
         )
         return embed
 
-    def stop_board(self):
+    def stop_view(self):
         self.selectmenu.disabled = True
 
         self.clear_items()
         self.add_item(self.selectmenu)
-        self.clear_cursors(empty=True)
+        self.board.clear_cursors(empty=True)
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user != self.ctx.author:
@@ -633,7 +725,7 @@ class DrawView(discord.ui.View):
         return True
 
     async def on_timeout(self):
-        self.stop_board()
+        self.stop_view()
         self.add_item(
             discord.ui.Button(
                 label=f"This interaction has timed out. Use {self.ctx.prefix}{self.ctx.command} for a new one.",
@@ -672,17 +764,6 @@ class DrawView(discord.ui.View):
                 if delete_msg is True:
                     await msg.delete()
             return res, msg
-
-    @property
-    def placeholder_button(self) -> discord.ui.Button:
-        button = discord.ui.Button(
-            label="\u200b",
-            style=discord.ButtonStyle.gray,
-            custom_id=str(len(self.children)),
-        )
-        button.callback = lambda interaction: interaction.response.defer()
-
-        return button
 
     def load_items(self):
         self.clear_items()
@@ -739,29 +820,16 @@ class DrawView(discord.ui.View):
             self.add_item(self.down_right)
             self.add_item(self.set_cursor)
 
-    def un_cursor(self, value):
-        return self.inv_CURSOR.get(value, value)
+    @property
+    def placeholder_button(self) -> discord.ui.Button:
+        button = discord.ui.Button(
+            label="\u200b",
+            style=discord.ButtonStyle.gray,
+            custom_id=str(len(self.children)),
+        )
+        button.callback = lambda interaction: interaction.response.defer()
 
-    def draw_cursor(
-        self,
-        row: Optional[int] = None,
-        col: Optional[int] = None,
-        *,
-        draw: Optional[str] = None,
-    ):
-        row = row if row is not None else self.cursor_row
-        col = col if col is not None else self.cursor_col
-        draw = draw if draw is not None else self.board[row, col]
-
-        self.board[row, col] = CURSOR.get(draw, draw)
-
-    def clear_cursors(self, *, empty: Optional[bool] = False):
-        for x, row in enumerate(self.board):
-            for y, _ in enumerate(row):
-                cell_tuple = (x, y)
-                self.board[cell_tuple] = self.un_cursor(self.board[cell_tuple])
-
-        self.cells = [(self.cursor_row, self.cursor_col)] if empty is False else []
+        return button
 
     async def edit_draw(
         self,
@@ -770,30 +838,7 @@ class DrawView(discord.ui.View):
         *,
         fill_replace: Optional[bool] = False,
     ):
-        if all(
-            (
-                draw is not None,
-                all(
-                    self.board[row, col] == CURSOR.get(draw, draw)
-                    for row, col in self.cells
-                ),
-                self.auto is False,
-            )
-        ):
-            return
-
-        if self.auto is True and draw is None:
-            draw = self.cursor
-
-        if fill_replace is True:
-            draw = self.cursor
-            to_replace = self.un_cursor(self.board[self.cursor_row, self.cursor_col])
-            self.board[self.board == to_replace] = draw
-
-        if draw is not False:
-            for row, col in self.cells:
-                self.draw_cursor(row, col, draw=draw)
-        self.backup_board = copy.deepcopy(self.board)
+        self.board.draw(draw, fill_replace=fill_replace)
         await self.edit_message(interaction)
 
     async def edit_message(self, interaction: discord.Interaction):
@@ -804,7 +849,7 @@ class DrawView(discord.ui.View):
                 "In embeds\.\d+\.description: Must be 4096 or fewer in length\.",
                 error.text,
             ):  # If the description reaches char limit
-                self.board = self.backup_board
+                self.board = self.board.backup_board
                 await interaction.followup.send(
                     content="Max characters reached. Please remove some custom emojis from the board.\nCustom emojis take up more than 20 characters each, while most unicode/default ones take up 1!\nMaximum is 4096 characters due to discord limitations.",
                     ephemeral=True,
@@ -815,7 +860,7 @@ class DrawView(discord.ui.View):
                 error.text,
             ):  # If the emoji of one of the options of the select menu is unavailable
                 removed_option = self.selectmenu.options.pop(int(match.group("option")))
-                self.cursor = self.bg
+                self.board.cursor = self.board.background
                 await interaction.followup.send(
                     content=f"The {removed_option.emoji} emoji was removed for some reason, so the option was removed aswell. Please try again.",
                     ephemeral=True,
@@ -826,43 +871,22 @@ class DrawView(discord.ui.View):
                 raise error
 
     async def move_cursor(
-        self, interaction: discord.Interaction, row_move: int = 0, col_move: int = 0
+        self, interaction: discord.Interaction, row_move: Optional[int] = 0, col_move: Optional[int] = 0
     ):
-        self.clear_cursors()
-        self.cursor_row = (self.cursor_row + row_move) % (self.cursor_row_max + 1)
-        self.cursor_col = (self.cursor_col + col_move) % (self.cursor_col_max + 1)
-
-        if self.fill is not True:
-            self.cells = [(self.cursor_row, self.cursor_col)]
-        elif self.fill is True:
-            self.final_cell = (self.cursor_row, self.cursor_col)
-            self.final_row = self.final_cell[0]
-            self.final_col = self.final_cell[1]
-
-            self.cells = [
-                (row, col)
-                for col in range(
-                    min(self.initial_col, self.final_col),
-                    max(self.initial_col, self.final_col) + 1,
-                )
-                for row in range(
-                    min(self.initial_row, self.final_row),
-                    max(self.initial_row, self.final_row) + 1,
-                )
-            ]
-
+        self.board.move_cursor(row_move, col_move)
         await self.edit_draw(interaction)
 
     def toggle(
         self,
+        obj,
         attribute: str,
         button: discord.ui.Button,
         *,
         switch_to: Optional[bool] = None,
     ):
-        attr_value = getattr(self, attribute)
+        attr_value = getattr(obj, attribute)
         switch_to = switch_to if switch_to is not None else not attr_value
-        setattr(self, attribute, switch_to)
+        setattr(obj, attribute, switch_to)
 
         if switch_to is True:
             button.style = discord.ButtonStyle.green
@@ -879,7 +903,7 @@ class DrawView(discord.ui.View):
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
-        self.stop_board()
+        self.stop_view()
         await self.edit_draw(interaction)
         self.stop()
 
@@ -888,14 +912,10 @@ class DrawView(discord.ui.View):
     )
     async def clear(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
-        self.toggle("secondary", self.secondary_button, switch_to=False)
-        self.toggle("auto", self.auto_colour, switch_to=False)
-        self.toggle("fill", self.fill_bucket, switch_to=False)
-        self.cursor_row = int(len(self.row_list) / 2)
-        self.cursor_col = int(len(self.col_list) / 2)
-        self.board, _, _ = make_board(self.bg, len(self.col_list), len(self.row_list))
-        self.clear_cursors()
-        self.draw_cursor()
+        self.toggle(self, "secondary", self.secondary_button, switch_to=False)
+        self.toggle(self.board, "auto", self.auto_draw, switch_to=False)
+        self.toggle(self.board, "fill", self.fill_bucket, switch_to=False)
+        self.board.clear()
         self.load_items()
         await self.edit_draw(interaction)
 
@@ -904,7 +924,7 @@ class DrawView(discord.ui.View):
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
-        self.toggle("secondary", button)
+        self.toggle(self, "secondary", button)
 
         self.load_items()
         await self.edit_draw(interaction)
@@ -916,14 +936,13 @@ class DrawView(discord.ui.View):
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
-        if self.fill is False:
-            self.initial_cell = (self.cursor_row, self.cursor_col)
-            self.initial_row = self.initial_cell[0]
-            self.initial_col = self.initial_cell[1]
-        elif self.fill is True:
-            self.clear_cursors()
-            self.draw_cursor()
-        self.toggle("fill", button)
+        if self.board.fill is False:
+            self.board.initial_cell = (self.board.cursor_row, self.board.cursor_col)
+            self.board.initial_row, self.board.initial_col = self.board.initial_cell
+        elif self.board.fill is True:
+            self.board.clear_cursors()
+            self.board.draw_cursor()
+        self.toggle(self.board, "fill", button)
         await self.edit_draw(interaction)
 
     @discord.ui.button(
@@ -933,7 +952,7 @@ class DrawView(discord.ui.View):
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
-        await self.edit_draw(interaction, self.cursor, fill_replace=True)
+        await self.edit_draw(interaction, self.board.cursor, fill_replace=True)
 
     # 2nd row
     @discord.ui.button(
@@ -944,8 +963,8 @@ class DrawView(discord.ui.View):
     ):
         await interaction.response.defer()
 
-        cursor_cell = self.board[self.cursor_row, self.cursor_col]
-        emoji = discord.PartialEmoji.from_str(self.un_cursor(cursor_cell))
+        cursor_cell = self.board.board[self.board.cursor_row, self.board.cursor_col]
+        emoji = discord.PartialEmoji.from_str(self.board.un_cursor(cursor_cell))
 
         # Check if the option already exists
         option = self.selectmenu.emoji_to_option(emoji)
@@ -962,7 +981,7 @@ class DrawView(discord.ui.View):
             )
 
         self.selectmenu.append_option(option)
-        self.cursor = option.value
+        self.board.cursor = option.value
         return await self.edit_draw(interaction, False)
 
     @discord.ui.button(
@@ -1002,7 +1021,7 @@ class DrawView(discord.ui.View):
     )
     async def erase(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
-        await self.edit_draw(interaction, CURSOR[self.bg])
+        await self.edit_draw(interaction, self.board.background)
 
     @discord.ui.button(
         emoji="<:left:1032565106934022185>", style=discord.ButtonStyle.blurple
@@ -1020,7 +1039,7 @@ class DrawView(discord.ui.View):
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
-        self.toggle("auto", button)
+        self.toggle(self.board, "auto", button)
         await self.edit_draw(interaction, False)
 
     @discord.ui.button(
@@ -1038,7 +1057,7 @@ class DrawView(discord.ui.View):
     )
     async def draw(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
-        await self.edit_draw(interaction, self.cursor)
+        await self.edit_draw(interaction, self.board.cursor)
 
     @discord.ui.button(
         emoji="<:down_left:1032565090223935518>", style=discord.ButtonStyle.blurple
@@ -1092,8 +1111,8 @@ class DrawView(discord.ui.View):
             return
         cell = msg.content.upper()
 
-        ABC = ALPHABETS[: self.cursor_row_max + 1]
-        NUM = NUMBERS[: self.cursor_col_max + 1]
+        ABC = ALPHABETS[: self.board.cursor_row_max + 1]
+        NUM = NUMBERS[: self.board.cursor_col_max + 1]
 
         # There is absolutely no reason to use regex here but YOLO
         CELL_REGEX = f"^(?P<row>[A-{ABC[-1]}])(?P<col>[0-9]|(?:1[0-{NUM[-1] % 10}]))$"
@@ -1109,18 +1128,18 @@ class DrawView(discord.ui.View):
             match = re.match(ROW_OR_COL_REGEX, cell)
             if match is not None:
                 row_key = match.group("row")
-                row_key = row_key if row_key is not None else ABC[self.cursor_row]
+                row_key = row_key if row_key is not None else ABC[self.board.cursor_row]
 
                 col_key = match.group("col")
-                col_key = int(col_key) if col_key is not None else self.cursor_col
+                col_key = int(col_key) if col_key is not None else self.board.cursor_col
             else:
                 row_key = col_key = None
 
         if row_key not in ABC or col_key not in NUM:
             return await res.edit(content="Aborted.")
 
-        row_move = LETTER_TO_NUMBER[row_key] - self.cursor_row
-        col_move = col_key - self.cursor_col
+        row_move = LETTER_TO_NUMBER[row_key] - self.board.cursor_row
+        col_move = col_key - self.board.cursor_col
         await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
         await res.edit(
             content=f"Moved cursor to **{cell}** ({LETTER_TO_NUMBER[row_key]}, {col_key})"
