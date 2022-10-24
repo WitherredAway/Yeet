@@ -1097,7 +1097,7 @@ class DrawView(discord.ui.View):
 
         # There is absolutely no reason to use regex here but YOLO
         CELL_REGEX = f"^(?P<row>[A-{ABC[-1]}])(?P<col>[0-9]|(?:1[0-{NUM[-1] % 10}]))$"
-        ROW_OR_CELL_REGEX = (
+        ROW_OR_COL_REGEX = (
             f"(?:^(?P<row>[A-{ABC[-1]}])$)|(?:^(?P<col>[0-9]|(?:1[0-{NUM[-1] % 10}]))$)"
         )
 
@@ -1106,7 +1106,7 @@ class DrawView(discord.ui.View):
             row_key = match.group("row")
             col_key = int(match.group("col"))
         else:
-            match = re.match(ROW_OR_CELL_REGEX, cell)
+            match = re.match(ROW_OR_COL_REGEX, cell)
             if match is not None:
                 row_key = match.group("row")
                 row_key = row_key if row_key is not None else ABC[self.cursor_row]
