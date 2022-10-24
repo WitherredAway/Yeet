@@ -155,9 +155,7 @@ class Draw(commands.Cog):
                 bg = str(option.emoji)
 
         board_obj = Board.from_board(board=board, background=bg)
-        draw_view = DrawView(
-            board_obj, ctx=ctx, selectmenu_options=options
-        )
+        draw_view = DrawView(board_obj, ctx=ctx, selectmenu_options=options)
         draw_view.board.cursor = description.split(PADDING)[0]
 
         start_view = StartView(ctx=ctx, draw_view=draw_view)
@@ -172,7 +170,7 @@ class Draw(commands.Cog):
 B = TypeVar("B", bound="Board")
 
 
-class Board():
+class Board:
     def __init__(
         self,
         *,
@@ -184,7 +182,9 @@ class Board():
         self.width: int = width
         self.background: str = background
 
-        self.initial_board: np.array = np.full((height, width), background, dtype="object")
+        self.initial_board: np.array = np.full(
+            (height, width), background, dtype="object"
+        )
         self.board: np.array = self.initial_board.copy()
         self.backup_board: np.array = self.initial_board.copy()
         self.row_labels: Tuple[str] = ROW_ICONS[:height]
@@ -244,11 +244,11 @@ class Board():
                 cell_tuple = (x, y)
                 self.board[cell_tuple] = self.un_cursor(self.board[cell_tuple])
 
-        self.cursor_cells = [(self.cursor_row, self.cursor_col)] if empty is False else []
+        self.cursor_cells = (
+            [(self.cursor_row, self.cursor_col)] if empty is False else []
+        )
 
-    def move_cursor(
-        self, row_move: Optional[int] = 0, col_move: Optional[int] = 0
-    ):
+    def move_cursor(self, row_move: Optional[int] = 0, col_move: Optional[int] = 0):
         self.clear_cursors()
         self.cursor_row = (self.cursor_row + row_move) % (self.cursor_row_max + 1)
         self.cursor_col = (self.cursor_col + col_move) % (self.cursor_col_max + 1)
@@ -668,7 +668,9 @@ class DrawView(discord.ui.View):
         super().__init__(timeout=600)
         self.secondary = False
 
-        self.selectmenu: DrawSelectMenu = DrawSelectMenu(options=selectmenu_options, background=board.background)
+        self.selectmenu: DrawSelectMenu = DrawSelectMenu(
+            options=selectmenu_options, background=board.background
+        )
         self.load_items()
 
         self.board: Board = board
@@ -702,7 +704,9 @@ class DrawView(discord.ui.View):
         embed.set_footer(
             text=(
                 f"The board looks wack? Try decreasing its size! Do {self.ctx.clean_prefix}help draw for more info."
-                if any((len(self.board.row_labels) >= 10, len(self.board.col_labels) >= 10))
+                if any(
+                    (len(self.board.row_labels) >= 10, len(self.board.col_labels) >= 10)
+                )
                 else f"You can customize this board! Do {self.ctx.clean_prefix}help draw for more info."
             )
         )
@@ -871,7 +875,10 @@ class DrawView(discord.ui.View):
                 raise error
 
     async def move_cursor(
-        self, interaction: discord.Interaction, row_move: Optional[int] = 0, col_move: Optional[int] = 0
+        self,
+        interaction: discord.Interaction,
+        row_move: Optional[int] = 0,
+        col_move: Optional[int] = 0,
     ):
         self.board.move_cursor(row_move, col_move)
         await self.edit_draw(interaction)
