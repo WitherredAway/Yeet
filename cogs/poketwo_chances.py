@@ -31,7 +31,7 @@ class PoketwoChances(commands.Cog):
         self.gists_client = gists.Client()
         await self.gists_client.authorize(os.getenv("WgithubTOKEN"))
 
-    @cached_property
+    @property
     def pk(self):
         pk = pd.read_csv(self.pokemon_csv)
         self.possible_abundance = round(
@@ -120,14 +120,14 @@ class PoketwoChances(commands.Cog):
             gist_id = gist_link.split("/")[-1]
             await self.update_chance_gist(
                 pkm_df,
-                description=f"Spawn chances of {title} pokémon. {total_chances}",
+                description=f"Spawn chances of {title} pokémon ({len(pkm_df)}). {total_chances}",
                 gist_id=gist_id,
                 keep_cols=keep_cols,
             )
             all_pokemon = f"> All pokémon: <{gist_link}>"
             extra = f" (Includes all catchable forms)\n{all_pokemon}\n**Total pokemon**: {len(pkm_df)}"
 
-        result = f"__**{title} spawn-chance**__{extra}\n{total_chances}"
+        result = f"__**{title} spawn-chances**__{extra}\n{total_chances}"
         return result
 
     @commands.group(
