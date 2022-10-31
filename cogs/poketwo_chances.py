@@ -148,6 +148,7 @@ class PoketwoChances(commands.Cog):
         async with ctx.channel.typing():
             result = await self.format_msg("All", pkm_df, gist_link=ALL_GIST)
         await ctx.send(result)
+        return result
 
     @chance.command(
         name="rarity",
@@ -179,6 +180,7 @@ class PoketwoChances(commands.Cog):
                 rarity, pkm_df, gist_link=options_gists.get(rarity)
             )
         await ctx.send(result)
+        return result
 
     @chance.command(
         name="form",
@@ -186,9 +188,9 @@ class PoketwoChances(commands.Cog):
     )
     async def _form(self, ctx, form):
         options_gists = {
-            "Alolans": "https://gist.github.com/7c3cdaaa36c38d2fb2bd716652b09d00",
-            "Galarians": "https://gist.github.com/4fb6735b2241506105af52626953618b",
-            "Hisuians": "https://gist.github.com/4bcf5ef86577b14aa464a3376adb430e",
+            "Alolan": "https://gist.github.com/7c3cdaaa36c38d2fb2bd716652b09d00",
+            "Galarian": "https://gist.github.com/4fb6735b2241506105af52626953618b",
+            "Hisuian": "https://gist.github.com/4bcf5ef86577b14aa464a3376adb430e",
         }
         options = options_gists.keys()
         for option in options:
@@ -211,6 +213,7 @@ class PoketwoChances(commands.Cog):
                 form, pkm_df, gist_link=options_gists.get(form)
             )
         await ctx.send(result)
+        return result
 
     @chance.command(
         name="region",
@@ -254,6 +257,7 @@ class PoketwoChances(commands.Cog):
                 f"{region} region", pkm_df, gist_link=options_gists.get(region)
             )
         await ctx.send(result)
+        return result
 
     @chance.command(
         name="pokemon",
@@ -282,6 +286,7 @@ class PoketwoChances(commands.Cog):
                 list_pokemon=False,
             )
         await ctx.send(result)
+        return result
 
     async def get_types_gist(self, type_1: str, type_2: str):
         TYPES_GISTS_LINK = (
@@ -356,6 +361,7 @@ class PoketwoChances(commands.Cog):
                 gist_link=await self.get_types_gist(type_1, type_2),
             )
         await ctx.send(result)
+        return result
 
     @chance.command(
         name="event", aliases=("ev",), help="Chances of pokemon of the current event"
@@ -374,6 +380,7 @@ class PoketwoChances(commands.Cog):
                 "Event", pkm_df, keep_cols=["enabled"], gist_link=EVENT_GIST
             )
         await ctx.send(result)
+        return result
 
 
 async def setup(bot):
