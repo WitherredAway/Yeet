@@ -277,18 +277,6 @@ class Board:
         *,
         fill_replace: Optional[bool] = False,
     ):
-        if all(
-            (
-                draw is not None,
-                all(
-                    self.board[row, col] == CURSOR.get(draw, draw)
-                    for row, col in self.cursor_cells
-                ),
-                self.auto is False,
-            )
-        ):
-            return
-
         if self.auto is True and draw is None:
             draw = self.cursor
 
@@ -842,6 +830,18 @@ class DrawView(discord.ui.View):
         *,
         fill_replace: Optional[bool] = False,
     ):
+        if all(
+            (
+                draw is not None,
+                all(
+                    self.board[row, col] == CURSOR.get(draw, draw)
+                    for row, col in self.cursor_cells
+                ),
+                self.auto is False,
+            )
+        ):
+            return
+
         self.board.draw(draw, fill_replace=fill_replace)
         await self.edit_message(interaction)
 
