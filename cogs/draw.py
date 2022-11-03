@@ -195,11 +195,11 @@ class Board:
         self.cursor_row_max = len(self.row_labels) - 1
         self.cursor_col: int = int(len(self.col_labels) / 2)
         self.cursor_col_max = len(self.col_labels) - 1
-        self.cursor_cells: List[Tuple[int, int]] = [(self.cursor_row, self.cursor_col)]
+        self.cursor_coords: List[Tuple[int, int]] = [(self.cursor_row, self.cursor_col)]
 
         # This is for select tool.
-        self.initial_cell: Tuple[int, int]
-        self.final_cell: Tuple[int, int]
+        self.initial_coord: Tuple[int, int]
+        self.final_coord: Tuple[int, int]
 
         self.clear_cursors()
         self.draw_cursor()
@@ -244,7 +244,7 @@ class Board:
                 cell_tuple = (x, y)
                 self.board[cell_tuple] = self.un_cursor(self.board[cell_tuple])
 
-        self.cursor_cells = (
+        self.cursor_coords = (
             [(self.cursor_row, self.cursor_col)] if empty is False else []
         )
 
@@ -254,12 +254,12 @@ class Board:
         self.cursor_col = (self.cursor_col + col_move) % (self.cursor_col_max + 1)
 
         if self.select is not True:
-            self.cursor_cells = [(self.cursor_row, self.cursor_col)]
+            self.cursor_coords = [(self.cursor_row, self.cursor_col)]
         elif self.select is True:
-            self.final_cell = (self.cursor_row, self.cursor_col)
-            self.final_row, self.final_col = self.final_cell
+            self.final_coord = (self.cursor_row, self.cursor_col)
+            self.final_row, self.final_col = self.final_coord
 
-            self.cursor_cells = [
+            self.cursor_coords = [
                 (row, col)
                 for col in range(
                     min(self.initial_col, self.final_col),
@@ -286,7 +286,7 @@ class Board:
             self.board[self.board == to_replace] = draw
 
         if draw is not False:
-            for row, col in self.cursor_cells:
+            for row, col in self.cursor_coords:
                 self.draw_cursor(row, col, draw=draw)
         self.backup_board = self.board.copy()
 
@@ -672,8 +672,8 @@ class DrawView(discord.ui.View):
     def embed(self):
         embed = discord.Embed(title=f"{self.ctx.author}'s drawing board.")
 
-        cursor_rows = tuple(row for row, col in self.board.cursor_cells)
-        cursor_cols = tuple(col for row, col in self.board.cursor_cells)
+        cursor_rows = tuple(row for row, col in self.board.cursor_coords)
+        cursor_cols = tuple(col for row, col in self.board.cursor_coords)
         row_labels = [
             (row if idx not in cursor_rows else ROW_ICONS_DICT[row])
             for idx, row in enumerate(self.board.row_labels)
@@ -944,8 +944,8 @@ class DrawView(discord.ui.View):
     ):
         await interaction.response.defer()
         if self.board.select is False:
-            self.board.initial_cell = (self.board.cursor_row, self.board.cursor_col)
-            self.board.initial_row, self.board.initial_col = self.board.initial_cell
+            self.board.initial_coord = (self.board.cursor_row, self.board.cursor_col)
+            self.board.initial_row, self.board.initial_col = self.board.initial_coord
         elif self.board.select is True:
             self.board.clear_cursors()
             self.board.draw_cursor()
