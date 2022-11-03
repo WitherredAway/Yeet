@@ -198,8 +198,8 @@ class Board:
         self.cursor_coords: List[Tuple[int, int]] = [(self.cursor_row, self.cursor_col)]
 
         # This is for select tool.
-        self.initial_coord: Tuple[int, int]
-        self.final_coord: Tuple[int, int]
+        self.initial_coords: Tuple[int, int]
+        self.final_coords: Tuple[int, int]
 
         self.clear_cursors()
         self.draw_cursor()
@@ -255,21 +255,22 @@ class Board:
 
         if self.select is not True:
             self.cursor_coords = [(self.cursor_row, self.cursor_col)]
-        elif self.select is True:
-            self.final_coord = (self.cursor_row, self.cursor_col)
-            self.final_row, self.final_col = self.final_coord
+            return
 
-            self.cursor_coords = [
-                (row, col)
-                for col in range(
-                    min(self.initial_col, self.final_col),
-                    max(self.initial_col, self.final_col) + 1,
-                )
-                for row in range(
-                    min(self.initial_row, self.final_row),
-                    max(self.initial_row, self.final_row) + 1,
-                )
-            ]
+        self.final_coord = (self.cursor_row, self.cursor_col)
+        self.final_row, self.final_col = self.final_coord
+
+        self.cursor_coords = [
+            (row, col)
+            for col in range(
+                min(self.initial_col, self.final_col),
+                max(self.initial_col, self.final_col) + 1,
+            )
+            for row in range(
+                min(self.initial_row, self.final_row),
+                max(self.initial_row, self.final_row) + 1,
+            )
+        ]
 
     def draw(
         self,
@@ -978,8 +979,8 @@ class DrawView(discord.ui.View):
     ):
         await interaction.response.defer()
 
-        cursor_cell = self.board.board[self.board.cursor_row, self.board.cursor_col]
-        emoji = discord.PartialEmoji.from_str(self.board.un_cursor(cursor_cell))
+        cursor_pixel = self.board.cursor_pixel
+        emoji = discord.PartialEmoji.from_str(self.board.un_cursor(cursor_pixel))
 
         # Check if the option already exists
         option = self.selectmenu.emoji_to_option(emoji)
