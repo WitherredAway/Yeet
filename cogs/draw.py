@@ -197,7 +197,7 @@ class Board:
         self.cursor_col_max = len(self.col_labels) - 1
         self.cursor_cells: List[Tuple[int, int]] = [(self.cursor_row, self.cursor_col)]
 
-        # This is for fill_bucket.
+        # This is for select tool.
         self.initial_cell: Tuple[int, int]
         self.final_cell: Tuple[int, int]
 
@@ -205,7 +205,7 @@ class Board:
         self.draw_cursor()
 
         self.auto = False
-        self.fill = False
+        self.select = False
 
     @classmethod
     def from_board(cls, board: np.array, *, background: Optional[str] = "⬜"):
@@ -253,9 +253,9 @@ class Board:
         self.cursor_row = (self.cursor_row + row_move) % (self.cursor_row_max + 1)
         self.cursor_col = (self.cursor_col + col_move) % (self.cursor_col_max + 1)
 
-        if self.fill is not True:
+        if self.select is not True:
             self.cursor_cells = [(self.cursor_row, self.cursor_col)]
-        elif self.fill is True:
+        elif self.select is True:
             self.final_cell = (self.cursor_row, self.cursor_col)
             self.final_row, self.final_col = self.final_cell
 
@@ -778,7 +778,7 @@ class DrawView(discord.ui.View):
             self.add_item(self.stop_button)
             self.add_item(self.secondary_button)
             self.add_item(self.placeholder_button)
-            self.add_item(self.fill_replace)
+            self.add_item(self.select_button)
             self.add_item(self.fill_bucket)
 
             self.add_item(self.eyedropper)
@@ -803,10 +803,10 @@ class DrawView(discord.ui.View):
             self.add_item(self.stop_button)
             self.add_item(self.secondary_button)
             self.add_item(self.placeholder_button)
+            self.add_item(self.select_button)
             self.add_item(self.fill_replace)
-            self.add_item(self.fill_bucket)
 
-            self.add_item(self.placeholder_button)
+            self.add_item(self.eyedropper)
             self.add_item(self.up_left)
             self.add_item(self.up)
             self.add_item(self.up_right)
@@ -921,7 +921,7 @@ class DrawView(discord.ui.View):
         await interaction.response.defer()
         self.toggle(self, "secondary", self.secondary_button, switch_to=False)
         self.toggle(self.board, "auto", self.auto_draw, switch_to=False)
-        self.toggle(self.board, "fill", self.fill_bucket, switch_to=False)
+        self.toggle(self.board, "select", self.select_button, switch_to=False)
         self.board.clear()
         self.load_items()
         await self.edit_draw(interaction)
@@ -937,20 +937,28 @@ class DrawView(discord.ui.View):
         await self.edit_draw(interaction)
 
     @discord.ui.button(
-        emoji="<:fill:930832869692149790>", style=discord.ButtonStyle.gray
+        emoji="<:select_tool:1037847279169704028> ", style=discord.ButtonStyle.gray
+    )
+    async def select_button(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        await interaction.response.defer()
+        if self.board.select is False:
+            self.board.initial_cell = (self.board.cursor_row, self.board.cursor_col)
+            self.board.initial_row, self.board.initial_col = self.board.initial_cell
+        elif self.board.select is True:
+            self.board.clear_cursors()
+            self.board.draw_cursor()
+        self.toggle(self.board, "select", button)
+        await self.edit_draw(interaction)
+
+    @discord.ui.button(
+        emoji="<:fill:930832869692149790>", style=discord.ButtonStyle.grey
     )
     async def fill_bucket(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
-        if self.board.fill is False:
-            self.board.initial_cell = (self.board.cursor_row, self.board.cursor_col)
-            self.board.initial_row, self.board.initial_col = self.board.initial_cell
-        elif self.board.fill is True:
-            self.board.clear_cursors()
-            self.board.draw_cursor()
-        self.toggle(self.board, "fill", button)
-        await self.edit_draw(interaction)
 
     @discord.ui.button(
         emoji="<:fill_replace:1032565283929456670>", style=discord.ButtonStyle.grey
