@@ -230,13 +230,13 @@ class Board:
         row: Optional[int] = None,
         col: Optional[int] = None,
         *,
-        draw: Optional[str] = None,
+        colour: Optional[str] = None,
     ):
         row = row if row is not None else self.cursor_row
         col = col if col is not None else self.cursor_col
-        draw = draw if draw is not None else self.board[row, col]
+        colour = colour if colour is not None else self.board[row, col]
 
-        self.board[row, col] = CURSOR.get(draw, draw)
+        self.board[row, col] = CURSOR.get(colour, colour)
 
     def clear_cursors(self, *, empty: Optional[bool] = False):
         for x, row in enumerate(self.board):
@@ -273,21 +273,21 @@ class Board:
 
     def draw(
         self,
-        draw: Optional[Union[str, bool]] = None,
+        colour: Optional[Union[str, bool]] = None,
         *,
         fill_replace: Optional[bool] = False,
     ):
-        if self.auto is True and draw is None:
-            draw = self.cursor
+        if self.auto is True and colour is None:
+            colour = self.cursor
 
         if fill_replace is True:
-            draw = self.cursor
+            colour = self.cursor
             to_replace = self.un_cursor(self.board[self.cursor_row, self.cursor_col])
-            self.board[self.board == to_replace] = draw
+            self.board[self.board == to_replace] = colour
 
-        if draw is not False:
+        if colour is not False:
             for row, col in self.cursor_coords:
-                self.draw_cursor(row, col, draw=draw)
+                self.draw_cursor(row, col, colour=colour)
         self.backup_board = self.board.copy()
 
 
@@ -826,15 +826,15 @@ class DrawView(discord.ui.View):
     async def edit_draw(
         self,
         interaction: discord.Interaction,
-        draw: Optional[Union[str, bool]] = None,
+        colour: Optional[Union[str, bool]] = None,
         *,
         fill_replace: Optional[bool] = False,
     ):
         if all(
             (
-                draw is not None,
+                colour is not None,
                 all(
-                    self.board[row, col] == CURSOR.get(draw, draw)
+                    self.board[row, col] == CURSOR.get(colour, colour)
                     for row, col in self.cursor_cells
                 ),
                 self.auto is False,
@@ -842,7 +842,7 @@ class DrawView(discord.ui.View):
         ):
             return
 
-        self.board.draw(draw, fill_replace=fill_replace)
+        self.board.draw(colour, fill_replace=fill_replace)
         await self.edit_message(interaction)
 
     async def edit_message(self, interaction: discord.Interaction):
