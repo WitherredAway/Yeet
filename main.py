@@ -4,12 +4,16 @@ import json
 import datetime
 import asyncio
 import aiohttp
+import logging
 
 import discord
 from discord.ext import commands
 import gists
 
 from keep_alive import keep_alive
+
+
+logger = logging.basicConfig()
 
 
 def get_prefix(bot, message):
