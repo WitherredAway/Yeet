@@ -251,12 +251,13 @@ class Board:
         col: Optional[int] = None,
         *,
         colour: Optional[str] = None,
+        cursor: Optional[bool] = True
     ):
         row = row if row is not None else self.cursor_row
         col = col if col is not None else self.cursor_col
         colour = colour if colour is not None else self.board[row, col]
 
-        self.board[row, col] = CURSOR.get(colour, colour)
+        self.board[row, col] = CURSOR.get(colour, colour) if cursor else colour
 
     def clear_cursors(self, *, empty: Optional[bool] = False):
         for x, row in enumerate(self.board):
