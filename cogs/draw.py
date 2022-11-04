@@ -312,6 +312,39 @@ class Board:
                 self.draw_cursor(row, col, colour=colour)
         self.backup_board = self.board.copy()
 
+    def bfs_draw(self, colour: str, *, initial_coords: Optional[Tuple[int]] = None):  # Use Breadth-First Search algorithm to fill an area
+        initial_coords = initial_coords or (self.cursor_row, self.cursor_col)
+        initial_pixel = self.get_pixel(*initial_coords)
+        queue = [initial_coords]
+        i = 0
+
+        while i < len(queue):
+            row, col = queue[i]
+            i += 1
+            # Skip to next cell in the queue if
+            # the row is less than 0 or greater than the max row possible,
+            # the col is less than 0 or greater than the max col possible or
+            # the current pixel (or its cursor version) is not the same as the pixel to replace (or its cursor version)
+            if (
+                any((row < 0, row > self.cursor_row_max)) or
+                any((col < 0, col > self.cursor_col_max)) or
+                any((
+                    self.get_pixel(row, col) != initial_pixel,
+                    CURSOR.get(self.get_pixel(row, col), self.get_pixel(row, col)) != CURSOR.get(initial_pixel, initial_pixel)
+                    ))
+                ):
+                continue
+
+            convert = True if self.board[row, col] in inv_CURSOR.keys() else False
+            self.draw_cursor(row, col, colour=colour, cursor=convert)
+
+            # Enqueue the four surrounding cells of the current cell
+            queue.append((row + 1, col))
+            queue.append((row - 1, col))
+            queue.append((row, col + 1))
+            queue.append((row, col - 1))
+        self.draw_cursor()  # Draw cursor
+
 
 C = TypeVar("C", bound="Colour")
 
@@ -861,6 +894,13 @@ class DrawView(discord.ui.View):
         self.board.draw(colour, fill_replace=fill_replace)
         await self.edit_message(interaction)
 
+    async def bfs_edit_draw(self, interaction: discord.Interaction, colour: str, *, initial_coords: Optional[Tuple[int]] = None):
+        if self.board.cursor_pixel == colour:
+            return
+        self.board.bfs_draw(colour, initial_coords=initial_coords)
+        await self.edit_message(interaction)
+        
+
     async def edit_message(self, interaction: discord.Interaction):
         try:
             await interaction.edit_original_message(embed=self.embed, view=self)
@@ -975,6 +1015,7 @@ class DrawView(discord.ui.View):
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
+        await self.bfs_edit_draw(interaction, self.board.cursor)
 
     @discord.ui.button(
         emoji="<:fill_replace:1032565283929456670>", style=discord.ButtonStyle.grey
