@@ -377,7 +377,7 @@ class Colour:
 
     @cached_property
     def hex(self) -> str:
-        return "%02x%02x%02x" % self.RGB
+        return "%02x%02x%02x%02x" % self.RGBA
 
     @cached_property
     def base_emoji(self) -> Image:
