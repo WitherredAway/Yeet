@@ -207,6 +207,26 @@ class Board:
         self.auto = False
         self.select = False
 
+    @property
+    def cursor_pixel(self):
+        return self.un_cursor(self.board[self.cursor_row, self.cursor_col])
+
+    @cursor_pixel.setter
+    def cursor_pixel(self, value: str):
+        if not isinstance(value, str):
+            raise TypeError("Value must be a string")
+        self.board[self.cursor_row, self.cursor_col] = value
+
+    def get_pixel(
+        self,
+        row: Optional[int] = None,
+        col: Optional[int] = None,
+    ):
+        row = row if row is not None else self.cursor_row
+        col = col if col is not None else self.cursor_col
+
+        return self.un_cursor(self.board[row, col])
+
     @classmethod
     def from_board(cls, board: np.array, *, background: Optional[str] = "⬜"):
         height = len(board)
@@ -283,7 +303,7 @@ class Board:
 
         if fill_replace is True:
             colour = self.cursor
-            to_replace = self.un_cursor(self.board[self.cursor_row, self.cursor_col])
+            to_replace = self.un_cursor(self.cursor_pixel)
             self.board[self.board == to_replace] = colour
 
         if colour is not False:
