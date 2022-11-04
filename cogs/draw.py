@@ -471,6 +471,11 @@ class DrawSelectMenu(discord.ui.Select):
             discord.SelectOption(label="Black", emoji="⬛", value="⬛"),
             discord.SelectOption(label="White", emoji="⬜", value="⬜"),
             discord.SelectOption(
+                label="Add Colour",
+                emoji="🏳️‍🌈",
+                value="colour",
+            ),
+            discord.SelectOption(
                 label="Add Emoji(s)",
                 emoji="<:emojismiley:1032565214606012416>",
                 value="emoji",
@@ -555,11 +560,71 @@ class DrawSelectMenu(discord.ui.Select):
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
 
-        # These need to be defined here because it does not have a view when initiated
+        # These need to be defined here because the class does not have a view when initiated
         self.ctx = self.view.ctx
         self.bot = self.view.bot
         self.board = self.view.board
-        if "emoji" in self.values:
+
+        # If the Add Colour option was selected. Always takes first priority
+        if "colour" in self.values:
+            def check(m):
+                return m.author == interaction.user
+
+            res, msg = await self.view.wait_for(
+                ("Of the colour you want to add to the palette, please type either:"
+                "\n• The hex code (e.g. ff64c4)"
+                "\n• The RGB values separated by space (e.g. 255 100 196)"
+                "\n• The RGBA values separated by space (e.g. 255 100 196 125)"),
+                interaction=interaction,
+                check=check,
+            )
+            if msg is None:
+                return
+
+            content = msg.content.lower().strip()
+
+            hex = HEX_REGEX.match(content)
+            rgb_a = RGB_A_REGEX.match(content)
+
+            colour_channels = hex or rgb_a
+            if colour_channels is None:
+                return await res.edit(content="Aborted")
+
+            red = int(colour_channels.group("red"), 16 if hex else 10)
+            green = int(colour_channels.group("green"), 16 if hex else 10)
+            blue = int(colour_channels.group("blue"), 16 if hex else 10)
+            alpha = int(colour_channels.group("alpha") or ("ff" if hex else "255"), 16 if hex else 10)
+
+            colour = Colour((red, green, blue, alpha))
+
+            emoji = discord.PartialEmoji.from_str(
+                str(await self.upload_emoji(colour))
+            )
+
+            option = discord.SelectOption(
+                label=colour.hex,
+                emoji=emoji,
+                value=str(emoji),
+            )
+            replaced, returned_option = self.append_option(option)
+            self.board.cursor = option.value
+
+            if replaced is False and returned_option is not None:
+                content = f'{emoji} is already in palette'
+            else:
+                content = f'Added colour {emoji} to palette' + (
+                    f" (replaced {returned_option.emoji})."
+                    if replaced
+                    else ""
+                    )
+
+            await self.view.edit_draw(interaction, False)
+            await res.edit(
+                content=content
+            )
+
+        # First it checks if the Add Emoji option was selected. Takes second priority
+        elif "emoji" in self.values:
 
             def check(m):
                 return m.author == interaction.user
