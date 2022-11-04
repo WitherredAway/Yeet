@@ -357,13 +357,12 @@ C = TypeVar("C", bound="Colour")
 
 class Colour:
     # RGB_A accepts RGB values and an optional Alpha value
-    def __init__(self, RGB_A: Tuple[int], *, bot: commands.Bot):
+    def __init__(self, RGB_A: Tuple[int]):
         self.RGBA = RGB_A if len(RGB_A) == 4 else (*RGB_A, 255)
         self.RGB = self.RGBA[:3]
         self.R, self.G, self.B, self.A = self.RGBA
 
-        self.bot = bot
-        self.loop = self.bot.loop
+        self.loop = asyncio.get_running_loop()
 
     @cached_property
     def hex(self) -> str:
@@ -416,8 +415,9 @@ class Colour:
         )
 
     @classmethod
-    async def from_emoji(cls, emoji: str, *, bot: commands.Bot) -> C:
-        image = await bot.loop.run_in_executor(None, draw_emoji, emoji)
+    async def from_emoji(cls, emoji: str) -> C:
+        loop = asyncio.get_running_loop()
+        image = await loop.run_in_executor(None, draw_emoji, emoji)
         colors = [
             color
             for color in sorted(
@@ -428,10 +428,10 @@ class Colour:
             if color[1][-1] > 0
         ]
 
-        return cls(colors[0][1], bot=bot)
+        return cls(colors[0][1])
 
     @classmethod
-    def mix_colours(cls, colours: List[Tuple[int, C]], *, bot: commands.Bot) -> C:
+    def mix_colours(cls, colours: List[Tuple[int, C]]) -> C:
         colours = [
             colour.RGBA if isinstance(colour, Colour) else colour for colour in colours
         ]
@@ -439,7 +439,6 @@ class Colour:
 
         return cls(
             tuple(round(sum(colour) / total_weight) for colour in zip(*colours)),
-            bot=bot,
         )
 
 
@@ -478,6 +477,7 @@ class DrawSelectMenu(discord.ui.Select):
             max_values=len(options),
             options=options,
         )
+
 
     @property
     def value_to_option_dict(self) -> Dict[str, discord.SelectOption]:
@@ -661,12 +661,12 @@ class DrawSelectMenu(discord.ui.Select):
                 f'Mixing colours {" and ".join(selected_emojis)} ...'
             )
 
-            colours = [
-                await Colour.from_emoji(emoji, bot=self.bot)
+            channels = [
+                await Colour.from_emoji(emoji)
                 for emoji in selected_emojis
             ]
 
-            mixed_colour = Colour.mix_colours(colours, bot=self.bot)
+            mixed_colour = Colour.mix_colours(channels)
 
             emoji = discord.PartialEmoji.from_str(
                 str(await self.upload_emoji(mixed_colour))
