@@ -540,7 +540,7 @@ class DrawSelectMenu(discord.ui.Select):
 
     def append_option(
         self, option: discord.SelectOption
-    ) -> Union[discord.PartialEmoji, None]:
+    ) -> Tuple[bool, Union[discord.PartialEmoji, None]]:
         if (found_option := self.emoji_to_option(option.emoji)) is not None:
             return False, found_option
 
@@ -931,11 +931,11 @@ class DrawView(discord.ui.View):
                 "In embeds\.\d+\.description: Must be 4096 or fewer in length\.",
                 error.text,
             ):  # If the description reaches char limit
-                self.board = self.board.backup_board
                 await interaction.followup.send(
-                    content="Max characters reached. Please remove some custom emojis from the board.\nCustom emojis take up more than 20 characters each, while most unicode/default ones take up 1!\nMaximum is 4096 characters due to discord limitations.",
+                    content=f"Max characters reached ({len(self.embed.description)}). Please remove some custom emojis from the board.\nCustom emojis take up more than 20 characters each, while most unicode/default ones take up 1!\nMaximum is 4096 characters due to discord limitations.",
                     ephemeral=True,
                 )
+                self.board.board = self.board.backup_board
                 await self.edit_message(interaction)
             elif match := re.search(
                 "In components\.\d+\.components\.\d+\.options\.(?P<option>\d+)\.emoji\.id: Invalid emoji",
