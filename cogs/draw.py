@@ -850,10 +850,10 @@ class DrawView(discord.ui.View):
             (
                 colour is not None,
                 all(
-                    self.board[row, col] == CURSOR.get(colour, colour)
-                    for row, col in self.cursor_cells
+                    self.board.board[row, col] == CURSOR.get(colour, colour)
+                    for row, col in self.board.cursor_coords
                 ),
-                self.auto is False,
+                self.board.auto is False,
             )
         ):
             return
