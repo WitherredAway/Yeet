@@ -672,40 +672,36 @@ class DrawSelectMenu(discord.ui.Select):
                 f'Mixing colours {" and ".join(selected_emojis)} ...'
             )
 
-            channels = [
+            colours = [
                 await Colour.from_emoji(emoji)
                 for emoji in selected_emojis
             ]
 
-            mixed_colour = Colour.mix_colours(channels)
+            mixed_colour = Colour.mix_colours(colours)
 
             emoji = discord.PartialEmoji.from_str(
                 str(await self.upload_emoji(mixed_colour))
             )
 
-            replaced_option = None
-            option = self.emoji_to_option(emoji)
-            if option is not None:
-                self.board.cursor = option.value
-            else:
-                option = discord.SelectOption(
-                    label=mixed_colour.hex,
-                    emoji=emoji,
-                    value=str(emoji),
-                )
-                replaced_option = self.append_option(option)
-                self.board.cursor = self.options[-1].value
+            option = discord.SelectOption(
+                label=mixed_colour.hex,
+                emoji=emoji,
+                value=str(emoji),
+            )
+            replaced, returned_option = self.append_option(option)
+            self.board.cursor = option.value
 
             await self.view.edit_draw(interaction, False)
             await res.edit(
                 content=f'Mixed colours:\n{" + ".join(selected_emojis)} = {emoji}'
                 + (
-                    f" (replaced {replaced_option.emoji})."
-                    if replaced_option is not None
+                    f" (replaced {returned_option.emoji})."
+                    if replaced
                     else ""
                 )
             )
 
+        # If only one option was selected
         elif self.board.cursor != self.values[0]:
             self.board.cursor = self.values[0]
             await self.view.edit_draw(interaction, False)
