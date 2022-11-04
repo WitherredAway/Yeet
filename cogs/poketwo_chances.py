@@ -70,7 +70,7 @@ class PoketwoChances(commands.Cog):
         ]
         df_groupby.sort(key=lambda x: x[0], reverse=True)
         df_groupby = {
-            f"{chance}% - 1/{round(1/chance*100)} [{len(pokemons)}]": sorted(pokemons)
+            f"{chance}% or 1/{round(1/chance*100)} ({len(pokemons)})": sorted(pokemons)
             for chance, pokemons in df_groupby
         }
 
@@ -113,7 +113,7 @@ class PoketwoChances(commands.Cog):
 
         per_cent = round(total_abundance / self.possible_abundance * 100, 3)
         out_of = round(1 / per_cent * 100)
-        total_chances = f"**Total chance**: {per_cent}% (1/{out_of})"
+        total_chances = f"**Total chance**: {per_cent}% or 1/{out_of}"
 
         extra = "\n"
         if list_pokemon is True:
