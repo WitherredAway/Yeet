@@ -251,7 +251,7 @@ class Board:
         col: Optional[int] = None,
         *,
         colour: Optional[str] = None,
-        cursor: Optional[bool] = True
+        cursor: Optional[bool] = True,
     ):
         row = row if row is not None else self.cursor_row
         col = col if col is not None else self.cursor_col
@@ -312,7 +312,9 @@ class Board:
                 self.draw_cursor(row, col, colour=colour)
         self.backup_board = self.board.copy()
 
-    def bfs_draw(self, colour: str, *, initial_coords: Optional[Tuple[int]] = None):  # Use Breadth-First Search algorithm to fill an area
+    def bfs_draw(
+        self, colour: str, *, initial_coords: Optional[Tuple[int]] = None
+    ):  # Use Breadth-First Search algorithm to fill an area
         initial_coords = initial_coords or (self.cursor_row, self.cursor_col)
         initial_pixel = self.get_pixel(*initial_coords)
         queue = [initial_coords]
@@ -326,13 +328,16 @@ class Board:
             # the col is less than 0 or greater than the max col possible or
             # the current pixel (or its cursor version) is not the same as the pixel to replace (or its cursor version)
             if (
-                any((row < 0, row > self.cursor_row_max)) or
-                any((col < 0, col > self.cursor_col_max)) or
-                any((
-                    self.get_pixel(row, col) != initial_pixel,
-                    CURSOR.get(self.get_pixel(row, col), self.get_pixel(row, col)) != CURSOR.get(initial_pixel, initial_pixel)
-                    ))
-                ):
+                any((row < 0, row > self.cursor_row_max))
+                or any((col < 0, col > self.cursor_col_max))
+                or any(
+                    (
+                        self.get_pixel(row, col) != initial_pixel,
+                        CURSOR.get(self.get_pixel(row, col), self.get_pixel(row, col))
+                        != CURSOR.get(initial_pixel, initial_pixel),
+                    )
+                )
+            ):
                 continue
 
             convert = True if self.board[row, col] in inv_CURSOR.keys() else False
@@ -343,6 +348,7 @@ class Board:
             queue.append((row - 1, col))
             queue.append((row, col + 1))
             queue.append((row, col - 1))
+
         self.draw_cursor()  # Draw cursor
 
 
@@ -894,12 +900,17 @@ class DrawView(discord.ui.View):
         self.board.draw(colour, fill_replace=fill_replace)
         await self.edit_message(interaction)
 
-    async def bfs_edit_draw(self, interaction: discord.Interaction, colour: str, *, initial_coords: Optional[Tuple[int]] = None):
+    async def bfs_edit_draw(
+        self,
+        interaction: discord.Interaction,
+        colour: str,
+        *,
+        initial_coords: Optional[Tuple[int]] = None,
+    ):
         if self.board.cursor_pixel == colour:
             return
         self.board.bfs_draw(colour, initial_coords=initial_coords)
         await self.edit_message(interaction)
-        
 
     async def edit_message(self, interaction: discord.Interaction):
         try:
