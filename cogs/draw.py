@@ -530,16 +530,16 @@ class DrawSelectMenu(discord.ui.Select):
     def append_option(
         self, option: discord.SelectOption
     ) -> Union[discord.PartialEmoji, None]:
-        replaced_option = None
-        if self.emoji_to_option(option.emoji) is not None:
-            return replaced_option
+        if (found_option := self.emoji_to_option(option.emoji)) is not None:
+            return False, found_option
 
+        replaced_option = None
         if len(self.options) == 25:
             replaced_option = self.options.pop(self.END_INDEX)
             replaced_option.emoji.name = replaced_option.label
 
         super().append_option(option)
-        return replaced_option
+        return replaced_option is not None, replaced_option
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
@@ -622,13 +622,13 @@ class DrawSelectMenu(discord.ui.Select):
                     emoji=added_emoji.emoji,
                     value=str(added_emoji.emoji),
                 )
-                replaced_option = self.append_option(option)
-                if replaced_option is not None:
-                    replaced_emoji = replaced_option.emoji
+                replaced, returned_option = self.append_option(option)
+                if replaced:
+                    replaced_emoji = returned_option.emoji
                     replaced_emojis[
                         replaced_emoji.id if replaced_emoji.id else replaced_emoji.name
                     ] = AddedEmoji.from_option(
-                        replaced_option,
+                        returned_option,
                         status=f"Replaced by {added_emoji}.",
                         sent_emoji=SentEmoji(emoji=replaced_emoji),
                     )
