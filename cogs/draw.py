@@ -633,19 +633,13 @@ class DrawSelectMenu(discord.ui.Select):
                 str(await self.upload_emoji(mixed_colour))
             )
 
+            replaced_option = None
             option = self.emoji_to_option(emoji)
             if option is not None:
                 self.board.cursor = option.value
             else:
                 option = discord.SelectOption(
-                    label=" + ".join(
-                        [
-                            str(option.emoji)
-                            if option.emoji.is_unicode_emoji()
-                            else option.emoji.name
-                            for option in selected_options
-                        ]
-                    ),  # mixed_colour.hex,
+                    label=mixed_colour.hex,
                     emoji=emoji,
                     value=str(emoji),
                 )
