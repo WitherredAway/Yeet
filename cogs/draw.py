@@ -31,6 +31,17 @@ from .draw_utils.emoji import (
 )
 
 
+CHANNEL = "[a-f0-9]{2}"
+HEX_REGEX = re.compile(f"^(?P<red>{CHANNEL})(?P<green>{CHANNEL})(?P<blue>{CHANNEL})(?P<alpha>{CHANNEL})?$")
+
+ZERO_TO_255 = "0*25[0-5]|0*2[0-4][0-9]|0*1[0-9]{2}|0*[1-9][0-9]|0*[0-9]"
+RGB_A_REGEX = re.compile(f"^(?P<red>{ZERO_TO_255}) +(?P<green>{ZERO_TO_255}) +(?P<blue>{ZERO_TO_255})(?: (?P<alpha>{ZERO_TO_255}))?$")
+
+FLAG_EMOJI_REGEX = re.compile("[\U0001F1E6-\U0001F1FF]")
+
+CUSTOM_EMOJI_REGEX = re.compile("<a?:[a-zA-Z0-9_]+:\d+>")
+
+
 D = TypeVar("D", bound="DrawView")
 
 
@@ -575,13 +586,13 @@ class DrawSelectMenu(discord.ui.Select):
                     emoji=emoji.group(0),
                     index=emoji.start(),
                 )
-                for emoji in re.finditer("[\U0001F1E6-\U0001F1FF]", content)
+                for emoji in FLAG_EMOJI_REGEX.finditer(content)
             ]
             # Get any custom emojis from the content
             # and list them as SentEmoji objects
             custom_emojis = [
                 SentEmoji(emoji=emoji.group(0), index=emoji.start())
-                for emoji in re.finditer(r"<a?:[a-zA-Z0-9_]+:\d+>", content)
+                for emoji in CUSTOM_EMOJI_REGEX.finditer(content)
             ]
 
             # Gather all the emojis and sort them by index
