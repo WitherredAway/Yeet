@@ -308,12 +308,12 @@ class Board:
         self,
         colour: Optional[Union[str, bool]] = None,
         *,
-        fill_replace: Optional[bool] = False,
+        replace: Optional[bool] = False,
     ):
         if self.auto is True and colour is None:
             colour = self.cursor
 
-        if fill_replace is True:
+        if replace is True:
             colour = self.cursor
             to_replace = self.un_cursor(self.cursor_pixel)
             self.board[self.board == to_replace] = colour
@@ -919,7 +919,7 @@ class DrawView(discord.ui.View):
             self.add_item(self.secondary_button)
             self.add_item(self.placeholder_button)
             self.add_item(self.select_button)
-            self.add_item(self.fill_replace)
+            self.add_item(self.replace)
 
             self.add_item(self.eyedropper)
             self.add_item(self.up_left)
@@ -955,7 +955,7 @@ class DrawView(discord.ui.View):
         interaction: discord.Interaction,
         colour: Optional[Union[str, bool]] = None,
         *,
-        fill_replace: Optional[bool] = False,
+        replace: Optional[bool] = False,
     ):
         if all(
             (
@@ -969,7 +969,7 @@ class DrawView(discord.ui.View):
         ):
             return
 
-        self.board.draw(colour, fill_replace=fill_replace)
+        self.board.draw(colour, replace=replace)
         await self.edit_message(interaction)
 
     async def bfs_edit_draw(
@@ -1101,13 +1101,13 @@ class DrawView(discord.ui.View):
         await self.bfs_edit_draw(interaction, self.board.cursor)
 
     @discord.ui.button(
-        emoji="<:fill_replace:1032565283929456670>", style=discord.ButtonStyle.grey
+        emoji="<:replace:1032565283929456670>", style=discord.ButtonStyle.grey
     )
-    async def fill_replace(
+    async def replace(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
-        await self.edit_draw(interaction, self.board.cursor, fill_replace=True)
+        await self.edit_draw(interaction, self.board.cursor, replace=True)
 
     # 2nd row
     @discord.ui.button(
