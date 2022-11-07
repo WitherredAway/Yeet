@@ -1132,9 +1132,17 @@ class DrawView(discord.ui.View):
             for option in self.selectmenu.options
             if option.label.startswith("Eyedropped option")
         ]
+
+        # Try to find the emoji so that we can use its real name as label
+        if (fetched_emoji := self.bot.get_emoji(emoji.id)) is not None:
+            label = fetched_emoji.name
+        # If the emoji's name is the shortened name (i.e. it is a custom emoji input through the program)
+        elif emoji.name == "e":
+            label = f"Eyedropped option #{len(eyedropped_options + 1)}"
+
         if option is None:
             option = discord.SelectOption(
-                label=f"Eyedropped option #{len(eyedropped_options)}",
+                label=label,
                 emoji=emoji,
                 value=str(emoji),
             )
