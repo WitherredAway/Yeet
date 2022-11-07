@@ -160,8 +160,14 @@ class Draw(commands.Cog):
             board.append(line.split(PADDING)[-1].split("\u200b"))
         board = np.array(board, dtype="object")
 
-        tool_options = discord.ui.View.from_message(message, timeout=0).children[0].options
-        colour_options = discord.ui.View.from_message(message, timeout=0).children[1].options
+        old_view = discord.ui.View.from_message(message, timeout=0)
+        if len(old_view.children) > 1:
+            tool_options = old_view.children[0].options
+            colour_options = old_view.children[1].options
+        else:
+            tool_options = None
+            colour_options = old_view.children[0].options
+
         for option in colour_options:
             if option.label.endswith(" (base)"):
                 bg = str(option.emoji)
@@ -312,27 +318,122 @@ class Board:
     def draw(
         self,
         colour: Optional[Union[str, bool]] = None,
-        *,
-        replace: Optional[bool] = False,
     ):
         if self.auto is True and colour is None:
             colour = self.cursor
-
-        if replace is True:
-            colour = self.cursor
-            to_replace = self.un_cursor(self.cursor_pixel)
-            self.board[self.board == to_replace] = colour
 
         if colour is not False:
             for row, col in self.cursor_coords:
                 self.draw_cursor(row, col, colour=colour)
         self.backup_board = self.board.copy()
 
-    def bfs_draw(
-        self, colour: str, *, initial_coords: Optional[Tuple[int]] = None
-    ):  # Use Breadth-First Search algorithm to fill an area
-        initial_coords = initial_coords or (self.cursor_row, self.cursor_col)
-        initial_pixel = self.get_pixel(*initial_coords)
+
+class Tool(discord.ui.Button):
+    """A template class for each of the tools"""
+    def __init__(self, *, primary: Optional[bool] = True):
+        super().__init__(emoji=self.emoji, style=discord.ButtonStyle.green if primary is True else discord.ButtonStyle.grey)
+        
+    @property
+    def name(self) -> str:
+        return None
+
+    @property
+    def emoji(self) -> str:
+        return None
+
+    def use(self):
+        """The method that is called when the tool is used"""
+        pass
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+
+        self.board: Board = self.view.board
+        self.bot: commands.Bot = self.view.bot
+
+        await self.use()
+        await self.view.edit_draw(interaction)
+
+
+class BrushTool(Tool):
+    @property
+    def name(self) -> str:
+        return "Brush"
+
+    @property
+    def emoji(self) -> str:
+        return "<:draw:1032565261846454272>"
+
+    async def use(self):
+        self.board.draw(self.board.cursor)
+
+class EraseTool(Tool):
+    @property
+    def name(self) -> str:
+        return "Eraser"
+
+    @property
+    def emoji(self) -> str:
+        return "<:erase:927526530052132894>"
+
+    async def use(self):
+        self.board.draw(self.board.background)
+
+class EyedropperTool(Tool):
+    @property
+    def name(self) -> str:
+        return "Eyedropper"
+
+    @property
+    def emoji(self) -> str:
+        return "<:eyedropper:1033248590988066886>"
+
+    async def use(self):
+        cursor_pixel = self.board.cursor_pixel
+        emoji = discord.PartialEmoji.from_str(self.board.un_cursor(cursor_pixel))
+
+        # Check if the option already exists
+        option = self.view.colour_menu.emoji_to_option(emoji)
+        eyedropped_options = [
+            option
+            for option in self.view.colour_menu.options
+            if option.label.startswith("Eyedropped option")
+        ]
+
+        # Try to find the emoji so that we can use its real name as label
+        if (fetched_emoji := self.bot.get_emoji(emoji.id)) is not None:
+            label = fetched_emoji.name
+        # If the emoji's name is the shortened name (i.e. it is a custom emoji input through the program)
+        elif emoji.name == "e":
+            label = f"Eyedropped option #{len(eyedropped_options + 1)}"
+
+        if option is None:
+            option = discord.SelectOption(
+                label=label,
+                emoji=emoji,
+                value=str(emoji),
+            )
+
+        self.view.colour_menu.append_option(option)
+        self.board.cursor = option.value
+
+class FillTool(Tool):
+    @property
+    def name(self) -> str:
+        return "Fill"
+
+    @property
+    def emoji(self) -> str:
+        return "<:fill:930832869692149790>"
+
+    async def use(self, *, initial_coords: Optional[Tuple[int, int]] = None):
+        colour = self.board.cursor
+        if self.board.cursor_pixel == colour:
+            return
+
+        # Use Breadth-First Search algorithm to fill an area
+        initial_coords = initial_coords or (self.board.cursor_row, self.board.cursor_col)
+        initial_pixel = self.board.get_pixel(*initial_coords)
         queue = [initial_coords]
         i = 0
 
@@ -344,20 +445,20 @@ class Board:
             # the col is less than 0 or greater than the max col possible or
             # the current pixel (or its cursor version) is not the same as the pixel to replace (or its cursor version)
             if (
-                any((row < 0, row > self.cursor_row_max))
-                or any((col < 0, col > self.cursor_col_max))
+                any((row < 0, row > self.board.cursor_row_max))
+                or any((col < 0, col > self.board.cursor_col_max))
                 or any(
                     (
-                        self.get_pixel(row, col) != initial_pixel,
-                        CURSOR.get(self.get_pixel(row, col), self.get_pixel(row, col))
+                        self.board.get_pixel(row, col) != initial_pixel,
+                        CURSOR.get(self.board.get_pixel(row, col), self.board.get_pixel(row, col))
                         != CURSOR.get(initial_pixel, initial_pixel),
                     )
                 )
             ):
                 continue
 
-            convert = True if self.board[row, col] in inv_CURSOR.keys() else False
-            self.draw_cursor(row, col, colour=colour, cursor=convert)
+            convert = True if self.board.board[row, col] in inv_CURSOR.keys() else False
+            self.board.draw_cursor(row, col, colour=colour, cursor=convert)
 
             # Enqueue the four surrounding cells of the current cell
             queue.append((row + 1, col))
@@ -365,24 +466,42 @@ class Board:
             queue.append((row, col + 1))
             queue.append((row, col - 1))
 
-        self.draw_cursor()  # Draw cursor
+        self.board.draw_cursor()  # Draw cursor
+
+class ReplaceTool(Tool):
+    @property
+    def name(self) -> str:
+        return "Replace"
+
+    @property
+    def emoji(self) -> str:
+        return "<:replace:1032565283929456670>"
+
+    async def use(self):
+        colour = self.board.cursor
+        to_replace = self.board.cursor_pixel
+
+        self.board.draw(colour)
+        self.board.board[self.board.board == to_replace] = colour
 
 
-C = TypeVar("C", bound="Colour")
-
-
-class ToolSelectMenu(discord.ui.Select):
+class ToolMenu(discord.ui.Select):
     def __init__(
         self,
         *,
         options: Optional[List[discord.SelectOption]] = None,
     ):
+        self.tool_list = [
+            BrushTool(),
+            EraseTool(),
+            EyedropperTool(),
+            FillTool(),
+            ReplaceTool(),
+        ]
+
         default_options: List[discord.SelectOption] = [
-            discord.SelectOption(label="Pen", emoji="<:draw:1032565261846454272>", value="brush"),
-            discord.SelectOption(label="Pen", emoji="<:erase:927526530052132894>", value="erase"),
-            discord.SelectOption(label="Eyedropper", emoji="<:eyedropper:1033248590988066886>", value="eyedropper"),
-            discord.SelectOption(label="Fill", emoji="<:fill:930832869692149790>", value="fill"),
-            discord.SelectOption(label="Replace", emoji="<:replace:1032565283929456670>", value="replace"),
+            discord.SelectOption(label=tool.name, emoji=tool.emoji, value=tool.name.lower())
+            for tool in self.tool_list
         ]
         options = options if options else default_options
         self.END_INDEX = len(default_options)  # The ending index of default options
@@ -395,12 +514,23 @@ class ToolSelectMenu(discord.ui.Select):
 
         self.view: discord.ui.View
 
+    @property
+    def tools(self) -> Dict[str, Tool]:
+        return {
+            tool.name.lower(): tool
+            for tool in self.tool_list
+        }
+
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
 
-    async def pen_method(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
-        await self.view.edit_draw(interaction, self.board.cursor)
+        value = self.values[0]
+        self.view.primary_tool = self.tools[value]
+        self.view.load_items()
+        await self.view.edit_draw(interaction)
+
+
+C = TypeVar("C", bound="Colour")
 
 
 class Colour:
@@ -490,7 +620,7 @@ class Colour:
         )
 
 
-class ColourSelectMenu(discord.ui.Select):
+class ColourMenu(discord.ui.Select):
     def __init__(
         self,
         *,
@@ -826,14 +956,17 @@ class DrawView(discord.ui.View):
         colour_options: Optional[List[discord.SelectOption]] = None,
     ):
         super().__init__(timeout=600)
-        self.secondary = False
+        self.secondary_page = False
 
-        self.tool_select_menu: ToolSelectMenu = ToolSelectMenu(
+        self.tool_menu: ToolMenu = ToolMenu(
             options=tool_options
         )
-        self.colour_select_menu: ColourSelectMenu = ColourSelectMenu(
+        self.colour_menu: ColourMenu = ColourMenu(
             options=colour_options, background=board.background
         )
+
+        self.primary_tool = self.tool_menu.tools["brush"]
+        self.secondary_tool = EraseTool(primary=False)
         self.load_items()
 
         self.board: Board = board
@@ -876,12 +1009,12 @@ class DrawView(discord.ui.View):
         return embed
 
     def stop_view(self):
-        self.tool_select_menu.disabled = True
-        self.colour_select_menu.disabled = True
+        self.tool_menu.disabled = True
+        self.colour_menu.disabled = True
 
         self.clear_items()
-        self.add_item(self.tool_select_menu)
-        self.add_item(self.colour_select_menu)
+        self.add_item(self.tool_menu)
+        self.add_item(self.colour_menu)
         self.board.clear_cursors(empty=True)
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -936,35 +1069,35 @@ class DrawView(discord.ui.View):
 
     def load_items(self):
         self.clear_items()
-        self.add_item(self.tool_select_menu)
-        self.add_item(self.colour_select_menu)
+        self.add_item(self.tool_menu)
+        self.add_item(self.colour_menu)
 
         # This is necessary for "paginating" the view and different buttons
-        if self.secondary is False:
+        if self.secondary_page is False:
             self.add_item(self.stop_button)
             self.add_item(self.up_left)
             self.add_item(self.up)
             self.add_item(self.up_right)
-            self.add_item(self.secondary_button)
+            self.add_item(self.secondary_page_button)
 
-            self.add_item(self.erase)
+            self.add_item(self.secondary_tool)
             self.add_item(self.left)
             self.add_item(self.auto_draw)
             self.add_item(self.right)
             self.add_item(self.select_button)
 
-            self.add_item(self.draw)
+            self.add_item(self.primary_tool)
             self.add_item(self.down_left)
             self.add_item(self.down)
             self.add_item(self.down_right)
             self.add_item(self.set_cursor)
 
-        elif self.secondary is True:
+        elif self.secondary_page is True:
             self.add_item(self.stop_button)
             self.add_item(self.up_left)
             self.add_item(self.up)
             self.add_item(self.up_right)
-            self.add_item(self.secondary_button)
+            self.add_item(self.secondary_page_button)
 
             self.add_item(self.clear)
             self.add_item(self.left)
@@ -972,7 +1105,7 @@ class DrawView(discord.ui.View):
             self.add_item(self.right)
             self.add_item(self.select_button)
 
-            self.add_item(self.draw)
+            self.add_item(self.primary_tool)
             self.add_item(self.down_left)
             self.add_item(self.down)
             self.add_item(self.down_right)
@@ -1008,19 +1141,7 @@ class DrawView(discord.ui.View):
         ):
             return
 
-        self.board.draw(colour, replace=replace)
-        await self.edit_message(interaction)
-
-    async def bfs_edit_draw(
-        self,
-        interaction: discord.Interaction,
-        colour: str,
-        *,
-        initial_coords: Optional[Tuple[int]] = None,
-    ):
-        if self.board.cursor_pixel == colour:
-            return
-        self.board.bfs_draw(colour, initial_coords=initial_coords)
+        self.board.draw(colour)
         await self.edit_message(interaction)
 
     async def edit_message(self, interaction: discord.Interaction):
@@ -1041,7 +1162,7 @@ class DrawView(discord.ui.View):
                 "In components\.\d+\.components\.\d+\.options\.(?P<option>\d+)\.emoji\.id: Invalid emoji",
                 error.text,
             ):  # If the emoji of one of the options of the select menu is unavailable
-                removed_option = self.colour_select_menu.options.pop(int(match.group("option")))
+                removed_option = self.colour_menu.options.pop(int(match.group("option")))
                 self.board.cursor = self.board.background
                 await interaction.followup.send(
                     content=f"The {removed_option.emoji} emoji was removed for some reason, so the option was removed aswell. Please try again.",
@@ -1078,7 +1199,7 @@ class DrawView(discord.ui.View):
         elif switch_to is False:
             button.style = discord.ButtonStyle.grey
 
-    # ------ buttons ------
+    # ------ BUTTONS ------
 
     # 1st row
     @discord.ui.button(
@@ -1091,100 +1212,6 @@ class DrawView(discord.ui.View):
         self.stop_view()
         await self.edit_draw(interaction)
         self.stop()
-
-    @discord.ui.button(
-        emoji="<:clear:1032565244658204702>", style=discord.ButtonStyle.danger
-    )
-    async def clear(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
-        self.toggle(self, "secondary", self.secondary_button, switch_to=False)
-        self.toggle(self.board, "auto", self.auto_draw, switch_to=False)
-        self.toggle(self.board, "select", self.select_button, switch_to=False)
-        self.board.clear()
-        self.load_items()
-        await self.edit_draw(interaction)
-
-    @discord.ui.button(label="2nd", style=discord.ButtonStyle.grey)
-    async def secondary_button(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ):
-        await interaction.response.defer()
-        self.toggle(self, "secondary", button)
-
-        self.load_items()
-        await self.edit_draw(interaction)
-
-    @discord.ui.button(
-        emoji="<:select_tool:1037847279169704028> ", style=discord.ButtonStyle.gray
-    )
-    async def select_button(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ):
-        await interaction.response.defer()
-        if self.board.select is False:
-            self.board.initial_coord = (self.board.cursor_row, self.board.cursor_col)
-            self.board.initial_row, self.board.initial_col = self.board.initial_coord
-        elif self.board.select is True:
-            self.board.clear_cursors()
-            self.board.draw_cursor()
-        self.toggle(self.board, "select", button)
-        await self.edit_draw(interaction)
-
-    @discord.ui.button(
-        emoji="<:fill:930832869692149790>", style=discord.ButtonStyle.grey
-    )
-    async def fill_bucket(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ):
-        await interaction.response.defer()
-        await self.bfs_edit_draw(interaction, self.board.cursor)
-
-    @discord.ui.button(
-        emoji="<:replace:1032565283929456670>", style=discord.ButtonStyle.grey
-    )
-    async def replace(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ):
-        await interaction.response.defer()
-        await self.edit_draw(interaction, self.board.cursor, replace=True)
-
-    # 2nd row
-    @discord.ui.button(
-        emoji="<:eyedropper:1033248590988066886>", style=discord.ButtonStyle.grey
-    )
-    async def eyedropper(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ):
-        await interaction.response.defer()
-
-        cursor_pixel = self.board.cursor_pixel
-        emoji = discord.PartialEmoji.from_str(self.board.un_cursor(cursor_pixel))
-
-        # Check if the option already exists
-        option = self.selectmenu.emoji_to_option(emoji)
-        eyedropped_options = [
-            option
-            for option in self.selectmenu.options
-            if option.label.startswith("Eyedropped option")
-        ]
-
-        # Try to find the emoji so that we can use its real name as label
-        if (fetched_emoji := self.bot.get_emoji(emoji.id)) is not None:
-            label = fetched_emoji.name
-        # If the emoji's name is the shortened name (i.e. it is a custom emoji input through the program)
-        elif emoji.name == "e":
-            label = f"Eyedropped option #{len(eyedropped_options + 1)}"
-
-        if option is None:
-            option = discord.SelectOption(
-                label=label,
-                emoji=emoji,
-                value=str(emoji),
-            )
-
-        self.selectmenu.append_option(option)
-        self.board.cursor = option.value
-        return await self.edit_draw(interaction, False)
 
     @discord.ui.button(
         emoji="<:up_left:1032565175930343484>", style=discord.ButtonStyle.blurple
@@ -1217,13 +1244,28 @@ class DrawView(discord.ui.View):
         col_move = 1
         await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
 
-    # 3rd row
-    @discord.ui.button(
-        emoji="<:erase:927526530052132894>", style=discord.ButtonStyle.gray
-    )
-    async def erase(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(label="2nd", style=discord.ButtonStyle.grey)
+    async def secondary_page_button(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
         await interaction.response.defer()
-        await self.edit_draw(interaction, self.board.background)
+        self.toggle(self, "secondary_page", button)
+
+        self.load_items()
+        await self.edit_draw(interaction)
+
+    # 2nd Row
+    @discord.ui.button(
+        emoji="<:clear:1032565244658204702>", style=discord.ButtonStyle.danger
+    )
+    async def clear(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        self.toggle(self, "secondary_page", self.secondary_page_button, switch_to=False)
+        self.toggle(self.board, "auto", self.auto_draw, switch_to=False)
+        self.toggle(self.board, "select", self.select_button, switch_to=False)
+        self.board.clear()
+        self.load_items()
+        await self.edit_draw(interaction)
 
     @discord.ui.button(
         emoji="<:left:1032565106934022185>", style=discord.ButtonStyle.blurple
@@ -1253,14 +1295,23 @@ class DrawView(discord.ui.View):
         col_move = 1
         await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
 
-    # 4th / last row
     @discord.ui.button(
-        emoji="<:draw:1032565261846454272>", style=discord.ButtonStyle.green
+        emoji="<:select_tool:1037847279169704028> ", style=discord.ButtonStyle.gray
     )
-    async def draw(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def select_button(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
         await interaction.response.defer()
-        await self.edit_draw(interaction, self.board.cursor)
+        if self.board.select is False:
+            self.board.initial_coord = (self.board.cursor_row, self.board.cursor_col)
+            self.board.initial_row, self.board.initial_col = self.board.initial_coord
+        elif self.board.select is True:
+            self.board.clear_cursors()
+            self.board.draw_cursor()
+        self.toggle(self.board, "select", button)
+        await self.edit_draw(interaction)
 
+    # 3rd / Last Row
     @discord.ui.button(
         emoji="<:down_left:1032565090223935518>", style=discord.ButtonStyle.blurple
     )
