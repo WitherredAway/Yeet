@@ -611,7 +611,9 @@ class DrawSelectMenu(discord.ui.Select):
                 value=str(emoji),
             )
             replaced, returned_option = self.append_option(option)
+
             self.board.cursor = option.value
+            self.placeholder = option.label
 
             if replaced is False and returned_option is not None:
                 content = f'{emoji} is already in palette'
@@ -719,8 +721,6 @@ class DrawSelectMenu(discord.ui.Select):
                 k: v for k, v in added_emojis.items() if k not in replaced_emojis
             }
 
-            if len(self.options[self.END_INDEX :]) > 0:
-                self.board.cursor = self.options[-1].value
 
             response = [
                 f"%s - {added_emoji.status}" % added_emoji.emoji
@@ -728,6 +728,9 @@ class DrawSelectMenu(discord.ui.Select):
             ]
             if len(response) == 0:
                 return await res.edit(content="Aborted")
+
+            self.board.cursor = self.options[-1].value
+            self.placeholder = option.label
 
             await self.view.edit_draw(interaction, False)
             await res.edit(content=("\n".join(response))[:2000])
@@ -758,7 +761,9 @@ class DrawSelectMenu(discord.ui.Select):
                 value=str(emoji),
             )
             replaced, returned_option = self.append_option(option)
+
             self.board.cursor = option.value
+            self.placeholder = option.label
 
             await self.view.edit_draw(interaction, False)
             await res.edit(
@@ -771,8 +776,10 @@ class DrawSelectMenu(discord.ui.Select):
             )
 
         # If only one option was selected
-        elif self.board.cursor != self.values[0]:
-            self.board.cursor = self.values[0]
+        elif self.board.cursor != (value := self.values[0]):
+            self.board.cursor = value
+            self.placeholder = self.value_to_option(value).label
+
             await self.view.edit_draw(interaction, False)
 
 
