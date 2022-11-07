@@ -50,7 +50,6 @@ class AddedEmoji(SentEmoji):
         self.status = status
         self.name = name or emoji.name
 
-        self.original_name = emoji.name
         self.emoji.name = self.name
 
     def __repr__(self) -> str:

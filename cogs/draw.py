@@ -266,7 +266,11 @@ class Board:
     ):
         row = row if row is not None else self.cursor_row
         col = col if col is not None else self.cursor_col
-        colour = colour if colour is not None else self.board[row, col]
+
+        colour_emoji = discord.PartialEmoji.from_str(colour if colour is not None else self.board[row, col])
+        if colour_emoji.is_custom_emoji():
+            colour_emoji.name = "e"
+        colour = str(colour_emoji)
 
         self.board[row, col] = CURSOR.get(colour, colour) if cursor else colour
 
@@ -681,7 +685,7 @@ class DrawSelectMenu(discord.ui.Select):
                         sent_emoji=sent_emoji,
                         emoji=emoji,
                         status="Added.",
-                        name="e" if emoji.is_custom_emoji() else emoji.name,
+                        name=emoji.name,
                     )
 
                 added_emojis[
@@ -694,7 +698,7 @@ class DrawSelectMenu(discord.ui.Select):
                     continue
 
                 option = discord.SelectOption(
-                    label=added_emoji.original_name,
+                    label=added_emoji.name,
                     emoji=added_emoji.emoji,
                     value=str(added_emoji.emoji),
                 )
