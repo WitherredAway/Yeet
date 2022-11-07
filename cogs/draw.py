@@ -160,13 +160,14 @@ class Draw(commands.Cog):
             board.append(line.split(PADDING)[-1].split("\u200b"))
         board = np.array(board, dtype="object")
 
-        options = discord.ui.View.from_message(message, timeout=0).children[0].options
-        for option in options:
+        tool_options = discord.ui.View.from_message(message, timeout=0).children[0].options
+        colour_options = discord.ui.View.from_message(message, timeout=0).children[1].options
+        for option in colour_options:
             if option.label.endswith(" (base)"):
                 bg = str(option.emoji)
 
         board_obj = Board.from_board(board=board, background=bg)
-        draw_view = DrawView(board_obj, ctx=ctx, selectmenu_options=options)
+        draw_view = DrawView(board_obj, ctx=ctx, tool_options=tool_options, colour_options=colour_options)
         draw_view.board.cursor = description.split(PADDING)[0]
 
         start_view = StartView(ctx=ctx, draw_view=draw_view)
@@ -370,6 +371,38 @@ class Board:
 C = TypeVar("C", bound="Colour")
 
 
+class ToolSelectMenu(discord.ui.Select):
+    def __init__(
+        self,
+        *,
+        options: Optional[List[discord.SelectOption]] = None,
+    ):
+        default_options: List[discord.SelectOption] = [
+            discord.SelectOption(label="Pen", emoji="<:draw:1032565261846454272>", value="brush"),
+            discord.SelectOption(label="Pen", emoji="<:erase:927526530052132894>", value="erase"),
+            discord.SelectOption(label="Eyedropper", emoji="<:eyedropper:1033248590988066886>", value="eyedropper"),
+            discord.SelectOption(label="Fill", emoji="<:fill:930832869692149790>", value="fill"),
+            discord.SelectOption(label="Replace", emoji="<:replace:1032565283929456670>", value="replace"),
+        ]
+        options = options if options else default_options
+        self.END_INDEX = len(default_options)  # The ending index of default options
+
+        super().__init__(
+            placeholder="🖌️ Tools",
+            max_values=1,
+            options=options,
+        )
+
+        self.view: discord.ui.View
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+
+    async def pen_method(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        await self.view.edit_draw(interaction, self.board.cursor)
+
+
 class Colour:
     # RGB_A accepts RGB values and an optional Alpha value
     def __init__(self, RGB_A: Tuple[int]):
@@ -457,14 +490,14 @@ class Colour:
         )
 
 
-class DrawSelectMenu(discord.ui.Select):
+class ColourSelectMenu(discord.ui.Select):
     def __init__(
         self,
         *,
         options: Optional[List[discord.SelectOption]] = None,
         background: str,
     ):
-        default_options = [
+        default_options: List[discord.SelectOption] = [
             discord.SelectOption(label="Red", emoji="🟥", value="🟥"),
             discord.SelectOption(label="Orange", emoji="🟧", value="🟧"),
             discord.SelectOption(label="Yellow", emoji="🟨", value="🟨"),
@@ -789,13 +822,17 @@ class DrawView(discord.ui.View):
         board: Board,
         *,
         ctx: commands.Context,
-        selectmenu_options: Optional[List[discord.SelectOption]] = None,
+        tool_options: Optional[List[discord.SelectOption]] = None,
+        colour_options: Optional[List[discord.SelectOption]] = None,
     ):
         super().__init__(timeout=600)
         self.secondary = False
 
-        self.selectmenu: DrawSelectMenu = DrawSelectMenu(
-            options=selectmenu_options, background=board.background
+        self.tool_select_menu: ToolSelectMenu = ToolSelectMenu(
+            options=tool_options
+        )
+        self.colour_select_menu: ColourSelectMenu = ColourSelectMenu(
+            options=colour_options, background=board.background
         )
         self.load_items()
 
@@ -839,10 +876,12 @@ class DrawView(discord.ui.View):
         return embed
 
     def stop_view(self):
-        self.selectmenu.disabled = True
+        self.tool_select_menu.disabled = True
+        self.colour_select_menu.disabled = True
 
         self.clear_items()
-        self.add_item(self.selectmenu)
+        self.add_item(self.tool_select_menu)
+        self.add_item(self.colour_select_menu)
         self.board.clear_cursors(empty=True)
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -897,27 +936,22 @@ class DrawView(discord.ui.View):
 
     def load_items(self):
         self.clear_items()
-        self.add_item(self.selectmenu)
+        self.add_item(self.tool_select_menu)
+        self.add_item(self.colour_select_menu)
 
         # This is necessary for "paginating" the view and different buttons
         if self.secondary is False:
             self.add_item(self.stop_button)
-            self.add_item(self.secondary_button)
-            self.add_item(self.placeholder_button)
-            self.add_item(self.select_button)
-            self.add_item(self.fill_bucket)
-
-            self.add_item(self.eyedropper)
             self.add_item(self.up_left)
             self.add_item(self.up)
             self.add_item(self.up_right)
-            self.add_item(self.placeholder_button)
+            self.add_item(self.secondary_button)
 
             self.add_item(self.erase)
             self.add_item(self.left)
             self.add_item(self.auto_draw)
             self.add_item(self.right)
-            self.add_item(self.placeholder_button)
+            self.add_item(self.select_button)
 
             self.add_item(self.draw)
             self.add_item(self.down_left)
@@ -927,22 +961,16 @@ class DrawView(discord.ui.View):
 
         elif self.secondary is True:
             self.add_item(self.stop_button)
-            self.add_item(self.secondary_button)
-            self.add_item(self.placeholder_button)
-            self.add_item(self.select_button)
-            self.add_item(self.replace)
-
-            self.add_item(self.eyedropper)
             self.add_item(self.up_left)
             self.add_item(self.up)
             self.add_item(self.up_right)
-            self.add_item(self.placeholder_button)
+            self.add_item(self.secondary_button)
 
             self.add_item(self.clear)
             self.add_item(self.left)
             self.add_item(self.auto_draw)
             self.add_item(self.right)
-            self.add_item(self.placeholder_button)
+            self.add_item(self.select_button)
 
             self.add_item(self.draw)
             self.add_item(self.down_left)
@@ -1013,7 +1041,7 @@ class DrawView(discord.ui.View):
                 "In components\.\d+\.components\.\d+\.options\.(?P<option>\d+)\.emoji\.id: Invalid emoji",
                 error.text,
             ):  # If the emoji of one of the options of the select menu is unavailable
-                removed_option = self.selectmenu.options.pop(int(match.group("option")))
+                removed_option = self.colour_select_menu.options.pop(int(match.group("option")))
                 self.board.cursor = self.board.background
                 await interaction.followup.send(
                     content=f"The {removed_option.emoji} emoji was removed for some reason, so the option was removed aswell. Please try again.",
