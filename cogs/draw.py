@@ -76,12 +76,12 @@ class StartView(discord.ui.View):
             embed=self.draw_view.embed, view=self.draw_view
         )  # This is necessary because custom emojis only render when a followup is edited ◉_◉
 
-        await self.response.edit(view=None)
+        await self.response.delete()
         self.stop()
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.danger)
     async def cancel(self, interaction: discord.Interaction, button: discord.Button):
-        await self.response.edit(view=None)
+        await self.response.delete()
         self.stop()
 
 
@@ -1046,7 +1046,7 @@ class DrawView(discord.ui.View):
         self.stop_view()
         self.add_item(
             discord.ui.Button(
-                label=f"This interaction has timed out. Use {self.ctx.prefix}{self.ctx.command} for a new one.",
+                label=f"This interaction has timed out. Use `{self.ctx.prefix}{self.ctx.command} copy` for a new one.",
                 style=discord.ButtonStyle.gray,
                 disabled=True,
             )
