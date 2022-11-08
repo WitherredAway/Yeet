@@ -32,10 +32,10 @@ from .draw_utils.emoji import (
 
 
 CHANNEL = "[a-f0-9]{2}"
-HEX_REGEX = re.compile(f"^(?P<red>{CHANNEL})(?P<green>{CHANNEL})(?P<blue>{CHANNEL})(?P<alpha>{CHANNEL})?$")
+HEX_REGEX = re.compile(fr"\b(?P<red>{CHANNEL})(?P<green>{CHANNEL})(?P<blue>{CHANNEL})(?P<alpha>{CHANNEL})?\b")
 
 ZERO_TO_255 = "0*25[0-5]|0*2[0-4][0-9]|0*1[0-9]{2}|0*[1-9][0-9]|0*[0-9]"
-RGB_A_REGEX = re.compile(f"^(?P<red>{ZERO_TO_255}) +(?P<green>{ZERO_TO_255}) +(?P<blue>{ZERO_TO_255})(?: (?P<alpha>{ZERO_TO_255}))?$")
+RGB_A_REGEX = re.compile(fr"\((?P<red>{ZERO_TO_255}) +(?P<green>{ZERO_TO_255}) +(?P<blue>{ZERO_TO_255})(?: (?P<alpha>{ZERO_TO_255}))?\)")
 
 FLAG_EMOJI_REGEX = re.compile("[\U0001F1E6-\U0001F1FF]")
 
@@ -638,7 +638,7 @@ class ColourMenu(discord.ui.Select):
             discord.SelectOption(label="Black", emoji="⬛", value="⬛"),
             discord.SelectOption(label="White", emoji="⬜", value="⬜"),
             discord.SelectOption(
-                label="Add Colour",
+                label="Add Colour(s)",
                 emoji="🏳️‍🌈",
                 value="colour",
             ),
@@ -683,9 +683,12 @@ class ColourMenu(discord.ui.Select):
     def emoji_to_option(
         self, emoji: Union[discord.Emoji, discord.PartialEmoji]
     ) -> Union[None, discord.SelectOption]:
-        return self.emoji_to_option_dict.get(
-            emoji.name if emoji.is_unicode_emoji() else emoji.id
-        )
+        if isinstance(emoji, discord.Emoji):
+            identifier = emoji.id
+        else:
+            identifier = emoji.name if emoji.is_unicode_emoji() else emoji.id
+
+        return self.emoji_to_option_dict.get(identifier)
 
     async def upload_emoji(self, colour: Colour) -> discord.Emoji:
         # Look if emoji already exists
@@ -724,6 +727,79 @@ class ColourMenu(discord.ui.Select):
         super().append_option(option)
         return replaced_option is not None, replaced_option
 
+    def append_sent_emojis(
+        self, sent_emojis: List[SentEmoji]
+    ) -> Dict[Union[int, str], AddedEmoji]:
+        added_emojis = {}
+        for sent_emoji in sent_emojis:
+            emoji: Union[discord.Emoji, discord.PartialEmoji] = sent_emoji.emoji
+
+            if self.emoji_to_option(emoji):
+                added_emoji = AddedEmoji(
+                    sent_emoji=sent_emoji, emoji=emoji, status="Already exists."
+                )
+
+            else:
+                added_emoji = AddedEmoji(
+                    sent_emoji=sent_emoji,
+                    emoji=emoji,
+                    status="Added.",
+                    name=emoji.name,
+                )
+
+            added_emojis[
+                emoji.id if isinstance(emoji, discord.Emoji) else (emoji.name if emoji.is_unicode_emoji() else emoji.id)
+            ] = added_emoji
+
+        replaced_emojis = {}
+        for added_emoji in added_emojis.values():
+            if added_emoji.status != "Added.":
+                continue
+
+            option = discord.SelectOption(
+                label=added_emoji.name,
+                emoji=added_emoji.emoji,
+                value=str(added_emoji.emoji),
+            )
+            replaced, returned_option = self.append_option(option)
+            if replaced:
+                replaced_emoji = returned_option.emoji
+                replaced_emojis[
+                    replaced_emoji.id if replaced_emoji.id else replaced_emoji.name
+                ] = AddedEmoji.from_option(
+                    returned_option,
+                    status=f"Replaced by {added_emoji}.",
+                    sent_emoji=SentEmoji(emoji=replaced_emoji),
+                )
+                added_emoji.status = f"Added (replaced {replaced_emoji})."
+
+        # added_emojis.update(replaced_emojis)
+        added_emojis = {
+            k: v for k, v in added_emojis.items() if k not in replaced_emojis
+        }
+        return added_emojis
+
+    async def added_emojis_respond(
+        self,
+        added_emojis: Dict[Union[int, str], AddedEmoji],
+        response_message: discord.WebhookMessage,
+        *,
+        interaction: discord.Interaction
+    ):
+        response = [
+            f"%s - {added_emoji.status}" % added_emoji.emoji
+            for added_emoji in added_emojis.values()
+        ]
+        if len(response) == 0:
+            return await response_message.edit(content="Aborted")
+
+        if any(("Added" in added_emoji.status for added_emoji in added_emojis)):
+            self.board.cursor = self.options[-1].value
+            self.placeholder = self.options[-1].label
+
+        await self.view.edit_draw(interaction, False)
+        await response_message.edit(content=("\n".join(response))[:2000])
+
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
 
@@ -738,10 +814,20 @@ class ColourMenu(discord.ui.Select):
                 return m.author == interaction.user
 
             res, msg = await self.view.wait_for(
-                ("Of the colour you want to add to the palette, please type either:"
-                "\n• The hex code (e.g. ff64c4)"
-                "\n• The RGB values separated by space (e.g. 255 100 196)"
-                "\n• The RGBA values separated by space (e.g. 255 100 196 125)"),
+                ("Please type all the colours you want to add. They can be either or all of:"
+                "\n• The hex codes (e.g. `ff64c4` or `ff64c4ff` to include alpha) **seperated by space**,"
+                "\n• The RGB(A) values separated by space (e.g. `(255 100 196)` or `(255 100 196 125)`) of each colour **surrounded by brackets**"
+                "\n"
+                "\n__**Example**__:"
+                "\n*This entire block is a single message with valid hex codes/rgb(a) values*"
+                "\n```"
+                "\n647bab f08234ff"
+                "\n537349"
+                "\n(647bab f08234ff"
+                "\n537349"
+                "\n(221 93 141) (112 162 64 255)"
+                "\n(223 224 226)"
+                "\n```"),
                 interaction=interaction,
                 check=check,
             )
@@ -750,47 +836,35 @@ class ColourMenu(discord.ui.Select):
 
             content = msg.content.lower().strip()
 
-            hex = HEX_REGEX.match(content)
-            rgb_a = RGB_A_REGEX.match(content)
+            # Get any hex codes from the content
+            hex_matches = [match for match in HEX_REGEX.finditer(content)]
 
-            colour_channels = hex or rgb_a
-            if colour_channels is None:
-                return await res.edit(content="Aborted")
+            # Get any RGB/A values from the content
+            rgb_a_matches = [match for match in RGB_A_REGEX.finditer(content)]
 
-            red = int(colour_channels.group("red"), 16 if hex else 10)
-            green = int(colour_channels.group("green"), 16 if hex else 10)
-            blue = int(colour_channels.group("blue"), 16 if hex else 10)
-            alpha = int(colour_channels.group("alpha") or ("ff" if hex else "255"), 16 if hex else 10)
+            total_matches = hex_matches + rgb_a_matches
 
-            colour = Colour((red, green, blue, alpha))
+            ## Organize all the matches into SentEmoji objects
+            sent_emojis = []
+            for match in total_matches:
+                base = 16 if match in hex_matches else 10
 
-            emoji = discord.PartialEmoji.from_str(
-                str(await self.upload_emoji(colour))
-            )
+                red = int(match.group("red"), base)
+                green = int(match.group("green"), base)
+                blue = int(match.group("blue"), base)
+                alpha = int(match.group("alpha") or ("ff" if match in hex_matches else "255"), base)
 
-            option = discord.SelectOption(
-                label=colour.hex,
-                emoji=emoji,
-                value=str(emoji),
-            )
-            replaced, returned_option = self.append_option(option)
+                colour = Colour((red, green, blue, alpha))
 
-            self.board.cursor = option.value
-            self.placeholder = option.label
+                emoji = await self.upload_emoji(colour)
 
-            if replaced is False and returned_option is not None:
-                content = f'{emoji} is already in palette'
-            else:
-                content = f'Added colour {emoji} to palette' + (
-                    f" (replaced {returned_option.emoji})."
-                    if replaced
-                    else ""
-                    )
+                sent_emojis.append(SentEmoji(emoji=emoji, index=match.start()))
+            sent_emojis.sort(key=lambda emoji: emoji.index)
+            ##
 
-            await self.view.edit_draw(interaction, False)
-            await res.edit(
-                content=content
-            )
+            added_emojis = self.append_sent_emojis(sent_emojis)
+
+            await self.added_emojis_respond(added_emojis, res, interaction=interaction)
 
         # First it checks if the Add Emoji option was selected. Takes second priority
         elif "emoji" in self.values:
@@ -810,14 +884,14 @@ class ColourMenu(discord.ui.Select):
             # Get any unicode emojis from the content
             # and list them as SentEmoji objects
             unicode_emojis = [
-                SentEmoji(emoji=emoji, index=content.index(emoji))
+                SentEmoji(emoji=discord.PartialEmoji.from_str(self.view.board.un_cursor(emoji)), index=content.index(emoji))
                 for emoji in emojis.get(content)
             ]
             # Get any flag/regional indicator emojis from the content
             # and list them as SentEmoji objects
             flag_emojis = [
                 SentEmoji(
-                    emoji=emoji.group(0),
+                    emoji=discord.PartialEmoji.from_str(emoji.group(0)),
                     index=emoji.start(),
                 )
                 for emoji in FLAG_EMOJI_REGEX.finditer(content)
@@ -825,78 +899,20 @@ class ColourMenu(discord.ui.Select):
             # Get any custom emojis from the content
             # and list them as SentEmoji objects
             custom_emojis = [
-                SentEmoji(emoji=emoji.group(0), index=emoji.start())
+                SentEmoji(emoji=discord.PartialEmoji.from_str(emoji.group(0)), index=emoji.start())
                 for emoji in CUSTOM_EMOJI_REGEX.finditer(content)
             ]
 
-            # Gather all the emojis and sort them by index
+            ## Organize all the matches into SentEmoji objects
             sent_emojis = sorted(
                 unicode_emojis + flag_emojis + custom_emojis,
                 key=lambda emoji: emoji.index,
             )
+            ##
 
-            added_emojis = {}
-            for num, sent_emoji in enumerate(sent_emojis):
-                emoji_check = discord.PartialEmoji.from_str(sent_emoji.emoji)
-                emoji = copy.copy(emoji_check)
+            added_emojis = self.append_sent_emojis(sent_emojis)
 
-                if self.emoji_to_option(emoji):
-                    added_emoji = AddedEmoji(
-                        sent_emoji=sent_emoji, emoji=emoji, status="Already exists."
-                    )
-
-                else:
-                    added_emoji = AddedEmoji(
-                        sent_emoji=sent_emoji,
-                        emoji=emoji,
-                        status="Added.",
-                        name=emoji.name,
-                    )
-
-                added_emojis[
-                    emoji.name if emoji.is_unicode_emoji() else emoji.id
-                ] = added_emoji
-
-            replaced_emojis = {}
-            for added_emoji in added_emojis.values():
-                if added_emoji.status != "Added.":
-                    continue
-
-                option = discord.SelectOption(
-                    label=added_emoji.name,
-                    emoji=added_emoji.emoji,
-                    value=str(added_emoji.emoji),
-                )
-                replaced, returned_option = self.append_option(option)
-                if replaced:
-                    replaced_emoji = returned_option.emoji
-                    replaced_emojis[
-                        replaced_emoji.id if replaced_emoji.id else replaced_emoji.name
-                    ] = AddedEmoji.from_option(
-                        returned_option,
-                        status=f"Replaced by {added_emoji}.",
-                        sent_emoji=SentEmoji(emoji=replaced_emoji),
-                    )
-                    added_emoji.status = f"Added (replaced {replaced_emoji})."
-
-            # added_emojis.update(replaced_emojis)
-            added_emojis = {
-                k: v for k, v in added_emojis.items() if k not in replaced_emojis
-            }
-
-
-            response = [
-                f"%s - {added_emoji.status}" % added_emoji.emoji
-                for added_emoji in added_emojis.values()
-            ]
-            if len(response) == 0:
-                return await res.edit(content="Aborted")
-
-            self.board.cursor = self.options[-1].value
-            self.placeholder = option.label
-
-            await self.view.edit_draw(interaction, False)
-            await res.edit(content=("\n".join(response))[:2000])
+            await self.added_emojis_respond(added_emojis, res, interaction=interaction)
 
         # If multiple options were selected
         elif len(self.values) > 1:

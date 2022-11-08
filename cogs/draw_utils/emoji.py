@@ -1,4 +1,4 @@
-from typing import Optional, TypeVar
+from typing import Optional, TypeVar, Union
 
 import discord
 from PIL import Image
@@ -22,7 +22,7 @@ def draw_emoji(emoji: str) -> Image:
 
 
 class SentEmoji:
-    def __init__(self, *, emoji: str, index: Optional[int] = None):
+    def __init__(self, *, emoji: Union[discord.Emoji, discord.PartialEmoji], index: Optional[int] = None):
         self.emoji = emoji
         self.index = index
 
@@ -41,7 +41,7 @@ class AddedEmoji(SentEmoji):
         self,
         *,
         sent_emoji: SentEmoji,
-        emoji: discord.PartialEmoji,
+        emoji: Union[discord.Emoji, discord.PartialEmoji],
         status: Optional[str] = None,
         name: Optional[str] = None,
     ):
