@@ -395,28 +395,29 @@ class EyedropperTool(Tool):
 
         # Check if the option already exists
         option = self.view.colour_menu.emoji_to_option(emoji)
-        eyedropped_options = [
-            option
-            for option in self.view.colour_menu.options
-            if option.label.startswith("Eyedropped option")
-        ]
-
-        # Try to find the emoji so that we can use its real name as label
-        if (fetched_emoji := self.bot.get_emoji(emoji.id)) is not None:
-            label = fetched_emoji.name
-        # If the emoji's name is the shortened name (i.e. it is a custom emoji input through the program)
-        elif emoji.name == "e":
-            label = f"Eyedropped option #{len(eyedropped_options + 1)}"
-
         if option is None:
+            eyedropped_options = [
+                option
+                for option in self.view.colour_menu.options
+                if option.label.startswith("Eyedropped option")
+            ]
+
+            # Try to find the emoji so that we can use its real name as label
+            if (fetched_emoji := self.bot.get_emoji(emoji.id)) is not None:
+                label = fetched_emoji.name
+            # If the emoji's name is the shortened name (i.e. it is a custom emoji input through the program)
+            elif emoji.name == "e":
+                label = f"Eyedropped option #{len(eyedropped_options + 1)}"
+
             option = discord.SelectOption(
                 label=label,
                 emoji=emoji,
                 value=str(emoji),
             )
 
-        self.view.colour_menu.append_option(option)
+            self.view.colour_menu.append_option(option)
         self.board.cursor = option.value
+        self.view.colour_menu.placeholder = option.label
 
 class FillTool(Tool):
     @property
@@ -526,8 +527,21 @@ class ToolMenu(discord.ui.Select):
         await interaction.response.defer()
 
         value = self.values[0]
-        self.view.primary_tool = self.tools[value]
-        self.view.load_items()
+        tool = self.tools[value]
+
+        # If the tool selected is one of these,
+        # use it directly instead of equipping
+        if value in ["eyedropper", "fill", "replace"]:
+            tool._view = self.view
+            tool.board: Board = self.view.board
+            tool.bot: commands.Bot = self.view.bot
+            tool.use()
+
+        # Else, equip the tool (to the primary tool button slot)
+        else:
+            self.view.primary_tool = tool
+            self.view.load_items()
+
         await self.view.edit_draw(interaction)
 
 
