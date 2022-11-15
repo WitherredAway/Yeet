@@ -364,7 +364,7 @@ class BrushTool(Tool):
     def emoji(self) -> str:
         return "<:draw:1032565261846454272>"
 
-    async def use(self):
+    def use(self):
         self.board.draw(self.board.cursor)
 
 class EraseTool(Tool):
@@ -376,7 +376,7 @@ class EraseTool(Tool):
     def emoji(self) -> str:
         return "<:erase:927526530052132894>"
 
-    async def use(self):
+    def use(self):
         self.board.draw(self.board.background)
 
 class EyedropperTool(Tool):
@@ -388,7 +388,7 @@ class EyedropperTool(Tool):
     def emoji(self) -> str:
         return "<:eyedropper:1033248590988066886>"
 
-    async def use(self):
+    def use(self):
         cursor_pixel = self.board.cursor_pixel
         emoji = discord.PartialEmoji.from_str(self.board.un_cursor(cursor_pixel))
 
@@ -426,7 +426,7 @@ class FillTool(Tool):
     def emoji(self) -> str:
         return "<:fill:930832869692149790>"
 
-    async def use(self, *, initial_coords: Optional[Tuple[int, int]] = None):
+    def use(self, *, initial_coords: Optional[Tuple[int, int]] = None):
         colour = self.board.cursor
         if self.board.cursor_pixel == colour:
             return
@@ -477,7 +477,7 @@ class ReplaceTool(Tool):
     def emoji(self) -> str:
         return "<:replace:1032565283929456670>"
 
-    async def use(self):
+    def use(self):
         colour = self.board.cursor
         to_replace = self.board.cursor_pixel
 
