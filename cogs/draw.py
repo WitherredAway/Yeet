@@ -982,7 +982,6 @@ class DrawView(discord.ui.View):
         )
 
         self.primary_tool = self.tool_menu.tools["brush"]
-        self.secondary_tool = EraseTool(primary=False)
         self.load_items()
 
         self.board: Board = board
@@ -1083,6 +1082,17 @@ class DrawView(discord.ui.View):
                     await msg.delete()
             return res, msg
 
+    @property
+    def placeholder_button(self) -> discord.ui.Button:
+        button = discord.ui.Button(
+            label="\u200b",
+            style=discord.ButtonStyle.gray,
+            custom_id=str(len(self.children)),
+        )
+        button.callback = lambda interaction: interaction.response.defer()
+
+        return button
+
     def load_items(self):
         self.clear_items()
         self.add_item(self.tool_menu)
@@ -1090,13 +1100,13 @@ class DrawView(discord.ui.View):
 
         # This is necessary for "paginating" the view and different buttons
         if self.secondary_page is False:
-            self.add_item(self.stop_button)
+            self.add_item(self.placeholder_button)
             self.add_item(self.up_left)
             self.add_item(self.up)
             self.add_item(self.up_right)
             self.add_item(self.secondary_page_button)
 
-            self.add_item(self.secondary_tool)
+            self.add_item(self.placeholder_button)
             self.add_item(self.left)
             self.add_item(self.auto_draw)
             self.add_item(self.right)
@@ -1127,16 +1137,6 @@ class DrawView(discord.ui.View):
             self.add_item(self.down_right)
             self.add_item(self.set_cursor)
 
-    @property
-    def placeholder_button(self) -> discord.ui.Button:
-        button = discord.ui.Button(
-            label="\u200b",
-            style=discord.ButtonStyle.gray,
-            custom_id=str(len(self.children)),
-        )
-        button.callback = lambda interaction: interaction.response.defer()
-
-        return button
 
     async def edit_draw(
         self,
