@@ -22,7 +22,12 @@ def draw_emoji(emoji: str) -> Image:
 
 
 class SentEmoji:
-    def __init__(self, *, emoji: Union[discord.Emoji, discord.PartialEmoji], index: Optional[int] = None):
+    def __init__(
+        self,
+        *,
+        emoji: Union[discord.Emoji, discord.PartialEmoji],
+        index: Optional[int] = None,
+    ):
         self.emoji = emoji
         self.index = index
 

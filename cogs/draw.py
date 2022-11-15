@@ -32,10 +32,14 @@ from .draw_utils.emoji import (
 
 
 CHANNEL = "[a-f0-9]{2}"
-HEX_REGEX = re.compile(fr"\b(?P<red>{CHANNEL})(?P<green>{CHANNEL})(?P<blue>{CHANNEL})(?P<alpha>{CHANNEL})?\b")
+HEX_REGEX = re.compile(
+    rf"\b(?P<red>{CHANNEL})(?P<green>{CHANNEL})(?P<blue>{CHANNEL})(?P<alpha>{CHANNEL})?\b"
+)
 
 ZERO_TO_255 = "0*25[0-5]|0*2[0-4][0-9]|0*1[0-9]{2}|0*[1-9][0-9]|0*[0-9]"
-RGB_A_REGEX = re.compile(fr"\((?P<red>{ZERO_TO_255}) +(?P<green>{ZERO_TO_255}) +(?P<blue>{ZERO_TO_255})(?: (?P<alpha>{ZERO_TO_255}))?\)")
+RGB_A_REGEX = re.compile(
+    rf"\((?P<red>{ZERO_TO_255}) +(?P<green>{ZERO_TO_255}) +(?P<blue>{ZERO_TO_255})(?: (?P<alpha>{ZERO_TO_255}))?\)"
+)
 
 FLAG_EMOJI_REGEX = re.compile("[\U0001F1E6-\U0001F1FF]")
 
@@ -174,7 +178,9 @@ class Draw(commands.Cog):
 
         board_obj = Board.from_board(board=board, background=bg)
         board_obj.clear_cursors()
-        draw_view = DrawView(board_obj, ctx=ctx, tool_options=tool_options, colour_options=colour_options)
+        draw_view = DrawView(
+            board_obj, ctx=ctx, tool_options=tool_options, colour_options=colour_options
+        )
         draw_view.board.cursor = description.split(PADDING)[0]
 
         start_view = StartView(ctx=ctx, draw_view=draw_view)
@@ -275,7 +281,9 @@ class Board:
         row = row if row is not None else self.cursor_row
         col = col if col is not None else self.cursor_col
 
-        colour_emoji = discord.PartialEmoji.from_str(colour if colour is not None else self.board[row, col])
+        colour_emoji = discord.PartialEmoji.from_str(
+            colour if colour is not None else self.board[row, col]
+        )
         if colour_emoji.is_custom_emoji():
             colour_emoji.name = "e"
         colour = str(colour_emoji)
@@ -331,9 +339,15 @@ class Board:
 
 class Tool(discord.ui.Button):
     """A template class for each of the tools"""
+
     def __init__(self, *, primary: Optional[bool] = True):
-        super().__init__(emoji=self.emoji, style=discord.ButtonStyle.green if primary is True else discord.ButtonStyle.grey)
-        
+        super().__init__(
+            emoji=self.emoji,
+            style=discord.ButtonStyle.green
+            if primary is True
+            else discord.ButtonStyle.grey,
+        )
+
     @property
     def name(self) -> str:
         return None
@@ -368,6 +382,7 @@ class BrushTool(Tool):
     def use(self):
         self.board.draw(self.board.cursor)
 
+
 class EraseTool(Tool):
     @property
     def name(self) -> str:
@@ -379,6 +394,7 @@ class EraseTool(Tool):
 
     def use(self):
         self.board.draw(self.board.background)
+
 
 class EyedropperTool(Tool):
     @property
@@ -419,6 +435,7 @@ class EyedropperTool(Tool):
         self.board.cursor = option.value
         self.view.colour_menu.placeholder = option.label
 
+
 class FillTool(Tool):
     @property
     def name(self) -> str:
@@ -434,7 +451,10 @@ class FillTool(Tool):
             return
 
         # Use Breadth-First Search algorithm to fill an area
-        initial_coords = initial_coords or (self.board.cursor_row, self.board.cursor_col)
+        initial_coords = initial_coords or (
+            self.board.cursor_row,
+            self.board.cursor_col,
+        )
         initial_pixel = self.board.get_pixel(*initial_coords)
         queue = [initial_coords]
         i = 0
@@ -452,7 +472,10 @@ class FillTool(Tool):
                 or any(
                     (
                         self.board.get_pixel(row, col) != initial_pixel,
-                        CURSOR.get(self.board.get_pixel(row, col), self.board.get_pixel(row, col))
+                        CURSOR.get(
+                            self.board.get_pixel(row, col),
+                            self.board.get_pixel(row, col),
+                        )
                         != CURSOR.get(initial_pixel, initial_pixel),
                     )
                 )
@@ -469,6 +492,7 @@ class FillTool(Tool):
             queue.append((row, col - 1))
 
         self.board.draw_cursor()  # Draw cursor
+
 
 class ReplaceTool(Tool):
     @property
@@ -502,7 +526,9 @@ class ToolMenu(discord.ui.Select):
         ]
 
         default_options: List[discord.SelectOption] = [
-            discord.SelectOption(label=tool.name, emoji=tool.emoji, value=tool.name.lower())
+            discord.SelectOption(
+                label=tool.name, emoji=tool.emoji, value=tool.name.lower()
+            )
             for tool in self.tool_list
         ]
         options = options if options else default_options
@@ -518,10 +544,7 @@ class ToolMenu(discord.ui.Select):
 
     @property
     def tools(self) -> Dict[str, Tool]:
-        return {
-            tool.name.lower(): tool
-            for tool in self.tool_list
-        }
+        return {tool.name.lower(): tool for tool in self.tool_list}
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
@@ -676,7 +699,6 @@ class ColourMenu(discord.ui.Select):
             options=options,
         )
 
-
     @property
     def value_to_option_dict(self) -> Dict[str, discord.SelectOption]:
         return {option.value: option for option in self.options}
@@ -763,7 +785,9 @@ class ColourMenu(discord.ui.Select):
                 )
 
             added_emojis[
-                emoji.id if isinstance(emoji, discord.Emoji) else (emoji.name if emoji.is_unicode_emoji() else emoji.id)
+                emoji.id
+                if isinstance(emoji, discord.Emoji)
+                else (emoji.name if emoji.is_unicode_emoji() else emoji.id)
             ] = added_emoji
 
         replaced_emojis = {}
@@ -799,7 +823,7 @@ class ColourMenu(discord.ui.Select):
         added_emojis: Dict[Union[int, str], AddedEmoji],
         response_message: discord.WebhookMessage,
         *,
-        interaction: discord.Interaction
+        interaction: discord.Interaction,
     ):
         response = [
             f"%s - {added_emoji.status}" % added_emoji.emoji
@@ -808,7 +832,9 @@ class ColourMenu(discord.ui.Select):
         if len(response) == 0:
             return await response_message.edit(content="Aborted")
 
-        if any(("Added" in added_emoji.status for added_emoji in added_emojis.values())):
+        if any(
+            ("Added" in added_emoji.status for added_emoji in added_emojis.values())
+        ):
             self.board.cursor = self.options[-1].value
             self.placeholder = self.options[-1].label
 
@@ -825,24 +851,27 @@ class ColourMenu(discord.ui.Select):
 
         # If the Add Colour option was selected. Always takes first priority
         if "colour" in self.values:
+
             def check(m):
                 return m.author == interaction.user
 
             res, msg = await self.view.wait_for(
-                ("Please type all the colours you want to add. They can be either or all of:"
-                "\n• The hex codes (e.g. `ff64c4` or `ff64c4ff` to include alpha) **seperated by space**,"
-                "\n• The RGB(A) values separated by space (e.g. `(255 100 196)` or `(255 100 196 125)`) of each colour **surrounded by brackets**"
-                "\n"
-                "\n__**Example**__:"
-                "\n*This entire block is a single message with valid hex codes/rgb(a) values*"
-                "\n```"
-                "\n647bab f08234ff"
-                "\n537349"
-                "\n(647bab f08234ff"
-                "\n537349"
-                "\n(221 93 141) (112 162 64 255)"
-                "\n(223 224 226)"
-                "\n```"),
+                (
+                    "Please type all the colours you want to add. They can be either or all of:"
+                    "\n• The hex codes (e.g. `ff64c4` or `ff64c4ff` to include alpha) **seperated by space**,"
+                    "\n• The RGB(A) values separated by space (e.g. `(255 100 196)` or `(255 100 196 125)`) of each colour **surrounded by brackets**"
+                    "\n"
+                    "\n__**Example**__:"
+                    "\n*This entire block is a single message with valid hex codes/rgb(a) values*"
+                    "\n```"
+                    "\n647bab f08234ff"
+                    "\n537349"
+                    "\n(647bab f08234ff"
+                    "\n537349"
+                    "\n(221 93 141) (112 162 64 255)"
+                    "\n(223 224 226)"
+                    "\n```"
+                ),
                 interaction=interaction,
                 check=check,
             )
@@ -867,7 +896,10 @@ class ColourMenu(discord.ui.Select):
                 red = int(match.group("red"), base)
                 green = int(match.group("green"), base)
                 blue = int(match.group("blue"), base)
-                alpha = int(match.group("alpha") or ("ff" if match in hex_matches else "255"), base)
+                alpha = int(
+                    match.group("alpha") or ("ff" if match in hex_matches else "255"),
+                    base,
+                )
 
                 colour = Colour((red, green, blue, alpha))
 
@@ -899,7 +931,12 @@ class ColourMenu(discord.ui.Select):
             # Get any unicode emojis from the content
             # and list them as SentEmoji objects
             unicode_emojis = [
-                SentEmoji(emoji=discord.PartialEmoji.from_str(self.view.board.un_cursor(emoji)), index=content.index(emoji))
+                SentEmoji(
+                    emoji=discord.PartialEmoji.from_str(
+                        self.view.board.un_cursor(emoji)
+                    ),
+                    index=content.index(emoji),
+                )
                 for emoji in emojis.get(content)
             ]
             # Get any flag/regional indicator emojis from the content
@@ -914,7 +951,10 @@ class ColourMenu(discord.ui.Select):
             # Get any custom emojis from the content
             # and list them as SentEmoji objects
             custom_emojis = [
-                SentEmoji(emoji=discord.PartialEmoji.from_str(emoji.group(0)), index=emoji.start())
+                SentEmoji(
+                    emoji=discord.PartialEmoji.from_str(emoji.group(0)),
+                    index=emoji.start(),
+                )
                 for emoji in CUSTOM_EMOJI_REGEX.finditer(content)
             ]
 
@@ -938,10 +978,7 @@ class ColourMenu(discord.ui.Select):
                 f'Mixing colours {" and ".join(selected_emojis)} ...'
             )
 
-            colours = [
-                await Colour.from_emoji(emoji)
-                for emoji in selected_emojis
-            ]
+            colours = [await Colour.from_emoji(emoji) for emoji in selected_emojis]
 
             mixed_colour = Colour.mix_colours(colours)
 
@@ -962,11 +999,7 @@ class ColourMenu(discord.ui.Select):
             await self.view.edit_draw(interaction, False)
             await res.edit(
                 content=f'Mixed colours:\n{" + ".join(selected_emojis)} = {emoji}'
-                + (
-                    f" (replaced {returned_option.emoji})."
-                    if replaced
-                    else ""
-                )
+                + (f" (replaced {returned_option.emoji})." if replaced else "")
             )
 
         # If only one option was selected
@@ -989,9 +1022,7 @@ class DrawView(discord.ui.View):
         super().__init__(timeout=600)
         self.secondary_page = False
 
-        self.tool_menu: ToolMenu = ToolMenu(
-            options=tool_options
-        )
+        self.tool_menu: ToolMenu = ToolMenu(options=tool_options)
         self.colour_menu: ColourMenu = ColourMenu(
             options=colour_options, background=board.background
         )
@@ -1152,7 +1183,6 @@ class DrawView(discord.ui.View):
             self.add_item(self.down_right)
             self.add_item(self.set_cursor)
 
-
     async def edit_draw(
         self,
         interaction: discord.Interaction,
@@ -1193,7 +1223,9 @@ class DrawView(discord.ui.View):
                 "In components\.\d+\.components\.\d+\.options\.(?P<option>\d+)\.emoji\.id: Invalid emoji",
                 error.text,
             ):  # If the emoji of one of the options of the select menu is unavailable
-                removed_option = self.colour_menu.options.pop(int(match.group("option")))
+                removed_option = self.colour_menu.options.pop(
+                    int(match.group("option"))
+                )
                 self.board.cursor = self.board.background
                 await interaction.followup.send(
                     content=f"The {removed_option.emoji} emoji was removed for some reason, so the option was removed aswell. Please try again.",
