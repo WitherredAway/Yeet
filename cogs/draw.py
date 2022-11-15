@@ -173,6 +173,7 @@ class Draw(commands.Cog):
                 bg = str(option.emoji)
 
         board_obj = Board.from_board(board=board, background=bg)
+        board_obj.clear_cursors()
         draw_view = DrawView(board_obj, ctx=ctx, tool_options=tool_options, colour_options=colour_options)
         draw_view.board.cursor = description.split(PADDING)[0]
 
