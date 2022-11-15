@@ -794,7 +794,7 @@ class ColourMenu(discord.ui.Select):
         if len(response) == 0:
             return await response_message.edit(content="Aborted")
 
-        if any(("Added" in added_emoji.status for added_emoji in added_emojis)):
+        if any(("Added" in added_emoji.status for added_emoji in added_emojis.values())):
             self.board.cursor = self.options[-1].value
             self.placeholder = self.options[-1].label
 
