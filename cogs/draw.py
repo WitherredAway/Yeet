@@ -351,7 +351,7 @@ class Tool(discord.ui.Button):
         self.board: Board = self.view.board
         self.bot: commands.Bot = self.view.bot
 
-        await self.use()
+        self.use()
         await self.view.edit_draw(interaction)
 
 
