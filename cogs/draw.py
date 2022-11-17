@@ -841,7 +841,11 @@ class ColourMenu(discord.ui.Select):
             self.board.cursor = self.options[-1].value
             self.placeholder = self.options[-1].label
 
-        await notification.edit(("\n".join(response))[:EMBED_FIELD_CHAR_LIMIT - len(self.view.embed.fields[0].value)])
+        await notification.edit(
+            ("\n".join(response))[
+                : EMBED_FIELD_CHAR_LIMIT - len(self.view.embed.fields[0].value)
+            ]
+        )
         await self.view.edit_draw(interaction, False)
 
     async def callback(self, interaction: discord.Interaction):
@@ -912,7 +916,9 @@ class ColourMenu(discord.ui.Select):
 
             added_emojis = self.append_sent_emojis(sent_emojis)
 
-            await self.added_emojis_respond(added_emojis, notification=notification, interaction=interaction)
+            await self.added_emojis_respond(
+                added_emojis, notification=notification, interaction=interaction
+            )
 
         # First it checks if the Add Emoji option was selected. Takes second priority
         elif "emoji" in self.values:
@@ -968,14 +974,19 @@ class ColourMenu(discord.ui.Select):
 
             added_emojis = self.append_sent_emojis(sent_emojis)
 
-            await self.added_emojis_respond(added_emojis, notification=notification, interaction=interaction)
+            await self.added_emojis_respond(
+                added_emojis, notification=notification, interaction=interaction
+            )
 
         # If multiple options were selected
         elif len(self.values) > 1:
             selected_options = [self.value_to_option(value) for value in self.values]
 
             selected_emojis = [str(option.emoji) for option in selected_options]
-            notification = await self.view.create_notification(f'Mixing colours {" and ".join(selected_emojis)} ...', interaction=interaction)
+            notification = await self.view.create_notification(
+                f'Mixing colours {" and ".join(selected_emojis)} ...',
+                interaction=interaction,
+            )
 
             colours = [await Colour.from_emoji(emoji) for emoji in selected_emojis]
 
@@ -1015,8 +1026,10 @@ class Notification:
         content: Optional[str] = None,
         *,
         view: D,
-        emoji: Optional[Union[discord.PartialEmoji, discord.Emoji]] = discord.PartialEmoji.from_str("🔔")
-        ):
+        emoji: Optional[
+            Union[discord.PartialEmoji, discord.Emoji]
+        ] = discord.PartialEmoji.from_str("🔔"),
+    ):
         self.emoji: Union[discord.PartialEmoji, discord.Emoji] = emoji
         self.content: str = content
         self.view = view
@@ -1026,8 +1039,9 @@ class Notification:
         content: Optional[str] = None,
         *,
         interaction: Optional[discord.Interaction] = None,
-        emoji: Optional[Union[discord.PartialEmoji, discord.Emoji]] = discord.PartialEmoji.from_str("🔔")
-        
+        emoji: Optional[
+            Union[discord.PartialEmoji, discord.Emoji]
+        ] = discord.PartialEmoji.from_str("🔔"),
     ):
         if emoji is not None:
             self.emoji = emoji
@@ -1102,11 +1116,17 @@ class DrawView(discord.ui.View):
                 name="Notifications",
                 value="\n\n".join(
                     [
-                        (f"{str(n.emoji)} " + (n.content if idx == 0 else n.truncated_content()).replace("\n", "\n> "))  # Put each notification into seperate quotes
-                        if n.content is not None else ""  # Show only non-empty notifications
+                        (
+                            f"{str(n.emoji)} "
+                            + (
+                                n.content if idx == 0 else n.truncated_content()
+                            ).replace("\n", "\n> ")
+                        )  # Put each notification into seperate quotes
+                        if n.content is not None
+                        else ""  # Show only non-empty notifications
                         for idx, n in enumerate(self.notifications)
                     ]
-                )
+                ),
             )
 
         embed.set_footer(
@@ -1125,8 +1145,10 @@ class DrawView(discord.ui.View):
         content: Optional[str] = None,
         *,
         interaction: Optional[discord.Interaction] = None,
-        emoji: Optional[Union[discord.PartialEmoji, discord.Emoji]] = discord.PartialEmoji.from_str("🔔")
-        ) -> Notification:
+        emoji: Optional[
+            Union[discord.PartialEmoji, discord.Emoji]
+        ] = discord.PartialEmoji.from_str("🔔"),
+    ) -> Notification:
         self.notifications = self.notifications[:2]
 
         notification = Notification(content, emoji=emoji, view=self)
@@ -1185,7 +1207,9 @@ class DrawView(discord.ui.View):
             return notification, msg
 
         if content is not None:
-            notification = await self.create_notification(content, interaction=interaction)
+            notification = await self.create_notification(
+                content, interaction=interaction
+            )
         else:
             notification = await self.create_notification()
         async with self.lock:
@@ -1529,7 +1553,7 @@ class DrawView(discord.ui.View):
         await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
         await notification.edit(
             f"Moved cursor to **{cell}** ({LETTER_TO_NUMBER[row_key]}, {col_key})",
-            interaction=interaction
+            interaction=interaction,
         )
 
 
