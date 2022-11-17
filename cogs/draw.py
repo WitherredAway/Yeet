@@ -31,6 +31,10 @@ from .draw_utils.emoji import (
 )
 
 
+EMBED_DESC_CHAR_LIMIT = 4096
+EMBED_FIELD_CHAR_LIMIT = 1024
+
+
 CHANNEL = "[a-f0-9]{2}"
 HEX_REGEX = re.compile(
     rf"\b(?P<red>{CHANNEL})(?P<green>{CHANNEL})(?P<blue>{CHANNEL})(?P<alpha>{CHANNEL})?\b"
@@ -699,6 +703,8 @@ class ColourMenu(discord.ui.Select):
             options=options,
         )
 
+        self.view: DrawView
+
     @property
     def value_to_option_dict(self) -> Dict[str, discord.SelectOption]:
         return {option.value: option for option in self.options}
@@ -821,16 +827,15 @@ class ColourMenu(discord.ui.Select):
     async def added_emojis_respond(
         self,
         added_emojis: Dict[Union[int, str], AddedEmoji],
-        response_message: discord.WebhookMessage,
         *,
         interaction: discord.Interaction,
     ):
         response = [
-            f"%s - {added_emoji.status}" % added_emoji.emoji
+            f"{added_emoji.emoji} - {added_emoji.status}"
             for added_emoji in added_emojis.values()
         ]
         if len(response) == 0:
-            return await response_message.edit(content="Aborted")
+            return await self.view.set_notification("Aborted", interaction=interaction)
 
         if any(
             ("Added" in added_emoji.status for added_emoji in added_emojis.values())
@@ -839,7 +844,7 @@ class ColourMenu(discord.ui.Select):
             self.placeholder = self.options[-1].label
 
         await self.view.edit_draw(interaction, False)
-        await response_message.edit(content=("\n".join(response))[:2000])
+        await self.view.set_notification(("\n".join(response))[:EMBED_FIELD_CHAR_LIMIT], interaction=interaction)
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
@@ -855,7 +860,7 @@ class ColourMenu(discord.ui.Select):
             def check(m):
                 return m.author == interaction.user
 
-            res, msg = await self.view.wait_for(
+            msg = await self.view.wait_for(
                 (
                     "Please type all the colours you want to add. They can be either or all of:"
                     "\n• The hex codes (e.g. `ff64c4` or `ff64c4ff` to include alpha) **seperated by space**,"
@@ -911,7 +916,7 @@ class ColourMenu(discord.ui.Select):
 
             added_emojis = self.append_sent_emojis(sent_emojis)
 
-            await self.added_emojis_respond(added_emojis, res, interaction=interaction)
+            await self.added_emojis_respond(added_emojis, interaction=interaction)
 
         # First it checks if the Add Emoji option was selected. Takes second priority
         elif "emoji" in self.values:
@@ -919,7 +924,7 @@ class ColourMenu(discord.ui.Select):
             def check(m):
                 return m.author == interaction.user
 
-            res, msg = await self.view.wait_for(
+            msg = await self.view.wait_for(
                 "Please send a message containing the emojis you want to add to your palette. E.g. `😎 I like turtles 🐢`",
                 interaction=interaction,
                 check=check,
@@ -967,16 +972,14 @@ class ColourMenu(discord.ui.Select):
 
             added_emojis = self.append_sent_emojis(sent_emojis)
 
-            await self.added_emojis_respond(added_emojis, res, interaction=interaction)
+            await self.added_emojis_respond(added_emojis, interaction=interaction)
 
         # If multiple options were selected
         elif len(self.values) > 1:
             selected_options = [self.value_to_option(value) for value in self.values]
 
             selected_emojis = [str(option.emoji) for option in selected_options]
-            res = await interaction.followup.send(
-                f'Mixing colours {" and ".join(selected_emojis)} ...'
-            )
+            await self.view.set_notification(f'Mixing colours {" and ".join(selected_emojis)} ...', interaction=interaction)
 
             colours = [await Colour.from_emoji(emoji) for emoji in selected_emojis]
 
@@ -996,11 +999,10 @@ class ColourMenu(discord.ui.Select):
             self.board.cursor = option.value
             self.placeholder = option.label
 
-            await self.view.edit_draw(interaction, False)
-            await res.edit(
-                content=f'Mixed colours:\n{" + ".join(selected_emojis)} = {emoji}'
+            await self.view.set_notification(f'Mixed colours:\n{" + ".join(selected_emojis)} = {emoji}'
                 + (f" (replaced {returned_option.emoji})." if replaced else "")
             )
+            await self.view.edit_draw(interaction, False)
 
         # If only one option was selected
         elif self.board.cursor != (value := self.values[0]):
@@ -1037,6 +1039,8 @@ class DrawView(discord.ui.View):
         self.response: discord.Message = None
         self.lock = self.bot.lock
 
+        self.notification = "*cricket noises*"
+
     @property
     def embed(self):
         embed = discord.Embed(title=f"{self.ctx.author}'s drawing board.")
@@ -1058,6 +1062,8 @@ class DrawView(discord.ui.View):
             f"\n{NEW_LINE.join([f'{row_labels[idx]}{PADDING}{u200b.join(row)}' for idx, row in enumerate(self.board.board)])}"
         )
 
+        embed.add_field(name="Notification", value=self.notification)
+
         embed.set_footer(
             text=(
                 f"The board looks wack? Try decreasing its size! Do {self.ctx.clean_prefix}help draw for more info."
@@ -1068,6 +1074,11 @@ class DrawView(discord.ui.View):
             )
         )
         return embed
+
+    async def set_notification(self, content: Optional[str] = "*cricket noises*", *, interaction: Optional[discord.Interaction] = None):
+        self.notification = content
+        if interaction is not None:
+            await self.edit_message(interaction)
 
     def stop_view(self):
         self.tool_menu.disabled = True
@@ -1101,32 +1112,31 @@ class DrawView(discord.ui.View):
 
     async def wait_for(
         self,
-        content: str = "",
+        notification: Optional[str] = None,
         *,
         interaction: discord.Interaction,
         check: Callable = lambda x: x,
         delete_msg: bool = True,
-        ephemeral: bool = False,
     ):
-        res = None
         msg = None
         if self.lock.locked():
             await interaction.followup.send(
                 "Another message is being waited for, please wait until that process is complete.",
                 ephemeral=True,
             )
-            return res, msg
+            return msg
 
-        res = await interaction.followup.send(content=content, ephemeral=ephemeral)
+        if notification is not None:
+            await self.set_notification(notification, interaction=interaction)
         async with self.lock:
             try:
                 msg = await self.bot.wait_for("message", timeout=30, check=check)
             except asyncio.TimeoutError:
-                await res.edit(content="Timed out.")
+                await self.set_notification("Timed out.", interaction=interaction)
             else:
                 if delete_msg is True:
                     await msg.delete()
-            return res, msg
+            return msg
 
     @property
     def placeholder_button(self) -> discord.ui.Button:
@@ -1228,7 +1238,7 @@ class DrawView(discord.ui.View):
                 )
                 self.board.cursor = self.board.background
                 await interaction.followup.send(
-                    content=f"The {removed_option.emoji} emoji was removed for some reason, so the option was removed aswell. Please try again.",
+                    content=f"The {removed_option.emoji} emoji was not found for some reason, so the option was removed aswell. Please try again.",
                     ephemeral=True,
                 )
                 await self.edit_message(interaction)
@@ -1417,7 +1427,7 @@ class DrawView(discord.ui.View):
         def check(m):
             return m.author == interaction.user
 
-        res, msg = await self.wait_for(
+        msg = await self.wait_for(
             'Please type the cell you want to move the cursor to. e.g. "A1", "a1", "A10", "A", "10", etc.',
             interaction=interaction,
             check=check,
@@ -1452,13 +1462,14 @@ class DrawView(discord.ui.View):
                 row_key = col_key = None
 
         if row_key not in ABC or col_key not in NUM:
-            return await res.edit(content="Aborted.")
+            return await self.set_notification("Aborted.", interaction=interaction)
 
         row_move = LETTER_TO_NUMBER[row_key] - self.board.cursor_row
         col_move = col_key - self.board.cursor_col
         await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
-        await res.edit(
-            content=f"Moved cursor to **{cell}** ({LETTER_TO_NUMBER[row_key]}, {col_key})"
+        await self.set_notification(
+            f"Moved cursor to **{cell}** ({LETTER_TO_NUMBER[row_key]}, {col_key})",
+            interaction=interaction
         )
 
 
