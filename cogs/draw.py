@@ -42,7 +42,7 @@ HEX_REGEX = re.compile(
 
 ZERO_TO_255 = "0*25[0-5]|0*2[0-4][0-9]|0*1[0-9]{2}|0*[1-9][0-9]|0*[0-9]"
 RGB_A_REGEX = re.compile(
-    rf"\((?P<red>{ZERO_TO_255}) +(?P<green>{ZERO_TO_255}) +(?P<blue>{ZERO_TO_255})(?: (?P<alpha>{ZERO_TO_255}))?\)"
+    rf"\((?P<red>{ZERO_TO_255}) *,? +(?P<green>{ZERO_TO_255}) *,? +(?P<blue>{ZERO_TO_255})(?: *,? +(?P<alpha>{ZERO_TO_255}))?\)"
 )
 
 FLAG_EMOJI_REGEX = re.compile("[\U0001F1E6-\U0001F1FF]")
@@ -864,16 +864,14 @@ class ColourMenu(discord.ui.Select):
                 (
                     "Please type all the colours you want to add. They can be either or all of:"
                     "\n• The hex codes (e.g. `ff64c4` or `ff64c4ff` to include alpha) **seperated by space**,"
-                    "\n• The RGB(A) values separated by space (e.g. `(255 100 196)` or `(255 100 196 125)`) of each colour **surrounded by brackets**"
+                    "\n• The RGB(A) values separated by space or comma or both (e.g. `(255 100 196)` or `(255, 100, 196, 125)`) of each colour **surrounded by brackets**"
                     "\n"
                     "\n__**Example**__:"
                     "\n*This entire block is a single message with valid hex codes/rgb(a) values*"
                     "\n```"
-                    "\n647bab f08234ff"
-                    "\n537349"
-                    "\n(647bab f08234ff"
-                    "\n537349"
-                    "\n(221 93 141) (112 162 64 255)"
+                    "\n647bab"
+                    "\nf08234ff"
+                    "\n(221 93 141) (112, 162, 64, 255)"
                     "\n(223 224 226)"
                     "\n```"
                 ),
