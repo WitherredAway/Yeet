@@ -50,7 +50,10 @@ FLAG_EMOJI_REGEX = re.compile("[\U0001F1E6-\U0001F1FF]")
 CUSTOM_EMOJI_REGEX = re.compile("<a?:[a-zA-Z0-9_]+:\d+>")
 
 
+B = TypeVar("B", bound="Board")
+C = TypeVar("C", bound="Colour")
 D = TypeVar("D", bound="DrawView")
+N = TypeVar("N", bound="Notification")
 
 
 class StartView(discord.ui.View):
@@ -194,9 +197,6 @@ class Draw(commands.Cog):
             view=start_view,
         )
         start_view.response = response
-
-
-B = TypeVar("B", bound="Board")
 
 
 class Board:
@@ -572,9 +572,6 @@ class ToolMenu(discord.ui.Select):
         await self.view.edit_draw(interaction)
 
 
-C = TypeVar("C", bound="Colour")
-
-
 class Colour:
     # RGB_A accepts RGB values and an optional Alpha value
     def __init__(self, RGB_A: Tuple[int]):
@@ -828,6 +825,7 @@ class ColourMenu(discord.ui.Select):
         self,
         added_emojis: Dict[Union[int, str], AddedEmoji],
         *,
+        notification: N,
         interaction: discord.Interaction,
     ):
         response = [
@@ -835,7 +833,7 @@ class ColourMenu(discord.ui.Select):
             for added_emoji in added_emojis.values()
         ]
         if len(response) == 0:
-            return await self.view.set_notification("Aborted", interaction=interaction)
+            return await notification.edit("Aborted", interaction=interaction)
 
         if any(
             ("Added" in added_emoji.status for added_emoji in added_emojis.values())
@@ -843,8 +841,8 @@ class ColourMenu(discord.ui.Select):
             self.board.cursor = self.options[-1].value
             self.placeholder = self.options[-1].label
 
+        await notification.edit(("\n".join(response))[:EMBED_FIELD_CHAR_LIMIT - len(self.view.embed.fields[0].value)])
         await self.view.edit_draw(interaction, False)
-        await self.view.set_notification(("\n".join(response))[:EMBED_FIELD_CHAR_LIMIT], interaction=interaction)
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
@@ -860,7 +858,7 @@ class ColourMenu(discord.ui.Select):
             def check(m):
                 return m.author == interaction.user
 
-            msg = await self.view.wait_for(
+            notification, msg = await self.view.wait_for(
                 (
                     "Please type all the colours you want to add. They can be either or all of:"
                     "\n• The hex codes (e.g. `ff64c4` or `ff64c4ff` to include alpha) **seperated by space**,"
@@ -914,7 +912,7 @@ class ColourMenu(discord.ui.Select):
 
             added_emojis = self.append_sent_emojis(sent_emojis)
 
-            await self.added_emojis_respond(added_emojis, interaction=interaction)
+            await self.added_emojis_respond(added_emojis, notification=notification, interaction=interaction)
 
         # First it checks if the Add Emoji option was selected. Takes second priority
         elif "emoji" in self.values:
@@ -922,7 +920,7 @@ class ColourMenu(discord.ui.Select):
             def check(m):
                 return m.author == interaction.user
 
-            msg = await self.view.wait_for(
+            notification, msg = await self.view.wait_for(
                 "Please send a message containing the emojis you want to add to your palette. E.g. `😎 I like turtles 🐢`",
                 interaction=interaction,
                 check=check,
@@ -970,14 +968,14 @@ class ColourMenu(discord.ui.Select):
 
             added_emojis = self.append_sent_emojis(sent_emojis)
 
-            await self.added_emojis_respond(added_emojis, interaction=interaction)
+            await self.added_emojis_respond(added_emojis, notification=notification, interaction=interaction)
 
         # If multiple options were selected
         elif len(self.values) > 1:
             selected_options = [self.value_to_option(value) for value in self.values]
 
             selected_emojis = [str(option.emoji) for option in selected_options]
-            await self.view.set_notification(f'Mixing colours {" and ".join(selected_emojis)} ...', interaction=interaction)
+            notification = await self.view.create_notification(f'Mixing colours {" and ".join(selected_emojis)} ...', interaction=interaction)
 
             colours = [await Colour.from_emoji(emoji) for emoji in selected_emojis]
 
@@ -997,7 +995,8 @@ class ColourMenu(discord.ui.Select):
             self.board.cursor = option.value
             self.placeholder = option.label
 
-            await self.view.set_notification(f'Mixed colours:\n{" + ".join(selected_emojis)} = {emoji}'
+            await notification.edit(
+                f'Mixed colours:\n{" + ".join(selected_emojis)} = {emoji}'
                 + (f" (replaced {returned_option.emoji})." if replaced else "")
             )
             await self.view.edit_draw(interaction, False)
@@ -1010,6 +1009,41 @@ class ColourMenu(discord.ui.Select):
             await self.view.edit_draw(interaction, False)
 
 
+class Notification:
+    def __init__(
+        self,
+        content: Optional[str] = None,
+        *,
+        view: D,
+        emoji: Optional[Union[discord.PartialEmoji, discord.Emoji]] = discord.PartialEmoji.from_str("🔔")
+        ):
+        self.emoji: Union[discord.PartialEmoji, discord.Emoji] = emoji
+        self.content: str = content
+        self.view = view
+
+    async def edit(
+        self,
+        content: Optional[str] = None,
+        *,
+        interaction: Optional[discord.Interaction] = None,
+        emoji: Optional[Union[discord.PartialEmoji, discord.Emoji]] = discord.PartialEmoji.from_str("🔔")
+        
+    ):
+        if emoji is not None:
+            self.emoji = emoji
+        self.content = content
+
+        if interaction is not None:
+            await self.view.edit_message(interaction)
+
+    def truncated_content(self, length: Optional[int] = None):
+        if length is None:
+            trunc = self.content.split("\n")[0]
+        else:
+            trunc = self.content[:length]
+        return trunc + (" ..." if len(self.content) > len(trunc) else "")
+
+
 class DrawView(discord.ui.View):
     def __init__(
         self,
@@ -1020,14 +1054,14 @@ class DrawView(discord.ui.View):
         colour_options: Optional[List[discord.SelectOption]] = None,
     ):
         super().__init__(timeout=600)
-        self.secondary_page = False
+        self.secondary_page: bool = False
 
         self.tool_menu: ToolMenu = ToolMenu(options=tool_options)
         self.colour_menu: ColourMenu = ColourMenu(
             options=colour_options, background=board.background
         )
 
-        self.primary_tool = self.tool_menu.tools["brush"]
+        self.primary_tool: Tool = self.tool_menu.tools["brush"]
         self.load_items()
 
         self.board: Board = board
@@ -1035,9 +1069,9 @@ class DrawView(discord.ui.View):
         self.ctx: commands.Context = ctx
         self.bot: commands.Bot = self.ctx.bot
         self.response: discord.Message = None
-        self.lock = self.bot.lock
+        self.lock: asyncio.Lock = self.bot.lock
 
-        self.notification = "*cricket noises*"
+        self.notifications: List[Notification] = [Notification(view=self)]
 
     @property
     def embed(self):
@@ -1060,7 +1094,20 @@ class DrawView(discord.ui.View):
             f"\n{NEW_LINE.join([f'{row_labels[idx]}{PADDING}{u200b.join(row)}' for idx, row in enumerate(self.board.board)])}"
         )
 
-        embed.add_field(name="Notification", value=self.notification)
+        # This section adds the notification field only if any one
+        # of the notifications is not empty. In such a case, it only
+        # shows the notification(s) that is not empty
+        if any((n.content is not None for n in self.notifications)):
+            embed.add_field(
+                name="Notifications",
+                value="\n\n".join(
+                    [
+                        (f"{str(n.emoji)} " + (n.content if idx == 0 else n.truncated_content()).replace("\n", "\n> "))  # Put each notification into seperate quotes
+                        if n.content is not None else ""  # Show only non-empty notifications
+                        for idx, n in enumerate(self.notifications)
+                    ]
+                )
+            )
 
         embed.set_footer(
             text=(
@@ -1073,10 +1120,22 @@ class DrawView(discord.ui.View):
         )
         return embed
 
-    async def set_notification(self, content: Optional[str] = "*cricket noises*", *, interaction: Optional[discord.Interaction] = None):
-        self.notification = content
+    async def create_notification(
+        self,
+        content: Optional[str] = None,
+        *,
+        interaction: Optional[discord.Interaction] = None,
+        emoji: Optional[Union[discord.PartialEmoji, discord.Emoji]] = discord.PartialEmoji.from_str("🔔")
+        ) -> Notification:
+        self.notifications = self.notifications[:2]
+
+        notification = Notification(content, emoji=emoji, view=self)
+        self.notifications.insert(0, notification)
+
         if interaction is not None:
             await self.edit_message(interaction)
+
+        return notification
 
     def stop_view(self):
         self.tool_menu.disabled = True
@@ -1110,31 +1169,34 @@ class DrawView(discord.ui.View):
 
     async def wait_for(
         self,
-        notification: Optional[str] = None,
+        content: Optional[str] = None,
         *,
         interaction: discord.Interaction,
         check: Callable = lambda x: x,
         delete_msg: bool = True,
-    ):
+    ) -> Tuple[Notification, discord.Message]:
+        notification = None
         msg = None
         if self.lock.locked():
             await interaction.followup.send(
                 "Another message is being waited for, please wait until that process is complete.",
                 ephemeral=True,
             )
-            return msg
+            return notification, msg
 
-        if notification is not None:
-            await self.set_notification(notification, interaction=interaction)
+        if content is not None:
+            notification = await self.create_notification(content, interaction=interaction)
+        else:
+            notification = await self.create_notification()
         async with self.lock:
             try:
                 msg = await self.bot.wait_for("message", timeout=30, check=check)
             except asyncio.TimeoutError:
-                await self.set_notification("Timed out.", interaction=interaction)
+                await notification.edit("Timed out.", interaction=interaction)
             else:
                 if delete_msg is True:
                     await msg.delete()
-            return msg
+            return notification, msg
 
     @property
     def placeholder_button(self) -> discord.ui.Button:
@@ -1425,7 +1487,7 @@ class DrawView(discord.ui.View):
         def check(m):
             return m.author == interaction.user
 
-        msg = await self.wait_for(
+        notification, msg = await self.wait_for(
             'Please type the cell you want to move the cursor to. e.g. "A1", "a1", "A10", "A", "10", etc.',
             interaction=interaction,
             check=check,
@@ -1460,12 +1522,12 @@ class DrawView(discord.ui.View):
                 row_key = col_key = None
 
         if row_key not in ABC or col_key not in NUM:
-            return await self.set_notification("Aborted.", interaction=interaction)
+            return await notification.edit("Aborted.", interaction=interaction)
 
         row_move = LETTER_TO_NUMBER[row_key] - self.board.cursor_row
         col_move = col_key - self.board.cursor_col
         await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
-        await self.set_notification(
+        await notification.edit(
             f"Moved cursor to **{cell}** ({LETTER_TO_NUMBER[row_key]}, {col_key})",
             interaction=interaction
         )
