@@ -29,6 +29,14 @@ from .draw_utils.emoji import (
     SentEmoji,
     AddedEmoji,
 )
+from .draw_utils.tools import (
+    Tool,
+    BrushTool,
+    EraseTool,
+    EyedropperTool,
+    FillTool,
+    ReplaceTool
+)
 
 
 EMBED_DESC_CHAR_LIMIT = 4096
@@ -96,107 +104,42 @@ class StartView(discord.ui.View):
         self.stop()
 
 
-class Draw(commands.Cog):
-    """Category with commands to bring out your inner artist."""
-
-    def __init__(self, bot: commands.Bot):
-        self.bot = bot
-
-    display_emoji = "🖌️"
-
-    @commands.bot_has_permissions(external_emojis=True)
-    @commands.group(
-        name="draw",
-        aliases=("drawing", "paint", "painting"),
-        case_insensitive=True,
-        brief="Make pixel art on discord!",
-        help="wip",
-        description="Command which you can use to make pixel art using buttons and dropdown menus.",
-        invoke_without_command=True,
-    )
-    async def draw(
+class Notification:
+    def __init__(
         self,
-        ctx: commands.Context,
-        height: Optional[int] = 9,
-        width: Optional[int] = 9,
-        background: Literal["🟥", "🟧", "🟨", "🟩", "🟦", "🟪", "🟫", "⬛", "⬜"] = "⬜",
-    ) -> None:
-        bg = background
-        if height < 5 or height > 17:
-            return await ctx.send("Height must be atleast 5 and atmost 17")
-
-        if width < 5 or width > 17:
-            return await ctx.send("Width must be atleast 5 and atmost 17")
-
-        board = Board(height=height, width=width, background=background)
-        draw_view = DrawView(board, ctx=ctx)
-
-        start_view = StartView(ctx=ctx, draw_view=draw_view)
-        response = await ctx.send(
-            f"Create new draw board with `{height = }`, `{width = }` and `{bg = }`?",
-            view=start_view,
-        )
-        start_view.response = response
-
-    @draw.command(
-        name="copy",
-        brief="Copy a drawing.",
-        help="Copy a drawing from an embed by replying to the message or using message link.",
-        description="Allows you to copy a drawing that was done with the `draw` command. This will also copy the palette! You can copy by replying to such a message or by providing the message link (or ID).",
-    )
-    async def copy(
-        self,
-        ctx: commands.Context,
-        message_link: Optional[discord.Message] = None,
+        content: Optional[str] = None,
+        *,
+        view: D,
+        emoji: Optional[
+            Union[discord.PartialEmoji, discord.Emoji]
+        ] = discord.PartialEmoji.from_str("🔔"),
     ):
-        message = message_link
-        if ctx.message.reference:
-            message = await ctx.channel.fetch_message(ctx.message.reference.message_id)
-        elif message_link is None or not isinstance(message_link, discord.Message):
-            return await ctx.send_help(ctx.command)
+        self.emoji: Union[discord.PartialEmoji, discord.Emoji] = emoji
+        self.content: str = content
+        self.view = view
 
-        if len(message.embeds) == 0 or message.author != ctx.bot.user:
-            return await ctx.send(
-                "Invalid message, make sure it's a draw embed and a message from the bot."
-            )
-        if "drawing board" not in message.embeds[0].title:
-            return await ctx.send(
-                "Invalid message, make sure it's a draw embed and a message from the bot."
-            )
+    async def edit(
+        self,
+        content: Optional[str] = None,
+        *,
+        interaction: Optional[discord.Interaction] = None,
+        emoji: Optional[
+            Union[discord.PartialEmoji, discord.Emoji]
+        ] = discord.PartialEmoji.from_str("🔔"),
+    ):
+        if emoji is not None:
+            self.emoji = emoji
+        self.content = content
 
-        description = message.embeds[0].description
-        lines = description.split("\n")[2:]
-        board = []
-        for line in lines:
-            board.append(line.split(PADDING)[-1].split("\u200b"))
-        board = np.array(board, dtype="object")
+        if interaction is not None:
+            await self.view.edit_message(interaction)
 
-        old_view = discord.ui.View.from_message(message, timeout=0)
-        if len(old_view.children) > 1:
-            tool_options = old_view.children[0].options
-            colour_options = old_view.children[1].options
+    def truncated_content(self, length: Optional[int] = None):
+        if length is None:
+            trunc = self.content.split("\n")[0]
         else:
-            tool_options = None
-            colour_options = old_view.children[0].options
-
-        for option in colour_options:
-            if option.label.endswith(" (base)"):
-                bg = str(option.emoji)
-
-        board_obj = Board.from_board(board=board, background=bg)
-        board_obj.clear_cursors()
-        draw_view = DrawView(
-            board_obj, ctx=ctx, tool_options=tool_options, colour_options=colour_options
-        )
-        draw_view.board.cursor = description.split(PADDING)[0]
-
-        start_view = StartView(ctx=ctx, draw_view=draw_view)
-        response = await ctx.send(
-            content="Create a copy of this board? (Due to discord limitations, custom emojis may not render here)",
-            embed=draw_view.embed,
-            view=start_view,
-        )
-        start_view.response = response
+            trunc = self.content[:length]
+        return trunc + (" ..." if len(self.content) > len(trunc) else "")
 
 
 class Board:
@@ -341,178 +284,503 @@ class Board:
         self.backup_board = self.board.copy()
 
 
-class Tool(discord.ui.Button):
-    """A template class for each of the tools"""
+class DrawView(discord.ui.View):
+    def __init__(
+        self,
+        board: Board,
+        *,
+        ctx: commands.Context,
+        tool_options: Optional[List[discord.SelectOption]] = None,
+        colour_options: Optional[List[discord.SelectOption]] = None,
+    ):
+        super().__init__(timeout=600)
+        self.secondary_page: bool = False
 
-    def __init__(self, *, primary: Optional[bool] = True):
-        super().__init__(
-            emoji=self.emoji,
-            style=discord.ButtonStyle.green
-            if primary is True
-            else discord.ButtonStyle.grey,
+        self.tool_menu: ToolMenu = ToolMenu(options=tool_options)
+        self.colour_menu: ColourMenu = ColourMenu(
+            options=colour_options, background=board.background
         )
 
-    @property
-    def name(self) -> str:
-        return None
+        self.primary_tool: Tool = self.tool_menu.tools["brush"]
+        self.load_items()
+
+        self.board: Board = board
+
+        self.ctx: commands.Context = ctx
+        self.bot: commands.Bot = self.ctx.bot
+        self.response: discord.Message = None
+        self.lock: asyncio.Lock = self.bot.lock
+
+        self.notifications: List[Notification] = [Notification(view=self)]
 
     @property
-    def emoji(self) -> str:
-        return None
+    def embed(self):
+        embed = discord.Embed(title=f"{self.ctx.author}'s drawing board.")
 
-    def use(self):
-        """The method that is called when the tool is used"""
-        pass
+        cursor_rows = tuple(row for row, col in self.board.cursor_coords)
+        cursor_cols = tuple(col for row, col in self.board.cursor_coords)
+        row_labels = [
+            (row if idx not in cursor_rows else ROW_ICONS_DICT[row])
+            for idx, row in enumerate(self.board.row_labels)
+        ]
+        col_labels = [
+            (col if idx not in cursor_cols else COLUMN_ICONS_DICT[col])
+            for idx, col in enumerate(self.board.col_labels)
+        ]
 
-    async def callback(self, interaction: discord.Interaction):
-        await interaction.response.defer()
+        # The actual board
+        embed.description = (
+            f"{self.board.cursor}{PADDING}{u200b.join(col_labels)}\n"
+            f"\n{NEW_LINE.join([f'{row_labels[idx]}{PADDING}{u200b.join(row)}' for idx, row in enumerate(self.board.board)])}"
+        )
 
-        self.board: Board = self.view.board
-        self.bot: commands.Bot = self.view.bot
-
-        self.use()
-        await self.view.edit_draw(interaction)
-
-
-class BrushTool(Tool):
-    @property
-    def name(self) -> str:
-        return "Brush"
-
-    @property
-    def emoji(self) -> str:
-        return "<:draw:1032565261846454272>"
-
-    def use(self):
-        self.board.draw(self.board.cursor)
-
-
-class EraseTool(Tool):
-    @property
-    def name(self) -> str:
-        return "Eraser"
-
-    @property
-    def emoji(self) -> str:
-        return "<:erase:927526530052132894>"
-
-    def use(self):
-        self.board.draw(self.board.background)
-
-
-class EyedropperTool(Tool):
-    @property
-    def name(self) -> str:
-        return "Eyedropper"
-
-    @property
-    def emoji(self) -> str:
-        return "<:eyedropper:1033248590988066886>"
-
-    def use(self):
-        cursor_pixel = self.board.cursor_pixel
-        emoji = discord.PartialEmoji.from_str(self.board.un_cursor(cursor_pixel))
-
-        # Check if the option already exists
-        option = self.view.colour_menu.emoji_to_option(emoji)
-        if option is None:
-            eyedropped_options = [
-                option
-                for option in self.view.colour_menu.options
-                if option.label.startswith("Eyedropped option")
-            ]
-
-            # Try to find the emoji so that we can use its real name as label
-            if (fetched_emoji := self.bot.get_emoji(emoji.id)) is not None:
-                label = fetched_emoji.name
-            # If the emoji's name is the shortened name (i.e. it is a custom emoji input through the program)
-            elif emoji.name == "e":
-                label = f"Eyedropped option #{len(eyedropped_options + 1)}"
-
-            option = discord.SelectOption(
-                label=label,
-                emoji=emoji,
-                value=str(emoji),
+        # This section adds the notification field only if any one
+        # of the notifications is not empty. In such a case, it only
+        # shows the notification(s) that is not empty
+        if any((n.content is not None for n in self.notifications)):
+            embed.add_field(
+                name="Notifications",
+                value="\n\n".join(
+                    [
+                        (
+                            f"{str(n.emoji)} "
+                            + (
+                                n.content if idx == 0 else n.truncated_content()
+                            ).replace("\n", "\n> ")
+                        )  # Put each notification into seperate quotes
+                        if n.content is not None
+                        else ""  # Show only non-empty notifications
+                        for idx, n in enumerate(self.notifications)
+                    ]
+                ),
             )
 
-            self.view.colour_menu.append_option(option)
-        self.board.cursor = option.value
-        self.view.colour_menu.placeholder = option.label
+        embed.set_footer(
+            text=(
+                f"The board looks wack? Try decreasing its size! Do {self.ctx.clean_prefix}help draw for more info."
+                if any(
+                    (len(self.board.row_labels) >= 10, len(self.board.col_labels) >= 10)
+                )
+                else f"You can customize this board! Do {self.ctx.clean_prefix}help draw for more info."
+            )
+        )
+        return embed
 
+    async def create_notification(
+        self,
+        content: Optional[str] = None,
+        *,
+        interaction: Optional[discord.Interaction] = None,
+        emoji: Optional[
+            Union[discord.PartialEmoji, discord.Emoji]
+        ] = discord.PartialEmoji.from_str("🔔"),
+    ) -> Notification:
+        self.notifications = self.notifications[:2]
 
-class FillTool(Tool):
+        notification = Notification(content, emoji=emoji, view=self)
+        self.notifications.insert(0, notification)
+
+        if interaction is not None:
+            await self.edit_message(interaction)
+
+        return notification
+
+    def stop_view(self):
+        self.tool_menu.disabled = True
+        self.colour_menu.disabled = True
+
+        self.clear_items()
+        self.add_item(self.tool_menu)
+        self.add_item(self.colour_menu)
+        self.board.clear_cursors(empty=True)
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user != self.ctx.author:
+            await interaction.response.send_message(
+                f"This instance does not belong to you, use the `{self.ctx.command}` command to create your own instance.",
+                ephemeral=True,
+            )
+            return False
+        return True
+
+    async def on_timeout(self):
+        self.stop_view()
+        self.add_item(
+            discord.ui.Button(
+                label=f"This interaction has timed out. Use `{self.ctx.prefix}{self.ctx.command} copy` for a new one.",
+                style=discord.ButtonStyle.gray,
+                disabled=True,
+            )
+        )
+        await self.response.edit(embed=self.embed, view=self)
+        self.stop()
+
+    async def wait_for(
+        self,
+        content: Optional[str] = None,
+        *,
+        interaction: discord.Interaction,
+        check: Callable = lambda x: x,
+        delete_msg: bool = True,
+    ) -> Tuple[Notification, discord.Message]:
+        notification = None
+        msg = None
+        if self.lock.locked():
+            await interaction.followup.send(
+                "Another message is being waited for, please wait until that process is complete.",
+                ephemeral=True,
+            )
+            return notification, msg
+
+        if content is not None:
+            notification = await self.create_notification(
+                content, interaction=interaction
+            )
+        else:
+            notification = await self.create_notification()
+        async with self.lock:
+            try:
+                msg = await self.bot.wait_for("message", timeout=30, check=check)
+            except asyncio.TimeoutError:
+                await notification.edit("Timed out.", interaction=interaction)
+            else:
+                if delete_msg is True:
+                    await msg.delete()
+            return notification, msg
+
     @property
-    def name(self) -> str:
-        return "Fill"
+    def placeholder_button(self) -> discord.ui.Button:
+        button = discord.ui.Button(
+            label="\u200b",
+            style=discord.ButtonStyle.gray,
+            custom_id=str(len(self.children)),
+        )
+        button.callback = lambda interaction: interaction.response.defer()
 
-    @property
-    def emoji(self) -> str:
-        return "<:fill:930832869692149790>"
+        return button
 
-    def use(self, *, initial_coords: Optional[Tuple[int, int]] = None):
-        colour = self.board.cursor
-        if self.board.cursor_pixel == colour:
+    def load_items(self):
+        self.clear_items()
+        self.add_item(self.tool_menu)
+        self.add_item(self.colour_menu)
+
+        # This is necessary for "paginating" the view and different buttons
+        if self.secondary_page is False:
+            self.add_item(self.placeholder_button)
+            self.add_item(self.up_left)
+            self.add_item(self.up)
+            self.add_item(self.up_right)
+            self.add_item(self.secondary_page_button)
+
+            self.add_item(self.placeholder_button)
+            self.add_item(self.left)
+            self.add_item(self.auto_draw)
+            self.add_item(self.right)
+            self.add_item(self.select_button)
+
+            self.add_item(self.primary_tool)
+            self.add_item(self.down_left)
+            self.add_item(self.down)
+            self.add_item(self.down_right)
+            self.add_item(self.set_cursor)
+
+        elif self.secondary_page is True:
+            self.add_item(self.stop_button)
+            self.add_item(self.up_left)
+            self.add_item(self.up)
+            self.add_item(self.up_right)
+            self.add_item(self.secondary_page_button)
+
+            self.add_item(self.clear)
+            self.add_item(self.left)
+            self.add_item(self.auto_draw)
+            self.add_item(self.right)
+            self.add_item(self.select_button)
+
+            self.add_item(self.primary_tool)
+            self.add_item(self.down_left)
+            self.add_item(self.down)
+            self.add_item(self.down_right)
+            self.add_item(self.set_cursor)
+
+    async def edit_draw(
+        self,
+        interaction: discord.Interaction,
+        colour: Optional[Union[str, bool]] = None,
+        *,
+        replace: Optional[bool] = False,
+    ):
+        if all(
+            (
+                colour is not None,
+                all(
+                    self.board.board[row, col] == CURSOR.get(colour, colour)
+                    for row, col in self.board.cursor_coords
+                ),
+                self.board.auto is False,
+            )
+        ):
             return
 
-        # Use Breadth-First Search algorithm to fill an area
-        initial_coords = initial_coords or (
-            self.board.cursor_row,
-            self.board.cursor_col,
-        )
-        initial_pixel = self.board.get_pixel(*initial_coords)
-        queue = [initial_coords]
-        i = 0
-
-        while i < len(queue):
-            row, col = queue[i]
-            i += 1
-            # Skip to next cell in the queue if
-            # the row is less than 0 or greater than the max row possible,
-            # the col is less than 0 or greater than the max col possible or
-            # the current pixel (or its cursor version) is not the same as the pixel to replace (or its cursor version)
-            if (
-                any((row < 0, row > self.board.cursor_row_max))
-                or any((col < 0, col > self.board.cursor_col_max))
-                or any(
-                    (
-                        self.board.get_pixel(row, col) != initial_pixel,
-                        CURSOR.get(
-                            self.board.get_pixel(row, col),
-                            self.board.get_pixel(row, col),
-                        )
-                        != CURSOR.get(initial_pixel, initial_pixel),
-                    )
-                )
-            ):
-                continue
-
-            convert = True if self.board.board[row, col] in inv_CURSOR.keys() else False
-            self.board.draw_cursor(row, col, colour=colour, cursor=convert)
-
-            # Enqueue the four surrounding cells of the current cell
-            queue.append((row + 1, col))
-            queue.append((row - 1, col))
-            queue.append((row, col + 1))
-            queue.append((row, col - 1))
-
-        self.board.draw_cursor()  # Draw cursor
-
-
-class ReplaceTool(Tool):
-    @property
-    def name(self) -> str:
-        return "Replace"
-
-    @property
-    def emoji(self) -> str:
-        return "<:replace:1032565283929456670>"
-
-    def use(self):
-        colour = self.board.cursor
-        to_replace = self.board.cursor_pixel
-
         self.board.draw(colour)
-        self.board.board[self.board.board == to_replace] = colour
+        await self.edit_message(interaction)
+
+    async def edit_message(self, interaction: discord.Interaction):
+        try:
+            await interaction.edit_original_message(embed=self.embed, view=self)
+        except discord.HTTPException as error:
+            if match := re.search(
+                "In embeds\.\d+\.description: Must be 4096 or fewer in length\.",
+                error.text,
+            ):  # If the description reaches char limit
+                await interaction.followup.send(
+                    content=f"Max characters reached ({len(self.embed.description)}). Please remove some custom emojis from the board.\nCustom emojis take up more than 20 characters each, while most unicode/default ones take up 1!\nMaximum is 4096 characters due to discord limitations.",
+                    ephemeral=True,
+                )
+                self.board.board = self.board.backup_board
+                await self.edit_message(interaction)
+            elif match := re.search(
+                "In components\.\d+\.components\.\d+\.options\.(?P<option>\d+)\.emoji\.id: Invalid emoji",
+                error.text,
+            ):  # If the emoji of one of the options of the select menu is unavailable
+                removed_option = self.colour_menu.options.pop(
+                    int(match.group("option"))
+                )
+                self.board.cursor = self.board.background
+                await interaction.followup.send(
+                    content=f"The {removed_option.emoji} emoji was not found for some reason, so the option was removed aswell. Please try again.",
+                    ephemeral=True,
+                )
+                await self.edit_message(interaction)
+            else:
+                await interaction.followup.send(error)
+                raise error
+
+    async def move_cursor(
+        self,
+        interaction: discord.Interaction,
+        row_move: Optional[int] = 0,
+        col_move: Optional[int] = 0,
+    ):
+        self.board.move_cursor(row_move, col_move)
+        await self.edit_draw(interaction)
+
+    def toggle(
+        self,
+        obj,
+        attribute: str,
+        button: discord.ui.Button,
+        *,
+        switch_to: Optional[bool] = None,
+    ):
+        attr_value = getattr(obj, attribute)
+        switch_to = switch_to if switch_to is not None else not attr_value
+        setattr(obj, attribute, switch_to)
+
+        if switch_to is True:
+            button.style = discord.ButtonStyle.green
+        elif switch_to is False:
+            button.style = discord.ButtonStyle.grey
+
+    # ------ BUTTONS ------
+
+    # 1st row
+    @discord.ui.button(
+        emoji="<:stop:1032565237242667048>", style=discord.ButtonStyle.danger
+    )
+    async def stop_button(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        await interaction.response.defer()
+        self.stop_view()
+        await self.edit_draw(interaction)
+        self.stop()
+
+    @discord.ui.button(
+        emoji="<:up_left:1032565175930343484>", style=discord.ButtonStyle.blurple
+    )
+    async def up_left(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        await interaction.response.defer()
+        row_move = -1
+        col_move = -1
+        await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
+
+    @discord.ui.button(
+        emoji="<:up:1032564978676400148>", style=discord.ButtonStyle.blurple
+    )
+    async def up(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        row_move = -1
+        col_move = 0
+        await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
+
+    @discord.ui.button(
+        emoji="<:up_right:1032564997869543464>", style=discord.ButtonStyle.blurple
+    )
+    async def up_right(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        await interaction.response.defer()
+        row_move = -1
+        col_move = 1
+        await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
+
+    @discord.ui.button(label="2nd", style=discord.ButtonStyle.grey)
+    async def secondary_page_button(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        await interaction.response.defer()
+        self.toggle(self, "secondary_page", button)
+
+        self.load_items()
+        await self.edit_draw(interaction)
+
+    # 2nd Row
+    @discord.ui.button(
+        emoji="<:clear:1032565244658204702>", style=discord.ButtonStyle.danger
+    )
+    async def clear(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        self.toggle(self, "secondary_page", self.secondary_page_button, switch_to=False)
+        self.toggle(self.board, "auto", self.auto_draw, switch_to=False)
+        self.toggle(self.board, "select", self.select_button, switch_to=False)
+        self.board.clear()
+        self.load_items()
+        await self.edit_draw(interaction)
+
+    @discord.ui.button(
+        emoji="<:left:1032565106934022185>", style=discord.ButtonStyle.blurple
+    )
+    async def left(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        row_move = 0
+        col_move = -1
+        await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
+
+    @discord.ui.button(
+        emoji="<:auto_draw:1032565224903016449>", style=discord.ButtonStyle.gray
+    )
+    async def auto_draw(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        await interaction.response.defer()
+        self.toggle(self.board, "auto", button)
+        await self.edit_draw(interaction, False)
+
+    @discord.ui.button(
+        emoji="<:right:1032565019352764438>", style=discord.ButtonStyle.blurple
+    )
+    async def right(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        row_move = 0
+        col_move = 1
+        await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
+
+    @discord.ui.button(
+        emoji="<:select_tool:1037847279169704028> ", style=discord.ButtonStyle.gray
+    )
+    async def select_button(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        await interaction.response.defer()
+        if self.board.select is False:
+            self.board.initial_coord = (self.board.cursor_row, self.board.cursor_col)
+            self.board.initial_row, self.board.initial_col = self.board.initial_coord
+        elif self.board.select is True:
+            self.board.clear_cursors()
+            self.board.draw_cursor()
+        self.toggle(self.board, "select", button)
+        await self.edit_draw(interaction)
+
+    # 3rd / Last Row
+    @discord.ui.button(
+        emoji="<:down_left:1032565090223935518>", style=discord.ButtonStyle.blurple
+    )
+    async def down_left(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        await interaction.response.defer()
+        row_move = 1
+        col_move = -1
+        await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
+
+    @discord.ui.button(
+        emoji="<:down:1032565072981131324>", style=discord.ButtonStyle.blurple
+    )
+    async def down(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        row_move = 1
+        col_move = 0
+        await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
+
+    @discord.ui.button(
+        emoji="<:down_right:1032565043604230214>", style=discord.ButtonStyle.blurple
+    )
+    async def down_right(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        await interaction.response.defer()
+        row_move = 1
+        col_move = 1
+        await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
+
+    @discord.ui.button(
+        emoji="<:ABCD:1032565203608547328>", style=discord.ButtonStyle.blurple
+    )
+    async def set_cursor(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        await interaction.response.defer()
+
+        def check(m):
+            return m.author == interaction.user
+
+        notification, msg = await self.wait_for(
+            'Please type the cell you want to move the cursor to. e.g. "A1", "a1", "A10", "A", "10", etc.',
+            interaction=interaction,
+            check=check,
+            ephemeral=True,
+        )
+        if msg is None:
+            return
+        cell = msg.content.upper()
+
+        ABC = ALPHABETS[: self.board.cursor_row_max + 1]
+        NUM = NUMBERS[: self.board.cursor_col_max + 1]
+
+        # There is absolutely no reason to use regex here but YOLO
+        CELL_REGEX = f"^(?P<row>[A-{ABC[-1]}])(?P<col>[0-9]|(?:1[0-{NUM[-1] % 10}]))$"
+        ROW_OR_COL_REGEX = (
+            f"(?:^(?P<row>[A-{ABC[-1]}])$)|(?:^(?P<col>[0-9]|(?:1[0-{NUM[-1] % 10}]))$)"
+        )
+
+        match = re.match(CELL_REGEX, cell)
+        if match is not None:
+            row_key = match.group("row")
+            col_key = int(match.group("col"))
+        else:
+            match = re.match(ROW_OR_COL_REGEX, cell)
+            if match is not None:
+                row_key = match.group("row")
+                row_key = row_key if row_key is not None else ABC[self.board.cursor_row]
+
+                col_key = match.group("col")
+                col_key = int(col_key) if col_key is not None else self.board.cursor_col
+            else:
+                row_key = col_key = None
+
+        if row_key not in ABC or col_key not in NUM:
+            return await notification.edit("Aborted.", interaction=interaction)
+
+        row_move = LETTER_TO_NUMBER[row_key] - self.board.cursor_row
+        col_move = col_key - self.board.cursor_col
+        await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
+        await notification.edit(
+            f"Moved cursor to **{cell}** ({LETTER_TO_NUMBER[row_key]}, {col_key})",
+            interaction=interaction,
+        )
 
 
 class ToolMenu(discord.ui.Select):
@@ -1020,541 +1288,107 @@ class ColourMenu(discord.ui.Select):
             await self.view.edit_draw(interaction, False)
 
 
-class Notification:
-    def __init__(
+class Draw(commands.Cog):
+    """Category with commands to bring out your inner artist."""
+
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+
+    display_emoji = "🖌️"
+
+    @commands.bot_has_permissions(external_emojis=True)
+    @commands.group(
+        name="draw",
+        aliases=("drawing", "paint", "painting"),
+        case_insensitive=True,
+        brief="Make pixel art on discord!",
+        help="wip",
+        description="Command which you can use to make pixel art using buttons and dropdown menus.",
+        invoke_without_command=True,
+    )
+    async def draw(
         self,
-        content: Optional[str] = None,
-        *,
-        view: D,
-        emoji: Optional[
-            Union[discord.PartialEmoji, discord.Emoji]
-        ] = discord.PartialEmoji.from_str("🔔"),
-    ):
-        self.emoji: Union[discord.PartialEmoji, discord.Emoji] = emoji
-        self.content: str = content
-        self.view = view
-
-    async def edit(
-        self,
-        content: Optional[str] = None,
-        *,
-        interaction: Optional[discord.Interaction] = None,
-        emoji: Optional[
-            Union[discord.PartialEmoji, discord.Emoji]
-        ] = discord.PartialEmoji.from_str("🔔"),
-    ):
-        if emoji is not None:
-            self.emoji = emoji
-        self.content = content
-
-        if interaction is not None:
-            await self.view.edit_message(interaction)
-
-    def truncated_content(self, length: Optional[int] = None):
-        if length is None:
-            trunc = self.content.split("\n")[0]
-        else:
-            trunc = self.content[:length]
-        return trunc + (" ..." if len(self.content) > len(trunc) else "")
-
-
-class DrawView(discord.ui.View):
-    def __init__(
-        self,
-        board: Board,
-        *,
         ctx: commands.Context,
-        tool_options: Optional[List[discord.SelectOption]] = None,
-        colour_options: Optional[List[discord.SelectOption]] = None,
+        height: Optional[int] = 9,
+        width: Optional[int] = 9,
+        background: Literal["🟥", "🟧", "🟨", "🟩", "🟦", "🟪", "🟫", "⬛", "⬜"] = "⬜",
+    ) -> None:
+        bg = background
+        if height < 5 or height > 17:
+            return await ctx.send("Height must be atleast 5 and atmost 17")
+
+        if width < 5 or width > 17:
+            return await ctx.send("Width must be atleast 5 and atmost 17")
+
+        board = Board(height=height, width=width, background=background)
+        draw_view = DrawView(board, ctx=ctx)
+
+        start_view = StartView(ctx=ctx, draw_view=draw_view)
+        response = await ctx.send(
+            f"Create new draw board with `{height = }`, `{width = }` and `{bg = }`?",
+            view=start_view,
+        )
+        start_view.response = response
+
+    @draw.command(
+        name="copy",
+        brief="Copy a drawing.",
+        help="Copy a drawing from an embed by replying to the message or using message link.",
+        description="Allows you to copy a drawing that was done with the `draw` command. This will also copy the palette! You can copy by replying to such a message or by providing the message link (or ID).",
+    )
+    async def copy(
+        self,
+        ctx: commands.Context,
+        message_link: Optional[discord.Message] = None,
     ):
-        super().__init__(timeout=600)
-        self.secondary_page: bool = False
+        message = message_link
+        if ctx.message.reference:
+            message = await ctx.channel.fetch_message(ctx.message.reference.message_id)
+        elif message_link is None or not isinstance(message_link, discord.Message):
+            return await ctx.send_help(ctx.command)
 
-        self.tool_menu: ToolMenu = ToolMenu(options=tool_options)
-        self.colour_menu: ColourMenu = ColourMenu(
-            options=colour_options, background=board.background
-        )
-
-        self.primary_tool: Tool = self.tool_menu.tools["brush"]
-        self.load_items()
-
-        self.board: Board = board
-
-        self.ctx: commands.Context = ctx
-        self.bot: commands.Bot = self.ctx.bot
-        self.response: discord.Message = None
-        self.lock: asyncio.Lock = self.bot.lock
-
-        self.notifications: List[Notification] = [Notification(view=self)]
-
-    @property
-    def embed(self):
-        embed = discord.Embed(title=f"{self.ctx.author}'s drawing board.")
-
-        cursor_rows = tuple(row for row, col in self.board.cursor_coords)
-        cursor_cols = tuple(col for row, col in self.board.cursor_coords)
-        row_labels = [
-            (row if idx not in cursor_rows else ROW_ICONS_DICT[row])
-            for idx, row in enumerate(self.board.row_labels)
-        ]
-        col_labels = [
-            (col if idx not in cursor_cols else COLUMN_ICONS_DICT[col])
-            for idx, col in enumerate(self.board.col_labels)
-        ]
-
-        # The actual board
-        embed.description = (
-            f"{self.board.cursor}{PADDING}{u200b.join(col_labels)}\n"
-            f"\n{NEW_LINE.join([f'{row_labels[idx]}{PADDING}{u200b.join(row)}' for idx, row in enumerate(self.board.board)])}"
-        )
-
-        # This section adds the notification field only if any one
-        # of the notifications is not empty. In such a case, it only
-        # shows the notification(s) that is not empty
-        if any((n.content is not None for n in self.notifications)):
-            embed.add_field(
-                name="Notifications",
-                value="\n\n".join(
-                    [
-                        (
-                            f"{str(n.emoji)} "
-                            + (
-                                n.content if idx == 0 else n.truncated_content()
-                            ).replace("\n", "\n> ")
-                        )  # Put each notification into seperate quotes
-                        if n.content is not None
-                        else ""  # Show only non-empty notifications
-                        for idx, n in enumerate(self.notifications)
-                    ]
-                ),
+        if len(message.embeds) == 0 or message.author != ctx.bot.user:
+            return await ctx.send(
+                "Invalid message, make sure it's a draw embed and a message from the bot."
+            )
+        if "drawing board" not in message.embeds[0].title:
+            return await ctx.send(
+                "Invalid message, make sure it's a draw embed and a message from the bot."
             )
 
-        embed.set_footer(
-            text=(
-                f"The board looks wack? Try decreasing its size! Do {self.ctx.clean_prefix}help draw for more info."
-                if any(
-                    (len(self.board.row_labels) >= 10, len(self.board.col_labels) >= 10)
-                )
-                else f"You can customize this board! Do {self.ctx.clean_prefix}help draw for more info."
-            )
-        )
-        return embed
+        description = message.embeds[0].description
+        lines = description.split("\n")[2:]
+        board = []
+        for line in lines:
+            board.append(line.split(PADDING)[-1].split("\u200b"))
+        board = np.array(board, dtype="object")
 
-    async def create_notification(
-        self,
-        content: Optional[str] = None,
-        *,
-        interaction: Optional[discord.Interaction] = None,
-        emoji: Optional[
-            Union[discord.PartialEmoji, discord.Emoji]
-        ] = discord.PartialEmoji.from_str("🔔"),
-    ) -> Notification:
-        self.notifications = self.notifications[:2]
-
-        notification = Notification(content, emoji=emoji, view=self)
-        self.notifications.insert(0, notification)
-
-        if interaction is not None:
-            await self.edit_message(interaction)
-
-        return notification
-
-    def stop_view(self):
-        self.tool_menu.disabled = True
-        self.colour_menu.disabled = True
-
-        self.clear_items()
-        self.add_item(self.tool_menu)
-        self.add_item(self.colour_menu)
-        self.board.clear_cursors(empty=True)
-
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        if interaction.user != self.ctx.author:
-            await interaction.response.send_message(
-                f"This instance does not belong to you, use the `{self.ctx.command}` command to create your own instance.",
-                ephemeral=True,
-            )
-            return False
-        return True
-
-    async def on_timeout(self):
-        self.stop_view()
-        self.add_item(
-            discord.ui.Button(
-                label=f"This interaction has timed out. Use `{self.ctx.prefix}{self.ctx.command} copy` for a new one.",
-                style=discord.ButtonStyle.gray,
-                disabled=True,
-            )
-        )
-        await self.response.edit(embed=self.embed, view=self)
-        self.stop()
-
-    async def wait_for(
-        self,
-        content: Optional[str] = None,
-        *,
-        interaction: discord.Interaction,
-        check: Callable = lambda x: x,
-        delete_msg: bool = True,
-    ) -> Tuple[Notification, discord.Message]:
-        notification = None
-        msg = None
-        if self.lock.locked():
-            await interaction.followup.send(
-                "Another message is being waited for, please wait until that process is complete.",
-                ephemeral=True,
-            )
-            return notification, msg
-
-        if content is not None:
-            notification = await self.create_notification(
-                content, interaction=interaction
-            )
+        old_view = discord.ui.View.from_message(message, timeout=0)
+        if len(old_view.children) > 1:
+            tool_options = old_view.children[0].options
+            colour_options = old_view.children[1].options
         else:
-            notification = await self.create_notification()
-        async with self.lock:
-            try:
-                msg = await self.bot.wait_for("message", timeout=30, check=check)
-            except asyncio.TimeoutError:
-                await notification.edit("Timed out.", interaction=interaction)
-            else:
-                if delete_msg is True:
-                    await msg.delete()
-            return notification, msg
+            tool_options = None
+            colour_options = old_view.children[0].options
 
-    @property
-    def placeholder_button(self) -> discord.ui.Button:
-        button = discord.ui.Button(
-            label="\u200b",
-            style=discord.ButtonStyle.gray,
-            custom_id=str(len(self.children)),
+        for option in colour_options:
+            if option.label.endswith(" (base)"):
+                bg = str(option.emoji)
+
+        board_obj = Board.from_board(board=board, background=bg)
+        board_obj.clear_cursors()
+        draw_view = DrawView(
+            board_obj, ctx=ctx, tool_options=tool_options, colour_options=colour_options
         )
-        button.callback = lambda interaction: interaction.response.defer()
+        draw_view.board.cursor = description.split(PADDING)[0]
 
-        return button
-
-    def load_items(self):
-        self.clear_items()
-        self.add_item(self.tool_menu)
-        self.add_item(self.colour_menu)
-
-        # This is necessary for "paginating" the view and different buttons
-        if self.secondary_page is False:
-            self.add_item(self.placeholder_button)
-            self.add_item(self.up_left)
-            self.add_item(self.up)
-            self.add_item(self.up_right)
-            self.add_item(self.secondary_page_button)
-
-            self.add_item(self.placeholder_button)
-            self.add_item(self.left)
-            self.add_item(self.auto_draw)
-            self.add_item(self.right)
-            self.add_item(self.select_button)
-
-            self.add_item(self.primary_tool)
-            self.add_item(self.down_left)
-            self.add_item(self.down)
-            self.add_item(self.down_right)
-            self.add_item(self.set_cursor)
-
-        elif self.secondary_page is True:
-            self.add_item(self.stop_button)
-            self.add_item(self.up_left)
-            self.add_item(self.up)
-            self.add_item(self.up_right)
-            self.add_item(self.secondary_page_button)
-
-            self.add_item(self.clear)
-            self.add_item(self.left)
-            self.add_item(self.auto_draw)
-            self.add_item(self.right)
-            self.add_item(self.select_button)
-
-            self.add_item(self.primary_tool)
-            self.add_item(self.down_left)
-            self.add_item(self.down)
-            self.add_item(self.down_right)
-            self.add_item(self.set_cursor)
-
-    async def edit_draw(
-        self,
-        interaction: discord.Interaction,
-        colour: Optional[Union[str, bool]] = None,
-        *,
-        replace: Optional[bool] = False,
-    ):
-        if all(
-            (
-                colour is not None,
-                all(
-                    self.board.board[row, col] == CURSOR.get(colour, colour)
-                    for row, col in self.board.cursor_coords
-                ),
-                self.board.auto is False,
-            )
-        ):
-            return
-
-        self.board.draw(colour)
-        await self.edit_message(interaction)
-
-    async def edit_message(self, interaction: discord.Interaction):
-        try:
-            await interaction.edit_original_message(embed=self.embed, view=self)
-        except discord.HTTPException as error:
-            if match := re.search(
-                "In embeds\.\d+\.description: Must be 4096 or fewer in length\.",
-                error.text,
-            ):  # If the description reaches char limit
-                await interaction.followup.send(
-                    content=f"Max characters reached ({len(self.embed.description)}). Please remove some custom emojis from the board.\nCustom emojis take up more than 20 characters each, while most unicode/default ones take up 1!\nMaximum is 4096 characters due to discord limitations.",
-                    ephemeral=True,
-                )
-                self.board.board = self.board.backup_board
-                await self.edit_message(interaction)
-            elif match := re.search(
-                "In components\.\d+\.components\.\d+\.options\.(?P<option>\d+)\.emoji\.id: Invalid emoji",
-                error.text,
-            ):  # If the emoji of one of the options of the select menu is unavailable
-                removed_option = self.colour_menu.options.pop(
-                    int(match.group("option"))
-                )
-                self.board.cursor = self.board.background
-                await interaction.followup.send(
-                    content=f"The {removed_option.emoji} emoji was not found for some reason, so the option was removed aswell. Please try again.",
-                    ephemeral=True,
-                )
-                await self.edit_message(interaction)
-            else:
-                await interaction.followup.send(error)
-                raise error
-
-    async def move_cursor(
-        self,
-        interaction: discord.Interaction,
-        row_move: Optional[int] = 0,
-        col_move: Optional[int] = 0,
-    ):
-        self.board.move_cursor(row_move, col_move)
-        await self.edit_draw(interaction)
-
-    def toggle(
-        self,
-        obj,
-        attribute: str,
-        button: discord.ui.Button,
-        *,
-        switch_to: Optional[bool] = None,
-    ):
-        attr_value = getattr(obj, attribute)
-        switch_to = switch_to if switch_to is not None else not attr_value
-        setattr(obj, attribute, switch_to)
-
-        if switch_to is True:
-            button.style = discord.ButtonStyle.green
-        elif switch_to is False:
-            button.style = discord.ButtonStyle.grey
-
-    # ------ BUTTONS ------
-
-    # 1st row
-    @discord.ui.button(
-        emoji="<:stop:1032565237242667048>", style=discord.ButtonStyle.danger
-    )
-    async def stop_button(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ):
-        await interaction.response.defer()
-        self.stop_view()
-        await self.edit_draw(interaction)
-        self.stop()
-
-    @discord.ui.button(
-        emoji="<:up_left:1032565175930343484>", style=discord.ButtonStyle.blurple
-    )
-    async def up_left(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ):
-        await interaction.response.defer()
-        row_move = -1
-        col_move = -1
-        await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
-
-    @discord.ui.button(
-        emoji="<:up:1032564978676400148>", style=discord.ButtonStyle.blurple
-    )
-    async def up(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
-        row_move = -1
-        col_move = 0
-        await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
-
-    @discord.ui.button(
-        emoji="<:up_right:1032564997869543464>", style=discord.ButtonStyle.blurple
-    )
-    async def up_right(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ):
-        await interaction.response.defer()
-        row_move = -1
-        col_move = 1
-        await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
-
-    @discord.ui.button(label="2nd", style=discord.ButtonStyle.grey)
-    async def secondary_page_button(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ):
-        await interaction.response.defer()
-        self.toggle(self, "secondary_page", button)
-
-        self.load_items()
-        await self.edit_draw(interaction)
-
-    # 2nd Row
-    @discord.ui.button(
-        emoji="<:clear:1032565244658204702>", style=discord.ButtonStyle.danger
-    )
-    async def clear(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
-        self.toggle(self, "secondary_page", self.secondary_page_button, switch_to=False)
-        self.toggle(self.board, "auto", self.auto_draw, switch_to=False)
-        self.toggle(self.board, "select", self.select_button, switch_to=False)
-        self.board.clear()
-        self.load_items()
-        await self.edit_draw(interaction)
-
-    @discord.ui.button(
-        emoji="<:left:1032565106934022185>", style=discord.ButtonStyle.blurple
-    )
-    async def left(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
-        row_move = 0
-        col_move = -1
-        await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
-
-    @discord.ui.button(
-        emoji="<:auto_draw:1032565224903016449>", style=discord.ButtonStyle.gray
-    )
-    async def auto_draw(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ):
-        await interaction.response.defer()
-        self.toggle(self.board, "auto", button)
-        await self.edit_draw(interaction, False)
-
-    @discord.ui.button(
-        emoji="<:right:1032565019352764438>", style=discord.ButtonStyle.blurple
-    )
-    async def right(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
-        row_move = 0
-        col_move = 1
-        await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
-
-    @discord.ui.button(
-        emoji="<:select_tool:1037847279169704028> ", style=discord.ButtonStyle.gray
-    )
-    async def select_button(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ):
-        await interaction.response.defer()
-        if self.board.select is False:
-            self.board.initial_coord = (self.board.cursor_row, self.board.cursor_col)
-            self.board.initial_row, self.board.initial_col = self.board.initial_coord
-        elif self.board.select is True:
-            self.board.clear_cursors()
-            self.board.draw_cursor()
-        self.toggle(self.board, "select", button)
-        await self.edit_draw(interaction)
-
-    # 3rd / Last Row
-    @discord.ui.button(
-        emoji="<:down_left:1032565090223935518>", style=discord.ButtonStyle.blurple
-    )
-    async def down_left(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ):
-        await interaction.response.defer()
-        row_move = 1
-        col_move = -1
-        await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
-
-    @discord.ui.button(
-        emoji="<:down:1032565072981131324>", style=discord.ButtonStyle.blurple
-    )
-    async def down(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
-        row_move = 1
-        col_move = 0
-        await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
-
-    @discord.ui.button(
-        emoji="<:down_right:1032565043604230214>", style=discord.ButtonStyle.blurple
-    )
-    async def down_right(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ):
-        await interaction.response.defer()
-        row_move = 1
-        col_move = 1
-        await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
-
-    @discord.ui.button(
-        emoji="<:ABCD:1032565203608547328>", style=discord.ButtonStyle.blurple
-    )
-    async def set_cursor(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ):
-        await interaction.response.defer()
-
-        def check(m):
-            return m.author == interaction.user
-
-        notification, msg = await self.wait_for(
-            'Please type the cell you want to move the cursor to. e.g. "A1", "a1", "A10", "A", "10", etc.',
-            interaction=interaction,
-            check=check,
-            ephemeral=True,
+        start_view = StartView(ctx=ctx, draw_view=draw_view)
+        response = await ctx.send(
+            content="Create a copy of this board? (Due to discord limitations, custom emojis may not render here)",
+            embed=draw_view.embed,
+            view=start_view,
         )
-        if msg is None:
-            return
-        cell = msg.content.upper()
-
-        ABC = ALPHABETS[: self.board.cursor_row_max + 1]
-        NUM = NUMBERS[: self.board.cursor_col_max + 1]
-
-        # There is absolutely no reason to use regex here but YOLO
-        CELL_REGEX = f"^(?P<row>[A-{ABC[-1]}])(?P<col>[0-9]|(?:1[0-{NUM[-1] % 10}]))$"
-        ROW_OR_COL_REGEX = (
-            f"(?:^(?P<row>[A-{ABC[-1]}])$)|(?:^(?P<col>[0-9]|(?:1[0-{NUM[-1] % 10}]))$)"
-        )
-
-        match = re.match(CELL_REGEX, cell)
-        if match is not None:
-            row_key = match.group("row")
-            col_key = int(match.group("col"))
-        else:
-            match = re.match(ROW_OR_COL_REGEX, cell)
-            if match is not None:
-                row_key = match.group("row")
-                row_key = row_key if row_key is not None else ABC[self.board.cursor_row]
-
-                col_key = match.group("col")
-                col_key = int(col_key) if col_key is not None else self.board.cursor_col
-            else:
-                row_key = col_key = None
-
-        if row_key not in ABC or col_key not in NUM:
-            return await notification.edit("Aborted.", interaction=interaction)
-
-        row_move = LETTER_TO_NUMBER[row_key] - self.board.cursor_row
-        col_move = col_key - self.board.cursor_col
-        await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
-        await notification.edit(
-            f"Moved cursor to **{cell}** ({LETTER_TO_NUMBER[row_key]}, {col_key})",
-            interaction=interaction,
-        )
+        start_view.response = response
 
 
 async def setup(bot):
