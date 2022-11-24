@@ -170,8 +170,7 @@ class FillTool(Tool):
             ):
                 continue
 
-            convert = True if self.board.board[row, col] in inv_CURSOR.keys() else False
-            self.board.draw_cursor(row, col, colour=colour, cursor=convert)
+            self.board.cursor_coords.append((row, col))  # Add to the cursor list
 
             # Enqueue the four surrounding cells of the current cell
             queue.append((row + 1, col))
@@ -179,7 +178,7 @@ class FillTool(Tool):
             queue.append((row, col + 1))
             queue.append((row, col - 1))
 
-        self.board.draw_cursor()  # Draw cursor
+        self.board.draw()  # Draw all the cells
 
 
 class ReplaceTool(Tool):
