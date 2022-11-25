@@ -280,15 +280,16 @@ class Board:
 class ToolMenu(discord.ui.Select):
     def __init__(
         self,
+        view: DrawView,
         *,
         options: Optional[List[discord.SelectOption]] = None,
     ):
         self.tool_list = [
-            BrushTool(),
-            EraseTool(),
-            EyedropperTool(),
-            FillTool(),
-            ReplaceTool(),
+            BrushTool(view),
+            EraseTool(view),
+            EyedropperTool(view),
+            FillTool(view),
+            ReplaceTool(view),
         ]
 
         default_options: List[discord.SelectOption] = [
@@ -306,7 +307,7 @@ class ToolMenu(discord.ui.Select):
             options=options,
         )
 
-        self.view: discord.ui.View
+        self._view: DrawView = view
 
     @property
     def tools(self) -> Dict[str, Tool]:
@@ -321,7 +322,7 @@ class ToolMenu(discord.ui.Select):
         # If the tool selected is one of these,
         # use it directly instead of equipping
         if value in ["eyedropper", "fill", "replace"]:
-            tool.use(self.view)
+            tool.use()
         # Else, equip the tool (to the primary tool button slot)
         else:
             self.view.primary_tool = tool
@@ -788,27 +789,27 @@ class DrawView(discord.ui.View):
         colour_options: Optional[List[discord.SelectOption]] = None,
     ):
         super().__init__(timeout=600)
-        self.secondary_page: bool = False
-
-        self.tool_menu: ToolMenu = ToolMenu(options=tool_options)
-        self.colour_menu: ColourMenu = ColourMenu(
-            options=colour_options, background=board.background
-        )
-
-        self.primary_tool: Tool = self.tool_menu.tools["brush"]
-        self.load_items()
-
         self.board: Board = board
 
         self.ctx: commands.Context = ctx
         self.bot: commands.Bot = self.ctx.bot
+
+        self.tool_menu: ToolMenu = ToolMenu(self, options=tool_options)
+        self.colour_menu: ColourMenu = ColourMenu(
+            options=colour_options, background=board.background
+        )
+        self.primary_tool: Tool = self.tool_menu.tools["brush"]
+        
+        self.secondary_page: bool = False
+        self.load_items()
+
         self.response: discord.Message = None
         self.lock: asyncio.Lock = self.bot.lock
 
         self.notifications: List[Notification] = [Notification(view=self)]
 
-        self.auto = False
-        self.select = False
+        self.auto: bool = False
+        self.select: bool = False
 
     @property
     def embed(self):

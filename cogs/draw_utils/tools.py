@@ -14,7 +14,7 @@ if typing.TYPE_CHECKING:
 class Tool(discord.ui.Button):
     """A template class for each of the tools"""
 
-    def __init__(self, *, primary: Optional[bool] = True):
+    def __init__(self, view: DrawView, *, primary: Optional[bool] = True):
         super().__init__(
             emoji=self.emoji,
             style=discord.ButtonStyle.green
@@ -22,8 +22,9 @@ class Tool(discord.ui.Button):
             else discord.ButtonStyle.grey,
         )
 
-        self.view: DrawView
-        self.board: Board
+        self._view: DrawView = view
+        self.board: Board = self.view.board
+        self.bot: commands.Bot = self.view.bot
 
     @property
     def name(self) -> str:
@@ -33,20 +34,14 @@ class Tool(discord.ui.Button):
     def emoji(self) -> str:
         return None
 
-    def setup(self, view: DrawView):
-        self._view: DrawView = view
-        self.board: Board = self.view.board
-        self.bot: commands.Bot = self.view.bot
-
-    def use(self, view: DrawView):
+    def use(self):
         """The method that is called when the tool is used"""
-        self.setup(view)
         pass
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
 
-        self.use(self.view)
+        self.use()
         await self.view.edit_draw(interaction)
 
 
@@ -59,9 +54,8 @@ class BrushTool(Tool):
     def emoji(self) -> str:
         return "<:draw:1032565261846454272>"
 
-    def use(self, view: DrawView):
+    def use(self):
         """The method that is called when the tool is used"""
-        self.setup(view)
         self.board.draw(self.board.cursor)
 
 
@@ -74,9 +68,8 @@ class EraseTool(Tool):
     def emoji(self) -> str:
         return "<:erase:927526530052132894>"
 
-    def use(self, view: DrawView):
+    def use(self):
         """The method that is called when the tool is used"""
-        self.setup(view)
         self.board.draw(self.board.background)
 
 
@@ -89,9 +82,8 @@ class EyedropperTool(Tool):
     def emoji(self) -> str:
         return "<:eyedropper:1033248590988066886>"
 
-    def use(self, view: DrawView):
+    def use(self):
         """The method that is called when the tool is used"""
-        self.setup(view)
         cursor_pixel = self.board.cursor_pixel
         emoji = discord.PartialEmoji.from_str(self.board.un_cursor(cursor_pixel))
 
@@ -131,9 +123,8 @@ class FillTool(Tool):
     def emoji(self) -> str:
         return "<:fill:930832869692149790>"
 
-    def use(self, view: DrawView, *, initial_coords: Optional[Tuple[int, int]] = None):
+    def use(self, *, initial_coords: Optional[Tuple[int, int]] = None):
         """The method that is called when the tool is used"""
-        self.setup(view)
         colour = self.board.cursor
         if self.board.cursor_pixel == colour:
             return
@@ -193,9 +184,8 @@ class ReplaceTool(Tool):
     def emoji(self) -> str:
         return "<:replace:1032565283929456670>"
 
-    def use(self, view: DrawView):
+    def use(self):
         """The method that is called when the tool is used"""
-        self.setup(view)
         colour = self.board.cursor
         to_replace = self.board.cursor_pixel
 
