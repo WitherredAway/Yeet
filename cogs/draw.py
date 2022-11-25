@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 from typing import Callable, Optional, Union, Literal, List, Dict, Tuple, TypeVar
 import io
@@ -56,15 +58,8 @@ FLAG_EMOJI_REGEX = re.compile("[\U0001F1E6-\U0001F1FF]")
 
 CUSTOM_EMOJI_REGEX = re.compile("<a?:[a-zA-Z0-9_]+:\d+>")
 
-
-B = TypeVar("B", bound="Board")
-C = TypeVar("C", bound="Colour")
-DV = TypeVar("DV", bound="DrawView")
-N = TypeVar("N", bound="Notification")
-
-
 class StartView(discord.ui.View):
-    def __init__(self, *, ctx: commands.Context, draw_view: DV):
+    def __init__(self, *, ctx: commands.Context, draw_view: DrawView):
         super().__init__(timeout=30)
         self.ctx = ctx
         self.draw_view = draw_view
@@ -108,7 +103,7 @@ class Notification:
         self,
         content: Optional[str] = None,
         *,
-        view: DV,
+        view: DrawView,
         emoji: Optional[
             Union[discord.PartialEmoji, discord.Emoji]
         ] = discord.PartialEmoji.from_str("🔔"),
@@ -378,7 +373,7 @@ class Colour:
         )
 
     @classmethod
-    async def from_emoji(cls, emoji: str) -> C:
+    async def from_emoji(cls, emoji: str) -> Colour:
         loop = asyncio.get_running_loop()
         image = await loop.run_in_executor(None, draw_emoji, emoji)
         colors = [
@@ -394,7 +389,7 @@ class Colour:
         return cls(colors[0][1])
 
     @classmethod
-    def mix_colours(cls, colours: List[Tuple[int, C]]) -> C:
+    def mix_colours(cls, colours: List[Tuple[int, Colour]]) -> Colour:
         colours = [
             colour.RGBA if isinstance(colour, Colour) else colour for colour in colours
         ]
@@ -571,7 +566,7 @@ class ColourMenu(discord.ui.Select):
         self,
         added_emojis: Dict[Union[int, str], AddedEmoji],
         *,
-        notification: N,
+        notification: Notification,
         interaction: discord.Interaction,
     ):
         response = [
