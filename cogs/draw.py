@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import copy
 from typing import Callable, Optional, Union, Literal, List, Dict, Tuple, TypeVar
 import io
 from functools import cached_property
@@ -169,6 +170,22 @@ class Board:
 
         self.clear_cursors()
 
+    def __str__(self) -> str:
+        cursor_rows = tuple(row for row, col in self.cursor_coords)
+        cursor_cols = tuple(col for row, col in self.cursor_coords)
+        row_labels = [
+            (row if idx not in cursor_rows else ROW_ICONS_DICT[row])
+            for idx, row in enumerate(self.row_labels)
+        ]
+        col_labels = [
+            (col if idx not in cursor_cols else COLUMN_ICONS_DICT[col])
+            for idx, col in enumerate(self.col_labels)
+        ]
+
+        return (
+            f"{self.cursor}{PADDING}{u200b.join(col_labels)}\n"
+            f"\n{NEW_LINE.join([f'{row_labels[idx]}{PADDING}{u200b.join(row)}' for idx, row in enumerate(self.board)])}"
+        )
 
     @property
     def cursor_pixel(self):
@@ -797,28 +814,14 @@ class DrawView(discord.ui.View):
     def embed(self):
         embed = discord.Embed(title=f"{self.ctx.author}'s drawing board.")
 
-        cursor_rows = tuple(row for row, col in self.board.cursor_coords)
-        cursor_cols = tuple(col for row, col in self.board.cursor_coords)
-        row_labels = [
-            (row if idx not in cursor_rows else ROW_ICONS_DICT[row])
-            for idx, row in enumerate(self.board.row_labels)
-        ]
-        col_labels = [
-            (col if idx not in cursor_cols else COLUMN_ICONS_DICT[col])
-            for idx, col in enumerate(self.board.col_labels)
-        ]
-
         # Render the cursors on a board copy
-        board = self.board.board.copy()
-        for row, col in self.board.cursor_coords:
-            cell = board[row, col]
-            board[row, col] = CURSOR.get(cell, cell)
+        board = copy.deepcopy(self.board)
+        for row, col in board.cursor_coords:
+            cell = board.board[row, col]
+            board.board[row, col] = CURSOR.get(cell, cell)
 
         # The actual board
-        embed.description = (
-            f"{self.board.cursor}{PADDING}{u200b.join(col_labels)}\n"
-            f"\n{NEW_LINE.join([f'{row_labels[idx]}{PADDING}{u200b.join(row)}' for idx, row in enumerate(board)])}"
-        )
+        embed.description = str(board)
 
         # This section adds the notification field only if any one
         # of the notifications is not empty. In such a case, it only
@@ -845,7 +848,7 @@ class DrawView(discord.ui.View):
             text=(
                 f"The board looks wack? Try decreasing its size! Do {self.ctx.clean_prefix}help draw for more info."
                 if any(
-                    (len(self.board.row_labels) >= 10, len(self.board.col_labels) >= 10)
+                    (len(board.row_labels) >= 10, len(board.col_labels) >= 10)
                 )
                 else f"You can customize this board! Do {self.ctx.clean_prefix}help draw for more info."
             )
