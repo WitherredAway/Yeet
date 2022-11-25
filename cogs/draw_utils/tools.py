@@ -144,6 +144,8 @@ class FillTool(Tool):
             self.board.cursor_col,
         )
         initial_pixel = self.board.get_pixel(*initial_coords)
+
+        coords = []
         queue = [initial_coords]
         i = 0
 
@@ -167,10 +169,11 @@ class FillTool(Tool):
                         != CURSOR.get(initial_pixel, initial_pixel),
                     )
                 )
+                or (row, col) in coords
             ):
                 continue
 
-            self.board.cursor_coords.append((row, col))  # Add to the cursor list
+            coords.append((row, col))
 
             # Enqueue the four surrounding cells of the current cell
             queue.append((row + 1, col))
@@ -178,7 +181,7 @@ class FillTool(Tool):
             queue.append((row, col + 1))
             queue.append((row, col - 1))
 
-        self.board.draw()  # Draw all the cells
+        self.board.draw(coords=coords)  # Draw all the cells
 
 
 class ReplaceTool(Tool):

@@ -215,6 +215,8 @@ class Board:
     def draw(
         self,
         colour: Optional[str] = None,
+        *,
+        coords: Optional[List[Tuple[int, int]]] = None
     ):
         colour = colour or self.cursor
 
@@ -223,7 +225,7 @@ class Board:
             colour_emoji.name = "e"
         colour = str(colour_emoji)
 
-        for row, col in self.cursor_coords:
+        for row, col in (coords if coords is not None else self.cursor_coords):
             self.board[row, col] = colour
 
         self.backup_board = self.board.copy()  # TODO remove this when history is implemented
