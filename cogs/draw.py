@@ -37,7 +37,7 @@ from .draw_utils.tools import (
     EraseTool,
     EyedropperTool,
     FillTool,
-    ReplaceTool
+    ReplaceTool,
 )
 
 
@@ -58,6 +58,7 @@ RGB_A_REGEX = re.compile(
 FLAG_EMOJI_REGEX = re.compile("[\U0001F1E6-\U0001F1FF]")
 
 CUSTOM_EMOJI_REGEX = re.compile("<a?:[a-zA-Z0-9_]+:\d+>")
+
 
 class StartView(discord.ui.View):
     def __init__(self, *, ctx: commands.Context, draw_view: DrawView):
@@ -143,7 +144,9 @@ class Board:
         *,
         height: Optional[int] = 9,
         width: Optional[int] = 9,
-        background: Optional[Literal["🟥", "🟧", "🟨", "🟩", "🟦", "🟪", "🟫", "⬛", "⬜"]] = "⬜",
+        background: Optional[
+            Literal["🟥", "🟧", "🟨", "🟩", "🟦", "🟪", "🟫", "⬛", "⬜"]
+        ] = "⬜",
     ) -> None:
         self.height: int = height
         self.width: int = width
@@ -228,7 +231,7 @@ class Board:
         self,
         colour: Optional[str] = None,
         *,
-        coords: Optional[List[Tuple[int, int]]] = None
+        coords: Optional[List[Tuple[int, int]]] = None,
     ):
         colour = colour or self.cursor
 
@@ -237,10 +240,24 @@ class Board:
             colour_emoji.name = "e"
         colour = str(colour_emoji)
 
-        for row, col in (coords if coords is not None else self.cursor_coords):
+        for row, col in coords if coords is not None else self.cursor_coords:
             self.board[row, col] = colour
 
-        self.backup_board = self.board.copy()  # TODO remove this when history is implemented
+        # 3am debug statement
+        # print(
+        #     "\n-------------------------\n".join(
+        #         [
+        #             NEW_LINE.join([f'{"".join(row)}' for row in board])
+        #             for board in self.history
+        #         ]
+        #     ),
+        #     f"-------{len(self.history)}-------",
+        #     sep="\n",
+        # )
+
+        self.backup_board = (
+            self.board.copy()
+        )  # TODO remove this when history is implemented
 
     def clear_cursors(self, *, empty: Optional[bool] = False):
         for x, row in enumerate(self.board):
@@ -252,7 +269,12 @@ class Board:
             [(self.cursor_row, self.cursor_col)] if empty is False else []
         )
 
-    def move_cursor(self, row_move: Optional[int] = 0, col_move: Optional[int] = 0, select: Optional[bool] = False):
+    def move_cursor(
+        self,
+        row_move: Optional[int] = 0,
+        col_move: Optional[int] = 0,
+        select: Optional[bool] = False,
+    ):
         self.clear_cursors()
         self.cursor_row = (self.cursor_row + row_move) % (self.cursor_row_max + 1)
         self.cursor_col = (self.cursor_col + col_move) % (self.cursor_col_max + 1)
@@ -799,7 +821,7 @@ class DrawView(discord.ui.View):
             options=colour_options, background=board.background
         )
         self.primary_tool: Tool = self.tool_menu.tools["brush"]
-        
+
         self.secondary_page: bool = False
         self.load_items()
 
@@ -848,9 +870,7 @@ class DrawView(discord.ui.View):
         embed.set_footer(
             text=(
                 f"The board looks wack? Try decreasing its size! Do {self.ctx.clean_prefix}help draw for more info."
-                if any(
-                    (len(board.row_labels) >= 10, len(board.col_labels) >= 10)
-                )
+                if any((len(board.row_labels) >= 10, len(board.col_labels) >= 10))
                 else f"You can customize this board! Do {self.ctx.clean_prefix}help draw for more info."
             )
         )

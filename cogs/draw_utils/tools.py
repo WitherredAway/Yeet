@@ -8,6 +8,7 @@ from discord.ext import commands
 import numpy as np
 
 from .constants import CURSOR
+
 if typing.TYPE_CHECKING:
     from ..draw import Board, DrawView
 
@@ -189,5 +190,7 @@ class ReplaceTool(Tool):
         """The method that is called when the tool is used"""
         colour = self.board.cursor
         to_replace = self.board.cursor_pixel
-        
-        self.board.draw(colour, coords=np.array(np.where(self.board.board == to_replace)).T)
+
+        self.board.draw(
+            colour, coords=np.array(np.where(self.board.board == to_replace)).T
+        )
