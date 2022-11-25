@@ -174,6 +174,8 @@ class Board:
 
         self.clear_cursors()
 
+        self.auto = False
+        self.select = False
 
     @property
     def cursor_pixel(self):
@@ -790,9 +792,6 @@ class DrawView(discord.ui.View):
 
         self.notifications: List[Notification] = [Notification(view=self)]
 
-        self.auto = False
-        self.select = False
-
     @property
     def embed(self):
         embed = discord.Embed(title=f"{self.ctx.author}'s drawing board.")
@@ -1003,12 +1002,12 @@ class DrawView(discord.ui.View):
                     self.board.board[row, col] == CURSOR.get(colour, colour)
                     for row, col in self.board.cursor_coords
                 ),
-                self.auto is False,
+                self.board.auto is False,
             )
         ):
             return
 
-        if auto is True and self.auto is True:
+        if auto is True and self.board.auto is True:
             colour = self.board.cursor
 
         if colour is not None:
@@ -1175,10 +1174,10 @@ class DrawView(discord.ui.View):
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
-        if self.select is False:
+        if self.board.select is False:
             self.board.initial_coords = (self.board.cursor_row, self.board.cursor_col)
             self.board.initial_row, self.board.initial_col = self.board.initial_coords
-        elif self.select is True:
+        elif self.board.select is True:
             self.board.clear_cursors()
         self.toggle(self.board, "select", button)
         await self.edit_draw(interaction)
