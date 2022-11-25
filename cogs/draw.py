@@ -993,32 +993,6 @@ class DrawView(discord.ui.View):
             self.add_item(self.down_right)
             self.add_item(self.set_cursor)
 
-    async def edit_draw(
-        self,
-        interaction: discord.Interaction,
-        colour: Optional[str] = None,
-        *,
-        auto: Optional[bool] = False
-    ):
-        if all(
-            (
-                colour is not None,
-                all(
-                    self.board.board[row, col] == CURSOR.get(colour, colour)
-                    for row, col in self.board.cursor_coords
-                ),
-                self.auto is False,
-            )
-        ):
-            return
-
-        if auto is True and self.auto is True:
-            colour = self.board.cursor
-
-        if colour is not None:
-            self.board.draw(colour)
-        await self.edit_message(interaction)
-
     async def edit_message(self, interaction: discord.Interaction):
         try:
             await interaction.edit_original_message(embed=self.embed, view=self)
@@ -1050,6 +1024,27 @@ class DrawView(discord.ui.View):
                 await interaction.followup.send(error)
                 raise error
 
+    async def edit_draw(
+        self,
+        interaction: discord.Interaction,
+        colour: Optional[str] = None,
+    ):
+        if all(
+            (
+                colour is not None,
+                all(
+                    self.board.board[row, col] == CURSOR.get(colour, colour)
+                    for row, col in self.board.cursor_coords
+                ),
+                self.auto is False,
+            )
+        ):
+            return
+
+        if colour is not None:
+            self.board.draw(colour)
+        await self.edit_message(interaction)
+
     async def move_cursor(
         self,
         interaction: discord.Interaction,
@@ -1057,7 +1052,10 @@ class DrawView(discord.ui.View):
         col_move: Optional[int] = 0,
     ):
         self.board.move_cursor(row_move, col_move, self.select)
-        await self.edit_draw(interaction, auto=True)
+
+        if self.auto:
+            self.primary_tool.use()
+        await self.edit_draw(interaction)
 
     def toggle(
         self,
