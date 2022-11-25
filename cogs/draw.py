@@ -174,8 +174,6 @@ class Board:
 
         self.clear_cursors()
 
-        self.auto = False
-        self.select = False
 
     @property
     def cursor_pixel(self):
@@ -242,29 +240,29 @@ class Board:
             [(self.cursor_row, self.cursor_col)] if empty is False else []
         )
 
-    def move_cursor(self, row_move: Optional[int] = 0, col_move: Optional[int] = 0):
+    def move_cursor(self, row_move: Optional[int] = 0, col_move: Optional[int] = 0, select: Optional[bool] = False):
         self.clear_cursors()
         self.cursor_row = (self.cursor_row + row_move) % (self.cursor_row_max + 1)
         self.cursor_col = (self.cursor_col + col_move) % (self.cursor_col_max + 1)
 
-        if self.select is not True:
+        if select is True:
+            self.final_coords = (self.cursor_row, self.cursor_col)
+            self.final_row, self.final_col = self.final_coords
+
+            self.cursor_coords = [
+                (row, col)
+                for col in range(
+                    min(self.initial_col, self.final_col),
+                    max(self.initial_col, self.final_col) + 1,
+                )
+                for row in range(
+                    min(self.initial_row, self.final_row),
+                    max(self.initial_row, self.final_row) + 1,
+                )
+            ]
+        else:
             self.cursor_coords = [(self.cursor_row, self.cursor_col)]
             return
-
-        self.final_coords = (self.cursor_row, self.cursor_col)
-        self.final_row, self.final_col = self.final_coords
-
-        self.cursor_coords = [
-            (row, col)
-            for col in range(
-                min(self.initial_col, self.final_col),
-                max(self.initial_col, self.final_col) + 1,
-            )
-            for row in range(
-                min(self.initial_row, self.final_row),
-                max(self.initial_row, self.final_row) + 1,
-            )
-        ]
 
 
 class ToolMenu(discord.ui.Select):
@@ -797,6 +795,9 @@ class DrawView(discord.ui.View):
 
         self.notifications: List[Notification] = [Notification(view=self)]
 
+        self.auto = False
+        self.select = False
+
     @property
     def embed(self):
         embed = discord.Embed(title=f"{self.ctx.author}'s drawing board.")
@@ -1007,12 +1008,12 @@ class DrawView(discord.ui.View):
                     self.board.board[row, col] == CURSOR.get(colour, colour)
                     for row, col in self.board.cursor_coords
                 ),
-                self.board.auto is False,
+                self.auto is False,
             )
         ):
             return
 
-        if auto is True and self.board.auto is True:
+        if auto is True and self.auto is True:
             colour = self.board.cursor
 
         if colour is not None:
@@ -1056,7 +1057,7 @@ class DrawView(discord.ui.View):
         row_move: Optional[int] = 0,
         col_move: Optional[int] = 0,
     ):
-        self.board.move_cursor(row_move, col_move)
+        self.board.move_cursor(row_move, col_move, self.select)
         await self.edit_draw(interaction, auto=True)
 
     def toggle(
@@ -1138,8 +1139,8 @@ class DrawView(discord.ui.View):
     async def clear(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         self.toggle(self, "secondary_page", self.secondary_page_button, switch_to=False)
-        self.toggle(self.board, "auto", self.auto_draw, switch_to=False)
-        self.toggle(self.board, "select", self.select_button, switch_to=False)
+        self.toggle(self, "auto", self.auto_draw, switch_to=False)
+        self.toggle(self, "select", self.select_button, switch_to=False)
         self.board.clear()
         self.load_items()
         await self.edit_draw(interaction)
@@ -1160,7 +1161,7 @@ class DrawView(discord.ui.View):
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
-        self.toggle(self.board, "auto", button)
+        self.toggle(self, "auto", button)
         await self.edit_draw(interaction)
 
     @discord.ui.button(
@@ -1179,12 +1180,12 @@ class DrawView(discord.ui.View):
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
-        if self.board.select is False:
+        if self.select is False:
             self.board.initial_coords = (self.board.cursor_row, self.board.cursor_col)
             self.board.initial_row, self.board.initial_col = self.board.initial_coords
-        elif self.board.select is True:
+        elif self.select is True:
             self.board.clear_cursors()
-        self.toggle(self.board, "select", button)
+        self.toggle(self, "select", button)
         await self.edit_draw(interaction)
 
     # 3rd / Last Row
