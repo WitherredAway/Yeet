@@ -233,6 +233,11 @@ class Board:
         self.backup_board = self.board.copy()  # TODO remove this when history is implemented
 
     def clear_cursors(self, *, empty: Optional[bool] = False):
+        for x, row in enumerate(self.board):
+            for y, _ in enumerate(row):
+                cell_tuple = (x, y)
+                self.board[cell_tuple] = self.un_cursor(self.board[cell_tuple])
+
         self.cursor_coords = (
             [(self.cursor_row, self.cursor_col)] if empty is False else []
         )
