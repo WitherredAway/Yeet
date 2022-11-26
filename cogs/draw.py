@@ -157,7 +157,6 @@ class Board:
         )
         self.board_history: List[np.array] = [self.initial_board.copy()]
         self.board_index: int = 0
-        self.backup_board: np.array = self.initial_board.copy()
 
         self.row_labels: Tuple[str] = ROW_ICONS[:height]
         self.col_labels: Tuple[str] = COLUMN_ICONS[:width]
@@ -195,6 +194,10 @@ class Board:
     @property
     def board(self) -> np.array:
         return self.board_history[self.board_index]
+
+    @property
+    def backup_board(self) -> np.array:
+        return self.board_history[self.board_index - 1]
 
     @property
     def cursor_pixel(self):
@@ -265,9 +268,6 @@ class Board:
         #     sep="\n",
         # )
 
-        self.backup_board = (
-            self.board.copy()
-        )  # TODO remove this when history is implemented
 
     def clear_cursors(self, *, empty: Optional[bool] = False):
         for x, row in enumerate(self.board):
@@ -340,6 +340,7 @@ class ToolMenu(discord.ui.Select):
         )
 
         self._view: DrawView = view
+        self.view: DrawView
 
     @property
     def tools(self) -> Dict[str, Tool]:
@@ -360,7 +361,7 @@ class ToolMenu(discord.ui.Select):
             self.view.primary_tool = tool
             self.view.load_items()
 
-        await self.view.edit_draw(interaction)
+        await self.view.edit_message(interaction)
 
 
 class Colour:
@@ -1047,7 +1048,8 @@ class DrawView(discord.ui.View):
                     content=f"Max characters reached ({len(self.embed.description)}). Please remove some custom emojis from the board.\nCustom emojis take up more than 20 characters each, while most unicode/default ones take up 1!\nMaximum is 4096 characters due to discord limitations.",
                     ephemeral=True,
                 )
-                self.board.board = self.board.backup_board
+                self.board.board_index -= 1
+                self.board.board_history = self.board.board_history[:self.board.board_index + 1]
                 await self.edit_message(interaction)
             elif match := re.search(
                 "In components\.\d+\.components\.\d+\.options\.(?P<option>\d+)\.emoji\.id: Invalid emoji",
