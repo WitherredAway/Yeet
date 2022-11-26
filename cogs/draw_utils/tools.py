@@ -45,7 +45,7 @@ class Tool(discord.ui.Button):
         await interaction.response.defer()
 
         self.use()
-        await self.view.edit_draw(interaction)
+        await self.view.edit_message(interaction)
 
 
 class BrushTool(Tool):

@@ -637,7 +637,7 @@ class ColourMenu(discord.ui.Select):
                 : EMBED_FIELD_CHAR_LIMIT - len(self.view.embed.fields[0].value)
             ]
         )
-        await self.view.edit_draw(interaction)
+        await self.view.edit_message(interaction)
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
@@ -801,14 +801,14 @@ class ColourMenu(discord.ui.Select):
                 f'Mixed colours:\n{" + ".join(selected_emojis)} = {emoji}'
                 + (f" (replaced {returned_option.emoji})." if replaced else "")
             )
-            await self.view.edit_draw(interaction)
+            await self.view.edit_message(interaction)
 
         # If only one option was selected
         elif self.board.cursor != (value := self.values[0]):
             self.board.cursor = value
             self.placeholder = self.value_to_option(value).label
 
-            await self.view.edit_draw(interaction)
+            await self.view.edit_message(interaction)
 
 
 class DrawView(discord.ui.View):
@@ -1066,27 +1066,6 @@ class DrawView(discord.ui.View):
                 await interaction.followup.send(error)
                 raise error
 
-    async def edit_draw(
-        self,
-        interaction: discord.Interaction,
-        colour: Optional[str] = None,
-    ):
-        if all(
-            (
-                colour is not None,
-                all(
-                    self.board.board[row, col] == CURSOR.get(colour, colour)
-                    for row, col in self.board.cursor_coords
-                ),
-                self.auto is False,
-            )
-        ):
-            return
-
-        if colour is not None:
-            self.board.draw(colour)
-        await self.edit_message(interaction)
-
     async def move_cursor(
         self,
         interaction: discord.Interaction,
@@ -1097,7 +1076,7 @@ class DrawView(discord.ui.View):
 
         if self.auto:
             self.primary_tool.use()
-        await self.edit_draw(interaction)
+        await self.edit_message(interaction)
 
     # ------ BUTTONS ------
 
@@ -1109,7 +1088,7 @@ class DrawView(discord.ui.View):
         await interaction.response.defer()
         if self.board.board_index > 0:
             self.board.board_index -= 1
-        await self.edit_draw(interaction)
+        await self.edit_message(interaction)
 
     @discord.ui.button(
         emoji="<:stop:1032565237242667048>", style=discord.ButtonStyle.danger
@@ -1119,7 +1098,7 @@ class DrawView(discord.ui.View):
     ):
         await interaction.response.defer()
         self.stop_view()
-        await self.edit_draw(interaction)
+        await self.edit_message(interaction)
         self.stop()
 
     @discord.ui.button(
@@ -1161,7 +1140,7 @@ class DrawView(discord.ui.View):
         self.secondary_page = not self.secondary_page
 
         self.load_items()
-        await self.edit_draw(interaction)
+        await self.edit_message(interaction)
 
     # 2nd Row
     @discord.ui.button(
@@ -1171,7 +1150,7 @@ class DrawView(discord.ui.View):
         await interaction.response.defer()
         if self.board.board_index < len(self.board.history) - 1:
             self.board.board_index += 1
-        await self.edit_draw(interaction)
+        await self.edit_message(interaction)
 
     @discord.ui.button(
         emoji="<:clear:1032565244658204702>", style=discord.ButtonStyle.danger
@@ -1183,7 +1162,7 @@ class DrawView(discord.ui.View):
         self.select = False
         self.board.clear()
         self.load_items()
-        await self.edit_draw(interaction)
+        await self.edit_message(interaction)
 
     @discord.ui.button(
         emoji="<:left:1032565106934022185>", style=discord.ButtonStyle.blurple
@@ -1202,7 +1181,7 @@ class DrawView(discord.ui.View):
     ):
         await interaction.response.defer()
         self.auto = not self.auto
-        await self.edit_draw(interaction)
+        await self.edit_message(interaction)
 
     @discord.ui.button(
         emoji="<:right:1032565019352764438>", style=discord.ButtonStyle.blurple
@@ -1226,7 +1205,7 @@ class DrawView(discord.ui.View):
         elif self.select is True:
             self.board.clear_cursors()
         self.select = not self.select
-        await self.edit_draw(interaction)
+        await self.edit_message(interaction)
 
     # 3rd / Last Row
     @discord.ui.button(
