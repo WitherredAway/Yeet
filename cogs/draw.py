@@ -155,7 +155,7 @@ class Board:
         self.initial_board: np.array = np.full(
             (height, width), background, dtype="object"
         )
-        self.history: List[np.array] = [self.initial_board.copy()]
+        self.board_history: List[np.array] = [self.initial_board.copy()]
         self.board_index: int = 0
         self.backup_board: np.array = self.initial_board.copy()
 
@@ -194,7 +194,7 @@ class Board:
 
     @property
     def board(self) -> np.array:
-        return self.history[self.board_index]
+        return self.board_history[self.board_index]
 
     @property
     def cursor_pixel(self):
@@ -222,7 +222,7 @@ class Board:
         width = len(board[0])
 
         board_obj = cls(height=height, width=width, background=background)
-        board_obj.history = [board]
+        board_obj.board_history = [board]
 
         return board_obj
 
@@ -246,8 +246,8 @@ class Board:
             colour_emoji.name = "e"
         colour = str(colour_emoji)
 
-        self.history = self.history[:self.board_index + 1]
-        self.history.append(self.board.copy())
+        self.board_history = self.board_history[:self.board_index + 1]
+        self.board_history.append(self.board.copy())
         self.board_index += 1
 
         for row, col in coords if coords is not None else self.cursor_coords:
@@ -1031,8 +1031,8 @@ class DrawView(discord.ui.View):
 
         self.undo.disabled = self.board.board_index == 0
         self.undo.label = f"{self.board.board_index} ↶"
-        self.redo.disabled = self.board.board_index == len(self.board.history) - 1
-        self.redo.label = f"↷ {(len(self.board.history) - 1) - self.board.board_index}"
+        self.redo.disabled = self.board.board_index == len(self.board.board_history) - 1
+        self.redo.label = f"↷ {(len(self.board.board_history) - 1) - self.board.board_index}"
 
     async def edit_message(self, interaction: discord.Interaction):
         self.update_buttons()
@@ -1148,7 +1148,7 @@ class DrawView(discord.ui.View):
     )
     async def redo(self, interaction: discord.Interaction, button: discord.Button):
         await interaction.response.defer()
-        if self.board.board_index < len(self.board.history) - 1:
+        if self.board.board_index < len(self.board.board_history) - 1:
             self.board.board_index += 1
         await self.edit_message(interaction)
 
