@@ -25,6 +25,7 @@ class Tool(discord.ui.Button):
         )
 
         self._view: DrawView = view
+        self.view: DrawView
         self.board: Board = self.view.board
         self.bot: commands.Bot = self.view.bot
 

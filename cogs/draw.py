@@ -221,7 +221,7 @@ class Board:
         return board_obj
 
     def clear(self):
-        self.board[:] = self.background
+        self.draw(self.background, coords=np.array(np.where(self.board != self.background)).T)
         self.clear_cursors()
 
     def un_cursor(self, value):
