@@ -37,15 +37,15 @@ class Tool(discord.ui.Button):
     def emoji(self) -> str:
         return None
 
-    def use(self):
+    def use(self) -> bool:
         """The method that is called when the tool is used"""
         pass
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
 
-        self.use()
-        await self.view.edit_message(interaction)
+        if self.use():
+            await self.view.edit_message(interaction)
 
 
 class BrushTool(Tool):
@@ -57,9 +57,9 @@ class BrushTool(Tool):
     def emoji(self) -> str:
         return "<:draw:1032565261846454272>"
 
-    def use(self):
+    def use(self) -> bool:
         """The method that is called when the tool is used"""
-        self.board.draw(self.board.cursor)
+        return self.board.draw(self.board.cursor)
 
 
 class EraseTool(Tool):
@@ -71,9 +71,9 @@ class EraseTool(Tool):
     def emoji(self) -> str:
         return "<:erase:927526530052132894>"
 
-    def use(self):
+    def use(self) -> bool:
         """The method that is called when the tool is used"""
-        self.board.draw(self.board.background)
+        return self.board.draw(self.board.background)
 
 
 class EyedropperTool(Tool):
@@ -85,7 +85,7 @@ class EyedropperTool(Tool):
     def emoji(self) -> str:
         return "<:eyedropper:1033248590988066886>"
 
-    def use(self):
+    def use(self) -> bool:
         """The method that is called when the tool is used"""
         cursor_pixel = self.board.cursor_pixel
         emoji = discord.PartialEmoji.from_str(self.board.un_cursor(cursor_pixel))
@@ -113,8 +113,13 @@ class EyedropperTool(Tool):
             )
 
             self.view.colour_menu.append_option(option)
-        self.board.cursor = option.value
-        self.view.colour_menu.placeholder = option.label
+
+        if self.board.cursor == option.value:
+            return False
+        else:
+            self.board.cursor = option.value
+            self.view.colour_menu.placeholder = option.label
+            return True
 
 
 class FillTool(Tool):
@@ -126,7 +131,7 @@ class FillTool(Tool):
     def emoji(self) -> str:
         return "<:fill:930832869692149790>"
 
-    def use(self, *, initial_coords: Optional[Tuple[int, int]] = None):
+    def use(self, *, initial_coords: Optional[Tuple[int, int]] = None) -> bool:
         """The method that is called when the tool is used"""
         colour = self.board.cursor
         if self.board.cursor_pixel == colour:
@@ -175,7 +180,7 @@ class FillTool(Tool):
             queue.append((row, col + 1))
             queue.append((row, col - 1))
 
-        self.board.draw(coords=coords)  # Draw all the cells
+        return self.board.draw(coords=coords)  # Draw all the cells
 
 
 class ReplaceTool(Tool):
@@ -187,11 +192,11 @@ class ReplaceTool(Tool):
     def emoji(self) -> str:
         return "<:replace:1032565283929456670>"
 
-    def use(self):
+    def use(self) -> bool:
         """The method that is called when the tool is used"""
         colour = self.board.cursor
         to_replace = self.board.cursor_pixel
 
-        self.board.draw(
+        return self.board.draw(
             colour, coords=np.array(np.where(self.board.board == to_replace)).T
         )

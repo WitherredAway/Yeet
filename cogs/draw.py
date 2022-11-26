@@ -241,8 +241,12 @@ class Board:
         colour: Optional[str] = None,
         *,
         coords: Optional[List[Tuple[int, int]]] = None,
-    ):
+    ) -> bool:
         colour = colour or self.cursor
+        coords = coords if coords is not None else self.cursor_coords
+
+        if all((self.board[row, col] == colour for row, col in coords)):
+            return False
 
         colour_emoji = discord.PartialEmoji.from_str(colour)
         if colour_emoji.is_custom_emoji():
@@ -253,7 +257,7 @@ class Board:
         self.board_history.append(self.board.copy())
         self.board_index += 1
 
-        for row, col in coords if coords is not None else self.cursor_coords:
+        for row, col in coords:
             self.board[row, col] = colour
 
         # 3am debug statement
@@ -268,6 +272,7 @@ class Board:
         #     sep="\n",
         # )
 
+        return True
 
     def clear_cursors(self, *, empty: Optional[bool] = False):
         for x, row in enumerate(self.board):
@@ -354,14 +359,16 @@ class ToolMenu(discord.ui.Select):
 
         # If the tool selected is one of these,
         # use it directly instead of equipping
+        edit: bool = True  # This var is to decide whether or not to edit the message, depending on if the tool was used successfully
         if value in ["eyedropper", "fill", "replace"]:
-            tool.use()
+            edit = tool.use()
         # Else, equip the tool (to the primary tool button slot)
         else:
             self.view.primary_tool = tool
             self.view.load_items()
 
-        await self.view.edit_message(interaction)
+        if edit:
+            await self.view.edit_message(interaction)
 
 
 class Colour:
