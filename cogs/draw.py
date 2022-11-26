@@ -155,8 +155,10 @@ class Board:
         self.initial_board: np.array = np.full(
             (height, width), background, dtype="object"
         )
-        self.board: np.array = self.initial_board.copy()
+        self.history: List[np.array] = [self.initial_board.copy()]
+        self.board_index: int = 0
         self.backup_board: np.array = self.initial_board.copy()
+
         self.row_labels: Tuple[str] = ROW_ICONS[:height]
         self.col_labels: Tuple[str] = COLUMN_ICONS[:width]
 
@@ -191,6 +193,10 @@ class Board:
         )
 
     @property
+    def board(self) -> np.array:
+        return self.history[self.board_index]
+
+    @property
     def cursor_pixel(self):
         return self.un_cursor(self.board[self.cursor_row, self.cursor_col])
 
@@ -216,7 +222,7 @@ class Board:
         width = len(board[0])
 
         board_obj = cls(height=height, width=width, background=background)
-        board_obj.board = board
+        board_obj.history = [board]
 
         return board_obj
 
@@ -239,6 +245,10 @@ class Board:
         if colour_emoji.is_custom_emoji():
             colour_emoji.name = "e"
         colour = str(colour_emoji)
+
+        self.history = self.history[:self.board_index + 1]
+        self.history.append(self.board.copy())
+        self.board_index += 1
 
         for row, col in coords if coords is not None else self.cursor_coords:
             self.board[row, col] = colour
@@ -823,15 +833,14 @@ class DrawView(discord.ui.View):
         self.primary_tool: Tool = self.tool_menu.tools["brush"]
 
         self.secondary_page: bool = False
+        self.auto: bool = False
+        self.select: bool = False
         self.load_items()
 
         self.response: discord.Message = None
         self.lock: asyncio.Lock = self.bot.lock
 
         self.notifications: List[Notification] = [Notification(view=self)]
-
-        self.auto: bool = False
-        self.select: bool = False
 
     @property
     def embed(self):
@@ -976,13 +985,13 @@ class DrawView(discord.ui.View):
 
         # This is necessary for "paginating" the view and different buttons
         if self.secondary_page is False:
-            self.add_item(self.placeholder_button)
+            self.add_item(self.undo)
             self.add_item(self.up_left)
             self.add_item(self.up)
             self.add_item(self.up_right)
             self.add_item(self.secondary_page_button)
 
-            self.add_item(self.placeholder_button)
+            self.add_item(self.redo)
             self.add_item(self.left)
             self.add_item(self.auto_draw)
             self.add_item(self.right)
@@ -1013,7 +1022,20 @@ class DrawView(discord.ui.View):
             self.add_item(self.down_right)
             self.add_item(self.set_cursor)
 
+        self.update_buttons()
+
+    def update_buttons(self):
+        self.secondary_page_button.style = discord.ButtonStyle.green if self.secondary_page else discord.ButtonStyle.grey
+        self.auto_draw.style = discord.ButtonStyle.green if self.auto else discord.ButtonStyle.grey
+        self.select_button.style = discord.ButtonStyle.green if self.select else discord.ButtonStyle.grey
+
+        self.undo.disabled = self.board.board_index == 0
+        self.undo.label = f"{self.board.board_index} ↶"
+        self.redo.disabled = self.board.board_index == len(self.board.history) - 1
+        self.redo.label = f"↷ {(len(self.board.history) - 1) - self.board.board_index}"
+
     async def edit_message(self, interaction: discord.Interaction):
+        self.update_buttons()
         try:
             await interaction.edit_original_message(embed=self.embed, view=self)
         except discord.HTTPException as error:
@@ -1077,26 +1099,18 @@ class DrawView(discord.ui.View):
             self.primary_tool.use()
         await self.edit_draw(interaction)
 
-    def toggle(
-        self,
-        obj,
-        attribute: str,
-        button: discord.ui.Button,
-        *,
-        switch_to: Optional[bool] = None,
-    ):
-        attr_value = getattr(obj, attribute)
-        switch_to = switch_to if switch_to is not None else not attr_value
-        setattr(obj, attribute, switch_to)
-
-        if switch_to is True:
-            button.style = discord.ButtonStyle.green
-        elif switch_to is False:
-            button.style = discord.ButtonStyle.grey
-
     # ------ BUTTONS ------
 
     # 1st row
+    @discord.ui.button(
+        label="↶", style=discord.ButtonStyle.grey
+    )
+    async def undo(self, interaction: discord.Interaction, button: discord.Button):
+        await interaction.response.defer()
+        if self.board.board_index > 0:
+            self.board.board_index -= 1
+        await self.edit_draw(interaction)
+
     @discord.ui.button(
         emoji="<:stop:1032565237242667048>", style=discord.ButtonStyle.danger
     )
@@ -1144,20 +1158,29 @@ class DrawView(discord.ui.View):
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
-        self.toggle(self, "secondary_page", button)
+        self.secondary_page = not self.secondary_page
 
         self.load_items()
         await self.edit_draw(interaction)
 
     # 2nd Row
     @discord.ui.button(
+        label="↷", style=discord.ButtonStyle.grey
+    )
+    async def redo(self, interaction: discord.Interaction, button: discord.Button):
+        await interaction.response.defer()
+        if self.board.board_index < len(self.board.history) - 1:
+            self.board.board_index += 1
+        await self.edit_draw(interaction)
+
+    @discord.ui.button(
         emoji="<:clear:1032565244658204702>", style=discord.ButtonStyle.danger
     )
     async def clear(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
-        self.toggle(self, "secondary_page", self.secondary_page_button, switch_to=False)
-        self.toggle(self, "auto", self.auto_draw, switch_to=False)
-        self.toggle(self, "select", self.select_button, switch_to=False)
+        self.secondary_page = False
+        self.auto = False
+        self.select = False
         self.board.clear()
         self.load_items()
         await self.edit_draw(interaction)
@@ -1178,7 +1201,7 @@ class DrawView(discord.ui.View):
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
-        self.toggle(self, "auto", button)
+        self.auto = not self.auto
         await self.edit_draw(interaction)
 
     @discord.ui.button(
@@ -1202,7 +1225,7 @@ class DrawView(discord.ui.View):
             self.board.initial_row, self.board.initial_col = self.board.initial_coords
         elif self.select is True:
             self.board.clear_cursors()
-        self.toggle(self, "select", button)
+        self.select = not self.select
         await self.edit_draw(interaction)
 
     # 3rd / Last Row
