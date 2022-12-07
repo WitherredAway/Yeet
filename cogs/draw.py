@@ -531,8 +531,8 @@ class ColourMenu(discord.ui.Select):
         options = options if options else default_options
         self.END_INDEX = len(default_options)  # The ending index of default options
         for option in options:
-            if str(option.emoji) == background and not option.label.endswith(" (base)"):
-                option.label += " (base)"
+            if str(option.emoji) == background and not option.label.endswith(" (bg)"):
+                option.label += " (bg)"
 
         super().__init__(
             placeholder="🎨 Palette",
@@ -1437,10 +1437,10 @@ class Draw(commands.Cog):
             colour_options = old_view.children[0].options
 
         for option in colour_options:
-            if option.label.endswith(" (base)"):
-                bg = str(option.emoji)
+            if option.label.endswith(" (bg)"):
+                background = str(option.emoji)
 
-        board_obj = Board.from_board(board=board, background=bg)
+        board_obj = Board.from_board(board=board, background=background)
         board_obj.clear_cursors()
         draw_view = DrawView(
             board_obj, ctx=ctx, tool_options=tool_options, colour_options=colour_options
