@@ -25,6 +25,10 @@ from .draw_utils.constants import (
     ALPHABETS,
     NUMBERS,
     PADDING,
+    BASE_COLOUR_OPTIONS,
+    BASE_NUMBER_OPTIONS,
+    MIN_HEIGHT_OR_WIDTH,
+    MAX_HEIGHT_OR_WIDTH,
 )
 from .draw_utils.emoji import (
     draw_emoji,
@@ -61,10 +65,25 @@ CUSTOM_EMOJI_REGEX = re.compile("<a?:[a-zA-Z0-9_]+:\d+>")
 
 
 class StartView(discord.ui.View):
-    def __init__(self, *, ctx: commands.Context, draw_view: DrawView):
+    def __init__(
+        self,
+        *,
+        ctx: commands.Context,
+        height: Optional[int] = 9,
+        width: Optional[int] = 9,
+        background: Optional[
+            Literal["🟥", "🟧", "🟨", "🟩", "🟦", "🟪", "🟫", "⬛", "⬜"]
+        ] = "⬜",
+    ):
         super().__init__(timeout=30)
         self.ctx = ctx
-        self.draw_view = draw_view
+        self.height = height
+        self.width = width
+        self.background = background
+
+    @property
+    def initial_message(self):
+        return f"Create new draw board with `height = {self.height}`, `width = {self.width}` and `background = {self.background}`?"
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user != self.ctx.author:
@@ -79,9 +98,38 @@ class StartView(discord.ui.View):
         await self.response.edit(view=None)
         self.stop()
 
+    @discord.ui.select(options=BASE_COLOUR_OPTIONS, placeholder="Background")
+    async def background_select(
+        self, interaction: discord.Interaction, select: discord.ui.Select
+    ):
+        await interaction.response.defer()
+
+        self.background = select.values[0]
+        await self.response.edit(content=self.initial_message)
+
+    @discord.ui.select(options=BASE_NUMBER_OPTIONS, placeholder="Height")
+    async def height_select(
+        self, interaction: discord.Interaction, select: discord.ui.Select
+    ):
+        await interaction.response.defer()
+
+        self.height = int(select.values[0])
+        await self.response.edit(content=self.initial_message)
+
+    @discord.ui.select(options=BASE_NUMBER_OPTIONS, placeholder="Width")
+    async def width_select(
+        self, interaction: discord.Interaction, select: discord.ui.Select
+    ):
+        await interaction.response.defer()
+
+        self.width = int(select.values[0])
+        await self.response.edit(content=self.initial_message)
+
     @discord.ui.button(label="Create", style=discord.ButtonStyle.green)
     async def create(self, interaction: discord.Interaction, button: discord.Button):
         await interaction.response.defer()
+        board = Board(height=self.height, width=self.width, background=self.background)
+        self.draw_view = DrawView(board, ctx=self.ctx)
 
         response = await interaction.followup.send(
             embed=self.draw_view.embed, view=self.draw_view
@@ -230,7 +278,9 @@ class Board:
         return board_obj
 
     def clear(self):
-        self.draw(self.background, coords=np.array(np.where(self.board != self.background)).T)
+        self.draw(
+            self.background, coords=np.array(np.where(self.board != self.background)).T
+        )
         self.clear_cursors()
 
     def un_cursor(self, value):
@@ -253,7 +303,7 @@ class Board:
             colour_emoji.name = "e"
         colour = str(colour_emoji)
 
-        self.board_history = self.board_history[:self.board_index + 1]
+        self.board_history = self.board_history[: self.board_index + 1]
         self.board_history.append(self.board.copy())
         self.board_index += 1
 
@@ -466,15 +516,7 @@ class ColourMenu(discord.ui.Select):
         background: str,
     ):
         default_options: List[discord.SelectOption] = [
-            discord.SelectOption(label="Red", emoji="🟥", value="🟥"),
-            discord.SelectOption(label="Orange", emoji="🟧", value="🟧"),
-            discord.SelectOption(label="Yellow", emoji="🟨", value="🟨"),
-            discord.SelectOption(label="Green", emoji="🟩", value="🟩"),
-            discord.SelectOption(label="Blue", emoji="🟦", value="🟦"),
-            discord.SelectOption(label="Purple", emoji="🟪", value="🟪"),
-            discord.SelectOption(label="Brown", emoji="🟫", value="🟫"),
-            discord.SelectOption(label="Black", emoji="⬛", value="⬛"),
-            discord.SelectOption(label="White", emoji="⬜", value="⬜"),
+            *BASE_COLOUR_OPTIONS,
             discord.SelectOption(
                 label="Add Colour(s)",
                 emoji="🏳️‍🌈",
@@ -1033,14 +1075,24 @@ class DrawView(discord.ui.View):
         self.update_buttons()
 
     def update_buttons(self):
-        self.secondary_page_button.style = discord.ButtonStyle.green if self.secondary_page else discord.ButtonStyle.grey
-        self.auto_draw.style = discord.ButtonStyle.green if self.auto else discord.ButtonStyle.grey
-        self.select_button.style = discord.ButtonStyle.green if self.select else discord.ButtonStyle.grey
+        self.secondary_page_button.style = (
+            discord.ButtonStyle.green
+            if self.secondary_page
+            else discord.ButtonStyle.grey
+        )
+        self.auto_draw.style = (
+            discord.ButtonStyle.green if self.auto else discord.ButtonStyle.grey
+        )
+        self.select_button.style = (
+            discord.ButtonStyle.green if self.select else discord.ButtonStyle.grey
+        )
 
         self.undo.disabled = self.board.board_index == 0
         self.undo.label = f"{self.board.board_index} ↶"
         self.redo.disabled = self.board.board_index == len(self.board.board_history) - 1
-        self.redo.label = f"↷ {(len(self.board.board_history) - 1) - self.board.board_index}"
+        self.redo.label = (
+            f"↷ {(len(self.board.board_history) - 1) - self.board.board_index}"
+        )
 
     async def edit_message(self, interaction: discord.Interaction):
         self.update_buttons()
@@ -1056,7 +1108,9 @@ class DrawView(discord.ui.View):
                     ephemeral=True,
                 )
                 self.board.board_index -= 1
-                self.board.board_history = self.board.board_history[:self.board.board_index + 1]
+                self.board.board_history = self.board.board_history[
+                    : self.board.board_index + 1
+                ]
                 await self.edit_message(interaction)
             elif match := re.search(
                 "In components\.\d+\.components\.\d+\.options\.(?P<option>\d+)\.emoji\.id: Invalid emoji",
@@ -1090,9 +1144,7 @@ class DrawView(discord.ui.View):
     # ------ BUTTONS ------
 
     # 1st row
-    @discord.ui.button(
-        label="↶", style=discord.ButtonStyle.grey
-    )
+    @discord.ui.button(label="↶", style=discord.ButtonStyle.grey)
     async def undo(self, interaction: discord.Interaction, button: discord.Button):
         await interaction.response.defer()
         if self.board.board_index > 0:
@@ -1152,9 +1204,7 @@ class DrawView(discord.ui.View):
         await self.edit_message(interaction)
 
     # 2nd Row
-    @discord.ui.button(
-        label="↷", style=discord.ButtonStyle.grey
-    )
+    @discord.ui.button(label="↷", style=discord.ButtonStyle.grey)
     async def redo(self, interaction: discord.Interaction, button: discord.Button):
         await interaction.response.defer()
         if self.board.board_index < len(self.board.board_history) - 1:
@@ -1326,21 +1376,21 @@ class Draw(commands.Cog):
         ctx: commands.Context,
         height: Optional[int] = 9,
         width: Optional[int] = 9,
-        background: Literal["🟥", "🟧", "🟨", "🟩", "🟦", "🟪", "🟫", "⬛", "⬜"] = "⬜",
+        background: Optional[
+            Literal["🟥", "🟧", "🟨", "🟩", "🟦", "🟪", "🟫", "⬛", "⬜"]
+        ] = "⬜",
     ) -> None:
-        bg = background
-        if height < 5 or height > 17:
+        if MIN_HEIGHT_OR_WIDTH > height > MAX_HEIGHT_OR_WIDTH:
             return await ctx.send("Height must be atleast 5 and atmost 17")
 
-        if width < 5 or width > 17:
+        if MIN_HEIGHT_OR_WIDTH > width > MAX_HEIGHT_OR_WIDTH:
             return await ctx.send("Width must be atleast 5 and atmost 17")
 
-        board = Board(height=height, width=width, background=background)
-        draw_view = DrawView(board, ctx=ctx)
-
-        start_view = StartView(ctx=ctx, draw_view=draw_view)
+        start_view = StartView(
+            ctx=ctx, height=height, width=width, background=background
+        )
         response = await ctx.send(
-            f"Create new draw board with `{height = }`, `{width = }` and `{bg = }`?",
+            start_view.initial_message,
             view=start_view,
         )
         start_view.response = response
