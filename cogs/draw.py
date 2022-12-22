@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import copy
-from typing import Callable, Optional, Union, Literal, List, Dict, Tuple, TypeVar
-import io
+from dataclasses import dataclass
 from functools import cached_property
+import io
 import re
+import typing
+from typing import Callable, Optional, Union, Literal, List, Dict, Tuple, TypeVar
 
 import emojis
 import numpy as np
@@ -25,8 +27,8 @@ from .draw_utils.constants import (
     ALPHABETS,
     NUMBERS,
     PADDING,
-    BASE_COLOUR_OPTIONS,
-    BASE_NUMBER_OPTIONS,
+    base_colour_options,
+    base_number_options,
     MIN_HEIGHT_OR_WIDTH,
     MAX_HEIGHT_OR_WIDTH,
 )
@@ -43,6 +45,9 @@ from .draw_utils.tools import (
     FillTool,
     ReplaceTool,
 )
+
+if typing.TYPE_CHECKING:
+    from main import Bot
 
 
 EMBED_DESC_CHAR_LIMIT = 4096
@@ -64,26 +69,63 @@ FLAG_EMOJI_REGEX = re.compile("[\U0001F1E6-\U0001F1FF]")
 CUSTOM_EMOJI_REGEX = re.compile("<a?:[a-zA-Z0-9_]+:\d+>")
 
 
+@dataclass
+class Coords:
+    x: int
+    y: int
+
+    def __post_init__(self):
+        self.ix: int = self.x * -1
+        self.iy: int = self.y * -1
+
+
 class StartView(discord.ui.View):
     def __init__(
         self,
         *,
         ctx: commands.Context,
-        height: Optional[int] = 9,
-        width: Optional[int] = 9,
-        background: Optional[
-            Literal["🟥", "🟧", "🟨", "🟩", "🟦", "🟪", "🟫", "⬛", "⬜"]
-        ] = "⬜",
+        board: Union[Board, Tuple[int, int, str]],
+        tool_options: Optional[List[discord.SelectOption]] = None,
+        colour_options: Optional[List[discord.SelectOption]] = None,
     ):
-        super().__init__(timeout=30)
+        super().__init__(timeout=60)
         self.ctx = ctx
-        self.height = height
-        self.width = width
-        self.background = background
+        self.bot: Bot = self.ctx.bot
+
+        self._board = board
+        if isinstance(self._board, Board):
+            self.height: int = self._board.height
+            self.width: int = self._board.width
+            self.background: str = self._board.background
+        elif isinstance(self._board, Tuple):
+            self.height, self.width, self.background = self._board
+
+        self.tool_options = tool_options
+        self.colour_options = colour_options
 
     @property
-    def initial_message(self):
+    def initial_message(self) -> str:
         return f"Create new draw board with `height = {self.height}`, `width = {self.width}` and `background = {self.background}`?"
+
+    @property
+    def board(self) -> Board:
+        if isinstance(self._board, Tuple):
+            return Board(
+            height=self.height, width=self.width, background=self.background
+        )
+        return self._board.modify(
+            height=self.height, width=self.width, background=self.background
+        )
+
+    @classmethod
+    def from_board_obj(cls, ctx: commands.Context, board: Board) -> StartView:
+        height = board.height
+        width = board.width
+        background = board.background
+
+        cls = cls(ctx=ctx, height=height, width=width, background=background)
+
+        return cls
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user != self.ctx.author:
@@ -98,45 +140,69 @@ class StartView(discord.ui.View):
         await self.response.edit(view=None)
         self.stop()
 
-    @discord.ui.select(options=BASE_COLOUR_OPTIONS, placeholder="Background")
+    async def start(self):
+        self.response = await self.ctx.send(
+            self.initial_message,
+            embed=self.bot.Embed(description=str(self.board)),
+            view=self,
+        )
+
+    async def update(self):
+        await self.response.edit(
+            content=self.initial_message,
+            embed=self.bot.Embed(description=str(self.board)),
+            view=self,
+        )
+
+    @discord.ui.select(options=base_colour_options(), placeholder="Background")
     async def background_select(
         self, interaction: discord.Interaction, select: discord.ui.Select
     ):
         await interaction.response.defer()
 
+        if self.background == select.values[0]:
+            return
         self.background = select.values[0]
-        await self.response.edit(content=self.initial_message)
+        await self.update()
 
-    @discord.ui.select(options=BASE_NUMBER_OPTIONS, placeholder="Height")
+    @discord.ui.select(options=base_number_options(), placeholder="Height")
     async def height_select(
         self, interaction: discord.Interaction, select: discord.ui.Select
     ):
         await interaction.response.defer()
 
+        if self.height == int(select.values[0]):
+            return
         self.height = int(select.values[0])
-        await self.response.edit(content=self.initial_message)
+        await self.update()
 
-    @discord.ui.select(options=BASE_NUMBER_OPTIONS, placeholder="Width")
+    @discord.ui.select(options=base_number_options(), placeholder="Width")
     async def width_select(
         self, interaction: discord.Interaction, select: discord.ui.Select
     ):
         await interaction.response.defer()
 
+        if self.width == int(select.values[0]):
+            return
         self.width = int(select.values[0])
-        await self.response.edit(content=self.initial_message)
+        await self.update()
 
     @discord.ui.button(label="Create", style=discord.ButtonStyle.green)
     async def create(self, interaction: discord.Interaction, button: discord.Button):
         await interaction.response.defer()
-        board = Board(height=self.height, width=self.width, background=self.background)
-        self.draw_view = DrawView(board, ctx=self.ctx)
 
-        response = await interaction.followup.send(
-            embed=self.draw_view.embed, view=self.draw_view
+        draw_view = DrawView(
+            self.board,
+            ctx=self.ctx,
+            tool_options=self.tool_options,
+            colour_options=self.colour_options,
         )
-        self.draw_view.response = response
+        response = await interaction.followup.send(
+            embed=draw_view.embed, view=draw_view
+        )
+        draw_view.response = response
         await response.edit(
-            embed=self.draw_view.embed, view=self.draw_view
+            embed=draw_view.embed, view=draw_view
         )  # This is necessary because custom emojis only render when a followup is edited ◉_◉
 
         await self.response.delete()
@@ -200,27 +266,33 @@ class Board:
         self.width: int = width
         self.background: str = background
 
-        self.initial_board: np.array = np.full(
-            (height, width), background, dtype="object"
+        self.initial_board: np.ndarray = np.full(
+            (self.height, self.width), self.background, dtype="object"
         )
-        self.board_history: List[np.array] = [self.initial_board.copy()]
+        self.board_history: List[np.ndarray] = [self.initial_board.copy()]
         self.board_index: int = 0
-
-        self.row_labels: Tuple[str] = ROW_ICONS[:height]
-        self.col_labels: Tuple[str] = COLUMN_ICONS[:width]
-
-        self.cursor: str = self.background
-        self.cursor_row: int = int(len(self.row_labels) / 2)
-        self.cursor_row_max = len(self.row_labels) - 1
-        self.cursor_col: int = int(len(self.col_labels) / 2)
-        self.cursor_col_max = len(self.col_labels) - 1
-        self.cursor_coords: List[Tuple[int, int]] = [(self.cursor_row, self.cursor_col)]
+        self.set_attributes()
 
         # This is for select tool.
         self.initial_coords: Tuple[int, int]
         self.final_coords: Tuple[int, int]
 
         self.clear_cursors()
+
+    def set_attributes(self):
+        self.row_labels: Tuple[str] = ROW_ICONS[: self.height]
+        self.col_labels: Tuple[str] = COLUMN_ICONS[: self.width]
+        self.centre: Tuple[int, int] = (
+            len(self.row_labels) // 2,
+            len(self.col_labels) // 2,
+        )
+        self.centre_row, self.centre_col = self.centre
+
+        self.cursor: str = self.background
+        self.cursor_row, self.cursor_col = self.centre
+        self.cursor_row_max = len(self.row_labels) - 1
+        self.cursor_col_max = len(self.col_labels) - 1
+        self.cursor_coords: List[Tuple[int, int]] = [(self.cursor_row, self.cursor_col)]
 
     def __str__(self) -> str:
         cursor_rows = tuple(row for row, col in self.cursor_coords)
@@ -240,12 +312,84 @@ class Board:
         )
 
     @property
-    def board(self) -> np.array:
+    def board(self) -> np.ndarray:
         return self.board_history[self.board_index]
 
+    @board.setter
+    def board(self, board: np.ndarray):
+        self.board_history.append(board)
+        self.board_index += 1
+
     @property
-    def backup_board(self) -> np.array:
+    def backup_board(self) -> np.ndarray:
         return self.board_history[self.board_index - 1]
+
+    def modify(
+        self,
+        *,
+        height: Optional[int] = None,
+        width: Optional[int] = None,
+        background: Optional[str] = None,
+    ) -> Board:
+        """Method to modify attributes of board while conserving the centre (aka extends of crops board equally on opposite sides)"""
+
+        height = height or self.height
+        width = width or self.width
+        background = background or self.background
+
+        if all(
+            (self.height == height, self.width == width, self.background == background)
+        ):  # Return if none of the attributes have been changed
+            return self
+
+        overlay = self.board
+        base = np.full((height, width), background, dtype="object")
+
+        # Coordinates of the centre of the overlay board
+        overlay_centre = Coords(overlay.shape[1] // 2, overlay.shape[0] // 2)
+        # Coordinates of the centre of the base board
+        base_centre = Coords(base.shape[1] // 2, base.shape[0] // 2)
+        # Difference between the centres
+        centre_diff = Coords(
+            base_centre.x - overlay_centre.x, base_centre.y - overlay_centre.y
+        )
+
+        # Coordinates where the overlay board should crop from
+        # x = overlay's centre's width MINUS base's centre's width, if greater than 0, else 0
+        # y = overlay's centre's height MINUS base's centre's height, if greater than 0, else 0
+        # Meaning that if base is larger than overlay, it will include from the start of overlay
+        overlay_from = Coords(max(centre_diff.ix, 0), max(centre_diff.iy, 0))
+        # Coordinates where the overlay board should crop to
+        # x = base's total width MINUS its centre's x-coord PLUS overlay's centre's x-coord
+        # y = base's total height MINUS its centre's y-coord PLUS overlay's centre's y-coord
+        # This formula gives an optimal value to crop the overlay board *to*, for both
+        # smaller and larger overlay boards
+        overlay_to = Coords(
+            (base.shape[1] - base_centre.x) + overlay_centre.x,
+            (base.shape[0] - base_centre.y) + overlay_centre.y,
+        )
+
+        # Coordinates where the base board should paste from
+        # x = base's centre's width MINUS overlay's centre's width, if bigger than 0, else 0
+        # y = base's centre's height MINUS overlay's centre's height, if bigger than 0, else 0
+        # Meaning that if overlay is larger than base, it will start pasting from the start of base
+        base_overlay_from = Coords(max(centre_diff.x, 0), max(centre_diff.y, 0))
+        # Coordinates where the base board should paste to
+        # x = whichever is less b/w base board's width and overlay board's width PLUS x-coord of beginning (for respective offset)
+        # y = whichever is less b/w base board's height and overlay board's height PLUS y-coord of beginning (for respective offset)
+        base_overlay_to = Coords(
+            min(overlay.shape[1], base.shape[1]) + base_overlay_from.x,
+            min(overlay.shape[0], base.shape[0]) + base_overlay_from.y,
+        )
+
+        # Crops overlay board if necessary (i.e. if base < overlay)
+        overlay = overlay[overlay_from.y : overlay_to.y, overlay_from.x : overlay_to.x]
+        # Pastes cropped overlay board on top of the selected portion of base board
+        base[
+            base_overlay_from.y : base_overlay_to.y,
+            base_overlay_from.x : base_overlay_to.x,
+        ] = overlay
+        return Board.from_board(base, background=background)
 
     @property
     def cursor_pixel(self):
@@ -268,7 +412,7 @@ class Board:
         return self.un_cursor(self.board[row, col])
 
     @classmethod
-    def from_board(cls, board: np.array, *, background: Optional[str] = "⬜"):
+    def from_board(cls, board: np.ndarray, *, background: Optional[str] = "⬜"):
         height = len(board)
         width = len(board[0])
 
@@ -304,8 +448,7 @@ class Board:
         colour = str(colour_emoji)
 
         self.board_history = self.board_history[: self.board_index + 1]
-        self.board_history.append(self.board.copy())
-        self.board_index += 1
+        self.board = self.board.copy()
 
         for row, col in coords:
             self.board[row, col] = colour
@@ -516,7 +659,7 @@ class ColourMenu(discord.ui.Select):
         background: str,
     ):
         default_options: List[discord.SelectOption] = [
-            *BASE_COLOUR_OPTIONS,
+            *base_colour_options(),
             discord.SelectOption(
                 label="Add Colour(s)",
                 emoji="🏳️‍🌈",
@@ -874,7 +1017,7 @@ class DrawView(discord.ui.View):
         self.board: Board = board
 
         self.ctx: commands.Context = ctx
-        self.bot: commands.Bot = self.ctx.bot
+        self.bot: Bot = self.ctx.bot
 
         self.tool_menu: ToolMenu = ToolMenu(self, options=tool_options)
         self.colour_menu: ColourMenu = ColourMenu(
@@ -1356,7 +1499,7 @@ class DrawView(discord.ui.View):
 class Draw(commands.Cog):
     """Category with commands to bring out your inner artist."""
 
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: Bot):
         self.bot = bot
 
     display_emoji = "🖌️"
@@ -1376,9 +1519,7 @@ class Draw(commands.Cog):
         ctx: commands.Context,
         height: Optional[int] = 9,
         width: Optional[int] = 9,
-        background: Optional[
-            Literal["🟥", "🟧", "🟨", "🟩", "🟦", "🟪", "🟫", "⬛", "⬜"]
-        ] = "⬜",
+        background: Literal["🟥", "🟧", "🟨", "🟩", "🟦", "🟪", "🟫", "⬛", "⬜"] = "⬜",
     ) -> None:
         if MIN_HEIGHT_OR_WIDTH > height > MAX_HEIGHT_OR_WIDTH:
             return await ctx.send("Height must be atleast 5 and atmost 17")
@@ -1386,14 +1527,10 @@ class Draw(commands.Cog):
         if MIN_HEIGHT_OR_WIDTH > width > MAX_HEIGHT_OR_WIDTH:
             return await ctx.send("Width must be atleast 5 and atmost 17")
 
-        start_view = StartView(
-            ctx=ctx, height=height, width=width, background=background
-        )
-        response = await ctx.send(
-            start_view.initial_message,
-            view=start_view,
-        )
-        start_view.response = response
+        board = (height, width, background)
+
+        start_view = StartView(ctx=ctx, board=board)
+        await start_view.start()
 
     @draw.command(
         name="copy",
@@ -1442,18 +1579,14 @@ class Draw(commands.Cog):
 
         board_obj = Board.from_board(board=board, background=background)
         board_obj.clear_cursors()
-        draw_view = DrawView(
-            board_obj, ctx=ctx, tool_options=tool_options, colour_options=colour_options
-        )
-        draw_view.board.cursor = description.split(PADDING)[0]
 
-        start_view = StartView(ctx=ctx, draw_view=draw_view)
-        response = await ctx.send(
-            content="Create a copy of this board? (Due to discord limitations, custom emojis may not render here)",
-            embed=draw_view.embed,
-            view=start_view,
+        start_view = StartView(
+            ctx=ctx,
+            board=board_obj,
+            tool_options=tool_options,
+            colour_options=colour_options,
         )
-        start_view.response = response
+        await start_view.start()
 
 
 async def setup(bot):

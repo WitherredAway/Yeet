@@ -1,7 +1,7 @@
 .replit
 replit.nix
 .config/
-Yeet.code-workspace
+*.code-workspace
 .vscode/
 
 # Byte-compiled / optimized / DLL files

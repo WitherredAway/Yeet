@@ -6,26 +6,29 @@ from constants import u200b
 from ..utils.utils import invert_dict
 
 
-BASE_COLOUR_OPTIONS = [
-    discord.SelectOption(label="Red", emoji="🟥", value="🟥"),
-    discord.SelectOption(label="Orange", emoji="🟧", value="🟧"),
-    discord.SelectOption(label="Yellow", emoji="🟨", value="🟨"),
-    discord.SelectOption(label="Green", emoji="🟩", value="🟩"),
-    discord.SelectOption(label="Blue", emoji="🟦", value="🟦"),
-    discord.SelectOption(label="Purple", emoji="🟪", value="🟪"),
-    discord.SelectOption(label="Brown", emoji="🟫", value="🟫"),
-    discord.SelectOption(label="Black", emoji="⬛", value="⬛"),
-    discord.SelectOption(label="White", emoji="⬜", value="⬜"),
-]
+def base_colour_options():
+    return [
+        discord.SelectOption(label="Red", emoji="🟥", value="🟥"),
+        discord.SelectOption(label="Orange", emoji="🟧", value="🟧"),
+        discord.SelectOption(label="Yellow", emoji="🟨", value="🟨"),
+        discord.SelectOption(label="Green", emoji="🟩", value="🟩"),
+        discord.SelectOption(label="Blue", emoji="🟦", value="🟦"),
+        discord.SelectOption(label="Purple", emoji="🟪", value="🟪"),
+        discord.SelectOption(label="Brown", emoji="🟫", value="🟫"),
+        discord.SelectOption(label="Black", emoji="⬛", value="⬛"),
+        discord.SelectOption(label="White", emoji="⬜", value="⬜"),
+    ]
 
 
 MIN_HEIGHT_OR_WIDTH = 5
 MAX_HEIGHT_OR_WIDTH = 17
 
-BASE_NUMBER_OPTIONS = [
-    discord.SelectOption(label=f"{n}", value=n)
-    for n in range(MIN_HEIGHT_OR_WIDTH, MAX_HEIGHT_OR_WIDTH + 1)
-]
+
+def base_number_options():
+    return [
+        discord.SelectOption(label=f"{n}", value=n)
+        for n in range(MIN_HEIGHT_OR_WIDTH, MAX_HEIGHT_OR_WIDTH + 1)
+    ]
 
 
 ROW_ICONS_DICT = {
