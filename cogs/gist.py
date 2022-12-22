@@ -1,8 +1,7 @@
+from __future__ import annotations
+
 import typing
-from typing import Optional, TypeVar, Union
-import asyncio
-import os
-import copy
+from typing import Optional, Union
 import gists
 import re
 
@@ -12,6 +11,9 @@ import validators
 
 from .utils.paginator import BotPages
 from constants import CODE_BLOCK_FMT
+
+if typing.TYPE_CHECKING:
+    from main import Bot
 
 
 def new_file_name(*, default: Optional[str] = "", required: Optional[bool] = False):
@@ -214,7 +216,6 @@ class GistView(BotPages):
         self.add_item(self._delete_gist)
         self._update_buttons()
 
-    # TODO
     def add_view(self, entries: typing.List) -> None:
         self.clear_items()
         # self.add_item(GistSelectMenu)
@@ -332,7 +333,7 @@ class GistPageSource(menus.ListPageSource):
         self.ctx = ctx
         self.per_page = per_page
 
-        self.bot = self.ctx.bot
+        self.bot: Bot = self.ctx.bot
         self.embed = self.bot.Embed()
         self.description = None
         self.reload()
@@ -381,10 +382,7 @@ class GistPageSource(menus.ListPageSource):
             )
             if not file.name.endswith(".md"):
                 content = CODE_BLOCK_FMT % content
-            embed.add_field(
-                name=file.name,
-                value=content,
-            )
+            embed.add_field(name=file.name, value=content, inline=False)
 
         maximum = self.get_max_pages()
         if maximum > 0:
@@ -436,10 +434,6 @@ class Gist(commands.Cog):
         gist = None
 
         if gist_url_or_id is not None:
-            if validators.url(str(gist_url_or_id)):
-                gist_url_or_id = gist_url_or_id.split("/")[
-                    -2 if gist_url_or_id.endswith("/") else -1
-                ]
             try:
                 gist = await client.get_gist(gist_url_or_id)
             except gists.NotFound:
