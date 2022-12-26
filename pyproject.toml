@@ -1,8 +1,8 @@
 [tool.poetry]
-name = "yeet"
+name = "Yeet"
 version = "0.1.0"
-description = ""
-authors = ["Witherr <you@example.com>"]
+description = "A discord bot with fun and useful features like Pixel art, Interactive calculator, Pokétwo spawn-chance and moveset commands, Definition command and more!"
+authors = ["Witherr <sdssouvic99@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.8"
