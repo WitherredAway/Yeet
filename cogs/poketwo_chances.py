@@ -21,8 +21,8 @@ class PoketwoChances(commands.Cog):
         self.bot = bot
 
         self.pokemon_csv = (
-            # "https://raw.githubusercontent.com/poketwo/data/master/csv/pokemon.csv"
-            os.getenv("POKEMON_CSV")
+            "https://raw.githubusercontent.com/poketwo/data/master/csv/pokemon.csv"
+            #os.getenv("POKEMON_CSV")
         )
 
     display_emoji = "🔣"
@@ -47,6 +47,8 @@ class PoketwoChances(commands.Cog):
         gist_id: str,
         keep_cols: Optional[typing.List[str]] = None,
     ) -> gists.Gist:
+        df["Chance"] = np.nan
+        df["Chance percentage"] = np.nan
         for idx in df.index:
             chance = round(df.at[idx, "abundance"] / self.possible_abundance * 100, 4)
             df.at[idx, "Chance"] = "1/" + str(round(1 / chance * 100))
@@ -112,7 +114,7 @@ class PoketwoChances(commands.Cog):
         total_abundance = round(pkm_df["abundance"][pkm_df["catchable"] > 0].sum())
 
         per_cent = round(total_abundance / self.possible_abundance * 100, 3)
-        out_of = round(1 / per_cent * 100)
+        out_of = round((1 / per_cent * 100) if per_cent > 0 else 0)
         total_chances = f"**Total chance**: {per_cent}% or 1/{out_of}"
 
         extra = "\n"
@@ -369,7 +371,7 @@ class PoketwoChances(commands.Cog):
     async def event(self, ctx):
         pkm_df = self.pk.loc[(self.pk["event"] > 0) & (self.pk["catchable"] > 0)]
         if len(pkm_df) == 0:
-            return await ctx.send("No currently catchable event pokemon")
+            await ctx.send("No currently catchable event pokemon")
         pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance", "enabled"]]
         pkm_df["enabled"] = pkm_df["enabled"] > 0
 
