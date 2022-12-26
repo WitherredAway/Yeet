@@ -1544,8 +1544,8 @@ class Draw(commands.Cog):
         message_link: Optional[discord.Message] = None,
     ):
         message = message_link
-        if ctx.message.reference:
-            message = await ctx.channel.fetch_message(ctx.message.reference.message_id)
+        if ref := ctx.message.reference:
+            message = ref.resolved
         elif message_link is None or not isinstance(message_link, discord.Message):
             return await ctx.send_help(ctx.command)
 
