@@ -44,6 +44,7 @@ from .draw_utils.tools import (
     EyedropperTool,
     FillTool,
     ReplaceTool,
+    AUTO_USE_TOOLS,
 )
 
 if typing.TYPE_CHECKING:
@@ -514,7 +515,7 @@ class ToolMenu(discord.ui.Select):
         *,
         options: Optional[List[discord.SelectOption]] = None,
     ):
-        self.tool_list = [
+        self.tool_list: List[Tool] = [
             BrushTool(view),
             EraseTool(view),
             EyedropperTool(view),
@@ -524,7 +525,7 @@ class ToolMenu(discord.ui.Select):
 
         default_options: List[discord.SelectOption] = [
             discord.SelectOption(
-                label=tool.name, emoji=tool.emoji, value=tool.name.lower()
+                label=tool.name, emoji=tool.emoji, value=tool.name.lower(), description=f"{tool.description}{' (Used automatically)' if tool.name.lower() in AUTO_USE_TOOLS else ''}"
             )
             for tool in self.tool_list
         ]
@@ -553,7 +554,7 @@ class ToolMenu(discord.ui.Select):
         # If the tool selected is one of these,
         # use it directly instead of equipping
         edit: bool = True  # This var is to decide whether or not to edit the message, depending on if the tool was used successfully
-        if value in ["eyedropper", "fill", "replace"]:
+        if value in AUTO_USE_TOOLS:
             edit = tool.use()
         # Else, equip the tool (to the primary tool button slot)
         else:
@@ -667,7 +668,7 @@ class ColourMenu(discord.ui.Select):
             ),
             discord.SelectOption(
                 label="Add Emoji(s)",
-                emoji="<:emojismiley:1032565214606012416>",
+                emoji="<:emojismiley:1056857231125123152>",
                 value="emoji",
             ),
         ]

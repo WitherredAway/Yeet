@@ -13,6 +13,9 @@ if typing.TYPE_CHECKING:
     from ..draw import Board, DrawView
 
 
+AUTO_USE_TOOLS = ["eyedropper", "fill", "replace"]
+
+
 class Tool(discord.ui.Button):
     """A template class for each of the tools"""
 
@@ -37,6 +40,10 @@ class Tool(discord.ui.Button):
     def emoji(self) -> str:
         return None
 
+    @property
+    def description(self) -> str:
+        return None
+
     def use(self) -> bool:
         """The method that is called when the tool is used"""
         pass
@@ -55,7 +62,11 @@ class BrushTool(Tool):
 
     @property
     def emoji(self) -> str:
-        return "<:draw:1032565261846454272>"
+        return "<:brush:1056853866563506176>"
+
+    @property
+    def description(self) -> str:
+        return "Draw where the cursor is"
 
     def use(self) -> bool:
         """The method that is called when the tool is used"""
@@ -69,7 +80,11 @@ class EraseTool(Tool):
 
     @property
     def emoji(self) -> str:
-        return "<:erase:927526530052132894>"
+        return "<:eraser:1056853917973094420>"
+
+    @property
+    def description(self) -> str:
+        return "Erase where the cursor is"
 
     def use(self) -> bool:
         """The method that is called when the tool is used"""
@@ -83,7 +98,11 @@ class EyedropperTool(Tool):
 
     @property
     def emoji(self) -> str:
-        return "<:eyedropper:1033248590988066886>"
+        return "<:eyedropper:1056854084004630568>"
+
+    @property
+    def description(self) -> str:
+        return "Pick and add colour to Palette"
 
     def use(self) -> bool:
         """The method that is called when the tool is used"""
@@ -129,7 +148,11 @@ class FillTool(Tool):
 
     @property
     def emoji(self) -> str:
-        return "<:fill:930832869692149790>"
+        return "<:fill:1056853974394867792>"
+
+    @property
+    def description(self) -> str:
+        return "Fill closed area"
 
     def use(self, *, initial_coords: Optional[Tuple[int, int]] = None) -> bool:
         """The method that is called when the tool is used"""
@@ -190,7 +213,11 @@ class ReplaceTool(Tool):
 
     @property
     def emoji(self) -> str:
-        return "<:replace:1032565283929456670>"
+        return "<:replace:1056854037066154034>"
+
+    @property
+    def description(self) -> str:
+        return "Replace all pixels"
 
     def use(self) -> bool:
         """The method that is called when the tool is used"""
