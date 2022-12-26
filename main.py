@@ -39,10 +39,8 @@ class Bot(commands.Bot):
         "jishaku": "jishaku",
         "jsk": "jishaku",
         "math": "math",
-        "poketwo_chances": "poketwo_chances",
-        "p2c": "poketwo_chances",
-        "poketwo_moves": "poketwo_moves",
-        "p2m": "poketwo_moves",
+        "poketwo": "poketwo",
+        "p2": "poketwo",
         "test": "test",
         "useful": "useful",
     }

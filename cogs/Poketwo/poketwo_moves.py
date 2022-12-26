@@ -299,7 +299,7 @@ class PoketwoMoves(commands.Cog):
             await self.bot.p2_data.init()
         return self.bot.p2_data
 
-    async def format_message(self, move: Move):
+    async def format_movesets_message(self, move: Move):
         gen_7_pokemon = move.pokemon[7]
         len_gen_7 = len(gen_7_pokemon)
         gen_7_list = ", ".join(gen_7_pokemon) if len_gen_7 > 0 else "None"
@@ -375,7 +375,7 @@ class PoketwoMoves(commands.Cog):
                 move = data.move_by_name(move_name)
             except IndexError:
                 return await ctx.send(f"No move named `{move_name}` exists!")
-        await ctx.send(await self.format_message(move))
+        await ctx.send(await self.format_movesets_message(move))
 
     @moveinfo.command(
         name="resync",

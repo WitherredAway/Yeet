@@ -101,7 +101,7 @@ class PoketwoChances(commands.Cog):
             return
         await gist.edit(files=files, description=description)
 
-    async def format_msg(
+    async def format_chances_message(
         self,
         title: str,
         pokemon_dataframe: pd.DataFrame,
@@ -148,7 +148,7 @@ class PoketwoChances(commands.Cog):
         ALL_GIST = "https://gist.github.com/1bc525b05f4cd52555a2a18c331e0cf9"
 
         async with ctx.channel.typing():
-            result = await self.format_msg("All", pkm_df, gist_link=ALL_GIST)
+            result = await self.format_chances_message("All", pkm_df, gist_link=ALL_GIST)
         await ctx.send(result)
         return result
 
@@ -178,7 +178,7 @@ class PoketwoChances(commands.Cog):
         pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance"]]
 
         async with ctx.channel.typing():
-            result = await self.format_msg(
+            result = await self.format_chances_message(
                 rarity, pkm_df, gist_link=options_gists.get(rarity)
             )
         await ctx.send(result)
@@ -211,7 +211,7 @@ class PoketwoChances(commands.Cog):
         pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance"]]
 
         async with ctx.channel.typing():
-            result = await self.format_msg(
+            result = await self.format_chances_message(
                 form, pkm_df, gist_link=options_gists.get(form)
             )
         await ctx.send(result)
@@ -255,7 +255,7 @@ class PoketwoChances(commands.Cog):
             )
 
         async with ctx.channel.typing():
-            result = await self.format_msg(
+            result = await self.format_chances_message(
                 f"{region} region", pkm_df, gist_link=options_gists.get(region)
             )
         await ctx.send(result)
@@ -282,7 +282,7 @@ class PoketwoChances(commands.Cog):
             return await ctx.send("Invalid pokémon provided.")
 
         async with ctx.channel.typing():
-            result = await self.format_msg(
+            result = await self.format_chances_message(
                 ", ".join([pkm_row["name.en"] for _, pkm_row in pkm_df.iterrows()]),
                 pkm_df,
                 list_pokemon=False,
@@ -357,7 +357,7 @@ class PoketwoChances(commands.Cog):
         ]
 
         async with ctx.channel.typing():
-            result = await self.format_msg(
+            result = await self.format_chances_message(
                 f"{msg} Type(s)",
                 pkm_df,
                 gist_link=await self.get_types_gist(type_1, type_2),
@@ -378,7 +378,7 @@ class PoketwoChances(commands.Cog):
         EVENT_GIST = "https://gist.github.com/caf8fc84a8072cfcd1d07b2d18730d5e"
 
         async with ctx.channel.typing():
-            result = await self.format_msg(
+            result = await self.format_chances_message(
                 "Event", pkm_df, keep_cols=["enabled"], gist_link=EVENT_GIST
             )
         await ctx.send(result)
