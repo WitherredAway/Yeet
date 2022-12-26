@@ -1497,7 +1497,7 @@ class DrawView(discord.ui.View):
 
 
 class Draw(commands.Cog):
-    """Category with commands to bring out your inner artist."""
+    """Make pixel art on discord!"""
 
     def __init__(self, bot: Bot):
         self.bot = bot
@@ -1507,11 +1507,11 @@ class Draw(commands.Cog):
     @commands.bot_has_permissions(external_emojis=True)
     @commands.group(
         name="draw",
-        aliases=("drawing", "paint", "painting"),
+        aliases=("paint", "pixelart"),
         case_insensitive=True,
         brief="Make pixel art on discord!",
-        help="wip",
-        description="Command which you can use to make pixel art using buttons and dropdown menus.",
+        help="WIP",
+        description="Create pixel art using buttons and dropdown menus",
         invoke_without_command=True,
     )
     async def draw(
