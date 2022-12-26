@@ -1,11 +1,13 @@
 import discord
 import asyncio
-import textwrap
 import re
 
 from discord.ext import commands, menus
 from .utils.paginator import BotPages
 from typing import Optional, Union, Tuple
+
+
+CONFIRM_MESSAGE = "confirm"
 
 
 class ChannelPageSource(menus.ListPageSource):
@@ -43,29 +45,25 @@ class ChannelPageSource(menus.ListPageSource):
 
 
 class Channel(commands.Cog):
-    """Channel related commands."""
+    """Utility commands for editing/managing channels"""
 
     def __init__(self, bot):
         self.bot = bot
 
     display_emoji = "#️⃣"
 
-    global confirm
-    confirm = "ligma"
-    # channel
     @commands.guild_only()
     @commands.group(
         name="channel",
         aliases=["ch"],
         brief="Useful channel management commands, use the help command for a list of subcommands",
-        help="Channel management commands for doing useful things related to channels.",
+        help="Channel management commands for doing useful things to channels.",
         invoke_without_command=True,
         case_insensitive=True,
     )
     async def _channel(self, ctx):
         await ctx.send_help(ctx.command)
 
-    # list
     @_channel.group(
         name="list",
         aliases=["li"],
@@ -77,7 +75,6 @@ class Channel(commands.Cog):
     async def _list(self, ctx):
         await ctx.send_help(ctx.command)
 
-    # keyword
     @_list.command(
         name="keyword",
         aliases=["k", "kw"],
@@ -95,41 +92,39 @@ class Channel(commands.Cog):
         menu = BotPages(source, ctx=ctx)
         await menu.start()
 
-    # contains
     @_list.command(
         name="contains",
         aliases=("contain", "last_message", "lm"),
-        brief="Lists all channels with last message containing <phrase>.",
-        help="Lists all channels with last message containing the word/phrase specified. `<phrase>` can also be a regex pattern.",
+        brief="Lists all channels with last message thet matches regex pattern",
+        help="Lists all channels with last message that matches regex pattern. Can also be a normal phrase, but make sure to escape metacharacters using '\\'",
         case_insensitive=True,
     )
-    async def _contains(self, ctx: commands.Context, *, phrase: str):
-        key = re.compile(phrase.lower())
+    async def _contains(self, ctx: commands.Context, *, regex: str):
+        key = re.compile(regex.lower())
         top_msg = f"Channels with last message matching pattern `{key.pattern}`"
         channels = []
         async with ctx.channel.typing():
             for channel in ctx.guild.text_channels:
                 async for message in channel.history(limit=1):
-                    message_content = message.content
+                    content = None
                     if message.embeds:
                         if message.embeds[0].title:
-                            message_content = message.embeds[0].title
+                            content = message.embeds[0].title
                         elif message.embeds[0].author:
-                            message_content = message.embeds[0].author
+                            content = message.embeds[0].author
                         elif message.embeds[0].description:
-                            message_content = message.embeds[0].description
-                    if key.search(message_content.lower()):
+                            content = message.embeds[0].description
+                    if key.search((content or message.content)) or key.search(message.content):
                         channels.append(channel)
 
         source = ChannelPageSource(ctx, channels, top_msg, per_page=50)
         menu = BotPages(source, ctx=ctx)
         await menu.start()
 
-    # state
     @_list.command(
         name="state",
         brief="Lists all locked/unlocked channels",
-        help="Lists all channels with 'send_messages' perms turned off/on for everyone.",
+        help="Lists all channels with 'send_messages' perms turned off/on for \@everyone.",
         case_insensitive=True,
     )
     async def _state(self, ctx, state="locked"):
@@ -142,7 +137,7 @@ class Channel(commands.Cog):
                 break
         else:
             return await ctx.send(
-                "The 'state' argument must be in 'locked' or 'unlocked'."
+                "The 'state' argument must be 'locked' or 'unlocked'."
             )
         top_msg = f"Channels that are `{state_key.lower()}`"
         for channel in ctx.guild.text_channels:
@@ -154,10 +149,7 @@ class Channel(commands.Cog):
         menu = BotPages(source, ctx=ctx)
         await menu.start()
 
-    # rename
-    @commands.check_any(
-        commands.is_owner(), commands.has_permissions(manage_channels=True)
-    )
+    @commands.check_any(commands.has_permissions(manage_channels=True))
     @commands.guild_only()
     @_channel.command(
         name="rename",
@@ -178,9 +170,7 @@ class Channel(commands.Cog):
         )
 
     # togglelock
-    @commands.check_any(
-        commands.is_owner(), commands.has_permissions(manage_channels=True)
-    )
+    @commands.check_any(commands.has_permissions(manage_channels=True))
     @commands.guild_only()
     @_channel.command(
         name="togglelock",
@@ -224,20 +214,17 @@ class Channel(commands.Cog):
         except Exception as e:
             raise e
 
-    # lock
     @commands.guild_only()
-    @commands.check_any(
-        commands.is_owner(), commands.has_permissions(manage_channels=True)
-    )
+    @commands.check_any(commands.has_permissions(manage_channels=True))
     @_channel.command(
         name="lock",
         brief="Locks channel(s).",
-        help="Lock current/specified/all channel(s)",
+        help="Lock current/specified/`all` channel(s)",
     )
     async def _lock(self, ctx, channel: Union[discord.TextChannel, str] = None):
         if channel == "all":
             await ctx.send(
-                f"This will **lock** *all* channels. Type `{confirm}` to confirm."
+                f"This will **lock** *all* channels. Type `{CONFIRM_MESSAGE}` to confirm."
             )
 
             def check(m):
@@ -247,13 +234,14 @@ class Channel(commands.Cog):
                 msg = await self.bot.wait_for("message", timeout=30, check=check)
             except asyncio.TimeoutError:
                 return await ctx.send("Time's up. Aborted.")
-            if msg.content.lower() != confirm:
+            if msg.content.lower() != CONFIRM_MESSAGE:
                 return await ctx.send("Aborted.")
 
             msg = await ctx.send("Locking all channels...")
-            for c in ctx.guild.text_channels:
-                if c.overwrites_for(c.guild.default_role).send_messages != False:
-                    await c.set_permissions(ctx.guild.default_role, send_messages=False)
+            async with ctx.channel.typing():
+                for c in ctx.guild.text_channels:
+                    if c.overwrites_for(c.guild.default_role).send_messages != False:
+                        await c.set_permissions(ctx.guild.default_role, send_messages=False)
             return await ctx.send("Locked all channels ✅.")
 
         if channel == None:
@@ -274,9 +262,7 @@ class Channel(commands.Cog):
                 f"{'This' if channel == ctx.channel else 'That'} channel is already locked."
             )
 
-    # unlock
     @commands.check_any(
-        commands.is_owner(),
         commands.has_permissions(manage_channels=True),
         commands.guild_only(),
     )
@@ -288,7 +274,7 @@ class Channel(commands.Cog):
     async def _unlock(self, ctx, channel: Union[discord.TextChannel, str] = None):
         if channel == "all":
             await ctx.send(
-                f"This will **unlock** *all* channels. Type `{confirm}` to confirm."
+                f"This will **unlock** *all* channels. Type `{CONFIRM_MESSAGE}` to confirm."
             )
 
             def check(m):
@@ -298,13 +284,14 @@ class Channel(commands.Cog):
                 msg = await self.bot.wait_for("message", timeout=30, check=check)
             except asyncio.TimeoutError:
                 return await ctx.send("Time's up. Aborted.")
-            if msg.content.lower() != confirm:
+            if msg.content.lower() != CONFIRM_MESSAGE:
                 return await ctx.send("Aborted.")
 
             msg = await ctx.send("Unlocking all channels...")
-            for c in ctx.guild.text_channels:
-                if c.overwrites_for(c.guild.default_role).send_messages == False:
-                    await c.set_permissions(ctx.guild.default_role, send_messages=None)
+            async with ctx.channel.typing():
+                for c in ctx.guild.text_channels:
+                    if c.overwrites_for(c.guild.default_role).send_messages == False:
+                        await c.set_permissions(ctx.guild.default_role, send_messages=None)
             return await ctx.send("Unlocked all channels ✅.")
 
         if channel == None:
@@ -325,16 +312,16 @@ class Channel(commands.Cog):
                 f"{'This' if channel == ctx.channel else 'That'} channel is already unlocked."
             )
 
-    # strip
     @commands.check_any(
-        commands.is_owner(),
         commands.has_permissions(manage_channels=True),
         commands.guild_only(),
     )
     @_channel.group(
         name="strip",
-        brief="Strips current or mentioned channel.",
-        help="Strips current or channel mentioned, according to syntax.",
+        brief="Removes current or mentioned channel's name after `separator`.",
+        help="""Strips the name of the channel and keeps the part before `separator`.
+
+For example if the channel's name is `general-temporary`, `,strip #general-temporary -` will rename it to #general""",
         invoke_without_command=True,
         case_insensitive=True,
     )
@@ -343,40 +330,40 @@ class Channel(commands.Cog):
     ):
         if channel is None:
             channel = ctx.channel
-        stripped = channel.name.split(separator)[0]
-        # if separator in channel.name:
-        # await ctx.send(f"This will **rename** {channel.mention} to **{stripped}**. This action cannot be undone. Type `{confirm}` to confirm.")
+
         if separator not in channel.name:
             return await ctx.send("Nothing to strip.")
 
-        """
-      def check(m):
-          return m.channel.id == ctx.channel.id and m.author.id == ctx.author.id
-      try:
-          msg = await self.bot.wait_for("message", timeout=30, check=check)
-      except asyncio.TimeoutError:
-          return await ctx.send("Time's up. Aborted.")
-      if msg.content.lower() != "confirm":
-          return await ctx.send("Aborted.")
-      """
+        # if separator in channel.name:
+        #     await ctx.send(f"This will **rename** {channel.mention} to **{stripped}**. This action cannot be undone. Type `{confirm}` to confirm.")
+
+        # def check(m):
+        #     return m.channel.id == ctx.channel.id and m.author.id == ctx.author.id
+        # try:
+        #     msg = await self.bot.wait_for("message", timeout=30, check=check)
+        # except asyncio.TimeoutError:
+        #     return await ctx.send("Time's up. Aborted.")
+        # if msg.content.lower() != "confirm":
+        #     return await ctx.send("Aborted.")
+
         current_name = channel.name
-        if separator in channel.name:
-            # await ctx.send(f"Stripping {channel.mention}'s name with separator ` {separator} ` ...")
-            new_name = stripped
-            await channel.edit(name=new_name)
-            await ctx.send(
-                f"✅ Done stripping the name of {channel.mention} from **{current_name}** to **{channel.name}**."
-            )
+        new_name = channel.name.split(separator)[0]
+        await channel.edit(name=new_name)
+        await ctx.send(
+            f"Stripped the name of {channel.mention} from **{current_name}** to **{channel.name}**."
+        )
 
     @_strip.command(
         name="all",
         brief="Strips all channels.",
-        help="Strips all channels in a server.",
+        help="""Strips the name of all channels and keeps the part before `separator`.
+
+For example if a channel's name is `general-temporary`, `,strip all -` will rename it to #general""",
     )
     async def _all(self, ctx, separator):
 
         await ctx.send(
-            f"This will **strip with `{separator}` and rename** *all* channels. This action cannot be undone. Type `{confirm}` to confirm."
+            f"This will **strip with `{separator}` and rename** *all* channels. This action cannot be undone. Type `{CONFIRM_MESSAGE}` to confirm."
         )
 
         def check(m):
@@ -386,19 +373,20 @@ class Channel(commands.Cog):
             msg = await self.bot.wait_for("message", timeout=30, check=check)
         except asyncio.TimeoutError:
             return await ctx.send("Time's up. Aborted.")
-        if msg.content.lower() != confirm:
+        if msg.content.lower() != CONFIRM_MESSAGE:
             return await ctx.send("Aborted.")
 
         await ctx.send(
             f"Stripping all channels' names with separator ` {separator} ` ..."
         )
-        for channel in ctx.guild.text_channels:
-            stripped = channel.name.split(separator)[0]
-            channel_name = channel.name
-            if separator in channel_name:
-                new_name = stripped
-                await channel.edit(name=new_name)
-        await ctx.send("Done stripping all channels' names ✅.")
+        async with ctx.channel.typing():
+            for channel in ctx.guild.text_channels:
+                stripped = channel.name.split(separator)[0]
+                channel_name = channel.name
+                if separator in channel_name:
+                    new_name = stripped
+                    await channel.edit(name=new_name)
+        await ctx.send("Stripped all channels' names ✅.")
 
 
 async def setup(bot):
