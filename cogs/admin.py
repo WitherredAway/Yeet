@@ -80,8 +80,8 @@ class Developer(commands.Cog):
     )
     async def _load(self, ctx: commands.Context, cog: str):
         try:
-            cog = self.bot.COGS[cog]
-            await self.bot.load_extension(f"cogs.{self.bot.COGS[cog]}")
+            cog = self.bot.COGS.get(cog, cog)
+            await self.bot.load_extension(f"cogs.{cog}")
         except (KeyError, commands.ExtensionNotFound):
             message = f":x: Cog `{cog}` not found."
         except commands.ExtensionAlreadyLoaded:
@@ -102,11 +102,11 @@ class Developer(commands.Cog):
     )
     async def _unload(self, ctx: commands.Context, cog: str):
         try:
-            cog = self.bot.COGS[cog]
+            cog = self.bot.COGS.get(cog, cog)
             if cog.lower() == "admin":
                 message = ":x: Cannot unload this cog"
             else:
-                await self.bot.unload_extension(f"cogs.{self.bot.COGS[cog]}")
+                await self.bot.unload_extension(f"cogs.{cog}")
         except (KeyError, commands.ExtensionNotFound):
             message = f":x: Cog `{cog}` not found."
         else:
@@ -133,7 +133,7 @@ class Developer(commands.Cog):
             message = ", ".join(cogs)
         else:
             try:
-                cog = self.bot.COGS[cog]
+                cog = self.bot.COGS.get(cog, cog)
                 await self.bot.reload_extension(f"cogs.{cog}")
             except (KeyError, commands.ExtensionNotLoaded):
                 message = f":x: Cog `{cog}` not found."
