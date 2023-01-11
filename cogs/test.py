@@ -46,7 +46,11 @@ class Test(commands.Cog):
                 else None
             )
             link = df.loc[pkm_idx, "Imgur Link"]
+<<<<<<< HEAD
             location = f"{SHEET_URL[:-24]}/edit#gid=0&range=E{pkm_idx+ROW_INDEX_OFFSET}"
+=======
+            location = f"{SHEET_URL[:-24]}/edit#gid=0&range=E{pkm_idx+7}"
+>>>>>>> AFD gist 2023
 
             comment_text = f"""(Marked for review)
         - Comments: {comment}
@@ -64,11 +68,16 @@ class Test(commands.Cog):
 
     def validate_unclaimed(self):
         pk = self.pk
+<<<<<<< HEAD
         unc_df = pk["Pokemon"][pk["Discord name + tag"].isna()].sort_values()
         unc_list = [
             f"1. [{pkm}]({SHEET_URL[:-24]}/edit#gid=0&range=B{idx+ROW_INDEX_OFFSET})"
             for idx, pkm in unc_df.items()
         ]
+=======
+        unc_list = sorted(list(pk["Pokemon"][pk["Discord name + tag"].isna()]))
+        unc_list = [f"1. {pkm}" for pkm in unc_list]
+>>>>>>> AFD gist 2023
 
         unc_amount = len(unc_list)
         if hasattr(self, "unc_amount"):
@@ -161,7 +170,10 @@ class Test(commands.Cog):
         self.pk = pd.read_csv(
             SHEET_URL, index_col=0, header=6, dtype={"Discord ID": object}
         )
+<<<<<<< HEAD
         self.pk.reset_index(inplace=True)
+=======
+>>>>>>> AFD gist 2023
         date = (datetime.datetime.utcnow()).strftime("%I:%M%p, %d/%m/%Y")
         updated = []
 
