@@ -22,7 +22,7 @@ class PoketwoChances(commands.Cog):
 
         self.pokemon_csv = (
             "https://raw.githubusercontent.com/poketwo/data/master/csv/pokemon.csv"
-            #os.getenv("POKEMON_CSV")
+            # os.getenv("POKEMON_CSV")
         )
 
     display_emoji = "🔣"
@@ -148,7 +148,9 @@ class PoketwoChances(commands.Cog):
         ALL_GIST = "https://gist.github.com/1bc525b05f4cd52555a2a18c331e0cf9"
 
         async with ctx.channel.typing():
-            result = await self.format_chances_message("All", pkm_df, gist_link=ALL_GIST)
+            result = await self.format_chances_message(
+                "All", pkm_df, gist_link=ALL_GIST
+            )
         await ctx.send(result)
         return result
 

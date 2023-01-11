@@ -108,8 +108,8 @@ class StartView(discord.ui.View):
     def board(self) -> Board:
         if isinstance(self._board, Tuple):
             return Board(
-            height=self.height, width=self.width, background=self.background
-        )
+                height=self.height, width=self.width, background=self.background
+            )
         return self._board.modify(
             height=self.height, width=self.width, background=self.background
         )
@@ -523,7 +523,10 @@ class ToolMenu(discord.ui.Select):
 
         default_options: List[discord.SelectOption] = [
             discord.SelectOption(
-                label=tool.name, emoji=tool.emoji, value=tool.name.lower(), description=f"{tool.description}{' (Used automatically)' if tool.autouse is True else ''}"
+                label=tool.name,
+                emoji=tool.emoji,
+                value=tool.name.lower(),
+                description=f"{tool.description}{' (Used automatically)' if tool.name.lower() in AUTO_USE_TOOLS else ''}",
             )
             for tool in self.tool_list
         ]

@@ -114,7 +114,9 @@ class Channel(commands.Cog):
                             content = message.embeds[0].author
                         elif message.embeds[0].description:
                             content = message.embeds[0].description
-                    if key.search((content or message.content)) or key.search(message.content):
+                    if key.search((content or message.content)) or key.search(
+                        message.content
+                    ):
                         channels.append(channel)
 
         source = ChannelPageSource(ctx, channels, top_msg, per_page=50)
@@ -241,7 +243,9 @@ class Channel(commands.Cog):
             async with ctx.channel.typing():
                 for c in ctx.guild.text_channels:
                     if c.overwrites_for(c.guild.default_role).send_messages != False:
-                        await c.set_permissions(ctx.guild.default_role, send_messages=False)
+                        await c.set_permissions(
+                            ctx.guild.default_role, send_messages=False
+                        )
             return await ctx.send("Locked all channels ✅.")
 
         if channel == None:
@@ -291,7 +295,9 @@ class Channel(commands.Cog):
             async with ctx.channel.typing():
                 for c in ctx.guild.text_channels:
                     if c.overwrites_for(c.guild.default_role).send_messages == False:
-                        await c.set_permissions(ctx.guild.default_role, send_messages=None)
+                        await c.set_permissions(
+                            ctx.guild.default_role, send_messages=None
+                        )
             return await ctx.send("Unlocked all channels ✅.")
 
         if channel == None:

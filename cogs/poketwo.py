@@ -13,14 +13,16 @@ class Poketwo(PoketwoChances, PoketwoMoves):
     pattern = re.compile(r"^`?\s*(\d+)`?\b", re.MULTILINE)
 
     display_emoji = "🫒"
-        
+
     @commands.command(
         name="extract_ids",
         aliases=["ids"],
         brief="Extract pokémon IDs from Pokétwo embeds",
         help="Extract pokémon IDs from Pokétwo embeds like marketplace, inventory, etc by providing message link, ID or by replying to the message",
-        )
-    async def extract_ids(self, ctx: commands.Context, msg: Optional[discord.Message] = None):
+    )
+    async def extract_ids(
+        self, ctx: commands.Context, msg: Optional[discord.Message] = None
+    ):
         if (ref := ctx.message.reference) is not None:
             content = ref.resolved.embeds[0].description
         elif msg is not None:
