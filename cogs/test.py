@@ -66,7 +66,7 @@ class Test(commands.Cog):
         pk = self.pk
         unc_df = pk["Pokemon"][pk["Discord name + tag"].isna()].sort_values()
         unc_list = [
-            f"1. [{pkm}]({SHEET_URL[:-24]}/edit#gid=0&range=C{idx+ROW_INDEX_OFFSET})"
+            f"1. [{pkm}]({SHEET_URL[:-24]}/edit#gid=0&range=B{idx+ROW_INDEX_OFFSET})"
             for idx, pkm in unc_df.items()
         ]
 
