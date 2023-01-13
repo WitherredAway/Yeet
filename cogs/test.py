@@ -14,7 +14,7 @@ UNR_FILENAME = "Unreviewed Pokemon.md"
 ML_FILENAME = "Incomplete Pokemon.md"
 CONTENTS_FILENAME = "Contents.md"
 UPDATE_CHANNEL_ID = os.getenv("AFD_UPDATE_CHANNEL_ID")
-ROW_OFFSET = 7  # The number of rows after which the pokemon rows begin
+ROW_INDEX_OFFSET = 8  # The number of rows after which the pokemon indexes begin
 
 
 class Test(commands.Cog):
@@ -46,7 +46,7 @@ class Test(commands.Cog):
                 else None
             )
             link = df.loc[pkm_idx, "Imgur Link"]
-            location = f"{SHEET_URL[:-24]}/edit#gid=0&range=E{pkm_idx+ROW_OFFSET}"
+            location = f"{SHEET_URL[:-24]}/edit#gid=0&range=E{pkm_idx+ROW_INDEX_OFFSET}"
 
             comment_text = f"""(Marked for review)
         - Comments: {comment}
@@ -66,7 +66,7 @@ class Test(commands.Cog):
         pk = self.pk
         unc_df = pk["Pokemon"][pk["Discord name + tag"].isna()].sort_values()
         unc_list = [
-            f"1. [{pkm}]({SHEET_URL[:-24]}/edit#gid=0&range=C{idx+ROW_OFFSET})"
+            f"1. [{pkm}]({SHEET_URL[:-24]}/edit#gid=0&range=C{idx+ROW_INDEX_OFFSET})"
             for idx, pkm in unc_df.items()
         ]
 
@@ -161,6 +161,7 @@ class Test(commands.Cog):
         self.pk = pd.read_csv(
             SHEET_URL, index_col=0, header=6, dtype={"Discord ID": object}
         )
+        self.pk.reset_index(inplace=True)
         date = (datetime.datetime.utcnow()).strftime("%I:%M%p, %d/%m/%Y")
         updated = []
 
