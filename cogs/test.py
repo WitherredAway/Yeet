@@ -14,6 +14,7 @@ UNR_FILENAME = "Unreviewed Pokemon.md"
 ML_FILENAME = "Incomplete Pokemon.md"
 CONTENTS_FILENAME = "Contents.md"
 UPDATE_CHANNEL_ID = os.getenv("AFD_UPDATE_CHANNEL_ID")
+ROW_OFFSET = 7  # The number of rows after which the pokemon rows begin
 
 
 class Test(commands.Cog):
@@ -45,7 +46,7 @@ class Test(commands.Cog):
                 else None
             )
             link = df.loc[pkm_idx, "Imgur Link"]
-            location = f"{SHEET_URL[:-24]}/edit#gid=0&range=E{pkm_idx+7}"
+            location = f"{SHEET_URL[:-24]}/edit#gid=0&range=E{pkm_idx+ROW_OFFSET}"
 
             comment_text = f"""(Marked for review)
         - Comments: {comment}
@@ -63,8 +64,11 @@ class Test(commands.Cog):
 
     def validate_unclaimed(self):
         pk = self.pk
-        unc_list = sorted(list(pk["Pokemon"][pk["Discord name + tag"].isna()]))
-        unc_list = [f"1. {pkm}" for pkm in unc_list]
+        unc_df = pk["Pokemon"][pk["Discord name + tag"].isna()].sort_values()
+        unc_list = [
+            f"1. [{pkm}]({SHEET_URL[:-24]}/edit#gid=0&range=C{idx+ROW_OFFSET})"
+            for idx, pkm in unc_df.items()
+        ]
 
         unc_amount = len(unc_list)
         if hasattr(self, "unc_amount"):
