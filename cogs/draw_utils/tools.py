@@ -13,8 +13,6 @@ if typing.TYPE_CHECKING:
     from ..draw import Board, DrawView
 
 
-AUTO_USE_TOOLS = ["eyedropper", "fill", "replace"]
-
 
 class Tool(discord.ui.Button):
     """A template class for each of the tools"""
@@ -43,6 +41,10 @@ class Tool(discord.ui.Button):
     @property
     def description(self) -> str:
         return None
+
+    @property
+    def autouse(self) -> bool:
+        return False
 
     def use(self) -> bool:
         """The method that is called when the tool is used"""
@@ -104,6 +106,10 @@ class EyedropperTool(Tool):
     def description(self) -> str:
         return "Pick and add colour to Palette"
 
+    @property
+    def autouse(self) -> bool:
+        return True
+
     def use(self) -> bool:
         """The method that is called when the tool is used"""
         cursor_pixel = self.board.cursor_pixel
@@ -153,6 +159,10 @@ class FillTool(Tool):
     @property
     def description(self) -> str:
         return "Fill closed area"
+
+    @property
+    def autouse(self) -> bool:
+        return True
 
     def use(self, *, initial_coords: Optional[Tuple[int, int]] = None) -> bool:
         """The method that is called when the tool is used"""
@@ -218,6 +228,10 @@ class ReplaceTool(Tool):
     @property
     def description(self) -> str:
         return "Replace all pixels"
+
+    @property
+    def autouse(self) -> bool:
+        return True
 
     def use(self) -> bool:
         """The method that is called when the tool is used"""

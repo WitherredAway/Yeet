@@ -44,7 +44,6 @@ from .draw_utils.tools import (
     EyedropperTool,
     FillTool,
     ReplaceTool,
-    AUTO_USE_TOOLS,
 )
 
 if typing.TYPE_CHECKING:
@@ -525,7 +524,7 @@ class ToolMenu(discord.ui.Select):
 
         default_options: List[discord.SelectOption] = [
             discord.SelectOption(
-                label=tool.name, emoji=tool.emoji, value=tool.name.lower(), description=f"{tool.description}{' (Used automatically)' if tool.name.lower() in AUTO_USE_TOOLS else ''}"
+                label=tool.name, emoji=tool.emoji, value=tool.name.lower(), description=f"{tool.description}{' (Used automatically)' if tool.autouse is True else ''}"
             )
             for tool in self.tool_list
         ]
@@ -554,7 +553,7 @@ class ToolMenu(discord.ui.Select):
         # If the tool selected is one of these,
         # use it directly instead of equipping
         edit: bool = True  # This var is to decide whether or not to edit the message, depending on if the tool was used successfully
-        if value in AUTO_USE_TOOLS:
+        if tool.autouse is True:
             edit = tool.use()
         # Else, equip the tool (to the primary tool button slot)
         else:
