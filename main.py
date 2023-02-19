@@ -84,6 +84,31 @@ class Bot(commands.Bot):
             color = kwargs.pop("color", self.EMBED_COLOUR)
             super().__init__(**kwargs, color=color)
 
+    async def upload_emoji(self, colour: Colour) -> discord.Emoji:
+        # Look if emoji already exists
+        for guild in self.EMOJI_SERVERS:
+            guild_emojis = await guild.fetch_emojis()
+            for guild_emoji in guild_emojis:
+                if colour.hex == guild_emoji.name:
+                    return guild_emoji
+
+        # Emoji does not exist already, proceed to create
+        for guild in self.EMOJI_SERVERS:
+            try:
+                emoji = await colour.to_emoji(guild)
+            except discord.HTTPException:
+                continue
+            else:
+                return emoji
+        else:  # If it exits without returning aka there was no space available
+            emoji_delete = await self.EMOJI_SERVERS[0].fetch_emojis()[
+                0
+            ]  # Get first emoji from the first emoji server
+            await emoji_delete.delete()  # Delete the emoji to make space for the new one
+            await self.upload_emoji(colour)  # Run again
+
+    
+
 
 TOKEN = os.getenv("botTOKEN")
 

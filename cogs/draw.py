@@ -713,29 +713,6 @@ class ColourMenu(discord.ui.Select):
 
         return self.emoji_to_option_dict.get(identifier)
 
-    async def upload_emoji(self, colour: Colour) -> discord.Emoji:
-        # Look if emoji already exists
-        for guild in self.bot.EMOJI_SERVERS:
-            guild_emojis = await guild.fetch_emojis()
-            for guild_emoji in guild_emojis:
-                if colour.hex == guild_emoji.name:
-                    return guild_emoji
-
-        # Emoji does not exist already, proceed to create
-        for guild in self.bot.EMOJI_SERVERS:
-            try:
-                emoji = await colour.to_emoji(guild)
-            except discord.HTTPException:
-                continue
-            else:
-                return emoji
-        else:  # If it exits without returning aka there was no space available
-            emoji_delete = await self.bot.EMOJI_SERVERS[0].fetch_emojis()[
-                0
-            ]  # Get first emoji from the first emoji server
-            await emoji_delete.delete()  # Delete the emoji to make space for the new one
-            await self.upload_emoji(colour)  # Run again
-
     def append_option(
         self, option: discord.SelectOption
     ) -> Tuple[bool, Union[discord.PartialEmoji, None]]:
@@ -891,7 +868,7 @@ class ColourMenu(discord.ui.Select):
 
                 colour = Colour((red, green, blue, alpha))
 
-                emoji = await self.upload_emoji(colour)
+                emoji = await self.bot.upload_emoji(colour)
 
                 sent_emojis.append(SentEmoji(emoji=emoji, index=match.start()))
             sent_emojis.sort(key=lambda emoji: emoji.index)
@@ -976,7 +953,7 @@ class ColourMenu(discord.ui.Select):
             mixed_colour = Colour.mix_colours(colours)
 
             emoji = discord.PartialEmoji.from_str(
-                str(await self.upload_emoji(mixed_colour))
+                str(await self.bot.upload_emoji(mixed_colour))
             )
 
             option = discord.SelectOption(
