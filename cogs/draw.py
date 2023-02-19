@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import asynccontextmanager
 import copy
 from dataclasses import dataclass
-from functools import cached_property
 import io
 import re
 import typing
@@ -13,7 +13,6 @@ import emojis
 import numpy as np
 import discord
 from discord.ext import commands
-from PIL import Image
 
 from constants import u200b, NEW_LINE
 from .draw_utils.constants import (
@@ -1236,6 +1235,23 @@ class DrawView(discord.ui.View):
         self.redo.label = (
             f"↷ {(len(self.board.board_history) - 1) - self.board.board_index}"
         )
+
+    @asynccontextmanager
+    async def disable(self, *, interaction: discord.Interaction):
+        disabled = []
+        try:
+            for child in self.children:
+                if child.disabled is True:
+                    disabled.append(child)
+                    continue
+                child.disabled = True
+            await self.edit_message(interaction)
+            yield True
+        finally:
+            for child in self.children:
+                if child not in disabled:
+                    child.disabled = False
+            await self.edit_message(interaction)
 
     async def edit_message(self, interaction: discord.Interaction):
         self.update_buttons()
