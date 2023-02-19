@@ -43,6 +43,10 @@ from .draw_utils.tools import (
     EyedropperTool,
     FillTool,
     ReplaceTool,
+    DarkenTool,
+    LightenTool,
+)
+
 from .draw_utils.regexes import (
     FLAG_EMOJI_REGEX,
     HEX_REGEX,
@@ -513,6 +517,8 @@ class ToolMenu(discord.ui.Select):
             EyedropperTool(view),
             FillTool(view),
             ReplaceTool(view),
+            DarkenTool(view),
+            LightenTool(view),
         ]
 
         default_options: List[discord.SelectOption] = [
@@ -547,11 +553,12 @@ class ToolMenu(discord.ui.Select):
         # use it directly instead of equipping
         edit: bool = True  # This var is to decide whether or not to edit the message, depending on if the tool was used successfully
         if tool.autouse is True:
-            edit = tool.use()
+            edit = await tool.use(interaction=interaction)
         # Else, equip the tool (to the primary tool button slot)
         else:
             self.view.primary_tool = tool
             self.view.load_items()
+            self.placeholder = tool.name
 
         if edit:
             await self.view.edit_message(interaction)
@@ -1181,7 +1188,7 @@ class DrawView(discord.ui.View):
         self.board.move_cursor(row_move, col_move, self.select)
 
         if self.auto:
-            self.primary_tool.use()
+            await self.primary_tool.use(interaction=interaction)
         await self.edit_message(interaction)
 
     # ------ BUTTONS ------

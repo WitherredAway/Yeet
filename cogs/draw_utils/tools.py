@@ -47,14 +47,14 @@ class Tool(discord.ui.Button):
     def autouse(self) -> bool:
         return False
 
-    def use(self) -> bool:
+    async def use(self, *, interaction: discord.Interaction) -> bool:
         """The method that is called when the tool is used"""
         pass
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
 
-        if self.use():
+        if await self.use(interaction=interaction):
             await self.view.edit_message(interaction)
 
 
@@ -71,7 +71,7 @@ class BrushTool(Tool):
     def description(self) -> str:
         return "Draw where the cursor is"
 
-    def use(self) -> bool:
+    async def use(self, *, interaction: discord.Interaction) -> bool:
         """The method that is called when the tool is used"""
         return self.board.draw(self.board.cursor)
 
@@ -89,7 +89,7 @@ class EraseTool(Tool):
     def description(self) -> str:
         return "Erase where the cursor is"
 
-    def use(self) -> bool:
+    async def use(self, *, interaction: discord.Interaction) -> bool:
         """The method that is called when the tool is used"""
         return self.board.draw(self.board.background)
 
@@ -111,7 +111,7 @@ class EyedropperTool(Tool):
     def autouse(self) -> bool:
         return True
 
-    def use(self) -> bool:
+    async def use(self, *, interaction: discord.Interaction) -> bool:
         """The method that is called when the tool is used"""
         cursor_pixel = self.board.cursor_pixel
         emoji = discord.PartialEmoji.from_str(self.board.un_cursor(cursor_pixel))
@@ -165,7 +165,7 @@ class FillTool(Tool):
     def autouse(self) -> bool:
         return True
 
-    def use(self, *, initial_coords: Optional[Tuple[int, int]] = None) -> bool:
+    async def use(self, *, initial_coords: Optional[Tuple[int, int]] = None) -> bool:
         """The method that is called when the tool is used"""
         colour = self.board.cursor
         if self.board.cursor_pixel == colour:
@@ -234,7 +234,7 @@ class ReplaceTool(Tool):
     def autouse(self) -> bool:
         return True
 
-    def use(self) -> bool:
+    async def use(self, *, interaction: discord.Interaction) -> bool:
         """The method that is called when the tool is used"""
         colour = self.board.cursor
         to_replace = self.board.cursor_pixel
@@ -242,3 +242,79 @@ class ReplaceTool(Tool):
         return self.board.draw(
             colour, coords=np.array(np.where(self.board.board == to_replace)).T
         )
+
+
+CHANGE_AMOUNT = 17  # Change amount for Lighten & Darken tools to allow exactly 15 changes from 0 or 255, respectively
+
+class DarkenTool(Tool):
+    @property
+    def name(self) -> str:
+        return "Darken"
+
+    @property
+    def emoji(self) -> str:
+        return "🔅"
+
+    @property
+    def description(self) -> str:
+        return "Darken pixel(s) by 17 RGB values"
+
+    @staticmethod
+    def decrease(value: int) -> int:
+        return max(value - CHANGE_AMOUNT, 0)  # The max func makes sure it doesn't go below 0 when decreasing, for example, black
+
+    async def use(self, *, interaction: discord.Interaction) -> bool:
+        """The method that is called when the tool is used"""
+        cursors = self.board.cursor_coords
+        
+        async with self.view.disable(interaction=interaction):
+            for cursor in cursors:
+                emoji = discord.PartialEmoji.from_str(self.board.un_cursor(self.board.board[cursor]))
+                if (fetched_emoji := self.bot.get_emoji(emoji.id)) is not None:
+                    emoji = fetched_emoji
+                    colour = Colour.from_hex(emoji.name)
+                else:
+                    colour = await Colour.from_emoji(str(emoji))
+
+                RGB_A = (self.decrease(colour.R), self.decrease(colour.G), self.decrease(colour.B), colour.A)
+                modified_colour = Colour(RGB_A)
+
+                modified_emoji = await self.bot.upload_emoji(modified_colour)
+                self.board.draw(str(modified_emoji), coords=[cursor])
+
+
+class LightenTool(Tool):
+    @property
+    def name(self) -> str:
+        return "Lighten"
+
+    @property
+    def emoji(self) -> str:
+        return "🔆"
+
+    @property
+    def description(self) -> str:
+        return "Lighten pixel(s) by 17 RGB values"
+
+    @staticmethod
+    def increase(value: int) -> int:
+        return min(value + CHANGE_AMOUNT, 255)  # The min func makes sure it doesn't go above 255 when increasing, for example, white
+
+    async def use(self, *, interaction: discord.Interaction) -> bool:
+        """The method that is called when the tool is used"""
+        cursors = self.board.cursor_coords
+        
+        async with self.view.disable(interaction=interaction):
+            for cursor in cursors:
+                emoji = discord.PartialEmoji.from_str(self.board.un_cursor(self.board.board[cursor]))
+                if (fetched_emoji := self.bot.get_emoji(emoji.id)) is not None:
+                    emoji = fetched_emoji
+                    colour = Colour.from_hex(emoji.name)
+                else:
+                    colour = await Colour.from_emoji(str(emoji))
+
+                RGB_A = (self.increase(colour.R), self.increase(colour.G), self.increase(colour.B), colour.A)
+                modified_colour = Colour(RGB_A)
+
+                modified_emoji = await self.bot.upload_emoji(modified_colour)
+                self.board.draw(str(modified_emoji), coords=[cursor])
