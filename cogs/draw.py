@@ -43,6 +43,15 @@ from .draw_utils.tools import (
     EyedropperTool,
     FillTool,
     ReplaceTool,
+from .draw_utils.regexes import (
+    FLAG_EMOJI_REGEX,
+    HEX_REGEX,
+    RGB_A_REGEX,
+    CUSTOM_EMOJI_REGEX
+)
+
+from .draw_utils.colour import (
+    Colour
 )
 
 if typing.TYPE_CHECKING:
@@ -51,21 +60,6 @@ if typing.TYPE_CHECKING:
 
 EMBED_DESC_CHAR_LIMIT = 4096
 EMBED_FIELD_CHAR_LIMIT = 1024
-
-
-CHANNEL = "[a-f0-9]{2}"
-HEX_REGEX = re.compile(
-    rf"\b(?P<red>{CHANNEL})(?P<green>{CHANNEL})(?P<blue>{CHANNEL})(?P<alpha>{CHANNEL})?\b"
-)
-
-ZERO_TO_255 = "0*25[0-5]|0*2[0-4][0-9]|0*1[0-9]{2}|0*[1-9][0-9]|0*[0-9]"
-RGB_A_REGEX = re.compile(
-    rf"\((?P<red>{ZERO_TO_255}) *,? +(?P<green>{ZERO_TO_255}) *,? +(?P<blue>{ZERO_TO_255})(?: *,? +(?P<alpha>{ZERO_TO_255}))?\)"
-)
-
-FLAG_EMOJI_REGEX = re.compile("[\U0001F1E6-\U0001F1FF]")
-
-CUSTOM_EMOJI_REGEX = re.compile("<a?:[a-zA-Z0-9_]+:\d+>")
 
 
 @dataclass
@@ -561,93 +555,6 @@ class ToolMenu(discord.ui.Select):
 
         if edit:
             await self.view.edit_message(interaction)
-
-
-class Colour:
-    # RGB_A accepts RGB values and an optional Alpha value
-    def __init__(self, RGB_A: Tuple[int]):
-        self.RGBA = RGB_A if len(RGB_A) == 4 else (*RGB_A, 255)
-        self.RGB = self.RGBA[:3]
-        self.R, self.G, self.B, self.A = self.RGBA
-
-        self.loop = asyncio.get_running_loop()
-
-    @cached_property
-    def hex(self) -> str:
-        return "%02x%02x%02x%02x" % self.RGBA
-
-    @cached_property
-    def base_emoji(self) -> Image:
-        return draw_emoji("🟪")
-
-    async def to_bytes(self) -> io.BytesIO():
-        return await self.loop.run_in_executor(None, self._to_bytes)
-
-    def _to_bytes(self) -> io.BytesIO():
-        image = self._to_image()
-        with io.BytesIO() as image_bytes:
-            image.save(image_bytes, "PNG")
-            # image_bytes.seek(0)
-            return image_bytes.getvalue()
-
-    async def to_file(self) -> discord.File:
-        return await self.loop.run_in_executor(None, self._to_file)
-
-    def _to_file(self) -> discord.File:
-        image_bytes = io.BytesIO(self._to_bytes())
-        return discord.File(image_bytes, filename=f"{self.hex}.png")
-
-    async def to_image(self, base_emoji: Optional[str] = None) -> Image:
-        return await self.loop.run_in_executor(None, self._to_image, base_emoji)
-
-    def _to_image(self, base_emoji: Optional[str] = None) -> Image:
-        # If you pass in an emoji, it uses that as base
-        # Else it uses the base_emoji property which uses 🟪
-        base_emoji = draw_emoji(base_emoji) if base_emoji else self.base_emoji
-        data = np.array(base_emoji)
-        r, g, b, a = data.T
-
-        data[..., :-1][a != 0] = self.RGB
-
-        # Set the alpha relatively, to respect individual alpha values
-        alpha_percent = self.A / 255
-        data[..., -1] = alpha_percent * data[..., -1]
-
-        image = Image.fromarray(data)
-
-        return image
-
-    async def to_emoji(self, guild: discord.Guild):
-        return await guild.create_custom_emoji(
-            name=self.hex, image=await self.to_bytes()
-        )
-
-    @classmethod
-    async def from_emoji(cls, emoji: str) -> Colour:
-        loop = asyncio.get_running_loop()
-        image = await loop.run_in_executor(None, draw_emoji, emoji)
-        colors = [
-            color
-            for color in sorted(
-                image.getcolors(image.size[0] * image.size[1]),
-                key=lambda c: c[0],
-                reverse=True,
-            )
-            if color[1][-1] > 0
-        ]
-
-        return cls(colors[0][1])
-
-    @classmethod
-    def mix_colours(cls, colours: List[Tuple[int, Colour]]) -> Colour:
-        colours = [
-            colour.RGBA if isinstance(colour, Colour) else colour for colour in colours
-        ]
-        total_weight = len(colours)
-
-        return cls(
-            tuple(round(sum(colour) / total_weight) for colour in zip(*colours)),
-        )
 
 
 class ColourMenu(discord.ui.Select):

@@ -7,6 +7,7 @@ import logging
 
 import discord
 from discord.ext import commands
+from cogs.draw_utils.colour import Colour
 import gists
 
 from keep_alive import keep_alive

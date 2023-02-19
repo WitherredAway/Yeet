@@ -7,7 +7,8 @@ import discord
 from discord.ext import commands
 import numpy as np
 
-from .constants import CURSOR
+from .constants import CURSOR, LOADING_EMOJI
+from .colour import Colour
 
 if typing.TYPE_CHECKING:
     from ..draw import Board, DrawView
