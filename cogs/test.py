@@ -38,7 +38,9 @@ class Test(commands.Cog):
 
     display_emoji = "🧪"
 
-    def format_unreviewed(self, df: pd.DataFrame, user: discord.User, pkm_indexes: list):
+    def format_unreviewed(
+        self, df: pd.DataFrame, user: discord.User, pkm_indexes: list
+    ):
         pkm_list = []
         for idx, pkm_idx in enumerate(pkm_indexes):
             pokename = df.loc[pkm_idx, "Pokemon"]

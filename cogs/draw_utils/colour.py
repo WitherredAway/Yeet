@@ -10,15 +10,11 @@ import discord
 from PIL import Image
 
 
-from .emoji import (
-    draw_emoji
-)
+from .emoji import draw_emoji
 
-from .regexes import (
-    HEX_REGEX
-)
-    
-    
+from .regexes import HEX_REGEX
+
+
 class Colour:
     # RGB_A accepts RGB values and an optional Alpha value
     def __init__(self, RGB_A: Tuple[int, int, int, Optional[int]]):
@@ -98,12 +94,12 @@ class Colour:
     def from_hex(cls, hex: str) -> Colour:
         if (match := HEX_REGEX.match(hex)) is None:
             raise ValueError("Invalid hex code provided")
-        
+
         RGBA = (
-            int(match.group('red'), 16),
-            int(match.group('green'), 16),
-            int(match.group('blue'), 16),
-            int(match.group('alpha') or 'ff', 16),
+            int(match.group("red"), 16),
+            int(match.group("green"), 16),
+            int(match.group("blue"), 16),
+            int(match.group("alpha") or "ff", 16),
         )
 
         return cls(RGBA)
@@ -118,5 +114,3 @@ class Colour:
         return cls(
             tuple(round(sum(colour) / total_weight) for colour in zip(*colours)),
         )
-
-

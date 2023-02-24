@@ -14,7 +14,6 @@ if typing.TYPE_CHECKING:
     from ..draw import Board, DrawView
 
 
-
 class Tool(discord.ui.Button):
     """A template class for each of the tools"""
 
@@ -165,7 +164,12 @@ class FillTool(Tool):
     def autouse(self) -> bool:
         return True
 
-    async def use(self, *, interaction: discord.Interaction, initial_coords: Optional[Tuple[int, int]] = None) -> bool:
+    async def use(
+        self,
+        *,
+        interaction: discord.Interaction,
+        initial_coords: Optional[Tuple[int, int]] = None,
+    ) -> bool:
         """The method that is called when the tool is used"""
         colour = self.board.cursor
         if self.board.cursor_pixel == colour:
@@ -246,6 +250,7 @@ class ReplaceTool(Tool):
 
 CHANGE_AMOUNT = 17  # Change amount for Lighten & Darken tools to allow exactly 15 changes from 0 or 255, respectively
 
+
 class DarkenTool(Tool):
     @property
     def name(self) -> str:
@@ -261,22 +266,31 @@ class DarkenTool(Tool):
 
     @staticmethod
     def decrease(value: int) -> int:
-        return max(value - CHANGE_AMOUNT, 0)  # The max func makes sure it doesn't go below 0 when decreasing, for example, black
+        return max(
+            value - CHANGE_AMOUNT, 0
+        )  # The max func makes sure it doesn't go below 0 when decreasing, for example, black
 
     async def use(self, *, interaction: discord.Interaction) -> bool:
         """The method that is called when the tool is used"""
         cursors = self.board.cursor_coords
-        
+
         async with self.view.disable(interaction=interaction):
             for cursor in cursors:
-                emoji = discord.PartialEmoji.from_str(self.board.un_cursor(self.board.board[cursor]))
+                emoji = discord.PartialEmoji.from_str(
+                    self.board.un_cursor(self.board.board[cursor])
+                )
                 if (fetched_emoji := self.bot.get_emoji(emoji.id)) is not None:
                     emoji = fetched_emoji
                     colour = Colour.from_hex(emoji.name)
                 else:
                     colour = await Colour.from_emoji(str(emoji))
 
-                RGB_A = (self.decrease(colour.R), self.decrease(colour.G), self.decrease(colour.B), colour.A)
+                RGB_A = (
+                    self.decrease(colour.R),
+                    self.decrease(colour.G),
+                    self.decrease(colour.B),
+                    colour.A,
+                )
                 modified_colour = Colour(RGB_A)
 
                 modified_emoji = await self.bot.upload_emoji(modified_colour)
@@ -298,22 +312,31 @@ class LightenTool(Tool):
 
     @staticmethod
     def increase(value: int) -> int:
-        return min(value + CHANGE_AMOUNT, 255)  # The min func makes sure it doesn't go above 255 when increasing, for example, white
+        return min(
+            value + CHANGE_AMOUNT, 255
+        )  # The min func makes sure it doesn't go above 255 when increasing, for example, white
 
     async def use(self, *, interaction: discord.Interaction) -> bool:
         """The method that is called when the tool is used"""
         cursors = self.board.cursor_coords
-        
+
         async with self.view.disable(interaction=interaction):
             for cursor in cursors:
-                emoji = discord.PartialEmoji.from_str(self.board.un_cursor(self.board.board[cursor]))
+                emoji = discord.PartialEmoji.from_str(
+                    self.board.un_cursor(self.board.board[cursor])
+                )
                 if (fetched_emoji := self.bot.get_emoji(emoji.id)) is not None:
                     emoji = fetched_emoji
                     colour = Colour.from_hex(emoji.name)
                 else:
                     colour = await Colour.from_emoji(str(emoji))
 
-                RGB_A = (self.increase(colour.R), self.increase(colour.G), self.increase(colour.B), colour.A)
+                RGB_A = (
+                    self.increase(colour.R),
+                    self.increase(colour.G),
+                    self.increase(colour.B),
+                    colour.A,
+                )
                 modified_colour = Colour(RGB_A)
 
                 modified_emoji = await self.bot.upload_emoji(modified_colour)

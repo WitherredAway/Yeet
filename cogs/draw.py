@@ -51,12 +51,10 @@ from .draw_utils.regexes import (
     FLAG_EMOJI_REGEX,
     HEX_REGEX,
     RGB_A_REGEX,
-    CUSTOM_EMOJI_REGEX
+    CUSTOM_EMOJI_REGEX,
 )
 
-from .draw_utils.colour import (
-    Colour
-)
+from .draw_utils.colour import Colour
 
 if typing.TYPE_CHECKING:
     from main import Bot
@@ -523,7 +521,10 @@ class ToolMenu(discord.ui.Select):
 
         default_options: List[discord.SelectOption] = [
             discord.SelectOption(
-                label=tool.name, emoji=tool.emoji, value=tool.name.lower(), description=f"{tool.description}{' (Used automatically)' if tool.autouse is True else ''}"
+                label=tool.name,
+                emoji=tool.emoji,
+                value=tool.name.lower(),
+                description=f"{tool.description}{' (Used automatically)' if tool.autouse is True else ''}",
             )
             for tool in self.tool_list
         ]
