@@ -102,9 +102,7 @@ class Bot(commands.Bot):
             else:
                 return emoji
         else:  # If it exits without returning aka there was no space available
-            emoji_delete = await self.EMOJI_SERVERS[0].fetch_emojis()[
-                0
-            ]  # Get first emoji from the first emoji server
+            emoji_delete = (await self.EMOJI_SERVERS[0].fetch_emojis())[0]  # Get first emoji from the first emoji server
             await emoji_delete.delete()  # Delete the emoji to make space for the new one
             await self.upload_emoji(colour)  # Run again
 
