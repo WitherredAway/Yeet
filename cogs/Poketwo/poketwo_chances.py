@@ -371,7 +371,8 @@ class PoketwoChances(commands.Cog):
     async def event(self, ctx):
         pkm_df = self.pk.loc[(self.pk["event"] > 0) & (self.pk["catchable"] > 0)]
         if len(pkm_df) == 0:
-            return await ctx.send("No currently catchable event pokemon")
+            await ctx.send("No currently catchable event pokemon")
+            return
         pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance", "enabled"]]
         pkm_df["enabled"] = pkm_df["enabled"] > 0
 
