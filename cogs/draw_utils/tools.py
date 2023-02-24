@@ -165,7 +165,7 @@ class FillTool(Tool):
     def autouse(self) -> bool:
         return True
 
-    async def use(self, *, initial_coords: Optional[Tuple[int, int]] = None) -> bool:
+    async def use(self, *, interaction: discord.Interaction, initial_coords: Optional[Tuple[int, int]] = None) -> bool:
         """The method that is called when the tool is used"""
         colour = self.board.cursor
         if self.board.cursor_pixel == colour:
