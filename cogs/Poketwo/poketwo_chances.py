@@ -4,6 +4,7 @@ import typing
 from typing import Counter, Union, Optional
 from functools import cached_property
 import json
+import re
 
 import discord
 from discord.ext import commands, tasks
@@ -12,6 +13,14 @@ import pandas as pd
 import gists
 
 from constants import NEW_LINE
+
+
+
+DELAY = 1
+pattern = re.compile(r"""__\*\*(?P<title>.+) spawn-chances\*\*__ \(Includes all catchable forms\)
+> All pokémon: <(?P<gist>.+)>
+\*\*Total pokemon\*\*: (?P<total>\d+)
+\*\*Total chance\*\*: (?P<chance_per>[\d.]+)% or (?P<chance>[\d\/]+)""")
 
 
 class PoketwoChances(commands.Cog):
@@ -374,7 +383,7 @@ class PoketwoChances(commands.Cog):
         pkm_df = self.pk.loc[(self.pk["event"] > 0) & (self.pk["catchable"] > 0)]
         if len(pkm_df) == 0:
             await ctx.send("No currently catchable event pokemon")
-            return
+            return ""
         pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance", "enabled"]]
         pkm_df["enabled"] = pkm_df["enabled"] > 0
 
@@ -387,6 +396,103 @@ class PoketwoChances(commands.Cog):
         await ctx.send(result)
         return result
 
+    @chance.command()
+    async def update_all(self, ctx: commands.Context):
+        bot = ctx.bot
+        
+        chance = bot.get_command("chance")
+        
+        chance_all = chance.get_command("all")
+        all = pattern.match(await ctx.invoke(chance_all))
+        
+        rarity = chance.get_command("rarity")
+        mythical = pattern.match(await ctx.invoke(rarity, "Mythical"))
+        await asyncio.sleep(DELAY)
+        legendary = pattern.match(await ctx.invoke(rarity, "Legendary"))
+        await asyncio.sleep(DELAY)
+        ub = pattern.match(await ctx.invoke(rarity, "Ultra_beast"))
+        await asyncio.sleep(DELAY)
+        
+        cmd = chance.get_command("form")
+        alolan = pattern.match(await ctx.invoke(cmd, "al"))
+        await asyncio.sleep(DELAY)
+        galarian = pattern.match(await ctx.invoke(cmd, "gal"))
+        await asyncio.sleep(DELAY)
+        hisuian = pattern.match(await ctx.invoke(cmd, "his"))
+        await asyncio.sleep(DELAY)
+        
+        cmd = chance.get_command("region")
+        kanto = pattern.match(await ctx.invoke(cmd, 1))
+        await asyncio.sleep(DELAY)
+        johto = pattern.match(await ctx.invoke(cmd, 2))
+        await asyncio.sleep(DELAY)
+        hoenn = pattern.match(await ctx.invoke(cmd, 3))
+        await asyncio.sleep(DELAY)
+        sinnoh = pattern.match(await ctx.invoke(cmd, 4))
+        await asyncio.sleep(DELAY)
+        unova = pattern.match(await ctx.invoke(cmd, 5))
+        await asyncio.sleep(DELAY)
+        kalos = pattern.match(await ctx.invoke(cmd, 6))
+        await asyncio.sleep(DELAY)
+        alola = pattern.match(await ctx.invoke(cmd, 7))
+        await asyncio.sleep(DELAY)
+        galar = pattern.match(await ctx.invoke(cmd, 8))
+        await asyncio.sleep(DELAY)
+        hisui = pattern.match(await ctx.invoke(cmd, "hisui"))
+
+        cmd = chance.get_command("event")
+        event = pattern.match(await ctx.invoke(cmd))
+        event_msg = f'**Current event pokemon chances** (?tag `ev%`) = {event.group("chance_per")}%' if event is not None else ""
+
+        chance_msg = f'''__**Spawn chances:**__ 
+> __Recent updates (Last update: {discord.utils.format_dt(discord.utils.utcnow(), "f")})__
+> - Updated chances
+
+{event_msg}
+
+**All pokémon** - <https://gist.github.com/1bc525b05f4cd52555a2a18c331e0cf9>
+
+**Starter pokémon** = 4.562% (1/22)
+
+**Mythical pokémon** (?tag `my%`) = {mythical.group("chance_per")}%
+**Legendary pokémon** (?tag `leg%`) = {legendary.group("chance_per")}%
+**Ultra beast pokémon** (?tag `ub%`) = {ub.group("chance_per")}%
+
+**Alolan pokémon** (?tag `al%`) = {alolan.group("chance_per")}%
+**Galarian pokémon** (?tag `gal%`) = {galarian.group("chance_per")}%
+**Hisuian pokémon** (?tag `his%`) = {hisuian.group("chance_per")}%
+
+**Regions** - ?tag `reg%`
+
+✨ **Shiny** (Chance of shiny on catch without any modifiers such as shiny-charm or shinyhunt) = 0.024% (1/4096)
+✨📿 **Shiny with shiny-charm but no shinyhunt streak** = 0.029% (1/3413.3)
+✨🔢 **Shiny with shinyhunt streak** = `?tag shhr`'''
+        
+        await ctx.send(chance_msg)
+
+        reg_msg = f'''__**Regional spawn-chances**__ (Includes all catchable forms)
+
+**1. Kanto** [`{kanto.group("total")}`] = {kanto.group("chance_per")}% ({kanto.group("chance")})
+- <https://gist.github.com/2c48fc73eb1a9e94737634092e1c62e3>
+**2. Johto** [`{johto.group("total")}`] = {johto.group("chance_per")}% ({johto.group("chance")})
+- <https://gist.github.com/4456e7da504e9ff5ddc653cd3bc4e76c>
+**3. Hoenn** [`{hoenn.group("total")}`] = {hoenn.group("chance_per")}% ({hoenn.group("chance")})
+- <https://gist.github.com/ce4facd1f383676bb745cece67fbac50>
+**4. Sinnoh** [`{sinnoh.group("total")}`] = {sinnoh.group("chance_per")}% ({sinnoh.group("chance")})
+- <https://gist.github.com/e9a435742bea160eb588c8812e0730c4>
+**5. Unova** [`{unova.group("total")}`] = {unova.group("chance_per")}% ({unova.group("chance")})
+- <https://gist.github.com/6af2072d0229c3f5582b32f20b65f2f5>
+**6. Kalos** [`{kalos.group("total")}`] = {kalos.group("chance_per")}% ({kalos.group("chance")})
+- <https://gist.github.com/849a6b64a35a505c7afb2eb276eda18d>
+**7. Alola** [`{alola.group("total")}`] = {alola.group("chance_per")}% ({alola.group("chance")})
+- <https://gist.github.com/a55287b7bff61b90b3182bca602b062a>
+**8. Galar** [`{galar.group("total")}`] = {galar.group("chance_per")}% ({galar.group("chance")})
+- <https://gist.github.com/f4d75c84e7ed4ce57273b6ef860a5a54>
+**4.1. Hisui** [`{hisui.group("total")}`] = {hisui.group("chance_per")}% ({hisui.group("chance")})
+- <https://gist.github.com/46bbc638f81687aa42709a83078aa1f8>'''
+        
+        await ctx.send(reg_msg)
+        
 
 async def setup(bot):
     await bot.add_cog(PoketwoChances(bot))
