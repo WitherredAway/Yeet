@@ -23,6 +23,15 @@ pattern = re.compile(
 \*\*Total chance\*\*: (?P<chance_per>[\d.]+)% or (?P<chance>[\d\/]+)"""
 )
 
+STARTERS = ['Bulbasaur', 'Charmander', 'Squirtle',
+            'Chikorita', 'Cyndaquil', 'Totodile',
+            'Treecko', 'Torchic', 'Mudkip',
+            'Turtwig', 'Chimchar', 'Piplup',
+            'Snivy', 'Tepig', 'Oshawott',
+            'Chespin', 'Fennekin', 'Froakie',
+            'Rowlet', 'Litten', 'Popplio',
+            'Grookey', 'Scorbunny', 'Sobble']
+
 
 class PoketwoChances(commands.Cog):
     """Commands related to the poketwo bot."""
@@ -165,6 +174,59 @@ class PoketwoChances(commands.Cog):
         return result
 
     @chance.command(
+        name="pokemon",
+        aliases=("poke", "pkm"),
+        help="See the chances of a specific pokémon.",
+    )
+    async def _pokemon(self, ctx, *, pokemon: str):
+        pokemon = pokemon.lower()
+
+        pkm_df = self.pk.loc[
+            (self.pk["catchable"] > 0)
+            & (
+                (self.pk["slug"].str.casefold() == pokemon)
+                | (self.pk["name.en"].str.casefold() == pokemon)
+            )
+        ]
+        pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance"]]
+
+        if len(pkm_df) == 0:
+            return await ctx.send("Invalid pokémon provided.")
+
+        async with ctx.channel.typing():
+            result = await self.format_chances_message(
+                ", ".join([pkm_row["name.en"] for _, pkm_row in pkm_df.iterrows()]),
+                pkm_df,
+                list_pokemon=False,
+            )
+        await ctx.send(result)
+        return result
+
+    @chance.command(
+        name="starters",
+        aliases=("starter",),
+        help="See the chances of starters.",
+    )
+    async def _starters(self, ctx):
+        starters_gist = "https://gist.github.com/1bdee3b3fb2a29ae8f83ebdd70013456"
+
+        pkm_df = self.pk.loc[
+            (self.pk["catchable"] > 0)
+            & (
+                (self.pk["name.en"].isin(STARTERS))
+            )
+        ]
+        pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance"]]
+        async with ctx.channel.typing():
+            result = await self.format_chances_message(
+                ", ".join([pkm_row["name.en"] for _, pkm_row in pkm_df.iterrows()]),
+                pkm_df,
+                gist_link=starters_gist,
+            )
+        await ctx.send(result)
+        return result
+
+    @chance.command(
         name="rarity",
         help="See the chances of a rarity and the pokémon that belong to that rarity.",
     )
@@ -273,35 +335,6 @@ class PoketwoChances(commands.Cog):
         await ctx.send(result)
         return result
 
-    @chance.command(
-        name="pokemon",
-        aliases=("poke", "pkm"),
-        help="See the chances of a specific pokémon.",
-    )
-    async def _pokemon(self, ctx, *, pokemon: str):
-        pokemon = pokemon.lower()
-
-        pkm_df = self.pk.loc[
-            (self.pk["catchable"] > 0)
-            & (
-                (self.pk["slug"].str.casefold() == pokemon)
-                | (self.pk["name.en"].str.casefold() == pokemon)
-            )
-        ]
-        pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance"]]
-
-        if len(pkm_df) == 0:
-            return await ctx.send("Invalid pokémon provided.")
-
-        async with ctx.channel.typing():
-            result = await self.format_chances_message(
-                ", ".join([pkm_row["name.en"] for _, pkm_row in pkm_df.iterrows()]),
-                pkm_df,
-                list_pokemon=False,
-            )
-        await ctx.send(result)
-        return result
-
     async def get_types_gist(self, type_1: str, type_2: str):
         TYPES_GISTS_LINK = (
             "https://gist.github.com/WitherredAway/286394d65db106061d8e76918dab9050"
@@ -406,6 +439,9 @@ class PoketwoChances(commands.Cog):
         chance_all = chance.get_command("all")
         all = pattern.match(await ctx.invoke(chance_all))
 
+        chance_starters = chance.get_command("starters")
+        starters = pattern.match(await ctx.invoke(chance_starters))
+
         rarity = chance.get_command("rarity")
         mythical = pattern.match(await ctx.invoke(rarity, "Mythical"))
         await asyncio.sleep(DELAY)
@@ -457,7 +493,7 @@ class PoketwoChances(commands.Cog):
 
 **All pokémon** - <https://gist.github.com/1bc525b05f4cd52555a2a18c331e0cf9>
 
-**Starter pokémon** = 4.562% (1/22)
+**Starter pokémon** = {starters.group("chance_per")} ({starters.group("chance")})
 
 **Mythical pokémon** (?tag `my%`) = {mythical.group("chance_per")}%
 **Legendary pokémon** (?tag `leg%`) = {legendary.group("chance_per")}%
