@@ -921,6 +921,7 @@ class DrawView(discord.ui.View):
         )
         self.primary_tool: Tool = self.tool_menu.tools["brush"]
 
+        self.disabled: bool = False
         self.secondary_page: bool = False
         self.auto: bool = False
         self.select: bool = False
@@ -1051,14 +1052,15 @@ class DrawView(discord.ui.View):
         else:
             notification = await self.create_notification(content, emoji=emoji)
         async with self.lock:
-            try:
-                msg = await self.bot.wait_for("message", timeout=30, check=check)
-            except asyncio.TimeoutError:
-                await notification.edit("Timed out.", interaction=interaction)
-            else:
-                if delete_msg is True:
-                    await msg.delete()
-            return notification, msg
+            async with self.disable(interaction=interaction):
+                try:
+                    msg = await self.bot.wait_for("message", timeout=30, check=check)
+                except asyncio.TimeoutError:
+                    await notification.edit("Timed out, aborted.", interaction=interaction)
+                else:
+                    if delete_msg is True:
+                        await msg.delete()
+                return notification, msg
 
     @property
     def placeholder_button(self) -> discord.ui.Button:
@@ -1130,9 +1132,9 @@ class DrawView(discord.ui.View):
             discord.ButtonStyle.green if self.select else discord.ButtonStyle.grey
         )
 
-        self.undo.disabled = self.board.board_index == 0
+        self.undo.disabled = self.board.board_index == 0 or self.disabled
         self.undo.label = f"{self.board.board_index} ↶"
-        self.redo.disabled = self.board.board_index == len(self.board.board_history) - 1
+        self.redo.disabled = (self.board.board_index == len(self.board.board_history) - 1) or self.disabled
         self.redo.label = (
             f"↷ {(len(self.board.board_history) - 1) - self.board.board_index}"
         )
@@ -1146,12 +1148,14 @@ class DrawView(discord.ui.View):
                     disabled.append(child)
                     continue
                 child.disabled = True
+            self.disabled = True
             await self.edit_message(interaction)
             yield True
         finally:
             for child in self.children:
                 if child not in disabled:
                     child.disabled = False
+            self.disabled = False
             await self.edit_message(interaction)
 
     async def edit_message(self, interaction: discord.Interaction):
