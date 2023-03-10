@@ -32,7 +32,8 @@ from .draw_utils.constants import (
     MAX_HEIGHT_OR_WIDTH,
 )
 from .draw_utils.emoji import (
-    draw_emoji,
+    EMOJI_SMILEY,
+    EMOJI_ABCD,
     SentEmoji,
     AddedEmoji,
 )
@@ -212,7 +213,7 @@ class StartView(discord.ui.View):
 class Notification:
     def __init__(
         self,
-        content: Optional[str] = None,
+        content: Optional[str] = "",
         *,
         view: DrawView,
         emoji: Optional[
@@ -230,16 +231,18 @@ class Notification:
         interaction: Optional[discord.Interaction] = None,
         emoji: Optional[
             Union[discord.PartialEmoji, discord.Emoji]
-        ] = discord.PartialEmoji.from_str("🔔"),
+        ] = None,
     ):
         if emoji is not None:
             self.emoji = emoji
+        else:
+            emoji = self.emoji
         self.content = content
 
         if interaction is not None:
             await self.view.edit_message(interaction)
 
-    def truncated_content(self, length: Optional[int] = None):
+    def get_truncated_content(self, length: Optional[int] = None):
         if length is None:
             trunc = self.content.split("\n")[0]
         else:
@@ -581,7 +584,7 @@ class ColourMenu(discord.ui.Select):
             ),
             discord.SelectOption(
                 label="Add Emoji(s)",
-                emoji="<:emojismiley:1056857231125123152>",
+                emoji=EMOJI_SMILEY,
                 value="emoji",
             ),
         ]
@@ -708,7 +711,7 @@ class ColourMenu(discord.ui.Select):
             for added_emoji in added_emojis.values()
         ]
         if len(response) == 0:
-            return await notification.edit("Aborted", interaction=interaction)
+            return await notification.edit("Aborted.", interaction=interaction)
 
         if any(
             ("Added" in added_emoji.status for added_emoji in added_emojis.values())
@@ -752,6 +755,7 @@ class ColourMenu(discord.ui.Select):
                     "\n(223 224 226)"
                     "\n```"
                 ),
+                "🏳️‍🌈",
                 interaction=interaction,
                 check=check,
             )
@@ -803,6 +807,7 @@ class ColourMenu(discord.ui.Select):
 
             notification, msg = await self.view.wait_for(
                 "Please send a message containing the emojis you want to add to your palette. E.g. `😎 I like turtles 🐢`",
+                EMOJI_SMILEY,
                 interaction=interaction,
                 check=check,
             )
@@ -942,7 +947,7 @@ class DrawView(discord.ui.View):
         # This section adds the notification field only if any one
         # of the notifications is not empty. In such a case, it only
         # shows the notification(s) that is not empty
-        if any((n.content is not None for n in self.notifications)):
+        if any((len(n.content) != 0 for n in self.notifications)):
             embed.add_field(
                 name="Notifications",
                 value="\n\n".join(
@@ -950,10 +955,10 @@ class DrawView(discord.ui.View):
                         (
                             f"{str(n.emoji)} "
                             + (
-                                n.content if idx == 0 else n.truncated_content()
+                                n.content if idx == 0 else n.get_truncated_content()
                             ).replace("\n", "\n> ")
                         )  # Put each notification into seperate quotes
-                        if n.content is not None
+                        if len(n.content) != 0
                         else ""  # Show only non-empty notifications
                         for idx, n in enumerate(self.notifications)
                     ]
@@ -1021,11 +1026,15 @@ class DrawView(discord.ui.View):
     async def wait_for(
         self,
         content: Optional[str] = None,
+        emoji: Optional[Union[str, discord.PartialEmoji, discord.Emoji]] = None,
         *,
         interaction: discord.Interaction,
         check: Callable = lambda x: x,
         delete_msg: bool = True,
     ) -> Tuple[Notification, discord.Message]:
+        if isinstance(emoji, str):
+            emoji = discord.PartialEmoji.from_str(emoji)
+
         notification = None
         msg = None
         if self.lock.locked():
@@ -1037,10 +1046,10 @@ class DrawView(discord.ui.View):
 
         if content is not None:
             notification = await self.create_notification(
-                content, interaction=interaction
+                content + "\nSend anything else to abort.", interaction=interaction, emoji=emoji
             )
         else:
-            notification = await self.create_notification()
+            notification = await self.create_notification(content, emoji=emoji)
         async with self.lock:
             try:
                 msg = await self.bot.wait_for("message", timeout=30, check=check)
@@ -1350,7 +1359,7 @@ class DrawView(discord.ui.View):
         await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
 
     @discord.ui.button(
-        emoji="<:ABCD:1032565203608547328>", style=discord.ButtonStyle.blurple
+        emoji=EMOJI_ABCD, style=discord.ButtonStyle.blurple
     )
     async def set_cursor(
         self, interaction: discord.Interaction, button: discord.ui.Button
@@ -1362,6 +1371,7 @@ class DrawView(discord.ui.View):
 
         notification, msg = await self.wait_for(
             'Please type the cell you want to move the cursor to. e.g. "A1", "a1", "A10", "A", "10", etc.',
+            EMOJI_ABCD,
             interaction=interaction,
             check=check,
         )

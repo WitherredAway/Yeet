@@ -7,6 +7,12 @@ from pilmoji import Pilmoji
 from .constants import FONT
 
 
+EMOJI_SMILEY = "<:emojismiley:1056857231125123152>"
+
+
+EMOJI_ABCD = "<:ABCD:1032565203608547328>"
+
+
 def draw_emoji(emoji: str) -> Image:
     with Image.new("RGBA", (128, 128), (255, 255, 255, 0)) as image:
         with Pilmoji(image) as pilmoji:
