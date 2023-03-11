@@ -8,6 +8,13 @@ from discord.ext.commands import Paginator as CommandPaginator
 from discord.ext import menus
 
 
+FIRST_PAGE_SYMBOL = "ᐊ"
+PREVIOUS_PAGE_SYMBOL = "ᐸ"
+STOP_SYMBOL = "□"
+NEXT_PAGE_SYMBOL = "ᐳ"
+LAST_PAGE_SYMBOL = "ᐅ"
+
+
 class BotPages(discord.ui.View):
     def __init__(
         self,
@@ -35,13 +42,13 @@ class BotPages(discord.ui.View):
             max_pages = self.source.get_max_pages()
             use_last_and_first = max_pages is not None and max_pages >= 2
             self.add_item(self.go_to_first_page)  # type: ignore
-            self.go_to_first_page.label = f"1 ⏮"
+            self.go_to_first_page.label = f"1 {FIRST_PAGE_SYMBOL}"
             self.add_item(self.go_to_previous_page)  # type: ignore
             # self.add_item(self.stop_pages)   type: ignore
             self.add_item(self.go_to_current_page)  # type: ignore
             self.add_item(self.go_to_next_page)  # type: ignore
             self.add_item(self.go_to_last_page)  # type: ignore
-            self.go_to_last_page.label = f"⏭ {max_pages}"
+            self.go_to_last_page.label = f"{LAST_PAGE_SYMBOL} {max_pages}"
             if not self.compact:
                 self.add_item(self.numbered_page)  # type: ignore
             if not use_last_and_first:
@@ -87,9 +94,9 @@ class BotPages(discord.ui.View):
             self.go_to_previous_page.disabled = page_number == 0
             return
 
-        self.go_to_previous_page.label = f"{page_number} ᐊ"
+        self.go_to_previous_page.label = f"{page_number} {PREVIOUS_PAGE_SYMBOL}"
         self.go_to_current_page.label = str(page_number + 1)
-        self.go_to_next_page.label = f"ᐅ {page_number + 2}"
+        self.go_to_next_page.label = f"{NEXT_PAGE_SYMBOL} {page_number + 2}"
 
         self.go_to_next_page.disabled = False
         self.go_to_previous_page.disabled = False
@@ -98,13 +105,13 @@ class BotPages(discord.ui.View):
         max_pages = self.source.get_max_pages()
         if max_pages is not None:
             self.go_to_last_page.disabled = (page_number + 1) >= max_pages
-            self.go_to_last_page.label = f"⏭ {max_pages}"
+            self.go_to_last_page.label = f"{LAST_PAGE_SYMBOL} {max_pages}"
             if (page_number + 1) >= max_pages:
                 self.go_to_next_page.disabled = True
-                self.go_to_next_page.label = "ᐅ"
+                self.go_to_next_page.label = NEXT_PAGE_SYMBOL
             if page_number == 0:
                 self.go_to_previous_page.disabled = True
-                self.go_to_previous_page.label = "ᐊ"
+                self.go_to_previous_page.label = LAST_PAGE_SYMBOL
 
     async def show_checked_page(
         self, interaction: discord.Interaction, page_number: int
@@ -160,21 +167,21 @@ class BotPages(discord.ui.View):
         self._update_labels(0)
         self.message = await self.ctx.send(**kwargs, view=self)
 
-    @discord.ui.button(label="⏮", style=discord.ButtonStyle.grey)
+    @discord.ui.button(label=FIRST_PAGE_SYMBOL, style=discord.ButtonStyle.grey)
     async def go_to_first_page(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         """go to the first page"""
         await self.show_page(interaction, 0)
 
-    @discord.ui.button(label="ᐊ", style=discord.ButtonStyle.grey)
+    @discord.ui.button(label=PREVIOUS_PAGE_SYMBOL, style=discord.ButtonStyle.grey)
     async def go_to_previous_page(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         """go to the previous page"""
         await self.show_checked_page(interaction, self.current_page - 1)
 
-    @discord.ui.button(label="□", style=discord.ButtonStyle.red)
+    @discord.ui.button(label=STOP_SYMBOL, style=discord.ButtonStyle.red)
     async def go_to_current_page(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
@@ -183,14 +190,14 @@ class BotPages(discord.ui.View):
             await self.message.edit(view=None)
             self.stop()
 
-    @discord.ui.button(label="ᐅ", style=discord.ButtonStyle.grey)
+    @discord.ui.button(label=NEXT_PAGE_SYMBOL, style=discord.ButtonStyle.grey)
     async def go_to_next_page(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         """go to the next page"""
         await self.show_checked_page(interaction, self.current_page + 1)
 
-    @discord.ui.button(label="⏭", style=discord.ButtonStyle.grey)
+    @discord.ui.button(label=LAST_PAGE_SYMBOL, style=discord.ButtonStyle.grey)
     async def go_to_last_page(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
@@ -244,7 +251,7 @@ class FieldPageSource(menus.ListPageSource):
 
     def __init__(self, entries, *, per_page=12):
         super().__init__(entries, per_page=per_page)
-        self.embed = bot.Embed()
+        self.embed = self.bot.Embed()
 
     async def format_page(self, menu, entries):
         self.embed.clear_fields()
