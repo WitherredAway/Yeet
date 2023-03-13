@@ -229,9 +229,7 @@ class Notification:
         content: Optional[str] = None,
         *,
         interaction: Optional[discord.Interaction] = None,
-        emoji: Optional[
-            Union[discord.PartialEmoji, discord.Emoji]
-        ] = None,
+        emoji: Optional[Union[discord.PartialEmoji, discord.Emoji]] = None,
     ):
         if emoji is not None:
             self.emoji = emoji
@@ -1047,7 +1045,9 @@ class DrawView(discord.ui.View):
 
         if content is not None:
             notification = await self.create_notification(
-                content + "\nSend anything else to abort.", interaction=interaction, emoji=emoji
+                content + "\nSend anything else to abort.",
+                interaction=interaction,
+                emoji=emoji,
             )
         else:
             notification = await self.create_notification(content, emoji=emoji)
@@ -1056,7 +1056,9 @@ class DrawView(discord.ui.View):
                 try:
                     msg = await self.bot.wait_for("message", timeout=30, check=check)
                 except asyncio.TimeoutError:
-                    await notification.edit("Timed out, aborted.", interaction=interaction)
+                    await notification.edit(
+                        "Timed out, aborted.", interaction=interaction
+                    )
                 else:
                     if delete_msg is True:
                         await msg.delete()
@@ -1134,7 +1136,9 @@ class DrawView(discord.ui.View):
 
         self.undo.disabled = self.board.board_index == 0 or self.disabled
         self.undo.label = f"{self.board.board_index} ↶"
-        self.redo.disabled = (self.board.board_index == len(self.board.board_history) - 1) or self.disabled
+        self.redo.disabled = (
+            self.board.board_index == len(self.board.board_history) - 1
+        ) or self.disabled
         self.redo.label = (
             f"↷ {(len(self.board.board_history) - 1) - self.board.board_index}"
         )
@@ -1362,9 +1366,7 @@ class DrawView(discord.ui.View):
         col_move = 1
         await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
 
-    @discord.ui.button(
-        emoji=EMOJI_ABCD, style=discord.ButtonStyle.blurple
-    )
+    @discord.ui.button(emoji=EMOJI_ABCD, style=discord.ButtonStyle.blurple)
     async def set_cursor(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):

@@ -23,14 +23,32 @@ pattern = re.compile(
 \*\*Total chance\*\*: (?P<chance_per>[\d.]+)% or (?P<chance>[\d\/]+)"""
 )
 
-STARTERS = ['Bulbasaur', 'Charmander', 'Squirtle',
-            'Chikorita', 'Cyndaquil', 'Totodile',
-            'Treecko', 'Torchic', 'Mudkip',
-            'Turtwig', 'Chimchar', 'Piplup',
-            'Snivy', 'Tepig', 'Oshawott',
-            'Chespin', 'Fennekin', 'Froakie',
-            'Rowlet', 'Litten', 'Popplio',
-            'Grookey', 'Scorbunny', 'Sobble']
+STARTERS = [
+    "Bulbasaur",
+    "Charmander",
+    "Squirtle",
+    "Chikorita",
+    "Cyndaquil",
+    "Totodile",
+    "Treecko",
+    "Torchic",
+    "Mudkip",
+    "Turtwig",
+    "Chimchar",
+    "Piplup",
+    "Snivy",
+    "Tepig",
+    "Oshawott",
+    "Chespin",
+    "Fennekin",
+    "Froakie",
+    "Rowlet",
+    "Litten",
+    "Popplio",
+    "Grookey",
+    "Scorbunny",
+    "Sobble",
+]
 
 
 class PoketwoChances(commands.Cog):
@@ -211,10 +229,7 @@ class PoketwoChances(commands.Cog):
         starters_gist = "https://gist.github.com/1bdee3b3fb2a29ae8f83ebdd70013456"
 
         pkm_df = self.pk.loc[
-            (self.pk["catchable"] > 0)
-            & (
-                (self.pk["name.en"].isin(STARTERS))
-            )
+            (self.pk["catchable"] > 0) & ((self.pk["name.en"].isin(STARTERS)))
         ]
         pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance"]]
         async with ctx.channel.typing():
