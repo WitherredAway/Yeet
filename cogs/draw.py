@@ -796,7 +796,7 @@ class ColourMenu(discord.ui.Select):
 
                 colour = Colour((red, green, blue, alpha))
 
-                emoji = await self.bot.upload_emoji(colour)
+                emoji = await self.bot.upload_emoji(colour, draw_view=self.view, interaction=interaction)
 
                 sent_emojis.append(SentEmoji(emoji=emoji, index=match.start()))
             sent_emojis.sort(key=lambda emoji: emoji.index)
@@ -882,7 +882,7 @@ class ColourMenu(discord.ui.Select):
             mixed_colour = Colour.mix_colours(colours)
 
             emoji = discord.PartialEmoji.from_str(
-                str(await self.bot.upload_emoji(mixed_colour))
+                str(await self.bot.upload_emoji(mixed_colour, draw_view=self.view, interaction=interaction))
             )
 
             option = discord.SelectOption(

@@ -14,6 +14,8 @@ from cogs.draw_utils.colour import Colour
 import gists
 
 from keep_alive import keep_alive
+from cogs.draw_utils.emoji_cache import EmojiCache
+from cogs.draw import DrawView
 
 
 logger = logging.basicConfig()
@@ -56,6 +58,8 @@ class Bot(commands.Bot):
         self.activity = discord.Game(f"{self.PREFIXES[0]}help")
         self.status = discord.Status.online
 
+        self.emoji_cache: EmojiCache = EmojiCache(bot=self)
+
         self.lock = asyncio.Lock()
 
     async def setup_hook(self):
@@ -88,28 +92,37 @@ class Bot(commands.Bot):
             color = kwargs.pop("color", self.EMBED_COLOUR)
             super().__init__(**kwargs, color=color)
 
-    async def upload_emoji(self, colour: Colour) -> discord.Emoji:
-        # Look if emoji already exists
-        for guild in self.EMOJI_SERVERS:
-            guild_emojis = await guild.fetch_emojis()
-            for guild_emoji in guild_emojis:
-                if colour.hex == guild_emoji.name:
-                    return guild_emoji
+    async def upload_emoji(self, colour: Colour, *, draw_view: DrawView, interaction: discord.Interaction) -> Union[discord.Emoji, discord.PartialEmoji]:
+        # First look if there is cache of the emoji
+        if (emoji := self.emoji_cache.get_emoji(colour.hex)) is not None:
+            return emoji
 
-        # Emoji does not exist already, proceed to create
-        for guild in self.EMOJI_SERVERS:
-            try:
-                emoji = await colour.to_emoji(guild)
-            except discord.HTTPException:
-                continue
+        async with draw_view.disable(interaction=interaction):
+            # Look if emoji already exists in a server
+            guild_emoji_lists = []
+            for guild in self.EMOJI_SERVERS:
+                guild_emojis = await guild.fetch_emojis()
+                guild_emoji_lists.append(guild_emojis)
+                for guild_emoji in guild_emojis:
+                    if colour.hex == guild_emoji.name:
+                        self.emoji_cache.add_emoji(guild_emoji)
+                        return guild_emoji
+
+            # Emoji does not exist already, proceed to create
+            for guild in self.EMOJI_SERVERS:
+                try:
+                    emoji = await colour.to_emoji(guild)
+                except discord.HTTPException:
+                    continue
+                else:
+                    self.emoji_cache.add_emoji(emoji)
+                    return emoji
+            # If it exits without returning aka there was no space available
             else:
-                return emoji
-        else:  # If it exits without returning aka there was no space available
-            emoji_delete = (await self.EMOJI_SERVERS[0].fetch_emojis())[
-                0
-            ]  # Get first emoji from the first emoji server
-            await emoji_delete.delete()  # Delete the emoji to make space for the new one
-            await self.upload_emoji(colour)  # Run again
+                emoji_to_delete = guild_emoji_lists[0][0]  # Get first emoji from the first emoji server
+                await emoji_to_delete.delete()  # Delete the emoji to make space for the new one
+                self.emoji_cache.remove_emoji(emoji_to_delete)  # Delete that emoji from cache if it exists
+                await self.upload_emoji(colour, draw_view=draw_view, interaction=interaction)  # Run again
 
 
 TOKEN = os.getenv("botTOKEN")

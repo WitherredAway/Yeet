@@ -266,7 +266,7 @@ class DarkenTool(Tool):
         return "Darken pixel(s) by 17 RGB values"
 
     @staticmethod
-    def decrease(value: int) -> int:
+    def edit(value: int) -> int:
         return max(
             value - CHANGE_AMOUNT, 0
         )  # The max func makes sure it doesn't go below 0 when decreasing, for example, black
@@ -275,30 +275,33 @@ class DarkenTool(Tool):
         """The method that is called when the tool is used"""
         cursors = self.board.cursor_coords
 
-        async with self.view.disable(interaction=interaction):
-            for cursor in cursors:
-                emoji = discord.PartialEmoji.from_str(
-                    self.board.un_cursor(self.board.board[cursor])
-                )
-                if (fetched_emoji := self.bot.get_emoji(emoji.id)) is not None:
-                    emoji = fetched_emoji
-                    colour = Colour.from_hex(emoji.name)
-                else:
-                    colour = await Colour.from_emoji(str(emoji))
+        for cursor in cursors:
+            emoji = discord.PartialEmoji.from_str(
+                self.board.un_cursor(self.board.board[cursor])
+            )
+            colour = None
+            if (fetched_emoji := self.bot.get_emoji(emoji.id)) is not None:
+                try:
+                    colour = Colour.from_hex(fetched_emoji.name)
+                except ValueError:  # It is not a colour emoji
+                    pass
+            
+            if colour is None:
+                colour = await Colour.from_emoji(str(emoji))
 
-                RGB_A = (
-                    self.decrease(colour.R),
-                    self.decrease(colour.G),
-                    self.decrease(colour.B),
-                    colour.A,
-                )
-                modified_colour = Colour(RGB_A)
+            RGB_A = (
+                self.edit(colour.R),
+                self.edit(colour.G),
+                self.edit(colour.B),
+                colour.A,
+            )
+            modified_colour = Colour(RGB_A)
 
-                modified_emoji = await self.bot.upload_emoji(modified_colour)
-                self.board.draw(str(modified_emoji), coords=[cursor])
+            modified_emoji = await self.bot.upload_emoji(modified_colour, draw_view=self.view, interaction=interaction)
+            return self.board.draw(str(modified_emoji), coords=[cursor])
 
 
-class LightenTool(Tool):
+class LightenTool(DarkenTool):
     @property
     def name(self) -> str:
         return "Lighten"
@@ -312,33 +315,7 @@ class LightenTool(Tool):
         return "Lighten pixel(s) by 17 RGB values"
 
     @staticmethod
-    def increase(value: int) -> int:
+    def edit(value: int) -> int:
         return min(
             value + CHANGE_AMOUNT, 255
         )  # The min func makes sure it doesn't go above 255 when increasing, for example, white
-
-    async def use(self, *, interaction: discord.Interaction) -> bool:
-        """The method that is called when the tool is used"""
-        cursors = self.board.cursor_coords
-
-        async with self.view.disable(interaction=interaction):
-            for cursor in cursors:
-                emoji = discord.PartialEmoji.from_str(
-                    self.board.un_cursor(self.board.board[cursor])
-                )
-                if (fetched_emoji := self.bot.get_emoji(emoji.id)) is not None:
-                    emoji = fetched_emoji
-                    colour = Colour.from_hex(emoji.name)
-                else:
-                    colour = await Colour.from_emoji(str(emoji))
-
-                RGB_A = (
-                    self.increase(colour.R),
-                    self.increase(colour.G),
-                    self.increase(colour.B),
-                    colour.A,
-                )
-                modified_colour = Colour(RGB_A)
-
-                modified_emoji = await self.bot.upload_emoji(modified_colour)
-                self.board.draw(str(modified_emoji), coords=[cursor])
