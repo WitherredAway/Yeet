@@ -4,10 +4,10 @@ import asyncio
 from contextlib import asynccontextmanager
 import copy
 from dataclasses import dataclass
-import io
 import re
 import typing
-from typing import Callable, Optional, Union, Literal, List, Dict, Tuple, TypeVar
+from typing import Callable, Optional, Union, Literal, List, Dict, Tuple
+import datetime
 
 import emojis
 import numpy as np
@@ -435,7 +435,18 @@ class Board:
         colour = colour or self.cursor
         coords = coords if coords is not None else self.cursor_coords
 
-        if all((self.board[row, col] == colour for row, col in coords)):
+        colour_emoji = discord.PartialEmoji.from_str(colour)
+        colour_pixel = colour_emoji.id if colour_emoji.is_custom_emoji() else colour_emoji.name
+
+        cursor_matches = []
+        for row, col in coords:
+            board_emoji = discord.PartialEmoji.from_str(self.board[row, col])
+            board_pixel = board_emoji.id if board_emoji.is_custom_emoji() else board_emoji.name
+            if board_pixel == colour_pixel:
+                cursor_matches.append(True)
+            else:
+                cursor_matches.append(False)
+        if all(cursor_matches):
             return False
 
         colour_emoji = discord.PartialEmoji.from_str(colour)
@@ -1043,16 +1054,17 @@ class DrawView(discord.ui.View):
             )
             return notification, msg
 
-        if content is not None:
-            notification = await self.create_notification(
-                content + "\nSend anything else to abort.",
-                interaction=interaction,
-                emoji=emoji,
-            )
-        else:
-            notification = await self.create_notification(content, emoji=emoji)
-        async with self.lock:
-            async with self.disable(interaction=interaction):
+        async with self.disable(interaction=interaction, first_edit=False):
+            if content is not None:
+                notification = await self.create_notification(
+                    content + "\nSend anything else to abort.",
+                    interaction=interaction,
+                    emoji=emoji,
+                )
+            else:
+                notification = await self.create_notification(content, emoji=emoji)
+
+            async with self.lock:
                 try:
                     msg = await self.bot.wait_for("message", timeout=30, check=check)
                 except asyncio.TimeoutError:
@@ -1144,7 +1156,7 @@ class DrawView(discord.ui.View):
         )
 
     @asynccontextmanager
-    async def disable(self, *, interaction: discord.Interaction):
+    async def disable(self, *, interaction: discord.Interaction, first_edit: Optional[bool] = True, second_edit: Optional[bool] = False):
         disabled = []
         try:
             for child in self.children:
@@ -1153,19 +1165,22 @@ class DrawView(discord.ui.View):
                     continue
                 child.disabled = True
             self.disabled = True
-            await self.edit_message(interaction)
+            if first_edit is True:
+                await self.edit_message(interaction)
             yield True
         finally:
             for child in self.children:
                 if child not in disabled:
                     child.disabled = False
             self.disabled = False
-            await self.edit_message(interaction)
+            if second_edit is True:
+                await self.edit_message(interaction)
 
     async def edit_message(self, interaction: discord.Interaction):
         self.update_buttons()
         try:
             await interaction.edit_original_message(embed=self.embed, view=self)
+            # print(f'[{datetime.datetime.strftime(datetime.datetime.utcnow() + datetime.timedelta(), "%H:%M:%S")}]: Edited')
         except discord.HTTPException as error:
             if match := re.search(
                 "In embeds\.\d+\.description: Must be 4096 or fewer in length\.",
