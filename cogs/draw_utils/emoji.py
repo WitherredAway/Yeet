@@ -17,10 +17,10 @@ def draw_emoji(emoji: str) -> Image:
     with Image.new("RGBA", (128, 128), (255, 255, 255, 0)) as image:
         with Pilmoji(image) as pilmoji:
             pilmoji.text(
-                (0, 0),
-                emoji.strip(),
-                (0, 0, 0),
-                FONT,
+                xy=(0, 0),
+                text=emoji.strip(),
+                fill=(0, 0, 0),
+                font=FONT,
                 emoji_scale_factor=130,
                 emoji_position_offset=(-1, -1),
             )
