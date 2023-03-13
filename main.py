@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import sys
 import datetime
@@ -6,6 +8,7 @@ import aiohttp
 import logging
 
 import discord
+from typing import Union
 from discord.ext import commands
 from cogs.draw_utils.colour import Colour
 import gists

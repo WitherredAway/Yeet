@@ -11,6 +11,7 @@ from .constants import CURSOR, LOADING_EMOJI
 from .colour import Colour
 
 if typing.TYPE_CHECKING:
+    from main import Bot
     from ..draw import Board, DrawView
 
 
@@ -28,7 +29,7 @@ class Tool(discord.ui.Button):
         self._view: DrawView = view
         self.view: DrawView
         self.board: Board = self.view.board
-        self.bot: commands.Bot = self.view.bot
+        self.bot: Bot = self.view.bot
 
     @property
     def name(self) -> str:

@@ -642,7 +642,7 @@ class ColourMenu(discord.ui.Select):
 
     def append_option(
         self, option: discord.SelectOption
-    ) -> Tuple[bool, Union[discord.PartialEmoji, None]]:
+    ) -> Tuple[bool, Union[discord.SelectOption, None]]:
         if (found_option := self.emoji_to_option(option.emoji)) is not None:
             return False, found_option
 
@@ -657,7 +657,7 @@ class ColourMenu(discord.ui.Select):
     def append_sent_emojis(
         self, sent_emojis: List[SentEmoji]
     ) -> Dict[Union[int, str], AddedEmoji]:
-        added_emojis = {}
+        added_emojis: Dict[Union[int, str], AddedEmoji] = {}
         for sent_emoji in sent_emojis:
             emoji: Union[discord.Emoji, discord.PartialEmoji] = sent_emoji.emoji
 
