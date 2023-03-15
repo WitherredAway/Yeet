@@ -76,16 +76,6 @@ class Colour:
 
     @classmethod
     async def from_emoji(cls, emoji: str) -> Colour:
-        emoji: discord.PartialEmoji = discord.PartialEmoji.from_str(emoji)
-        # FOR SOME FUCKING REASON IT DRAWS
-        # A BLANK FUCKING IMAGE IF YOUR
-        # EMOJI NAME IS FUCKING 1 LETTER LONG
-        # WHAT THE FUCK I HAVE LOST SLEEP OVER
-        # THIS BULLSHIT
-        if emoji.is_unicode_emoji() is not True:
-            emoji.name = "bug"
-        emoji = str(emoji)
-
         loop = asyncio.get_running_loop()
         image = await loop.run_in_executor(None, draw_emoji, emoji)
         colours = [

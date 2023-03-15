@@ -1403,7 +1403,7 @@ class DrawView(discord.ui.View):
         ABC = ALPHABETS[: self.board.cursor_row_max + 1]
         NUM = NUMBERS[: self.board.cursor_col_max + 1]
 
-        # There is absolutely no reason to use regex here but YOLO
+        # There is absolutely no reason to use regex here but fuck it we ball
         CELL_REGEX = f"^(?P<row>[A-{ABC[-1]}])(?P<col>[0-9]|(?:1[0-{NUM[-1] % 10}]))$"
         ROW_OR_COL_REGEX = (
             f"(?:^(?P<row>[A-{ABC[-1]}])$)|(?:^(?P<col>[0-9]|(?:1[0-{NUM[-1] % 10}]))$)"
