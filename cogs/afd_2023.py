@@ -1,14 +1,20 @@
 import os
 import datetime
 import pandas as pd
+import json
 
 import discord
 from discord.ext import commands, tasks
 import gists
+import random
+from replit import db
+from functools import cached_property
 
 from constants import NEW_LINE as NL
+from keep_alive import app
 
 
+IMAGE_URL = "https://poketwo.s3.object1.us-east-1.tswcloud.com/staging/images/%s.png?v=26"
 SHEET_URL = os.getenv("AFD_SHEET_URL")
 AFD_GIST_ID = os.getenv("AFD_GIST_ID")
 UNC_FILENAME = "Unclaimed Pokemon.md"
@@ -25,6 +31,10 @@ class Afd(commands.Cog):
         self.hidden = True
 
         self.update_pokemon.start()
+
+    @cached_property
+    def original_pk(self):
+        return self.bot.get_cog("Poketwo").pk
 
     async def cog_load(self):
         self.gists_client = gists.Client()
@@ -69,11 +79,19 @@ class Afd(commands.Cog):
 
     def validate_unclaimed(self):
         pk = self.pk
-        unc_df = pk["Pokemon"][pk["Discord name + tag"].isna()].sort_values()
-        unc_list = [
-            f"1. [{pkm}]({SHEET_URL[:-24]}/edit#gid=0&range=B{idx+ROW_INDEX_OFFSET})"
-            for idx, pkm in unc_df.items()
-        ]
+        unc_df = pk[pk["Discord name + tag"].isna()].sort_values(by="Dex Number")
+        unc_list = []
+        unclaimed = {}
+        for idx, row in unc_df.iterrows():
+            pkm = row["Pokemon"]
+            try:
+                dex = int(self.original_pk[self.original_pk["name.en"] == pkm]["id"])
+            except TypeError:
+                continue
+            unc_list.append(f"1. [{pkm}]({SHEET_URL[:-24]}/edit#gid=0&range=B{idx+ROW_INDEX_OFFSET})")
+            unclaimed[dex] = {'name': pkm, 'sheet_url': f"{SHEET_URL[:-24]}/edit#gid=0&range=B{idx+ROW_INDEX_OFFSET}", 'image_url': IMAGE_URL % dex}
+
+        db["afd_random"] = json.dumps(unclaimed, indent=4)
 
         unc_amount = len(unc_list)
         if hasattr(self, "unc_amount"):
@@ -232,4 +250,4 @@ class Afd(commands.Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(Test(bot))
+    await bot.add_cog(Afd(bot))

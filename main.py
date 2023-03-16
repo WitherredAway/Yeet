@@ -33,6 +33,7 @@ class Bot(commands.Bot):
     PREFIX = PREFIXES[0]
 
     COGS = {
+        "afd_2023": "afd_2023",
         "admin": "admin",
         "bot": "bot",
         "channel": "channel",
