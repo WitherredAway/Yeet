@@ -541,14 +541,7 @@ class ToolMenu(discord.ui.Select):
 
         default_options: List[discord.SelectOption] = [
             discord.SelectOption(
-<<<<<<< HEAD
-                label=tool.name,
-                emoji=tool.emoji,
-                value=tool.name.lower(),
-                description=f"{tool.description}{' (Used automatically)' if tool.autouse is True else ''}",
-=======
                 label=tool.name, emoji=tool.emoji, value=tool.name.lower(), description=f"{tool.description}{' (Used automatically)' if tool.autouse is True else ''}"
->>>>>>> Add autouse property for tools
             )
             for tool in self.tool_list
         ]
