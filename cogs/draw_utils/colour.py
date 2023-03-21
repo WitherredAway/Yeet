@@ -75,7 +75,9 @@ class Colour:
         )
 
     @classmethod
-    async def from_emoji(cls, emoji: str) -> Colour:
+    async def from_emoji(cls, emoji: Union[str, discord.Emoji, discord.PartialEmoji]) -> Colour:
+        if isinstance(emoji, str):
+            emoji: discord.PartialEmoji = discord.PartialEmoji.from_str(emoji)
         loop = asyncio.get_running_loop()
         image = await loop.run_in_executor(None, draw_emoji, emoji)
         colours = [
