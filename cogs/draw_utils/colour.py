@@ -93,6 +93,25 @@ class Colour:
         return cls(colours[0][1])
 
     @classmethod
+    async def from_attachment(cls, attachment: discord.Attachment, *, n_colours: Optional[int] = 5) -> Colour:
+        image = Image.open(io.BytesIO(await attachment.read()))
+        colours: Tuple[int, Tuple[int, int, int]] = [
+            colour
+            for colour in sorted(
+                image.getcolors(image.size[0] * image.size[1]),
+                key=lambda c: c[0],
+                reverse=True,
+            )
+            if colour[-1][-1] != 0
+        ]
+
+        colour_objs = []
+        for i in range(n_colours):
+            colour_objs.append(cls(colours[min(len(colours), i)][-1]))
+
+        return colour_objs
+
+    @classmethod
     def from_hex(cls, hex: str) -> Colour:
         if (match := HEX_REGEX.match(hex)) is None:
             raise ValueError("Invalid hex code provided")

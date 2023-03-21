@@ -799,9 +799,10 @@ class ColourMenu(discord.ui.Select):
             notification, msg = await self.view.wait_for(
                 (
                     "Please type all the colours you want to add. They can be either or all of:"
-                    "\n• The hex codes (e.g. `ff64c4` or `ff64c4ff` to include alpha) **seperated by space**,"
+                    "\n• The hex codes (e.g. `ff64c4` or `ff64c4ff` to include alpha) **separated by space**,"
                     "\n• The RGB(A) values separated by space or comma or both (e.g. `(255 100 196)` or `(255, 100, 196, 125)`) of each colour **surrounded by brackets**"
                     "\n• Any emoji whose main colour you want to extract (e.g. 🐸 will give 77b255)"
+                    "\n• Any image file (first 5 abundant colours will be extracted)."
                 ),
                 emoji=ADD_COLOURS_EMOJI,
                 interaction=interaction,
@@ -845,6 +846,13 @@ class ColourMenu(discord.ui.Select):
                 emoji = await self.bot.upload_emoji(colour, draw_view=self.view, interaction=interaction)
 
                 sent_emojis.append(SentEmoji(emoji=emoji, index=match.index))
+
+            # Extract from first attachments
+            attachment_colours = await Colour.from_attachment(msg.attachments[0])
+            for colour in attachment_colours:
+                emoji = await self.bot.upload_emoji(colour, draw_view=self.view, interaction=interaction)
+
+                sent_emojis.append(SentEmoji(emoji=emoji, index=max([e.index for e in sent_emojis] + [0]) + 1))
 
             sent_emojis.sort(key=lambda emoji: emoji.index)
 
