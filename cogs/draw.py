@@ -735,6 +735,44 @@ class ColourMenu(discord.ui.Select):
         )
         await self.view.edit_message(interaction)
 
+    def extract_emojis(self, content: str) -> List[SentEmoji]:
+        # Get any unicode emojis from the content
+        # and list them as SentEmoji objects
+        unicode_emojis = [
+            SentEmoji(
+                emoji=discord.PartialEmoji.from_str(
+                    self.view.board.un_cursor(emoji)
+                ),
+                index=content.index(emoji),
+            )
+            for emoji in emojis.get(content)
+        ]
+        # Get any flag/regional indicator emojis from the content
+        # and list them as SentEmoji objects
+        flag_emojis = [
+            SentEmoji(
+                emoji=discord.PartialEmoji.from_str(emoji.group(0)),
+                index=emoji.start(),
+            )
+            for emoji in FLAG_EMOJI_REGEX.finditer(content)
+        ]
+        # Get any custom emojis from the content
+        # and list them as SentEmoji objects
+        custom_emojis = [
+            SentEmoji(
+                emoji=discord.PartialEmoji.from_str(emoji.group(0)),
+                index=emoji.start(),
+            )
+            for emoji in CUSTOM_EMOJI_REGEX.finditer(content)
+        ]
+
+        ## Organize all the matches into SentEmoji objects
+        sent_emojis = sorted(
+            unicode_emojis + flag_emojis + custom_emojis,
+            key=lambda emoji: emoji.index,
+        )
+        return list(sent_emojis)
+
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
 
@@ -754,15 +792,7 @@ class ColourMenu(discord.ui.Select):
                     "Please type all the colours you want to add. They can be either or all of:"
                     "\n• The hex codes (e.g. `ff64c4` or `ff64c4ff` to include alpha) **seperated by space**,"
                     "\n• The RGB(A) values separated by space or comma or both (e.g. `(255 100 196)` or `(255, 100, 196, 125)`) of each colour **surrounded by brackets**"
-                    "\n"
-                    "\n__**Example**__:"
-                    "\n*This entire block is a single message with valid hex codes/rgb(a) values*"
-                    "\n```"
-                    "\n647bab"
-                    "\nf08234ff"
-                    "\n(221 93 141) (112, 162, 64, 255)"
-                    "\n(223 224 226)"
-                    "\n```"
+                    "\n• Any emoji whose main colour you want to extract (e.g. 🐸 will give 77b255)"
                 ),
                 "🏳️‍🌈",
                 interaction=interaction,
@@ -799,8 +829,15 @@ class ColourMenu(discord.ui.Select):
                 emoji = await self.bot.upload_emoji(colour, draw_view=self.view, interaction=interaction)
 
                 sent_emojis.append(SentEmoji(emoji=emoji, index=match.start()))
+
+            emoji_matches = self.extract_emojis(content)
+            for match in emoji_matches:
+                colour = await Colour.from_emoji(match.emoji)
+                emoji = await self.bot.upload_emoji(colour, draw_view=self.view, interaction=interaction)
+
+                sent_emojis.append(SentEmoji(emoji=emoji, index=match.index))
+
             sent_emojis.sort(key=lambda emoji: emoji.index)
-            ##
 
             added_emojis = self.append_sent_emojis(sent_emojis)
 
@@ -824,43 +861,8 @@ class ColourMenu(discord.ui.Select):
                 return
 
             content = msg.content
-            # Get any unicode emojis from the content
-            # and list them as SentEmoji objects
-            unicode_emojis = [
-                SentEmoji(
-                    emoji=discord.PartialEmoji.from_str(
-                        self.view.board.un_cursor(emoji)
-                    ),
-                    index=content.index(emoji),
-                )
-                for emoji in emojis.get(content)
-            ]
-            # Get any flag/regional indicator emojis from the content
-            # and list them as SentEmoji objects
-            flag_emojis = [
-                SentEmoji(
-                    emoji=discord.PartialEmoji.from_str(emoji.group(0)),
-                    index=emoji.start(),
-                )
-                for emoji in FLAG_EMOJI_REGEX.finditer(content)
-            ]
-            # Get any custom emojis from the content
-            # and list them as SentEmoji objects
-            custom_emojis = [
-                SentEmoji(
-                    emoji=discord.PartialEmoji.from_str(emoji.group(0)),
-                    index=emoji.start(),
-                )
-                for emoji in CUSTOM_EMOJI_REGEX.finditer(content)
-            ]
 
-            ## Organize all the matches into SentEmoji objects
-            sent_emojis = sorted(
-                unicode_emojis + flag_emojis + custom_emojis,
-                key=lambda emoji: emoji.index,
-            )
-            ##
-
+            sent_emojis = self.extract_emojis(content)
             added_emojis = self.append_sent_emojis(sent_emojis)
 
             await self.added_emojis_respond(
