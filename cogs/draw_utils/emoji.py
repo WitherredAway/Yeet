@@ -7,7 +7,7 @@ from pilmoji import Pilmoji
 from .constants import FONT
 
 
-EMOJI_SMILEY = "<:emojismiley:1056857231125123152>"
+ADD_EMOJIS_EMOJI = "<:emojismiley:1056857231125123152>"
 
 
 EMOJI_ABCD = "<:ABCD:1032565203608547328>"

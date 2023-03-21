@@ -79,7 +79,7 @@ class Colour:
         if isinstance(emoji, str):
             emoji: discord.PartialEmoji = discord.PartialEmoji.from_str(emoji)
         loop = asyncio.get_running_loop()
-        image = await loop.run_in_executor(None, draw_emoji, emoji)
+        image = await loop.run_in_executor(None, draw_emoji, str(emoji))
         colours = [
             colour
             for colour in sorted(

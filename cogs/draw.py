@@ -32,7 +32,7 @@ from .draw_utils.constants import (
     MAX_HEIGHT_OR_WIDTH,
 )
 from .draw_utils.emoji import (
-    EMOJI_SMILEY,
+    ADD_EMOJIS_EMOJI,
     EMOJI_ABCD,
     SentEmoji,
     AddedEmoji,
@@ -63,6 +63,9 @@ if typing.TYPE_CHECKING:
 
 EMBED_DESC_CHAR_LIMIT = 4096
 EMBED_FIELD_CHAR_LIMIT = 1024
+
+ADD_COLOURS_EMOJI = "🏳️‍🌈"
+MIX_COLOURS_EMOJI = "🔀"
 
 
 @dataclass
@@ -215,10 +218,10 @@ class Notification:
         self,
         content: Optional[str] = "",
         *,
-        view: DrawView,
         emoji: Optional[
             Union[discord.PartialEmoji, discord.Emoji]
         ] = discord.PartialEmoji.from_str("🔔"),
+        view: DrawView,
     ):
         self.emoji: Union[discord.PartialEmoji, discord.Emoji] = emoji
         self.content: str = content
@@ -587,15 +590,20 @@ class ColourMenu(discord.ui.Select):
         default_options: List[discord.SelectOption] = [
             *base_colour_options(),
             discord.SelectOption(
+                label="Mix Colours",
+                emoji="🔀",
+                value="mix"
+            ),
+            discord.SelectOption(
                 label="Add Colour(s)",
                 emoji="🏳️‍🌈",
                 value="colour",
             ),
             discord.SelectOption(
                 label="Add Emoji(s)",
-                emoji=EMOJI_SMILEY,
+                emoji=ADD_EMOJIS_EMOJI,
                 value="emoji",
-            ),
+            )
         ]
         options = options if options else default_options
         self.END_INDEX = len(default_options)  # The ending index of default options
@@ -605,8 +613,6 @@ class ColourMenu(discord.ui.Select):
 
         super().__init__(
             placeholder="🎨 Palette",
-            min_values=1,
-            max_values=len(options),
             options=options,
         )
 
@@ -776,17 +782,20 @@ class ColourMenu(discord.ui.Select):
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
 
+        def check(msg):
+            return msg.author == interaction.user
+
         # These need to be defined here because the class does not have a view when initiated
         self.ctx = self.view.ctx
         self.bot = self.view.bot
         self.board = self.view.board
 
+        # Set max values to 1 everytime the menu is used
+        initial_max_values = self.max_values
+        self.max_values = 1
+
         # If the Add Colour option was selected. Always takes first priority
         if "colour" in self.values:
-
-            def check(m):
-                return m.author == interaction.user
-
             notification, msg = await self.view.wait_for(
                 (
                     "Please type all the colours you want to add. They can be either or all of:"
@@ -794,7 +803,7 @@ class ColourMenu(discord.ui.Select):
                     "\n• The RGB(A) values separated by space or comma or both (e.g. `(255 100 196)` or `(255, 100, 196, 125)`) of each colour **surrounded by brackets**"
                     "\n• Any emoji whose main colour you want to extract (e.g. 🐸 will give 77b255)"
                 ),
-                "🏳️‍🌈",
+                emoji=ADD_COLOURS_EMOJI,
                 interaction=interaction,
                 check=check,
             )
@@ -847,13 +856,9 @@ class ColourMenu(discord.ui.Select):
 
         # First it checks if the Add Emoji option was selected. Takes second priority
         elif "emoji" in self.values:
-
-            def check(m):
-                return m.author == interaction.user
-
             notification, msg = await self.view.wait_for(
                 "Please send a message containing the emojis you want to add to your palette. E.g. `😎 I like turtles 🐢`",
-                EMOJI_SMILEY,
+                emoji=ADD_EMOJIS_EMOJI,
                 interaction=interaction,
                 check=check,
             )
@@ -869,6 +874,24 @@ class ColourMenu(discord.ui.Select):
                 added_emojis, notification=notification, interaction=interaction
             )
 
+        # If user has chosen to Mix Colours
+        elif "mix" in self.values:
+            if initial_max_values > 1:
+                self.max_values = 1
+                await self.view.create_notification(
+                    f"Mixing disabled.",
+                    emoji=MIX_COLOURS_EMOJI,
+                    interaction=interaction,
+                )
+            else:
+                self.max_values = len(self.options)
+                await self.view.create_notification(
+                    f"Mixing enabled. You can now select multiple colours/emojis to mix their primary colours.",
+                    emoji=MIX_COLOURS_EMOJI,
+                    interaction=interaction,
+                )
+            return
+
         # If multiple options were selected
         elif len(self.values) > 1:
             selected_options = [self.value_to_option(value) for value in self.values]
@@ -876,6 +899,7 @@ class ColourMenu(discord.ui.Select):
             selected_emojis = [str(option.emoji) for option in selected_options]
             notification = await self.view.create_notification(
                 f'Mixing colours {" and ".join(selected_emojis)} ...',
+                emoji=MIX_COLOURS_EMOJI,
                 interaction=interaction,
             )
 
@@ -990,10 +1014,10 @@ class DrawView(discord.ui.View):
         self,
         content: Optional[str] = None,
         *,
-        interaction: Optional[discord.Interaction] = None,
         emoji: Optional[
             Union[discord.PartialEmoji, discord.Emoji]
         ] = discord.PartialEmoji.from_str("🔔"),
+        interaction: Optional[discord.Interaction] = None,
     ) -> Notification:
         self.notifications = self.notifications[:2]
 
@@ -1038,8 +1062,8 @@ class DrawView(discord.ui.View):
     async def wait_for(
         self,
         content: Optional[str] = None,
-        emoji: Optional[Union[str, discord.PartialEmoji, discord.Emoji]] = None,
         *,
+        emoji: Optional[Union[str, discord.PartialEmoji, discord.Emoji]] = None,
         interaction: discord.Interaction,
         check: Callable = lambda x: x,
         delete_msg: bool = True,
@@ -1060,8 +1084,8 @@ class DrawView(discord.ui.View):
             if content is not None:
                 notification = await self.create_notification(
                     content + "\nSend anything else to abort.",
-                    interaction=interaction,
                     emoji=emoji,
+                    interaction=interaction,
                 )
             else:
                 notification = await self.create_notification(content, emoji=emoji)
@@ -1394,7 +1418,7 @@ class DrawView(discord.ui.View):
 
         notification, msg = await self.wait_for(
             'Please type the cell you want to move the cursor to. e.g. "A1", "a1", "A10", "A", "10", etc.',
-            EMOJI_ABCD,
+            emoji=EMOJI_ABCD,
             interaction=interaction,
             check=check,
         )
