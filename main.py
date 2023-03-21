@@ -34,6 +34,7 @@ class Bot(commands.Bot):
 
     COGS = {
         "afd_2023": "afd_2023",
+        "afd": "afd_2023",
         "admin": "admin",
         "bot": "bot",
         "channel": "channel",

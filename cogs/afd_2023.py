@@ -23,6 +23,7 @@ ML_FILENAME = "Incomplete Pokemon.md"
 CONTENTS_FILENAME = "Contents.md"
 UPDATE_CHANNEL_ID = os.getenv("AFD_UPDATE_CHANNEL_ID")
 ROW_INDEX_OFFSET = 8  # The number of rows after which the pokemon indexes begin
+DEL_ATTRS_TO_UPDATE = ["unc_amount", "unr_amount", "ml_amount"]
 
 
 class Afd(commands.Cog):
@@ -181,16 +182,14 @@ class Afd(commands.Cog):
     @commands.is_owner()
     @commands.command()
     async def forceupdate(self, ctx: commands.Context):
-        try:
-            del self.unc_amount
-            del self.unr_amount
-            del self.ml_amount
-        except AttributeError:
-            pass
+        for attr in DEL_ATTRS_TO_UPDATE:
+            try:
+                delattr(self, attr)
+            except AttributeError:
+                pass
 
         await ctx.message.add_reaction("▶️")
-        self.update_pokemon.cancel()
-        self.update_pokemon.start()
+        self.update_pokemon.restart()
         await ctx.message.add_reaction("✅")
 
     # The task that updates the unclaimed pokemon gist
@@ -213,7 +212,7 @@ class Afd(commands.Cog):
         files = []
         if self.unc:
             updated.append(f"`Unclaimed pokemon` **({unc_amount})**")
-            unc_content = f'# Unclaimed Pokemon\nCount: {unc_amount}\n## Pokemon: \n<details>\n<summary>Click to expand</summary>\n\n{NL.join(unc_list) if unc_list else "None"}\n\n</details>'
+            unc_content = f'# Unclaimed Pokemon\nCount: {unc_amount}\n## [Pick a random one](https://yeet.witherredaway.repl.co/afd/random)\n## Pokemon: \n<details>\n<summary>Click to expand</summary>\n\n{NL.join(unc_list) if unc_list else "None"}\n\n</details>'
             files.append(gists.File(name=UNC_FILENAME, content=unc_content))
 
         if self.unr:
