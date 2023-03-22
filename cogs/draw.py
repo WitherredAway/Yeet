@@ -33,7 +33,11 @@ from .draw_utils.constants import (
 )
 from .draw_utils.emoji import (
     ADD_EMOJIS_EMOJI,
-    EMOJI_ABCD,
+    SET_CURSOR_EMOJI,
+    ADD_COLOURS_EMOJI,
+    MIX_COLOURS_EMOJI,
+    AUTO_DRAW_EMOJI,
+    SELECT_EMOJI,
     SentEmoji,
     AddedEmoji,
 )
@@ -64,8 +68,6 @@ if typing.TYPE_CHECKING:
 EMBED_DESC_CHAR_LIMIT = 4096
 EMBED_FIELD_CHAR_LIMIT = 1024
 
-ADD_COLOURS_EMOJI = "🏳️‍🌈"
-MIX_COLOURS_EMOJI = "🔀"
 
 
 @dataclass
@@ -140,9 +142,11 @@ class StartView(discord.ui.View):
         self.stop()
 
     async def start(self):
+        embed = self.bot.Embed(description=str(self.board))
+        embed.set_footer(text="Custom emojis may not appear here due to a discord limitation, but will render once you create the board.")
         self.response = await self.ctx.send(
             self.initial_message,
-            embed=self.bot.Embed(description=str(self.board)),
+            embed=embed,
             view=self,
         )
 
@@ -196,16 +200,17 @@ class StartView(discord.ui.View):
             tool_options=self.tool_options,
             colour_options=self.colour_options,
         )
-        response = await interaction.followup.send(
+        response: discord.Message = await interaction.followup.send(
             embed=draw_view.embed, view=draw_view
         )
         draw_view.response = response
         await response.edit(
             embed=draw_view.embed, view=draw_view
         )  # This is necessary because custom emojis only render when a followup is edited ◉_◉
-
         await self.response.delete()
         self.stop()
+
+        await draw_view.start()
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.danger)
     async def cancel(self, interaction: discord.Interaction, button: discord.Button):
@@ -964,10 +969,12 @@ class DrawView(discord.ui.View):
         )
         self.primary_tool: Tool = self.tool_menu.tools["brush"]
 
-        self.disabled: bool = False
-        self.secondary_page: bool = False
+        self.reaction_menu: bool = True
         self.auto: bool = False
         self.select: bool = False
+
+        self.disabled: bool = False
+        self.secondary_page: bool = False
         self.load_items()
 
         self.response: discord.Message = None
@@ -1018,6 +1025,58 @@ class DrawView(discord.ui.View):
         )
         return embed
 
+    def reaction_check(self, reaction: discord.Reaction, user: discord.User):
+        return reaction.message.id == self.response.id and user.id == self.ctx.author.id
+
+    async def start(self):
+        response = self.response
+
+        await response.add_reaction(AUTO_DRAW_EMOJI)
+        await response.add_reaction(SELECT_EMOJI)
+
+        while self.reaction_menu is True:
+            ### This block wait_for's for both addition and removal of reactions
+            done, pending = await asyncio.wait(
+                [
+                    self.bot.loop.create_task(
+                        self.bot.wait_for(
+                            "reaction_add",
+                            check=self.reaction_check,
+                            timeout=None
+                        )
+                    ),
+                    self.bot.loop.create_task(
+                        self.bot.wait_for(
+                            "reaction_remove",
+                            check=self.reaction_check,
+                            timeout=None
+                        )
+                    ),
+                ],
+                return_when=asyncio.FIRST_COMPLETED
+            )
+
+            reaction, user = done.pop().result()
+            for future in done:
+                future.exception()
+            for future in pending:
+                future.cancel()
+            ###
+
+            if str(reaction.emoji) == AUTO_DRAW_EMOJI:
+                self.auto = not self.auto
+
+            if str(reaction.emoji) == SELECT_EMOJI:
+                if self.select is False:
+                    self.board.initial_coords = (self.board.cursor_row, self.board.cursor_col)
+                    self.board.initial_row, self.board.initial_col = self.board.initial_coords
+                    self.select = not self.select
+                elif self.select is True:
+                    self.board.clear_cursors()
+                    self.select = not self.select
+                    await self.edit_message()
+
+
     async def create_notification(
         self,
         content: Optional[str] = None,
@@ -1045,6 +1104,8 @@ class DrawView(discord.ui.View):
         self.add_item(self.tool_menu)
         self.add_item(self.colour_menu)
         self.board.clear_cursors(empty=True)
+
+        self.reaction_menu = False
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user != self.ctx.author:
@@ -1136,9 +1197,9 @@ class DrawView(discord.ui.View):
 
             self.add_item(self.redo)
             self.add_item(self.left)
-            self.add_item(self.auto_draw)
+            self.add_item(self.placeholder_button)
             self.add_item(self.right)
-            self.add_item(self.select_button)
+            self.add_item(self.placeholder_button)
 
             self.add_item(self.primary_tool)
             self.add_item(self.down_left)
@@ -1155,9 +1216,9 @@ class DrawView(discord.ui.View):
 
             self.add_item(self.clear)
             self.add_item(self.left)
-            self.add_item(self.auto_draw)
+            self.add_item(self.placeholder_button)
             self.add_item(self.right)
-            self.add_item(self.select_button)
+            self.add_item(self.placeholder_button)
 
             self.add_item(self.primary_tool)
             self.add_item(self.down_left)
@@ -1172,12 +1233,6 @@ class DrawView(discord.ui.View):
             discord.ButtonStyle.green
             if self.secondary_page
             else discord.ButtonStyle.grey
-        )
-        self.auto_draw.style = (
-            discord.ButtonStyle.green if self.auto else discord.ButtonStyle.grey
-        )
-        self.select_button.style = (
-            discord.ButtonStyle.green if self.select else discord.ButtonStyle.grey
         )
 
         self.undo.disabled = self.board.board_index == 0 or self.disabled
@@ -1210,40 +1265,63 @@ class DrawView(discord.ui.View):
             if second_edit is True:
                 await self.edit_message(interaction)
 
-    async def edit_message(self, interaction: discord.Interaction):
+    async def edit_message(self, interaction: Optional[discord.Interaction] = None):
         self.update_buttons()
         try:
-            await interaction.edit_original_message(embed=self.embed, view=self)
+            if interaction is None:
+                await self.response.edit(embed=self.embed, view=self)
+            else:
+                await interaction.edit_original_message(embed=self.embed, view=self)
+
             # print(f'[{datetime.datetime.strftime(datetime.datetime.utcnow() + datetime.timedelta(), "%H:%M:%S")}]: Edited')
         except discord.HTTPException as error:
             if match := re.search(
                 "In embeds\.\d+\.description: Must be 4096 or fewer in length\.",
                 error.text,
             ):  # If the description reaches char limit
-                await interaction.followup.send(
-                    content=f"Max characters reached ({len(self.embed.description)}). Please remove some custom emojis from the board.\nCustom emojis take up more than 20 characters each, while most unicode/default ones take up 1!\nMaximum is 4096 characters due to discord limitations.",
-                    ephemeral=True,
-                )
+                content = f"Max characters reached ({len(self.embed.description)}). Please remove some custom emojis from the board.\nCustom emojis take up more than 20 characters each, while most unicode/default ones take up 1!\nMaximum is 4096 characters due to discord limitations."
+
+                if interaction is None:
+                    await self.response.channel.send(
+                        content=content,
+                    )
+                else:
+                    await interaction.followup.send(
+                        content=content,
+                        ephemeral=True,
+                    )
                 self.board.board_index -= 1
                 self.board.board_history = self.board.board_history[
                     : self.board.board_index + 1
                 ]
                 await self.edit_message(interaction)
+
             elif match := re.search(
                 "In components\.\d+\.components\.\d+\.options\.(?P<option>\d+)\.emoji\.id: Invalid emoji",
                 error.text,
             ):  # If the emoji of one of the options of the select menu is unavailable
+                content = f"The {removed_option.emoji} emoji was not found for some reason, so the option was removed aswell. Please try again."
+
                 removed_option = self.colour_menu.options.pop(
                     int(match.group("option"))
                 )
                 self.board.cursor = self.board.background
-                await interaction.followup.send(
-                    content=f"The {removed_option.emoji} emoji was not found for some reason, so the option was removed aswell. Please try again.",
-                    ephemeral=True,
-                )
+
+                if interaction is None:
+                    await self.response.channel.send(
+                        content=content,
+                    )
+                else:
+                    await interaction.followup.send(
+                        content=content,
+                        ephemeral=True,
+                    )
                 await self.edit_message(interaction)
             else:
-                await interaction.followup.send(error)
+                if interaction is None:
+                    await self.response.channel.send(error)
+                else:
+                    await interaction.followup.send(error)
                 raise error
 
     async def move_cursor(
@@ -1350,16 +1428,6 @@ class DrawView(discord.ui.View):
         await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
 
     @discord.ui.button(
-        emoji="<:auto_draw:1032565224903016449>", style=discord.ButtonStyle.gray
-    )
-    async def auto_draw(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ):
-        await interaction.response.defer()
-        self.auto = not self.auto
-        await self.edit_message(interaction)
-
-    @discord.ui.button(
         emoji="<:right:1032565019352764438>", style=discord.ButtonStyle.blurple
     )
     async def right(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -1367,21 +1435,6 @@ class DrawView(discord.ui.View):
         row_move = 0
         col_move = 1
         await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
-
-    @discord.ui.button(
-        emoji="<:select_tool:1037847279169704028> ", style=discord.ButtonStyle.gray
-    )
-    async def select_button(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ):
-        await interaction.response.defer()
-        if self.select is False:
-            self.board.initial_coords = (self.board.cursor_row, self.board.cursor_col)
-            self.board.initial_row, self.board.initial_col = self.board.initial_coords
-        elif self.select is True:
-            self.board.clear_cursors()
-        self.select = not self.select
-        await self.edit_message(interaction)
 
     # 3rd / Last Row
     @discord.ui.button(
@@ -1415,7 +1468,7 @@ class DrawView(discord.ui.View):
         col_move = 1
         await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
 
-    @discord.ui.button(emoji=EMOJI_ABCD, style=discord.ButtonStyle.blurple)
+    @discord.ui.button(emoji=SET_CURSOR_EMOJI, style=discord.ButtonStyle.blurple)
     async def set_cursor(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
@@ -1426,7 +1479,7 @@ class DrawView(discord.ui.View):
 
         notification, msg = await self.wait_for(
             'Please type the cell you want to move the cursor to. e.g. "A1", "a1", "A10", "A", "10", etc.',
-            emoji=EMOJI_ABCD,
+            emoji=SET_CURSOR_EMOJI,
             interaction=interaction,
             check=check,
         )
