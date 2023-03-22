@@ -1197,7 +1197,7 @@ class DrawView(discord.ui.View):
 
             self.add_item(self.redo)
             self.add_item(self.left)
-            self.add_item(self.placeholder_button)
+            self.add_item(self.set_cursor)
             self.add_item(self.right)
             self.add_item(self.placeholder_button)
 
@@ -1205,7 +1205,7 @@ class DrawView(discord.ui.View):
             self.add_item(self.down_left)
             self.add_item(self.down)
             self.add_item(self.down_right)
-            self.add_item(self.set_cursor)
+            self.add_item(self.placeholder_button)
 
         elif self.secondary_page is True:
             self.add_item(self.stop_button)
@@ -1216,7 +1216,7 @@ class DrawView(discord.ui.View):
 
             self.add_item(self.clear)
             self.add_item(self.left)
-            self.add_item(self.placeholder_button)
+            self.add_item(self.set_cursor)
             self.add_item(self.right)
             self.add_item(self.placeholder_button)
 
@@ -1224,7 +1224,7 @@ class DrawView(discord.ui.View):
             self.add_item(self.down_left)
             self.add_item(self.down)
             self.add_item(self.down_right)
-            self.add_item(self.set_cursor)
+            self.add_item(self.placeholder_button)
 
         self.update_buttons()
 
