@@ -561,6 +561,15 @@ class ToolMenu(discord.ui.Select):
     def tools(self) -> Dict[str, Tool]:
         return {tool.name.lower(): tool for tool in self.tool_list}
 
+    @property
+    def value_to_option_dict(self) -> Dict[str, discord.SelectOption]:
+        return {option.value: option for option in self.options}
+
+    def value_to_option(
+        self, value: Union[str, int]
+    ) -> Union[None, discord.SelectOption]:
+        return self.value_to_option_dict.get(value)
+
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
 
@@ -576,7 +585,7 @@ class ToolMenu(discord.ui.Select):
         else:
             self.view.primary_tool = tool
             self.view.load_items()
-            self.placeholder = tool.name
+            (self.value_to_option(value)).default = True
 
         if edit:
             await self.view.edit_message(interaction)
@@ -593,12 +602,12 @@ class ColourMenu(discord.ui.Select):
             *base_colour_options(),
             discord.SelectOption(
                 label="Mix Colours",
-                emoji="🔀",
+                emoji=MIX_COLOURS_EMOJI,
                 value="mix"
             ),
             discord.SelectOption(
                 label="Add Colour(s)",
-                emoji="🏳️‍🌈",
+                emoji=ADD_COLOURS_EMOJI,
                 value="colour",
             ),
             discord.SelectOption(
@@ -734,7 +743,7 @@ class ColourMenu(discord.ui.Select):
             ("Added" in added_emoji.status for added_emoji in added_emojis.values())
         ):
             self.board.cursor = self.options[-1].value
-            self.placeholder = self.options[-1].label
+            self.options[-1].default = True
 
         await notification.edit(
             ("\n".join(response))[
@@ -849,7 +858,7 @@ class ColourMenu(discord.ui.Select):
 
                 sent_emojis.append(SentEmoji(emoji=emoji, index=match.index))
 
-            # Extract from first attachments
+            # Extract from first attachment
             attachment_colours = await Colour.from_attachment(msg.attachments[0])
             for colour in attachment_colours:
                 emoji = await self.bot.upload_emoji(colour, draw_view=self.view, interaction=interaction)
@@ -929,7 +938,7 @@ class ColourMenu(discord.ui.Select):
             replaced, returned_option = self.append_option(option)
 
             self.board.cursor = option.value
-            self.placeholder = option.label
+            option.default = True
 
             await notification.edit(
                 f'Mixed colours:\n{" + ".join(selected_emojis)} = {emoji}'
@@ -940,7 +949,7 @@ class ColourMenu(discord.ui.Select):
         # If only one option was selected
         elif self.board.cursor != (value := self.values[0]):
             self.board.cursor = value
-            self.placeholder = self.value_to_option(value).label
+            self.value_to_option(value).default = True
 
             await self.view.edit_message(interaction)
 

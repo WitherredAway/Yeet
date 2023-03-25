@@ -144,7 +144,7 @@ class EyedropperTool(Tool):
             return False
         else:
             self.board.cursor = option.value
-            self.view.colour_menu.placeholder = option.label
+            option.default = True
             return True
 
 
