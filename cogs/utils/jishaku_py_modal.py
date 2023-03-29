@@ -1,5 +1,6 @@
 import os
 import sys
+import asyncio
 import discord
 from discord.ext import menus, commands
 
@@ -58,4 +59,4 @@ class CodeModal(discord.ui.Modal):
             await asyncio.sleep(1)
 
     async def on_error(self, interaction: discord.Interaction, error):
-        await interaction.response.send_message(error)
+        await interaction.channel.send(error)
