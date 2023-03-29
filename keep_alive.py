@@ -25,24 +25,19 @@ def afd_random_pokemon():
     dex, pkm_dict = random.choice(list(unclaimed.items()))
 
     name = pkm_dict["name"]
-    sheet_url = pkm_dict["sheet_url"]
     image_url = pkm_dict["image_url"]
 
     return f'''
 <body style="{style}">
     <h1 style="color: #74c49b; font-size: 50px;">Random Unclaimed AFD Pokemon Picker</h1>
     Total Unclaimed Pokemon: {len(unclaimed)}
-    <a href={sheet_url} style="color: #7da2cc; text-decoration: none;">
-        <div style="background-color: #232428; border-radius: 10px; border: 1px solid black; padding: 10px;">
-            <p style="color: #b6bac0;">Your random pokemon: 
-            <br>
-            <sub>(will not be removed from the list until claimed on the sheet)<sub></p>
-            <h2 style="font-size: 30px; text-decoration: underline;">{name}</h2>
-            <img src={image_url}>
-            <br>
-            <p>Click to jump to its sheet location!</p>
-        </div>
-    </a>
+    <div style="background-color: #232428; border-radius: 10px; border: 1px solid black; padding: 10px;">
+        <p style="color: #b6bac0;">Your random pokemon: 
+        <br>
+        <sub>(will not be removed from the list until claimed on the sheet)<sub></p>
+        <h2 style="font-size: 30px; text-decoration: underline;">{name}</h2>
+        <img src={image_url}>
+    </div>
     <p style="font-size: 10px;">P.S. I know this looks bad</p>
 </body>
 '''

@@ -67,9 +67,9 @@ class Afd(commands.Cog):
         - Comments: {comment}
             """
             text = f"""
-1. `{pokename}` {comment_text if comment else ""}
-    - [Sheet location]({location})
-    - [Imgur]({link})"""
+1. `{pokename}` {comment_text if comment else ""}"""
+    # - [Sheet location]({location})
+    # - [Imgur]({link})"""
             pkm_list.append(text)
         format_list = "\n".join(pkm_list)
         return_text = f"""<details>
@@ -89,8 +89,8 @@ class Afd(commands.Cog):
                 dex = int(self.original_pk[self.original_pk["name.en"] == pkm]["id"])
             except TypeError:
                 continue
-            unc_list.append(f"1. [{pkm}]({SHEET_URL[:-24]}/edit#gid=0&range=B{idx+ROW_INDEX_OFFSET})")
-            unclaimed[dex] = {'name': pkm, 'sheet_url': f"{SHEET_URL[:-24]}/edit#gid=0&range=B{idx+ROW_INDEX_OFFSET}", 'image_url': IMAGE_URL % dex}
+            unc_list.append(f"1. {pkm}")
+            unclaimed[dex] = {'name': pkm, 'image_url': IMAGE_URL % dex}
 
         db["afd_random"] = json.dumps(unclaimed, indent=4)
 
