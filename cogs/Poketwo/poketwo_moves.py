@@ -96,7 +96,7 @@ class Move:
 class Data:
     def __init__(self, bot):
         self.bot = bot
-        self.pk = self.bot.get_cog("PoketwoChances").pk.set_index("id")
+        self.pk = self.bot.get_cog("Poketwo").pk.set_index("id")
 
     async def init(self):
         await self.bot.loop.run_in_executor(None, self.fetch_data)
