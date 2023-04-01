@@ -21,6 +21,8 @@ style = """color: #b6bac0; background-color: #313338; text-align: center; font-f
 def afd_random_pokemon():
     afd_random = db["afd_random"]
     unclaimed = json.loads(afd_random)
+    if len(unclaimed) == 0:
+        return "No remaining pokemon."
 
     dex, pkm_dict = random.choice(list(unclaimed.items()))
 
