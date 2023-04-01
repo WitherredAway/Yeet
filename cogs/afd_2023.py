@@ -271,7 +271,7 @@ class Afd(commands.Cog):
     
     async def get_credits(self) -> gists.File:
         pk = self.pk
-        \original_pk = self.original_pk
+        original_pk = self.original_pk
         credits_rows = [HEADERS_FMT % ("Dex", PKM_LABEL, "Art", "Artist", "Artist's ID"), HEADERS_FMT % ("---", "---", "---", "---", "---")]
 
         for idx, row in pk.iterrows():
