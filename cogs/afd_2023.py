@@ -251,14 +251,19 @@ class Afd(commands.Cog):
 
     
     async def resolve_imgur_url(self, url: str):
-        link = (url.replace("https://imgur.com/", "").strip()).split("/")
-        _id = link[-1]
-        if link[0] == "a":
-            req_url = f"https://api.imgur.com/3/album/{_id}"
-        elif link[0] == "gallery":
-            req_url = f"https://api.imgur.com/3/gallery/{_id}"
-        elif len(link) == 1:
-            return f"https://i.imgur.com/{_id}.png"
+        if url.startswith("https://imgur.com/"):
+            link = (url.replace("https://imgur.com/", "").strip()).split("/")
+            _id = link[-1]
+            if link[0] == "a":
+                req_url = f"https://api.imgur.com/3/album/{_id}"
+            elif link[0] == "gallery":
+                req_url = f"https://api.imgur.com/3/gallery/{_id}"
+            elif len(link) == 1:
+                return f"https://i.imgur.com/{_id}.png"
+        elif url.startswith("https://i.imgur.com/"):
+            return url
+        else:
+            raise ValueError(f"Invalid url: {url}")
 
         headers = {'Authorization': f'Client-ID {IMGUR_CLIENT_ID}'}
         async with self.bot.session.get(req_url, headers=headers) as resp:
