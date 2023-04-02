@@ -1,18 +1,12 @@
 from __future__ import annotations
 
 import discord
-import os, datetime
-import asyncio
-import copy
-import unicodedata
-import inspect
 import itertools
 
 from discord.ext import commands, menus
-from .utils import checks, formats, time
+from .utils import time
 from .utils.paginator import BotPages
-from collections import OrderedDict, deque, Counter
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, Tuple
 from .utils.source import source
 
 from constants import NEW_LINE
@@ -170,7 +164,7 @@ class CommandSelectMenu(discord.ui.Select):
         return self._commands
 
     @commands.setter
-    def commands(self, value: typing.List[commands.command]):
+    def commands(self, value: List[commands.command]):
         self._commands = value
         self.__fill_options()
 

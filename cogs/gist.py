@@ -7,7 +7,6 @@ import re
 
 import discord
 from discord.ext import commands, menus, tasks
-import validators
 
 from .utils.paginator import BotPages
 from constants import CODE_BLOCK_FMT

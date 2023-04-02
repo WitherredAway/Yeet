@@ -1,14 +1,10 @@
-import io
-import os
 import typing
 from typing import Optional, TypeVar
 from dataclasses import dataclass
 from functools import cached_property
 import gists
 
-import discord
-import aiohttp
-from discord.ext import commands, tasks
+from discord.ext import commands
 import pandas as pd
 
 from constants import CODE_BLOCK_FMT

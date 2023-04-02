@@ -1,5 +1,4 @@
 import urllib
-import asyncio
 import typing
 from typing import Type, TypeVar
 

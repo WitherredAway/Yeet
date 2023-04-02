@@ -7,9 +7,8 @@ from dataclasses import dataclass
 import re
 import typing
 from typing import Callable, Optional, Union, Literal, List, Dict, Tuple
-import datetime
 
-import emojis
+import emoji
 import numpy as np
 import discord
 from discord.ext import commands
@@ -766,7 +765,7 @@ class ColourMenu(discord.ui.Select):
                 emoji=discord.PartialEmoji.from_str(self.view.board.un_cursor(emoji)),
                 index=content.index(emoji),
             )
-            for emoji in emojis.get(content)
+            for emoji in emoji.distinct_emoji_list(content)
         ]
         # Get any flag/regional indicator emojis from the content
         # and list them as SentEmoji objects

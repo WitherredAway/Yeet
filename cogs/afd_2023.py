@@ -1,22 +1,23 @@
-import os
-import re
-import datetime
-import pandas as pd
-import json
-import time
-import logging
-from functools import cached_property
-from typing import Optional, Callable, Dict, List, Tuple
+from __future__ import annotations
 
-import discord
-from discord.ext import commands, tasks
-import gists
+import datetime
+import json
+import logging
+import os
 import random
-from replit import db
+import re
+import time
+from functools import cached_property
+from typing import Callable, Dict, List, Optional, Tuple
+
+import aiohttp
+import discord
+import gists
+import pandas as pd
+from discord.ext import commands, tasks
 
 from constants import NEW_LINE as NL
 from keep_alive import app
-
 
 IMGUR_API_URL = "https://api.imgur.com/3/album/%s/images"
 IMGUR_CLIENT_ID = os.getenv("IMGUR_CLIENT_ID")

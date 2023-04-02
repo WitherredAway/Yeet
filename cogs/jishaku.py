@@ -1,6 +1,4 @@
 import os
-import sys
-import discord
 from discord.ext import menus, commands
 
 from jishaku.cog import Jishaku
