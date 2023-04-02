@@ -1,17 +1,21 @@
 import datetime
+import typing
 
 import discord
 import humanize
 from discord.ext import commands
 
+if typing.TYPE_CHECKING:
+    from main import Bot
 
-class Bot(commands.Cog):
+
+class BotCog(commands.Cog):
     """Commands and events related to the bot."""
 
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: Bot):
         self.bot = bot
 
-    display_emoji: discord.PartialEmoji = "👾"
+    display_emoji = "👾"
 
     @commands.Cog.listener()
     async def on_message_edit(self, before: discord.Message, after: discord.Message):
@@ -73,7 +77,7 @@ class Bot(commands.Cog):
     # logs
     @commands.Cog.listener(name="on_command")
     async def on_command(self, ctx: commands.Context):
-        log_ch = self.bot.LOG_CHANNEL
+        log_ch = self.bot.log_channel
         user = ctx.author
 
         em = self.bot.Embed()
@@ -144,4 +148,4 @@ class Bot(commands.Cog):
 
 
 async def setup(bot: commands.Bot):
-    await bot.add_cog(Bot(bot))
+    await bot.add_cog(BotCog(bot))
