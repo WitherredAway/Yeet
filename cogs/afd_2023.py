@@ -53,8 +53,12 @@ ID_LABEL_P = "id"
 CR = "\r"
 TOP_N = 5
 
-
 HEADERS_FMT = "|   %s   |   %s   |   %s   |   %s   |   %s   |"
+LOG_BORDER_LENGTH = 50
+
+
+log = logging.getLogger(__name__)
+
 
 
 logger = logging.getLogger(__name__)
@@ -270,6 +274,7 @@ class Afd(commands.Cog):
             raise ValueError(f"Invalid url: {url}")
 
         headers = {"Authorization": f"Client-ID {IMGUR_CLIENT_ID}"}
+        log.info("Calling Imgur API")
         async with self.bot.session.get(req_url, headers=headers) as resp:
             try:
                 result = await resp.json()
@@ -315,6 +320,7 @@ class Afd(commands.Cog):
             HEADERS_FMT % ("---", "---", "---", "---", "---"),
         ]
 
+        start = time.time()
         for idx, row in pk.iterrows():
             pkm_name = row[PKM_LABEL]
             try:
@@ -343,6 +349,7 @@ class Afd(commands.Cog):
             credits_rows.append(
                 HEADERS_FMT % (pkm_dex, pkm_name, link, person, person_id)
             )
+        log.info(f"AFD Credits: Row loop complete in {round(time.time()-start, 2)}s")
         return gists.File(
             name=CREDITS_FILENAME,
             content=f"""# Formatted table of credits
@@ -370,7 +377,6 @@ class Afd(commands.Cog):
         )
 
         start = time.time()
-        logger.info("AFD Credits: Started working on top participants")
         top_participants_file = gists.File(
             name=TOP_PARTICIPANTS_FILENAME,
             content=f"""# Top {TOP_N} Participants
@@ -380,16 +386,13 @@ Thank you to EVERYONE who participated, but here are the top few that deserve ex
                 "\r", ""
             ),
         )
-        logger.info(f"AFD Credits: Done in {round(time.time()-start, 2)}")
+        log.info(f"AFD Credits: Top participants fetched in {round(time.time()-start, 2)}s")
 
         start = time.time()
-        logger.info("AFD Credits: Started working on credits file")
         credits_file = await self.get_credits()
-        logger.info(f"AFD Credits: Done in {round(time.time()-start, 2)}")
+        log.info(f"AFD Credits: Credits file completed in {round(time.time()-start, 2)}s")
 
-        start = time.time()
-        logger.info("AFD Credits: Started working on participants")
-        participants = await self.get_participants(df_grouped)
+        participants = NL.join([p for l, p in await self.get_participants()])
         participants_file = gists.File(
             name=PARTICIPANTS_FILENAME,
             content=f"""# List of participants
@@ -399,7 +402,6 @@ In alphabetical order. Thank you everyone who participated!
                 "\r", ""
             ),
         )
-        logger.info(f"AFD Credits: Done in {round(time.time()-start, 2)}")
 
         start = time.time()
         files = [contents_file, top_participants_file, credits_file, participants_file]
@@ -407,13 +409,13 @@ In alphabetical order. Thank you everyone who participated!
             description=f"THANKS TO ALL {len(df_grouped)} PARTICIPANTS WITHOUT WHOM THIS WOULDN'T HAVE BEEN POSSIBLE!",
             files=files,
         )
-        logger.info(f"AFD Credits: Updated credits in {round(time.time()-og_start, 2)}")
+        log.info(f"AFD Credits: Updated credits in {round(time.time()-og_start, 2)}s")
 
     # The task that updates the unclaimed pokemon gist
     @tasks.loop(minutes=5)
     async def update_pokemon(self):
         og_start = time.time()
-        logger.info(f"AFD: Task started")
+        log.info(NL + "-"*LOG_BORDER_LENGTH + NL + f"AFD: Task started")
 
         start = time.time()
         logger.info(f"AFD: Fetching spreadsheet started")
@@ -456,6 +458,7 @@ In alphabetical order. Thank you everyone who participated!
         files.append(gists.File(name=CONTENTS_FILENAME, content=contents))
 
         if not (self.unc or self.unr or self.ml):
+            log.info(f"AFD: Task returned in {round(time.time()-og_start, 2)}s" + NL + "-"*LOG_BORDER_LENGTH)
             return
 
         description = f"{self.ml_amount} claimed pokemon with missing links, {self.unc_amount} unclaimed pokemon and {self.unr_amount} unreviewed pokemon - As of {date} GMT (Checks every 5 minutes, and updates only if there is a change)"
@@ -465,21 +468,18 @@ In alphabetical order. Thank you everyone who participated!
             description=description,
         )
 
-        start = time.time()
-        logger.info(f"AFD: Updating credits started")
         try:
             await self.update_credits()
         except Exception as e:
             await self.update_channel.send(e)
             raise e
-        logger.info(f"AFD: Updated credits in {round(time.time()-start, 2)}s")
 
         update_msg = f"""Updated {" and ".join(updated)}!
 (<{self.afd_gist.url}>)
 
 Credits: <{self.credits_gist.url}>"""
         await self.update_channel.send(update_msg)
-        logger.info(f"AFD: Task completed in {round(time.time()-og_start, 2)}s")
+        log.info(f"AFD: Task completed in {round(time.time()-og_start, 2)}s" + NL + "-"*LOG_BORDER_LENGTH)
 
     @update_pokemon.before_loop
     async def before_update(self):

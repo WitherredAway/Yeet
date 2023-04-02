@@ -18,7 +18,8 @@ from cogs.draw_utils.emoji_cache import EmojiCache
 from cogs.draw import DrawView
 
 
-logger = logging.basicConfig()
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
 
 
 def get_prefix(bot, message):
