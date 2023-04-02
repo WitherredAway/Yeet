@@ -3,6 +3,8 @@ import re
 import datetime
 import pandas as pd
 import json
+import time
+import logging
 from functools import cached_property
 from typing import Optional, Callable, Dict, List, Tuple
 
@@ -52,6 +54,9 @@ TOP_N = 5
 
 
 HEADERS_FMT = "|   %s   |   %s   |   %s   |   %s   |   %s   |"
+
+
+logger = logging.getLogger(__name__)
 
 
 class Afd(commands.Cog):
@@ -133,8 +138,9 @@ class Afd(commands.Cog):
             pkm = row[PKM_LABEL]
             try:
                 dex = int(self.original_pk[self.original_pk[ENGLISH_NAME_LABEL_P] == pkm][ID_LABEL_P])
-            except TypeError:
-                continue
+            except TypeError as e:
+                print(pkm)
+                raise e
             unc_list.append(f"1. {pkm}")
             unclaimed[dex] = {'name': pkm, 'image_url': IMAGE_URL % dex}
 
@@ -276,7 +282,11 @@ class Afd(commands.Cog):
 
         for idx, row in pk.iterrows():
             pkm_name = row[PKM_LABEL]
-            pkm_dex = int(original_pk[original_pk[ENGLISH_NAME_LABEL_P] == pkm_name][ID_LABEL_P])
+            try:
+                pkm_dex = int(original_pk[original_pk[ENGLISH_NAME_LABEL_P] == pkm_name][ID_LABEL_P])
+            except TypeError as e:
+                print(pkm_name)
+                raise e
             if not pd.isna(person_id := row[ID_LABEL]):
                 person_id = int(person_id)
 
@@ -309,6 +319,8 @@ class Afd(commands.Cog):
         return NL.join([p for l, p in participants[:n]])
     
     async def update_credits(self):
+        og_start = time.time()
+
         df = self.pk
         df_grouped = df.groupby(ID_LABEL)
 
@@ -317,28 +329,45 @@ class Afd(commands.Cog):
 1. [Formatted table of credits]({AFD_CREDITS_GIST_URL}#file-2-credits-md)
 1. [List of participants]({AFD_CREDITS_GIST_URL}#file-3-participants-md)""")
         
+        start = time.time()
+        logger.info("AFD Credits: Started working on top participants")
         top_participants_file = gists.File(name=TOP_PARTICIPANTS_FILENAME, content=f"""# Top {TOP_N} Participants
 Thank you to EVERYONE who participated, but here are the top few that deserve extra recognition!
 
 {await self.get_participants(df_grouped, n=TOP_N, count=True, sort_key=lambda s: s[0], reverse=True)}""".replace("\r", ""))
+        logger.info(f"AFD Credits: Done in {round(time.time()-start, 2)}")
 
+        start = time.time()
+        logger.info("AFD Credits: Started working on credits file")
         credits_file = await self.get_credits()
+        logger.info(f"AFD Credits: Done in {round(time.time()-start, 2)}")
 
+        start = time.time()
+        logger.info("AFD Credits: Started working on participants")
         participants = await self.get_participants(df_grouped)
         participants_file = gists.File(name=PARTICIPANTS_FILENAME, content=f"""# List of participants
 In alphabetical order. Thank you everyone who participated!
 
 {participants}""".replace("\r", ""))
+        logger.info(f"AFD Credits: Done in {round(time.time()-start, 2)}")
 
+        start = time.time()
         files = [contents_file, top_participants_file, credits_file, participants_file]
         await self.credits_gist.edit(description=f"THANKS TO ALL {len(df_grouped)} PARTICIPANTS WITHOUT WHOM THIS WOULDN'T HAVE BEEN POSSIBLE!", files=files)
-
+    
     # The task that updates the unclaimed pokemon gist
     @tasks.loop(minutes=5)
     async def update_pokemon(self):
+        og_start = time.time()
+        logger.info(f"AFD: Task started")
+
+        start = time.time()
+        logger.info(f"AFD: Fetching spreadsheet started")
         self.pk = pd.read_csv(
             SHEET_URL, index_col=0, header=6, dtype={ID_LABEL: object}
         )
+        logger.info(f"AFD: Done in {round(time.time()-start, 2)}")
+
         self.pk.reset_index(inplace=True)
         date = (datetime.datetime.utcnow()).strftime("%I:%M%p, %d/%m/%Y")
         updated = []
@@ -376,21 +405,27 @@ In alphabetical order. Thank you everyone who participated!
             return
 
         description = f"{self.ml_amount} claimed pokemon with missing links, {self.unc_amount} unclaimed pokemon and {self.unr_amount} unreviewed pokemon - As of {date} GMT (Checks every 5 minutes, and updates only if there is a change)"
+        start = time.time()
         await self.afd_gist.edit(
             files=files,
             description=description,
         )
+        
+        start = time.time()
+        logger.info(f"AFD: Updating credits started")
         try:
             await self.update_credits()
         except Exception as e:
             await self.update_channel.send(e)
             raise e
+        logger.info(f"AFD: Updated credits in {round(time.time()-start, 2)}s")
 
         update_msg = f"""Updated {" and ".join(updated)}!
 (<{self.afd_gist.url}>)
 
 Credits: <{self.credits_gist.url}>"""
         await self.update_channel.send(update_msg)
+        logger.info(f"AFD: Task completed in {round(time.time()-og_start, 2)}s")
 
     @update_pokemon.before_loop
     async def before_update(self):
