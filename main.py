@@ -77,8 +77,8 @@ class Bot(commands.Bot):
             await self.fetch_guild(_id) for _id in self.EMOJI_SERVER_IDS
         ]
 
-        self.STATUS_CHANNEL = await self.fetch_channel(os.getenv("statusCHANNEL"))
-        self.LOG_CHANNEL = await self.fetch_channel(os.getenv("logCHANNEL"))
+        self.status_channel = await self.fetch_channel(os.getenv("statusCHANNEL"))
+        self.log_channel = await self.fetch_channel(os.getenv("logCHANNEL"))
 
         self.session = aiohttp.ClientSession(loop=self.loop)
 
@@ -87,6 +87,12 @@ class Bot(commands.Bot):
 
         for filename in set(self.COGS.values()):
             await self.load_extension(f"cogs.{filename}")
+
+        total_s: int = (datetime.datetime.utcnow()-self.uptime).seconds
+        m, s = divmod(total_s, 60)
+        msg = f"\033[32;1m{self.user}\033[0;32m connected in \033[33;1m{m}m{s}s\033[0;32m.\033[0m"
+        await self.status_channel.send(f"```ansi\n{msg}\n```")
+        log.info(msg)
 
     class Embed(discord.Embed):
         def __init__(self, **kwargs):

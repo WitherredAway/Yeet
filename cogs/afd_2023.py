@@ -60,8 +60,13 @@ LOG_BORDER_LENGTH = 50
 log = logging.getLogger(__name__)
 
 
+class AfdView(discord.ui.View):
+    def __init__(self, cog: Afd):
+        super().__init__()
+        self.cog = cog
 
-logger = logging.getLogger(__name__)
+        self.add_item(discord.ui.Button(label="AFD Gist", url=self.cog.afd_gist.url, style=discord.ButtonStyle.url))
+        self.add_item(discord.ui.Button(label="Credits Gist", url=self.cog.credits_gist.url, style=discord.ButtonStyle.url))
 
 
 class Afd(commands.Cog):
@@ -69,14 +74,30 @@ class Afd(commands.Cog):
         self.bot = bot
         self.hidden = True
 
-        self.bot.user_cache = {}
-        self.user_cache: dict = self.bot.user_cache
+        self.bot.user_cache: dict = {}
+        self.user_cache = self.bot.user_cache
 
     display_emoji = "🗓️"
 
     @cached_property
     def original_pk(self):
         return self.bot.get_cog("Poketwo").pk
+    
+    @cached_property
+    def pk(self) -> pd.DataFrame:
+        start = time.time()
+        pk = pd.read_csv(
+            SHEET_URL, index_col=0, header=6, dtype={ID_LABEL: object}
+        )
+        log.info(f"AFD: Fetched spreadsheet in {round(time.time()-start, 2)}s")
+        return pk
+
+    def update_pk(self):
+        self.__dict__.pop('pk', None)
+
+    @property
+    def pk_grouped(self, label: Optional[str] = ID_LABEL) -> pd.core.groupby.DataFrameGroupBy:
+        return self.pk.groupby(label)
 
     async def cog_load(self):
         self.gists_client = gists.Client()
@@ -92,6 +113,7 @@ class Afd(commands.Cog):
         self.update_pokemon.cancel()
 
     async def fetch_user(self, user_id: int) -> discord.User:
+        user_id = int(user_id)
         if (user := self.user_cache.get(user_id)) is not None:
             return user
 
@@ -99,11 +121,18 @@ class Afd(commands.Cog):
             try:
                 user = await self.bot.fetch_user(user_id)
             except Exception as e:
-                await self.update_channel.send(person_id)
+                await self.update_channel.send(user_id)
                 raise e
 
         self.user_cache[user_id] = user
         return user
+    
+    def get_dex_from_name(self, name: str):
+        try:
+            return int(self.original_pk[self.original_pk[ENGLISH_NAME_LABEL_P] == name][ID_LABEL_P])
+        except TypeError as e:
+            print(name)
+            raise e
 
     def validate_unclaimed(self):
         pk = self.pk
@@ -112,19 +141,7 @@ class Afd(commands.Cog):
         unclaimed = {}
         for idx, row in unc_df.iterrows():
             pkm = row[PKM_LABEL]
-            try:
-                dex = int(
-                    self.original_pk[self.original_pk[ENGLISH_NAME_LABEL_P] == pkm][
-                        ID_LABEL_P
-                    ]
-                )
-            except TypeError as e:
-                print(pkm)
-                raise e
             unc_list.append(f"1. {pkm}")
-            unclaimed[dex] = {"name": pkm, "image_url": IMAGE_URL % dex}
-
-        db["afd_random"] = json.dumps(unclaimed, indent=4)
 
         unc_amount = len(unc_list)
         if hasattr(self, "unc_amount"):
@@ -243,7 +260,20 @@ class Afd(commands.Cog):
     @commands.is_owner()
     @commands.group(invoke_without_command=True)
     async def afd(self, ctx: commands.Context):
-        await ctx.send(self.afd_gist.url)
+        self.update_pk()
+        view = AfdView(self)
+        
+        unc_list, unc_amount = self.validate_unclaimed()
+        unr_list, unr_amount = await self.validate_unreviewed()
+        ml_list, ml_list_mention, ml_amount = await self.validate_missing_link()
+        await ctx.send(
+            f"""Number of Unclaimed pokemon: **{unc_amount}**
+Number of Unreviewed pokemon: **{unr_amount}**
+Number of Incomplete pokemon: **{ml_amount}**
+
+Number of participants: **{len(await self.get_participants())}**""",
+            view=view
+        )
 
     @commands.is_owner()
     @afd.command()
@@ -291,13 +321,12 @@ class Afd(commands.Cog):
 
     async def get_participants(
         self,
-        df_grouped: pd.core.groupby.DataFrameGroupBy,
         *,
         n: Optional[int] = None,
         count: Optional[bool] = False,
         sort_key: Optional[Callable] = None,
         reverse: Optional[bool] = False,
-    ) -> str:
+    ) -> List[Tuple[int, str]]:
         if sort_key is None:
             sort_key = lambda s: s[-1]
 
@@ -306,15 +335,14 @@ class Afd(commands.Cog):
                 len(pkms),
                 f"1. {await self.fetch_user(user_id)} (`{user_id}`){f' - {len(pkms)} Drawings' if count is True else ''}",
             )
-            for user_id, pkms in df_grouped.groups.items()
+            for user_id, pkms in self.pk_grouped.groups.items()
         ]
         participants.sort(key=sort_key, reverse=reverse)
 
-        return NL.join([p for l, p in participants[:n]])
+        return participants[:n]
 
     async def get_credits(self) -> gists.File:
         pk = self.pk
-        original_pk = self.original_pk
         credits_rows = [
             HEADERS_FMT % ("Dex", PKM_LABEL, "Art", "Artist", "Artist's ID"),
             HEADERS_FMT % ("---", "---", "---", "---", "---"),
@@ -323,15 +351,7 @@ class Afd(commands.Cog):
         start = time.time()
         for idx, row in pk.iterrows():
             pkm_name = row[PKM_LABEL]
-            try:
-                pkm_dex = int(
-                    original_pk[original_pk[ENGLISH_NAME_LABEL_P] == pkm_name][
-                        ID_LABEL_P
-                    ]
-                )
-            except TypeError as e:
-                print(pkm_name)
-                raise e
+            pkm_dex = self.get_dex_from_name(pkm_name)
             if not pd.isna(person_id := row[ID_LABEL]):
                 person_id = int(person_id)
 
@@ -364,10 +384,6 @@ class Afd(commands.Cog):
 
     async def update_credits(self):
         og_start = time.time()
-
-        df = self.pk
-        df_grouped = df.groupby(ID_LABEL)
-
         contents_file = gists.File(
             name=CONTENTS_FILENAME,
             content=f"""# Contents of this Gist
@@ -382,7 +398,7 @@ class Afd(commands.Cog):
             content=f"""# Top {TOP_N} Participants
 Thank you to EVERYONE who participated, but here are the top few that deserve extra recognition!
 
-{await self.get_participants(df_grouped, n=TOP_N, count=True, sort_key=lambda s: s[0], reverse=True)}""".replace(
+{NL.join([p for l, p in (await self.get_participants(n=TOP_N, count=True, sort_key=lambda s: s[0], reverse=True))])}""".replace(
                 "\r", ""
             ),
         )
@@ -406,7 +422,7 @@ In alphabetical order. Thank you everyone who participated!
         start = time.time()
         files = [contents_file, top_participants_file, credits_file, participants_file]
         await self.credits_gist.edit(
-            description=f"THANKS TO ALL {len(df_grouped)} PARTICIPANTS WITHOUT WHOM THIS WOULDN'T HAVE BEEN POSSIBLE!",
+            description=f"THANKS TO ALL {len(self.pk_grouped)} PARTICIPANTS WITHOUT WHOM THIS WOULDN'T HAVE BEEN POSSIBLE!",
             files=files,
         )
         log.info(f"AFD Credits: Updated credits in {round(time.time()-og_start, 2)}s")
@@ -417,12 +433,7 @@ In alphabetical order. Thank you everyone who participated!
         og_start = time.time()
         log.info(NL + "-"*LOG_BORDER_LENGTH + NL + f"AFD: Task started")
 
-        start = time.time()
-        logger.info(f"AFD: Fetching spreadsheet started")
-        self.pk = pd.read_csv(
-            SHEET_URL, index_col=0, header=6, dtype={ID_LABEL: object}
-        )
-        logger.info(f"AFD: Done in {round(time.time()-start, 2)}")
+        self.update_pk()
 
         self.pk.reset_index(inplace=True)
         date = (datetime.datetime.utcnow()).strftime("%I:%M%p, %d/%m/%Y")

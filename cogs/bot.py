@@ -14,12 +14,6 @@ class Bot(commands.Cog):
     display_emoji: discord.PartialEmoji = "👾"
 
     @commands.Cog.listener()
-    async def on_ready(self):
-        msg = f"\033[0;32mRunning.\n{self.bot.user}\033[0m"
-        await self.bot.STATUS_CHANNEL.send(f"```ansi\n{msg}\n```")
-        print(msg)
-
-    @commands.Cog.listener()
     async def on_message_edit(self, before: discord.Message, after: discord.Message):
         await self.bot.process_commands(after)
 
