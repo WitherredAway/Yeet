@@ -406,6 +406,7 @@ In alphabetical order. Thank you everyone who participated!
             description=f"THANKS TO ALL {len(df_grouped)} PARTICIPANTS WITHOUT WHOM THIS WOULDN'T HAVE BEEN POSSIBLE!",
             files=files,
         )
+        logger.info(f"AFD Credits: Updated credits in {round(time.time()-og_start, 2)}")
 
     # The task that updates the unclaimed pokemon gist
     @tasks.loop(minutes=5)
