@@ -22,7 +22,7 @@ IMGUR_API_URL = 'https://api.imgur.com/3/album/%s/images'
 IMGUR_CLIENT_ID = os.getenv("IMGUR_CLIENT_ID")
 IMGUR_CLIENT_SECRET = os.getenv("IMGUR_CLIENT_SECRET")
 
-IMAGE_URL = "https://poketwo.s3.object1.us-east-1.tswcloud.com/staging/images/%s.png?v=26"
+IMAGE_URL = os.getenv("POKETWO_IMAGE_SERVER_API")
 SHEET_URL = os.getenv("AFD_SHEET_URL")
 AFD_GIST_URL = os.getenv("AFD_GIST_URL")
 AFD_CREDITS_GIST_URL = os.getenv("AFD_CREDITS_GIST_URL")
@@ -67,6 +67,8 @@ class Afd(commands.Cog):
         self.bot.user_cache = {}
         self.user_cache: dict = self.bot.user_cache
 
+    display_emoji = "🗓️"
+
     @cached_property
     def original_pk(self):
         return self.bot.get_cog("Poketwo").pk
@@ -84,8 +86,6 @@ class Afd(commands.Cog):
     def cog_unload(self):
         self.update_pokemon.cancel()
 
-    display_emoji = "🧪"
-
     async def fetch_user(self, user_id: int) -> discord.User:
         if (user := self.user_cache.get(user_id)) is not None:
             return user
@@ -99,35 +99,6 @@ class Afd(commands.Cog):
         
         self.user_cache[user_id] = user
         return user
-
-    def format_unreviewed(
-        self, df: pd.DataFrame, user: discord.User, pkm_indexes: list
-    ):
-        pkm_list = []
-        for idx, pkm_idx in enumerate(pkm_indexes):
-            pokename = df.loc[pkm_idx, PKM_LABEL]
-            comment = (
-                df.loc[pkm_idx, CMT_LABEL]
-                if str(df.loc[pkm_idx, CMT_LABEL]) != "nan"
-                else None
-            )
-            link = df.loc[pkm_idx, IMGUR_LABEL]
-            location = f"{SHEET_URL[:-24]}/edit#gid=0&range=E{pkm_idx+ROW_INDEX_OFFSET}"
-
-            comment_text = f"""(Marked for review)
-        - Comments: {comment}
-            """
-            text = f"""
-1. `{pokename}` {comment_text if comment else ""}"""
-    # - [Sheet location]({location})
-    # - [Imgur]({link})"""
-            pkm_list.append(text)
-        format_list = "\n".join(pkm_list)
-        return_text = f"""<details>
-<summary>{user} ({user.id}) - {len(pkm_list)}</summary>
-{format_list}
-</details>"""
-        return return_text
 
     def validate_unclaimed(self):
         pk = self.pk
@@ -157,6 +128,35 @@ class Afd(commands.Cog):
             self.unc_amount = unc_amount
 
         return unc_list, unc_amount
+
+    def format_unreviewed(
+        self, df: pd.DataFrame, user: discord.User, pkm_indexes: list
+    ):
+        pkm_list = []
+        for idx, pkm_idx in enumerate(pkm_indexes):
+            pokename = df.loc[pkm_idx, PKM_LABEL]
+            comment = (
+                df.loc[pkm_idx, CMT_LABEL]
+                if str(df.loc[pkm_idx, CMT_LABEL]) != "nan"
+                else None
+            )
+            link = df.loc[pkm_idx, IMGUR_LABEL]
+            location = f"{SHEET_URL[:-24]}/edit#gid=0&range=E{pkm_idx+ROW_INDEX_OFFSET}"
+
+            comment_text = f"""(Marked for review)
+        - Comments: {comment}
+            """
+            text = f"""
+1. `{pokename}` {comment_text if comment else ""}"""
+    # - [Sheet location]({location})
+    # - [Imgur]({link})"""
+            pkm_list.append(text)
+        format_list = "\n".join(pkm_list)
+        return_text = f"""<details>
+<summary>{user} ({user.id}) - {len(pkm_list)}</summary>
+{format_list}
+</details>"""
+        return return_text
 
     async def get_unreviewed(self, df, df_grouped):
         df_list = []
@@ -249,7 +249,6 @@ class Afd(commands.Cog):
         self.update_pokemon.restart()
         await ctx.message.add_reaction("✅")
 
-    
     async def resolve_imgur_url(self, url: str):
         if url.startswith("https://imgur.com/"):
             link = (url.replace("https://imgur.com/", "").strip()).split("/")
@@ -279,6 +278,15 @@ class Afd(commands.Cog):
                     return result["data"]["images"][0]["link"]
                 except KeyError as e:
                     print(result)
+    
+    async def get_participants(self, df_grouped: pd.core.groupby.DataFrameGroupBy, *, n: Optional[int] = None, count: Optional[bool] = False, sort_key: Optional[Callable] = None, reverse: Optional[bool] = False) -> str:
+        if sort_key is None:
+            sort_key = lambda s: s[-1]
+
+        participants = [(len(pkms), f"1. {await self.fetch_user(user_id)} (`{user_id}`){f' - {len(pkms)} Drawings' if count is True else ''}") for user_id, pkms in df_grouped.groups.items()]
+        participants.sort(key=sort_key, reverse=reverse)
+
+        return NL.join([p for l, p in participants[:n]])
     
     async def get_credits(self) -> gists.File:
         pk = self.pk
@@ -314,15 +322,6 @@ class Afd(commands.Cog):
 
 {NL.join(credits_rows)}""".replace("\r", ""))
 
-    async def get_participants(self, df_grouped: pd.core.groupby.DataFrameGroupBy, *, n: Optional[int] = None, count: Optional[bool] = False, sort_key: Optional[Callable] = None, reverse: Optional[bool] = False) -> str:
-        if sort_key is None:
-            sort_key = lambda s: s[-1]
-
-        participants = [(len(pkms), f"1. {await self.fetch_user(user_id)} (`{user_id}`){f' - {len(pkms)} Drawings' if count is True else ''}") for user_id, pkms in df_grouped.groups.items()]
-        participants.sort(key=sort_key, reverse=reverse)
-
-        return NL.join([p for l, p in participants[:n]])
-    
     async def update_credits(self):
         og_start = time.time()
 
