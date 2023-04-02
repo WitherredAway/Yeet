@@ -75,7 +75,9 @@ class Colour:
         )
 
     @classmethod
-    async def from_emoji(cls, emoji: Union[str, discord.Emoji, discord.PartialEmoji]) -> Colour:
+    async def from_emoji(
+        cls, emoji: Union[str, discord.Emoji, discord.PartialEmoji]
+    ) -> Colour:
         if isinstance(emoji, str):
             emoji: discord.PartialEmoji = discord.PartialEmoji.from_str(emoji)
         loop = asyncio.get_running_loop()
@@ -93,7 +95,9 @@ class Colour:
         return cls(colours[0][1])
 
     @classmethod
-    async def from_attachment(cls, attachment: discord.Attachment, *, n_colours: Optional[int] = 5) -> Colour:
+    async def from_attachment(
+        cls, attachment: discord.Attachment, *, n_colours: Optional[int] = 5
+    ) -> Colour:
         image = Image.open(io.BytesIO(await attachment.read()))
         colours: Tuple[int, Tuple[int, int, int]] = [
             colour

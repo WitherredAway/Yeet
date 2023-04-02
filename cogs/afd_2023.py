@@ -18,7 +18,7 @@ from constants import NEW_LINE as NL
 from keep_alive import app
 
 
-IMGUR_API_URL = 'https://api.imgur.com/3/album/%s/images'
+IMGUR_API_URL = "https://api.imgur.com/3/album/%s/images"
 IMGUR_CLIENT_ID = os.getenv("IMGUR_CLIENT_ID")
 IMGUR_CLIENT_SECRET = os.getenv("IMGUR_CLIENT_SECRET")
 
@@ -80,7 +80,7 @@ class Afd(commands.Cog):
         self.update_channel = await self.bot.fetch_channel(UPDATE_CHANNEL_ID)
         self.afd_gist = await self.gists_client.get_gist(AFD_GIST_URL)
         self.credits_gist = await self.gists_client.get_gist(AFD_CREDITS_GIST_URL)
-        
+
         self.update_pokemon.start()
 
     def cog_unload(self):
@@ -96,7 +96,7 @@ class Afd(commands.Cog):
             except Exception as e:
                 await self.update_channel.send(person_id)
                 raise e
-        
+
         self.user_cache[user_id] = user
         return user
 
@@ -108,12 +108,16 @@ class Afd(commands.Cog):
         for idx, row in unc_df.iterrows():
             pkm = row[PKM_LABEL]
             try:
-                dex = int(self.original_pk[self.original_pk[ENGLISH_NAME_LABEL_P] == pkm][ID_LABEL_P])
+                dex = int(
+                    self.original_pk[self.original_pk[ENGLISH_NAME_LABEL_P] == pkm][
+                        ID_LABEL_P
+                    ]
+                )
             except TypeError as e:
                 print(pkm)
                 raise e
             unc_list.append(f"1. {pkm}")
-            unclaimed[dex] = {'name': pkm, 'image_url': IMAGE_URL % dex}
+            unclaimed[dex] = {"name": pkm, "image_url": IMAGE_URL % dex}
 
         db["afd_random"] = json.dumps(unclaimed, indent=4)
 
@@ -148,8 +152,8 @@ class Afd(commands.Cog):
             """
             text = f"""
 1. `{pokename}` {comment_text if comment else ""}"""
-    # - [Sheet location]({location})
-    # - [Imgur]({link})"""
+            # - [Sheet location]({location})
+            # - [Imgur]({link})"""
             pkm_list.append(text)
         format_list = "\n".join(pkm_list)
         return_text = f"""<details>
@@ -264,7 +268,7 @@ class Afd(commands.Cog):
         else:
             raise ValueError(f"Invalid url: {url}")
 
-        headers = {'Authorization': f'Client-ID {IMGUR_CLIENT_ID}'}
+        headers = {"Authorization": f"Client-ID {IMGUR_CLIENT_ID}"}
         async with self.bot.session.get(req_url, headers=headers) as resp:
             try:
                 result = await resp.json()
@@ -278,25 +282,46 @@ class Afd(commands.Cog):
                     return result["data"]["images"][0]["link"]
                 except KeyError as e:
                     print(result)
-    
-    async def get_participants(self, df_grouped: pd.core.groupby.DataFrameGroupBy, *, n: Optional[int] = None, count: Optional[bool] = False, sort_key: Optional[Callable] = None, reverse: Optional[bool] = False) -> str:
+
+    async def get_participants(
+        self,
+        df_grouped: pd.core.groupby.DataFrameGroupBy,
+        *,
+        n: Optional[int] = None,
+        count: Optional[bool] = False,
+        sort_key: Optional[Callable] = None,
+        reverse: Optional[bool] = False,
+    ) -> str:
         if sort_key is None:
             sort_key = lambda s: s[-1]
 
-        participants = [(len(pkms), f"1. {await self.fetch_user(user_id)} (`{user_id}`){f' - {len(pkms)} Drawings' if count is True else ''}") for user_id, pkms in df_grouped.groups.items()]
+        participants = [
+            (
+                len(pkms),
+                f"1. {await self.fetch_user(user_id)} (`{user_id}`){f' - {len(pkms)} Drawings' if count is True else ''}",
+            )
+            for user_id, pkms in df_grouped.groups.items()
+        ]
         participants.sort(key=sort_key, reverse=reverse)
 
         return NL.join([p for l, p in participants[:n]])
-    
+
     async def get_credits(self) -> gists.File:
         pk = self.pk
         original_pk = self.original_pk
-        credits_rows = [HEADERS_FMT % ("Dex", PKM_LABEL, "Art", "Artist", "Artist's ID"), HEADERS_FMT % ("---", "---", "---", "---", "---")]
+        credits_rows = [
+            HEADERS_FMT % ("Dex", PKM_LABEL, "Art", "Artist", "Artist's ID"),
+            HEADERS_FMT % ("---", "---", "---", "---", "---"),
+        ]
 
         for idx, row in pk.iterrows():
             pkm_name = row[PKM_LABEL]
             try:
-                pkm_dex = int(original_pk[original_pk[ENGLISH_NAME_LABEL_P] == pkm_name][ID_LABEL_P])
+                pkm_dex = int(
+                    original_pk[original_pk[ENGLISH_NAME_LABEL_P] == pkm_name][
+                        ID_LABEL_P
+                    ]
+                )
             except TypeError as e:
                 print(pkm_name)
                 raise e
@@ -306,21 +331,28 @@ class Afd(commands.Cog):
                 imgur = row[IMGUR_LABEL]
                 if not pd.isna(imgur):
                     imgur = await self.resolve_imgur_url(imgur)
-                    link = f'![art]({imgur})'
+                    link = f"![art]({imgur})"
                 else:
                     link = "None"
 
                 user = await self.fetch_user(person_id)
                 person = discord.utils.escape_markdown(str(user))
             else:
-                person = person_id  = "None"
-            credits_rows.append(HEADERS_FMT % (pkm_dex, pkm_name, link, person, person_id))
-        return gists.File(name=CREDITS_FILENAME, content=f"""# Formatted table of credits
+                person = person_id = "None"
+            credits_rows.append(
+                HEADERS_FMT % (pkm_dex, pkm_name, link, person, person_id)
+            )
+        return gists.File(
+            name=CREDITS_FILENAME,
+            content=f"""# Formatted table of credits
 (Use your browser's "Find in page" feature (Ctrl/CMD + F) to look for specific ones)
 
 (Click on an image to see a bigger version)
 
-{NL.join(credits_rows)}""".replace("\r", ""))
+{NL.join(credits_rows)}""".replace(
+                "\r", ""
+            ),
+        )
 
     async def update_credits(self):
         og_start = time.time()
@@ -328,17 +360,25 @@ class Afd(commands.Cog):
         df = self.pk
         df_grouped = df.groupby(ID_LABEL)
 
-        contents_file = gists.File(name=CONTENTS_FILENAME, content=f"""# Contents of this Gist
+        contents_file = gists.File(
+            name=CONTENTS_FILENAME,
+            content=f"""# Contents of this Gist
 1. [Top {TOP_N} Participants]({AFD_CREDITS_GIST_URL}#file-1-top-participants-md)
 1. [Formatted table of credits]({AFD_CREDITS_GIST_URL}#file-2-credits-md)
-1. [List of participants]({AFD_CREDITS_GIST_URL}#file-3-participants-md)""")
-        
+1. [List of participants]({AFD_CREDITS_GIST_URL}#file-3-participants-md)""",
+        )
+
         start = time.time()
         logger.info("AFD Credits: Started working on top participants")
-        top_participants_file = gists.File(name=TOP_PARTICIPANTS_FILENAME, content=f"""# Top {TOP_N} Participants
+        top_participants_file = gists.File(
+            name=TOP_PARTICIPANTS_FILENAME,
+            content=f"""# Top {TOP_N} Participants
 Thank you to EVERYONE who participated, but here are the top few that deserve extra recognition!
 
-{await self.get_participants(df_grouped, n=TOP_N, count=True, sort_key=lambda s: s[0], reverse=True)}""".replace("\r", ""))
+{await self.get_participants(df_grouped, n=TOP_N, count=True, sort_key=lambda s: s[0], reverse=True)}""".replace(
+                "\r", ""
+            ),
+        )
         logger.info(f"AFD Credits: Done in {round(time.time()-start, 2)}")
 
         start = time.time()
@@ -349,16 +389,24 @@ Thank you to EVERYONE who participated, but here are the top few that deserve ex
         start = time.time()
         logger.info("AFD Credits: Started working on participants")
         participants = await self.get_participants(df_grouped)
-        participants_file = gists.File(name=PARTICIPANTS_FILENAME, content=f"""# List of participants
+        participants_file = gists.File(
+            name=PARTICIPANTS_FILENAME,
+            content=f"""# List of participants
 In alphabetical order. Thank you everyone who participated!
 
-{participants}""".replace("\r", ""))
+{participants}""".replace(
+                "\r", ""
+            ),
+        )
         logger.info(f"AFD Credits: Done in {round(time.time()-start, 2)}")
 
         start = time.time()
         files = [contents_file, top_participants_file, credits_file, participants_file]
-        await self.credits_gist.edit(description=f"THANKS TO ALL {len(df_grouped)} PARTICIPANTS WITHOUT WHOM THIS WOULDN'T HAVE BEEN POSSIBLE!", files=files)
-    
+        await self.credits_gist.edit(
+            description=f"THANKS TO ALL {len(df_grouped)} PARTICIPANTS WITHOUT WHOM THIS WOULDN'T HAVE BEEN POSSIBLE!",
+            files=files,
+        )
+
     # The task that updates the unclaimed pokemon gist
     @tasks.loop(minutes=5)
     async def update_pokemon(self):
@@ -414,7 +462,7 @@ In alphabetical order. Thank you everyone who participated!
             files=files,
             description=description,
         )
-        
+
         start = time.time()
         logger.info(f"AFD: Updating credits started")
         try:

@@ -69,7 +69,6 @@ EMBED_DESC_CHAR_LIMIT = 4096
 EMBED_FIELD_CHAR_LIMIT = 1024
 
 
-
 @dataclass
 class Coords:
     x: int
@@ -143,7 +142,9 @@ class StartView(discord.ui.View):
 
     async def start(self):
         embed = self.bot.Embed(description=str(self.board))
-        embed.set_footer(text="Custom emojis may not appear here due to a discord limitation, but will render once you create the board.")
+        embed.set_footer(
+            text="Custom emojis may not appear here due to a discord limitation, but will render once you create the board."
+        )
         self.response = await self.ctx.send(
             self.initial_message,
             embed=embed,
@@ -444,12 +445,16 @@ class Board:
         coords = coords if coords is not None else self.cursor_coords
 
         colour_emoji = discord.PartialEmoji.from_str(colour)
-        colour_pixel = colour_emoji.id if colour_emoji.is_custom_emoji() else colour_emoji.name
+        colour_pixel = (
+            colour_emoji.id if colour_emoji.is_custom_emoji() else colour_emoji.name
+        )
 
         cursor_matches = []
         for row, col in coords:
             board_emoji = discord.PartialEmoji.from_str(self.board[row, col])
-            board_pixel = board_emoji.id if board_emoji.is_custom_emoji() else board_emoji.name
+            board_pixel = (
+                board_emoji.id if board_emoji.is_custom_emoji() else board_emoji.name
+            )
             if board_pixel == colour_pixel:
                 cursor_matches.append(True)
             else:
@@ -541,7 +546,10 @@ class ToolMenu(discord.ui.Select):
 
         default_options: List[discord.SelectOption] = [
             discord.SelectOption(
-                label=tool.name, emoji=tool.emoji, value=tool.name.lower(), description=f"{tool.description}{' (Used automatically)' if tool.autouse is True else ''}"
+                label=tool.name,
+                emoji=tool.emoji,
+                value=tool.name.lower(),
+                description=f"{tool.description}{' (Used automatically)' if tool.autouse is True else ''}",
             )
             for tool in self.tool_list
         ]
@@ -601,9 +609,7 @@ class ColourMenu(discord.ui.Select):
         default_options: List[discord.SelectOption] = [
             *base_colour_options(),
             discord.SelectOption(
-                label="Mix Colours",
-                emoji=MIX_COLOURS_EMOJI,
-                value="mix"
+                label="Mix Colours", emoji=MIX_COLOURS_EMOJI, value="mix"
             ),
             discord.SelectOption(
                 label="Add Colour(s)",
@@ -614,7 +620,7 @@ class ColourMenu(discord.ui.Select):
                 label="Add Emoji(s)",
                 emoji=ADD_EMOJIS_EMOJI,
                 value="emoji",
-            )
+            ),
         ]
         options = options if options else default_options
         self.END_INDEX = len(default_options)  # The ending index of default options
@@ -757,9 +763,7 @@ class ColourMenu(discord.ui.Select):
         # and list them as SentEmoji objects
         unicode_emojis = [
             SentEmoji(
-                emoji=discord.PartialEmoji.from_str(
-                    self.view.board.un_cursor(emoji)
-                ),
+                emoji=discord.PartialEmoji.from_str(self.view.board.un_cursor(emoji)),
                 index=content.index(emoji),
             )
             for emoji in emojis.get(content)
@@ -847,23 +851,33 @@ class ColourMenu(discord.ui.Select):
 
                 colour = Colour((red, green, blue, alpha))
 
-                emoji = await self.bot.upload_emoji(colour, draw_view=self.view, interaction=interaction)
+                emoji = await self.bot.upload_emoji(
+                    colour, draw_view=self.view, interaction=interaction
+                )
 
                 sent_emojis.append(SentEmoji(emoji=emoji, index=match.start()))
 
             emoji_matches = self.extract_emojis(content)
             for match in emoji_matches:
                 colour = await Colour.from_emoji(match.emoji)
-                emoji = await self.bot.upload_emoji(colour, draw_view=self.view, interaction=interaction)
+                emoji = await self.bot.upload_emoji(
+                    colour, draw_view=self.view, interaction=interaction
+                )
 
                 sent_emojis.append(SentEmoji(emoji=emoji, index=match.index))
 
             # Extract from first attachment
             attachment_colours = await Colour.from_attachment(msg.attachments[0])
             for colour in attachment_colours:
-                emoji = await self.bot.upload_emoji(colour, draw_view=self.view, interaction=interaction)
+                emoji = await self.bot.upload_emoji(
+                    colour, draw_view=self.view, interaction=interaction
+                )
 
-                sent_emojis.append(SentEmoji(emoji=emoji, index=max([e.index for e in sent_emojis] + [0]) + 1))
+                sent_emojis.append(
+                    SentEmoji(
+                        emoji=emoji, index=max([e.index for e in sent_emojis] + [0]) + 1
+                    )
+                )
 
             sent_emojis.sort(key=lambda emoji: emoji.index)
 
@@ -927,7 +941,11 @@ class ColourMenu(discord.ui.Select):
             mixed_colour = Colour.mix_colours(colours)
 
             emoji = discord.PartialEmoji.from_str(
-                str(await self.bot.upload_emoji(mixed_colour, draw_view=self.view, interaction=interaction))
+                str(
+                    await self.bot.upload_emoji(
+                        mixed_colour, draw_view=self.view, interaction=interaction
+                    )
+                )
             )
 
             option = discord.SelectOption(
@@ -1046,20 +1064,16 @@ class DrawView(discord.ui.View):
                 [
                     self.bot.loop.create_task(
                         self.bot.wait_for(
-                            "reaction_add",
-                            check=self.reaction_check,
-                            timeout=None
+                            "reaction_add", check=self.reaction_check, timeout=None
                         )
                     ),
                     self.bot.loop.create_task(
                         self.bot.wait_for(
-                            "reaction_remove",
-                            check=self.reaction_check,
-                            timeout=None
+                            "reaction_remove", check=self.reaction_check, timeout=None
                         )
                     ),
                 ],
-                return_when=asyncio.FIRST_COMPLETED
+                return_when=asyncio.FIRST_COMPLETED,
             )
 
             reaction, user = done.pop().result()
@@ -1074,14 +1088,19 @@ class DrawView(discord.ui.View):
 
             if str(reaction.emoji) == SELECT_EMOJI:
                 if self.select is False:
-                    self.board.initial_coords = (self.board.cursor_row, self.board.cursor_col)
-                    self.board.initial_row, self.board.initial_col = self.board.initial_coords
+                    self.board.initial_coords = (
+                        self.board.cursor_row,
+                        self.board.cursor_col,
+                    )
+                    (
+                        self.board.initial_row,
+                        self.board.initial_col,
+                    ) = self.board.initial_coords
                     self.select = not self.select
                 elif self.select is True:
                     self.board.clear_cursors()
                     self.select = not self.select
                     await self.edit_message()
-
 
     async def create_notification(
         self,
@@ -1251,7 +1270,13 @@ class DrawView(discord.ui.View):
         )
 
     @asynccontextmanager
-    async def disable(self, *, interaction: discord.Interaction, first_edit: Optional[bool] = True, second_edit: Optional[bool] = False):
+    async def disable(
+        self,
+        *,
+        interaction: discord.Interaction,
+        first_edit: Optional[bool] = True,
+        second_edit: Optional[bool] = False,
+    ):
         disabled = []
         try:
             for child in self.children:

@@ -367,7 +367,6 @@ For example if the channel's name is `general-temporary`, `,strip #general-tempo
 For example if a channel's name is `general-temporary`, `,strip all -` will rename it to #general""",
     )
     async def _all(self, ctx, separator):
-
         await ctx.send(
             f"This will **strip with `{separator}` and rename** *all* channels. This action cannot be undone. Type `{CONFIRM_MESSAGE}` to confirm."
         )

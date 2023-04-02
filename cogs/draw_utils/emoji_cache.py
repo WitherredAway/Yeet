@@ -16,10 +16,14 @@ class EmojiCache:
 
         self.cache: Dict[str, Union[discord.Emoji, discord.PartialEmoji]] = {}
 
-    def get_emoji(self, name: str) -> Optional[Union[discord.Emoji, discord.PartialEmoji]]:
+    def get_emoji(
+        self, name: str
+    ) -> Optional[Union[discord.Emoji, discord.PartialEmoji]]:
         return self.cache.get(name)
-    
-    def get_emoji_from_id(self, id: int) -> Optional[Union[discord.Emoji, discord.PartialEmoji]]:
+
+    def get_emoji_from_id(
+        self, id: int
+    ) -> Optional[Union[discord.Emoji, discord.PartialEmoji]]:
         for name, emoji in self.cache.items():
             if emoji.id == id:
                 return emoji
@@ -28,11 +32,15 @@ class EmojiCache:
     def add_emoji(self, emoji: Union[discord.Emoji, discord.PartialEmoji]) -> None:
         self.cache[emoji.name] = emoji
 
-    def add_emojis(self, emoji_list: List[Union[discord.Emoji, discord.PartialEmoji]]) -> None:
+    def add_emojis(
+        self, emoji_list: List[Union[discord.Emoji, discord.PartialEmoji]]
+    ) -> None:
         for emoji in emoji_list:
             self.add_emoji(emoji)
 
-    def remove_emoji(self, *, emoji: Union[discord.Emoji, discord.PartialEmoji]) -> bool:
+    def remove_emoji(
+        self, *, emoji: Union[discord.Emoji, discord.PartialEmoji]
+    ) -> bool:
         for name, emoji_cache in self.cache.items():
             if emoji is emoji_cache:
                 del self.cache[name]

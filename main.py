@@ -94,7 +94,9 @@ class Bot(commands.Bot):
             color = kwargs.pop("color", self.EMBED_COLOUR)
             super().__init__(**kwargs, color=color)
 
-    async def upload_emoji(self, colour: Colour, *, draw_view: DrawView, interaction: discord.Interaction) -> Union[discord.Emoji, discord.PartialEmoji]:
+    async def upload_emoji(
+        self, colour: Colour, *, draw_view: DrawView, interaction: discord.Interaction
+    ) -> Union[discord.Emoji, discord.PartialEmoji]:
         # First look if there is cache of the emoji
         if (emoji := self.emoji_cache.get_emoji(colour.hex)) is not None:
             return emoji
@@ -121,10 +123,16 @@ class Bot(commands.Bot):
                     return emoji
             # If it exits without returning aka there was no space available
             else:
-                emoji_to_delete = guild_emoji_lists[0][0]  # Get first emoji from the first emoji server
+                emoji_to_delete = guild_emoji_lists[0][
+                    0
+                ]  # Get first emoji from the first emoji server
                 await emoji_to_delete.delete()  # Delete the emoji to make space for the new one
-                self.emoji_cache.remove_emoji(emoji_to_delete)  # Delete that emoji from cache if it exists
-                await self.upload_emoji(colour, draw_view=draw_view, interaction=interaction)  # Run again
+                self.emoji_cache.remove_emoji(
+                    emoji_to_delete
+                )  # Delete that emoji from cache if it exists
+                await self.upload_emoji(
+                    colour, draw_view=draw_view, interaction=interaction
+                )  # Run again
 
 
 TOKEN = os.getenv("botTOKEN")

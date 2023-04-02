@@ -86,7 +86,6 @@ class Useful(commands.Cog):
     )
     @commands.max_concurrency(1, per=commands.BucketType.user, wait=False)
     async def _timer_start(self, ctx, seconds: int):
-
         global time
         time = round(seconds, 2)
         global mins

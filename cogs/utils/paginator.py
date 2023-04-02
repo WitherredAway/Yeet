@@ -37,7 +37,6 @@ class BotPages(discord.ui.View):
         self.fill_items()
 
     def fill_items(self) -> None:
-
         if self.source.is_paginating():
             max_pages = self.source.get_max_pages()
             use_last_and_first = max_pages is not None and max_pages >= 2

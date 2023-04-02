@@ -285,7 +285,7 @@ class DarkenTool(Tool):
                     colour = Colour.from_hex(fetched_emoji.name)
                 except ValueError:  # It is not a colour emoji
                     pass
-            
+
             if colour is None:
                 colour = await Colour.from_emoji(str(emoji))
 
@@ -297,7 +297,9 @@ class DarkenTool(Tool):
             )
             modified_colour = Colour(RGB_A)
 
-            modified_emoji = await self.bot.upload_emoji(modified_colour, draw_view=self.view, interaction=interaction)
+            modified_emoji = await self.bot.upload_emoji(
+                modified_colour, draw_view=self.view, interaction=interaction
+            )
             return self.board.draw(str(modified_emoji), coords=[cursor])
 
 
