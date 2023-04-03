@@ -66,6 +66,22 @@ class Bot(commands.Bot):
 
         self.lock = asyncio.Lock()
 
+    @property
+    def invite_url(self) -> str:
+        perms = discord.Permissions.none()
+        perms.send_messages = True
+        perms.read_messages = True
+        perms.read_message_history = True
+        perms.add_reactions = True
+        perms.external_emojis = True
+        perms.external_stickers = True
+        perms.manage_channels = True
+        perms.manage_messages = True
+        perms.manage_emojis = True
+        perms.attach_files = True
+        perms.embed_links = True
+        return discord.utils.oauth_url(self.user.id, permissions=perms)
+
     async def setup_hook(self):
         self.EMOJI_SERVER_IDS = [
             1019908440786735144,

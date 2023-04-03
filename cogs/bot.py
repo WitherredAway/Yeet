@@ -142,7 +142,7 @@ class BotCog(commands.Cog):
     async def invite(self, ctx: commands.Context):
         embed = self.bot.Embed(
             title="Add the bot to your server using the following link.",
-            description=f"[Invite link.](https://discord.com/api/oauth2/authorize?client_id={self.bot.user.id}&permissions=8&scope=bot%20applications.commands)",
+            description=f"[Invite link.]({self.bot.invite_url})",
         )
         embed.set_thumbnail(url=self.bot.user.avatar.url)
 

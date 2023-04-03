@@ -21,10 +21,13 @@ class FrontPageSource(menus.ListPageSource):
         cogs_and_commands: Dict[commands.Cog, List[commands.Command]],
         *,
         per_page: Optional[int] = 8,
+        bot: Bot
     ):
         self.cogs_and_commands: List[
             Tuple[commands.Cog, List[commands.Command]]
         ] = list(cogs_and_commands.items())
+        self.bot: Bot = bot
+        self.prefix: str = bot.PREFIX
         super().__init__(self.cogs_and_commands, per_page=per_page)
 
     def is_paginating(self) -> bool:
@@ -35,7 +38,11 @@ class FrontPageSource(menus.ListPageSource):
     ):
         embed = self.bot.Embed(
             title="Help Interface",
-            description=f"**[Invite the bot here!](https://discord.com/api/oauth2/authorize?client_id=634409171114262538&permissions=8&scope=bot)**\n——————————————————————————————\nDo `,help <command>` for more info on a command.\nDo `,help <category>` (case sensitive) for more info on a category.\n——————————————————————————————",
+            description=f"""**[Invite the bot here!]({self.bot.invite_url})**
+——————————————————————————————
+Do `{self.prefix}help <command>` for more info on a command.
+Do `{self.prefix}help <category>` (case sensitive) for more info on a category.
+——————————————————————————————""",
         )
         for cog, _commands in entries:
             description = cog.description.split("\n", 1)[0] or "No description found."
@@ -272,7 +279,7 @@ class HelpSelectMenu(discord.ui.Select["HelpMenu"]):
         assert self.view is not None
         value = self.values[0]
         if value == "__index":
-            index = FrontPageSource(self.commands)
+            index = FrontPageSource(self.commands, bot=interaction.client)
             index.bot = self.bot
 
             self.view.remove_item(self.view.command_select_menu)
@@ -449,7 +456,7 @@ class PaginatedHelpCommand(commands.HelpCommand):
 
             all_commands[cog] = children
 
-        initial = FrontPageSource(all_commands)
+        initial = FrontPageSource(all_commands, bot=self.cog.bot)
         initial.bot = self.context.bot
         menu = HelpMenu(initial, ctx=self.context)
         menu.add_categories(all_commands, help_command=self)
