@@ -58,6 +58,11 @@ from .draw_utils.regexes import (
     CUSTOM_EMOJI_REGEX,
 )
 
+from .draw_utils.errors import (
+    DrawError,
+    InvalidDrawMessageError
+)
+
 from .draw_utils.colour import Colour
 
 if typing.TYPE_CHECKING:
@@ -1605,14 +1610,12 @@ class Draw(commands.Cog):
         elif message_link is None or not isinstance(message_link, discord.Message):
             return await ctx.send_help(ctx.command)
 
-        if len(message.embeds) == 0 or message.author != ctx.bot.user:
-            return await ctx.send(
-                "Invalid message, make sure it's a draw embed and a message from the bot."
-            )
+        if message.author != ctx.bot.user:
+            raise InvalidDrawMessageError("Not a message from the bot.")
+        if len(message.embeds) == 0:
+            raise InvalidDrawMessageError("Not a drawing embed.")
         if "drawing board" not in message.embeds[0].title:
-            return await ctx.send(
-                "Invalid message, make sure it's a draw embed and a message from the bot."
-            )
+            raise InvalidDrawMessageError("Not a drawing embed.")
 
         description = message.embeds[0].description
         lines = description.split("\n")[2:]
