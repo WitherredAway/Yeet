@@ -4,12 +4,15 @@ import discord
 import itertools
 
 from discord.ext import commands, menus
-from .utils import time
+
+from constants import NL
 from .utils.paginator import BotPages
-from typing import Any, Dict, List, Optional, Union, Tuple
+from .utils import time
 from .utils.source import source
 
-from constants import NEW_LINE
+
+if typing.TYPE_CHECKING:
+    from main import Bot
 
 
 class FrontPageSource(menus.ListPageSource):

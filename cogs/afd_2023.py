@@ -16,7 +16,8 @@ import gists
 import pandas as pd
 from discord.ext import commands, tasks
 
-from constants import NEW_LINE as NL
+from constants import NL
+from constants import LOG_BORDER
 from keep_alive import app
 
 IMGUR_API_URL = "https://api.imgur.com/3/album/%s/images"
@@ -54,7 +55,6 @@ CR = "\r"
 TOP_N = 5
 
 HEADERS_FMT = "|   %s   |   %s   |   %s   |   %s   |   %s   |"
-LOG_BORDER_LENGTH = 50
 
 
 log = logging.getLogger(__name__)
@@ -431,7 +431,7 @@ In alphabetical order. Thank you everyone who participated!
     @tasks.loop(minutes=5)
     async def update_pokemon(self):
         og_start = time.time()
-        log.info(NL + "-"*LOG_BORDER_LENGTH + NL + f"AFD: Task started")
+        log.info(NL + LOG_BORDER + NL + f"AFD: Task started")
 
         self.update_pk()
 
@@ -469,7 +469,7 @@ In alphabetical order. Thank you everyone who participated!
         files.append(gists.File(name=CONTENTS_FILENAME, content=contents))
 
         if not (self.unc or self.unr or self.ml):
-            log.info(f"AFD: Task returned in {round(time.time()-og_start, 2)}s" + NL + "-"*LOG_BORDER_LENGTH)
+            log.info(f"AFD: Task returned in {round(time.time()-og_start, 2)}s" + NL + LOG_BORDER)
             return
 
         description = f"{self.ml_amount} claimed pokemon with missing links, {self.unc_amount} unclaimed pokemon and {self.unr_amount} unreviewed pokemon - As of {date} GMT (Checks every 5 minutes, and updates only if there is a change)"
@@ -490,7 +490,7 @@ In alphabetical order. Thank you everyone who participated!
 
 Credits: <{self.credits_gist.url}>"""
         await self.update_channel.send(update_msg)
-        log.info(f"AFD: Task completed in {round(time.time()-og_start, 2)}s" + NL + "-"*LOG_BORDER_LENGTH)
+        log.info(f"AFD: Task completed in {round(time.time()-og_start, 2)}s" + NL + LOG_BORDER)
 
     @update_pokemon.before_loop
     async def before_update(self):

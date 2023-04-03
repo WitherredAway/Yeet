@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 import gists
 
-from constants import NEW_LINE
+from constants import NL
 
 
 DELAY = 1

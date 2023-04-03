@@ -13,7 +13,7 @@ import numpy as np
 import discord
 from discord.ext import commands
 
-from constants import u200b, NEW_LINE
+from constants import u200b, NL
 from .draw_utils.constants import (
     ROW_ICONS_DICT,
     ROW_ICONS,
@@ -312,7 +312,7 @@ class Board:
 
         return (
             f"{self.cursor}{PADDING}{u200b.join(col_labels)}\n"
-            f"\n{NEW_LINE.join([f'{row_labels[idx]}{PADDING}{u200b.join(row)}' for idx, row in enumerate(self.board)])}"
+            f"\n{NL.join([f'{row_labels[idx]}{PADDING}{u200b.join(row)}' for idx, row in enumerate(self.board)])}"
         )
 
     @property

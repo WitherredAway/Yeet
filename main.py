@@ -13,6 +13,7 @@ from discord.ext import commands
 from cogs.draw_utils.colour import Colour
 import gists
 
+from constants import LOG_BORDER, NL
 from keep_alive import keep_alive
 from cogs.draw_utils.emoji_cache import EmojiCache
 from cogs.draw import DrawView
