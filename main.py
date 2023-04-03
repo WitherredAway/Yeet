@@ -101,8 +101,13 @@ class Bot(commands.Bot):
         self.gists_client = gists.Client()
         await self.gists_client.authorize(os.getenv("githubTOKEN"))
 
+        ext_start = time.time()
+        log.info("Started loading extensions" + NL + LOG_BORDER)
         for filename in set(self.COGS.values()):
+            start = time.time()
             await self.load_extension(f"cogs.{filename}")
+            log.info(f"Loaded \033[34;1mcogs.{filename}\033[0m in \033[33;1m{round(time.time()-start, 2)}s\033[0m")
+        log.info(f"Loaded all extensions in \033[33;1m{round(time.time()-ext_start, 2)}s\033[0m" + NL + LOG_BORDER)
 
         total_s: int = (datetime.datetime.utcnow()-self.uptime).seconds
         m, s = divmod(total_s, 60)
@@ -176,4 +181,5 @@ if __name__ == "__main__":
                 print("\033[0;31mRate-limit detected, restarting process.\033[0m")
                 os.system(f"kill 1 && python3 {sys.argv[0]}")
     else:
+        log.info("Connecting...")
         bot.run(TOKEN)
