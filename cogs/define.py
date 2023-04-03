@@ -5,8 +5,10 @@ from typing import Type, TypeVar
 import discord
 from discord.ext import commands, menus
 import aiohttp
+import wikipedia
 
 from .utils.paginator import BotPages
+from constants import MESSAGE_CHAR_LIMIT
 
 
 T = TypeVar("T", bound="Term")
@@ -160,6 +162,24 @@ class Define(commands.Cog):
         formatter = TermPageSource(term, ctx=ctx, per_page=1)
         menu = TermPages(formatter, ctx=ctx, compact=True)
         await menu.start()
+
+    @commands.command(
+        name="wiki",
+        aliases=["wikipedia"],
+        brief="Searches wikipedia for info.",
+        help="Use this command to look up anything on wikipedia. Sends the first 10 sentences from wikipedia.",
+    )
+    async def wiki(self, ctx, *, arg=None):
+        if arg == None:
+            await ctx.send("Please specify what you want me to search.")
+        elif arg:
+            msg = await ctx.send("Fetching...")
+            start = arg.replace(" ", "")
+            end = wikipedia.summary(start)
+            try:
+                await msg.edit(content=f"```\n{end[:MESSAGE_CHAR_LIMIT] + '...' if len(end) >= MESSAGE_CHAR_LIMIT else ''}\n```")
+            except wikipedia.WikipediaException:
+                    await msg.edit(content="Not found.")
 
 
 async def setup(bot: commands.Bot) -> None:

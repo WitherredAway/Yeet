@@ -530,6 +530,20 @@ class Help(commands.Cog):
         if isinstance(error, commands.BadArgument):
             await ctx.send(error)
 
+    @commands.command(
+        name="avatar",
+        aliases=["av", "pfp", "profilepicture"],
+        brief="Avatar url",
+        help="Sends the avatar url of author/mentioned member.",
+    )
+    async def avatar(self, ctx, member: discord.Member = None):
+        member = member or ctx.author
+        embed = self.bot.Embed(
+            title=f"Avatar of {member}"
+        )
+        embed.set_image(url=member.avatar.url)
+        await ctx.send(embed=embed)
+
     @commands.command(aliases=("whois",), brief="Shows info about an user, role, etc")
     async def info(
         self, ctx, *, id: Union[discord.Member, discord.User, discord.Role] = None
