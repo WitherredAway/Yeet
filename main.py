@@ -43,7 +43,6 @@ class Bot(commands.Bot):
         "define": "define",
         "docs": "docs",
         "draw": "draw",
-        "fun": "fun",
         "gist": "gist",
         "help": "help",
         "jishaku": "jishaku",
@@ -52,7 +51,6 @@ class Bot(commands.Bot):
         "poketwo": "poketwo",
         "p2": "poketwo",
         "test": "test",
-        "useful": "useful",
     }
 
     def __init__(self, **kwargs):
