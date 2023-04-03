@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import discord
 import itertools
+import typing
+from typing import Any, Dict, List, Optional, Union, Tuple
 
 from discord.ext import commands, menus
 
@@ -56,7 +58,8 @@ Do `{self.prefix}help <category>` (case sensitive) for more info on a category.
                 )
             embed.add_field(
                 name=f"{emoji} **{cog.qualified_name}**: {description}",
-                value=f"{NEW_LINE.join(command_texts)}",
+                value=f"{NL.join(command_texts)}",
+                inline=False
             )
 
         return embed
