@@ -3,7 +3,7 @@ import asyncio
 import re
 
 from discord.ext import commands, menus
-from .utils.paginator import BotPages
+from .RDanny.utils.paginator import BotPages
 from typing import Optional, Union, Tuple
 
 

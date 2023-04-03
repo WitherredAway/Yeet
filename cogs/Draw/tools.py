@@ -12,7 +12,7 @@ from .colour import Colour
 
 if typing.TYPE_CHECKING:
     from main import Bot
-    from ..draw import Board, DrawView
+    from .draw_main import Board, DrawView
 
 
 class Tool(discord.ui.Button):
@@ -144,7 +144,7 @@ class EyedropperTool(Tool):
             return False
         else:
             self.board.cursor = option.value
-            option.default = True
+            self.view.colour_menu.set_default(option)
             return True
 
 

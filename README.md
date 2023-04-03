@@ -14,6 +14,10 @@ The draw command is the main feature of the bot that I have poured my heart and 
     - Add emojis to the palette, and more
     - Mix multiple colours to create new colours
 - It provides a bite-size but feature-packed drawing experience that you can have fun, with directly on discord
+- More features such as exporting, timelapse, showcase forum, palette presets, etc are planned!
+
+Here, I roughly recreated my discord profile picture!
+![draw](feature_showcase/draw.png)
 
 ### Define command
 **Yeet.**'s `define` command allows you to find various information on a term or phrase, including definitions, examples, synonyms, etc. The information is presented in a neat and paginated format, which you can interact with using buttons and dropdown menus. Settle that debate about the meaning of a word or find that word at the tip of your tongue without even having to leave the app!

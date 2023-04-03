@@ -1,24 +1,24 @@
 from __future__ import annotations
 
+import asyncio
+import datetime
+import logging
 import os
 import sys
-import datetime
-import asyncio
-import aiohttp
-import logging
 import time
-
-import discord
+from functools import cached_property
 from typing import Union
-from discord.ext import commands
-from cogs.draw_utils.colour import Colour
-import gists
 
+import aiohttp
+import discord
+import gists
+from discord.ext import commands
+
+from cogs.Draw.colour import Colour
+from cogs.Draw.draw_main import DrawView
+from cogs.Draw.emoji_cache import EmojiCache
 from constants import LOG_BORDER, NL
 from keep_alive import keep_alive
-from cogs.draw_utils.emoji_cache import EmojiCache
-from cogs.draw import DrawView
-
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -36,21 +36,21 @@ class Bot(commands.Bot):
     PREFIX = PREFIXES[0]
 
     COGS = {
-        "afd_2023": "afd_2023",
-        "afd": "afd_2023",
+        "poketwo": "Poketwo.poketwo_main",
+        "p2": "Poketwo.poketwo_main",
+        "afd_2023": "Poketwo.afd_2023",
+        "afd": "Poketwo.afd_2023",
+        "docs": "RDanny.docs",
+        "help": "RDanny.help",
         "admin": "admin",
         "bot": "bot",
         "channel": "channel",
         "define": "define",
-        "docs": "docs",
-        "draw": "draw",
+        "draw": "Draw.draw_main",
         "gist": "gist",
-        "help": "help",
         "jishaku": "jishaku",
         "jsk": "jishaku",
         "math": "math",
-        "poketwo": "poketwo",
-        "p2": "poketwo",
         "test": "test",
     }
 
@@ -65,7 +65,7 @@ class Bot(commands.Bot):
 
         self.lock = asyncio.Lock()
 
-    @property
+    @cached_property
     def invite_url(self) -> str:
         perms = discord.Permissions.none()
         perms.send_messages = True
@@ -181,5 +181,4 @@ if __name__ == "__main__":
                 print("\033[0;31mRate-limit detected, restarting process.\033[0m")
                 os.system(f"kill 1 && python3 {sys.argv[0]}")
     else:
-        log.info("Connecting...")
         bot.run(TOKEN)

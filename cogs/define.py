@@ -7,7 +7,7 @@ from discord.ext import commands, menus
 import aiohttp
 import wikipedia
 
-from .utils.paginator import BotPages
+from .RDanny.utils.paginator import BotPages
 from constants import MESSAGE_CHAR_LIMIT
 
 

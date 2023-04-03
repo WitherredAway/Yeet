@@ -8,7 +8,7 @@ import re
 import discord
 from discord.ext import commands, menus, tasks
 
-from .utils.paginator import BotPages
+from .RDanny.utils.paginator import BotPages
 from constants import CODE_BLOCK_FMT
 
 if typing.TYPE_CHECKING:

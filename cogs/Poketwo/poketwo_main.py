@@ -3,8 +3,8 @@ from typing import Optional
 import discord
 from discord.ext import commands
 
-from .Poketwo.poketwo_chances import PoketwoChances
-from .Poketwo.poketwo_moves import PoketwoMoves
+from .poketwo_chances import PoketwoChances
+from .poketwo_moves import PoketwoMoves
 
 
 class Poketwo(PoketwoChances, PoketwoMoves):

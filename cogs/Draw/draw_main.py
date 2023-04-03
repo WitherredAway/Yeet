@@ -14,7 +14,7 @@ import discord
 from discord.ext import commands
 
 from constants import u200b, NL
-from .draw_utils.constants import (
+from .constants import (
     ROW_ICONS_DICT,
     ROW_ICONS,
     COLUMN_ICONS_DICT,
@@ -30,7 +30,7 @@ from .draw_utils.constants import (
     MIN_HEIGHT_OR_WIDTH,
     MAX_HEIGHT_OR_WIDTH,
 )
-from .draw_utils.emoji import (
+from .emoji import (
     ADD_EMOJIS_EMOJI,
     SET_CURSOR_EMOJI,
     ADD_COLOURS_EMOJI,
@@ -40,7 +40,7 @@ from .draw_utils.emoji import (
     SentEmoji,
     AddedEmoji,
 )
-from .draw_utils.tools import (
+from .tools import (
     Tool,
     BrushTool,
     EraseTool,
@@ -51,19 +51,19 @@ from .draw_utils.tools import (
     LightenTool,
 )
 
-from .draw_utils.regexes import (
+from .regexes import (
     FLAG_EMOJI_REGEX,
     HEX_REGEX,
     RGB_A_REGEX,
     CUSTOM_EMOJI_REGEX,
 )
 
-from .draw_utils.errors import (
+from .errors import (
     DrawError,
     InvalidDrawMessageError
 )
 
-from .draw_utils.colour import Colour
+from .colour import Colour
 
 if typing.TYPE_CHECKING:
     from main import Bot
@@ -581,6 +581,11 @@ class ToolMenu(discord.ui.Select):
         self, value: Union[str, int]
     ) -> Union[None, discord.SelectOption]:
         return self.value_to_option_dict.get(value)
+    
+    def set_default(self, def_option: discord.SelectOption):
+        for option in self.options:
+            option.default = False
+        def_option.default = True
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
@@ -597,7 +602,7 @@ class ToolMenu(discord.ui.Select):
         else:
             self.view.primary_tool = tool
             self.view.load_items()
-            (self.value_to_option(value)).default = True
+            self.set_default(self.value_to_option(value))
 
         if edit:
             await self.view.edit_message(interaction)
@@ -753,7 +758,7 @@ class ColourMenu(discord.ui.Select):
             ("Added" in added_emoji.status for added_emoji in added_emojis.values())
         ):
             self.board.cursor = self.options[-1].value
-            self.options[-1].default = True
+            self.set_default(self.options[-1])
 
         await notification.edit(
             ("\n".join(response))[
@@ -797,6 +802,11 @@ class ColourMenu(discord.ui.Select):
             key=lambda emoji: emoji.index,
         )
         return list(sent_emojis)
+    
+    def set_default(self, def_option: discord.SelectOption):
+        for option in self.options:
+            option.default = False
+        def_option.default = True
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
@@ -870,18 +880,19 @@ class ColourMenu(discord.ui.Select):
 
                 sent_emojis.append(SentEmoji(emoji=emoji, index=match.index))
 
-            # Extract from first attachment
-            attachment_colours = await Colour.from_attachment(msg.attachments[0])
-            for colour in attachment_colours:
-                emoji = await self.bot.upload_emoji(
-                    colour, draw_view=self.view, interaction=interaction
-                )
-
-                sent_emojis.append(
-                    SentEmoji(
-                        emoji=emoji, index=max([e.index for e in sent_emojis] + [0]) + 1
+            if msg.attachments:
+                # Extract from first attachment
+                attachment_colours = await Colour.from_attachment(msg.attachments[0])
+                for colour in attachment_colours:
+                    emoji = await self.bot.upload_emoji(
+                        colour, draw_view=self.view, interaction=interaction
                     )
-                )
+
+                    sent_emojis.append(
+                        SentEmoji(
+                            emoji=emoji, index=max([e.index for e in sent_emojis] + [0]) + 1
+                        )
+                    )
 
             sent_emojis.sort(key=lambda emoji: emoji.index)
 
@@ -960,7 +971,7 @@ class ColourMenu(discord.ui.Select):
             replaced, returned_option = self.append_option(option)
 
             self.board.cursor = option.value
-            option.default = True
+            self.set_default(option)
 
             await notification.edit(
                 f'Mixed colours:\n{" + ".join(selected_emojis)} = {emoji}'
@@ -971,7 +982,7 @@ class ColourMenu(discord.ui.Select):
         # If only one option was selected
         elif self.board.cursor != (value := self.values[0]):
             self.board.cursor = value
-            self.value_to_option(value).default = True
+            self.set_default(self.value_to_option(value))
 
             await self.view.edit_message(interaction)
 
