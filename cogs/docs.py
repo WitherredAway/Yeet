@@ -210,11 +210,6 @@ class Documentations(commands.Cog):
         key = "python"
         await self.do_rtfm(ctx, key, obj)
 
-    @docs.command(name="1.7.3")
-    async def docs_master(self, ctx, *, obj: str = None):
-        """Gives you a documentation link for a discord.py entity (master branch)"""
-        await self.do_rtfm(ctx, "latest", obj)
-
     def library_name(self, channel):
         # language_<name>
         name = channel.name

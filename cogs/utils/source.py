@@ -1,5 +1,7 @@
 import os
 import inspect
+import subprocess
+import re
 
 
 def source(bot, *, command: str):
@@ -10,7 +12,11 @@ def source(bot, *, command: str):
     Code taken from [Robodanny](https://github.com/Rapptz/RoboDanny).
     """
     source_url = "https://github.com/WitherredAway/Yeet."
-    branch = "master"
+
+    # Get the current branch using cli and regex
+    process = subprocess.Popen(["git", "branch"], stdout=subprocess.PIPE)
+    match = re.search("\* (.+)" , process.communicate()[0].decode('utf-8'), re.MULTILINE)
+    branch = match.groups()[0]
     if command is None:
         return f"{source_url}/"
 
