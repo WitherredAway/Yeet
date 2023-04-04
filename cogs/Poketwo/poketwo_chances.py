@@ -14,6 +14,36 @@ import gists
 from constants import NL
 
 
+ALL_GIST = "https://gist.github.com/1bc525b05f4cd52555a2a18c331e0cf9"
+STARTERS_GIST = "https://gist.github.com/1bdee3b3fb2a29ae8f83ebdd70013456"
+RARITY_GISTS = {
+    "Mythical": "https://gist.github.com/ba3f32d61cfdaf857c8541d168c21698",
+    "Legendary": "https://gist.github.com/af25f3f398fbc0441fd0248a5ca3faad",
+    "Ultra_beast": "https://gist.github.com/ba3f1b7063e939d8119286bbeb8e8080",
+}
+FORM_GISTS = {
+    "Alolan": "https://gist.github.com/7c3cdaaa36c38d2fb2bd716652b09d00",
+    "Galarian": "https://gist.github.com/4fb6735b2241506105af52626953618b",
+    "Hisuian": "https://gist.github.com/4bcf5ef86577b14aa464a3376adb430e",
+}
+REGION_GISTS = {
+    "Kanto": "https://gist.github.com/2c48fc73eb1a9e94737634092e1c62e3",
+    "Johto": "https://gist.github.com/4456e7da504e9ff5ddc653cd3bc4e76c",
+    "Hoenn": "https://gist.github.com/ce4facd1f383676bb745cece67fbac50",
+    "Sinnoh": "https://gist.github.com/e9a435742bea160eb588c8812e0730c4",
+    "Unova": "https://gist.github.com/6af2072d0229c3f5582b32f20b65f2f5",
+    "Kalos": "https://gist.github.com/849a6b64a35a505c7afb2eb276eda18d",
+    "Alola": "https://gist.github.com/a55287b7bff61b90b3182bca602b062a",
+    "Galar": "https://gist.github.com/f4d75c84e7ed4ce57273b6ef860a5a54",
+    "Hisui": "https://gist.github.com/46bbc638f81687aa42709a83078aa1f8",
+}
+TYPE_GISTS_GIST = (
+    "https://gist.github.com/WitherredAway/286394d65db106061d8e76918dab9050"
+)
+
+EVENT_GIST = "https://gist.github.com/caf8fc84a8072cfcd1d07b2d18730d5e"
+
+
 DELAY = 1
 pattern = re.compile(
     r"""__\*\*(?P<title>.+) spawn-chances\*\*__ \(Includes all catchable forms\)
@@ -181,8 +211,6 @@ class PoketwoChances(commands.Cog):
         pkm_df = self.pk.loc[self.pk["catchable"] > 0]
         pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance"]]
 
-        ALL_GIST = "https://gist.github.com/1bc525b05f4cd52555a2a18c331e0cf9"
-
         async with ctx.channel.typing():
             result = await self.format_chances_message(
                 "All", pkm_df, gist_link=ALL_GIST
@@ -225,8 +253,6 @@ class PoketwoChances(commands.Cog):
         help="See the chances of starters.",
     )
     async def _starters(self, ctx):
-        starters_gist = "https://gist.github.com/1bdee3b3fb2a29ae8f83ebdd70013456"
-
         pkm_df = self.pk.loc[
             (self.pk["catchable"] > 0) & ((self.pk["name.en"].isin(STARTERS)))
         ]
@@ -235,7 +261,7 @@ class PoketwoChances(commands.Cog):
             result = await self.format_chances_message(
                 ", ".join([pkm_row["name.en"] for _, pkm_row in pkm_df.iterrows()]),
                 pkm_df,
-                gist_link=starters_gist,
+                gist_link=STARTERS_GIST,
             )
         await ctx.send(result)
         return result
@@ -245,12 +271,7 @@ class PoketwoChances(commands.Cog):
         help="See the chances of a rarity and the pokémon that belong to that rarity.",
     )
     async def _rarity(self, ctx, rarity):
-        options_gists = {
-            "Mythical": "https://gist.github.com/ba3f32d61cfdaf857c8541d168c21698",
-            "Legendary": "https://gist.github.com/af25f3f398fbc0441fd0248a5ca3faad",
-            "Ultra_beast": "https://gist.github.com/ba3f1b7063e939d8119286bbeb8e8080",
-        }
-        options = options_gists.keys()
+        options = RARITY_GISTS.keys()
         for option in options:
             if rarity.lower() in option.lower():
                 rarity = option
@@ -267,7 +288,7 @@ class PoketwoChances(commands.Cog):
 
         async with ctx.channel.typing():
             result = await self.format_chances_message(
-                rarity, pkm_df, gist_link=options_gists.get(rarity)
+                rarity, pkm_df, gist_link=RARITY_GISTS.get(rarity)
             )
         await ctx.send(result)
         return result
@@ -277,12 +298,7 @@ class PoketwoChances(commands.Cog):
         help="See the chances of a form and the individual pokémon. Options: Alolan, Galarian & Hisuian.",
     )
     async def _form(self, ctx, form):
-        options_gists = {
-            "Alolan": "https://gist.github.com/7c3cdaaa36c38d2fb2bd716652b09d00",
-            "Galarian": "https://gist.github.com/4fb6735b2241506105af52626953618b",
-            "Hisuian": "https://gist.github.com/4bcf5ef86577b14aa464a3376adb430e",
-        }
-        options = options_gists.keys()
+        options = FORM_GISTS.keys()
         for option in options:
             if form.lower() in option.lower():
                 form = option
@@ -300,7 +316,7 @@ class PoketwoChances(commands.Cog):
 
         async with ctx.channel.typing():
             result = await self.format_chances_message(
-                form, pkm_df, gist_link=options_gists.get(form)
+                form, pkm_df, gist_link=FORM_GISTS.get(form)
             )
         await ctx.send(result)
         return result
@@ -312,18 +328,7 @@ class PoketwoChances(commands.Cog):
         help="See the chances of the pokémon from a region. Options: Kanto/1, Johto/2, Hoenn/3, Sinnoh/4, Unova/5, Kalos/6, Alola/7, Galar/8, Hisui",
     )
     async def _region(self, ctx, region: Union[int, str]):
-        options_gists = {
-            "Kanto": "https://gist.github.com/2c48fc73eb1a9e94737634092e1c62e3",
-            "Johto": "https://gist.github.com/4456e7da504e9ff5ddc653cd3bc4e76c",
-            "Hoenn": "https://gist.github.com/ce4facd1f383676bb745cece67fbac50",
-            "Sinnoh": "https://gist.github.com/e9a435742bea160eb588c8812e0730c4",
-            "Unova": "https://gist.github.com/6af2072d0229c3f5582b32f20b65f2f5",
-            "Kalos": "https://gist.github.com/849a6b64a35a505c7afb2eb276eda18d",
-            "Alola": "https://gist.github.com/a55287b7bff61b90b3182bca602b062a",
-            "Galar": "https://gist.github.com/f4d75c84e7ed4ce57273b6ef860a5a54",
-            "Hisui": "https://gist.github.com/46bbc638f81687aa42709a83078aa1f8",
-        }
-        options = list(options_gists.keys())
+        options = list(REGION_GISTS.keys())
         if isinstance(region, int):
             if region < 9:
                 region = options[region - 1]
@@ -344,17 +349,13 @@ class PoketwoChances(commands.Cog):
 
         async with ctx.channel.typing():
             result = await self.format_chances_message(
-                f"{region} region", pkm_df, gist_link=options_gists.get(region)
+                f"{region} region", pkm_df, gist_link=REGION_GISTS.get(region)
             )
         await ctx.send(result)
         return result
 
     async def get_types_gist(self, type_1: str, type_2: str):
-        TYPES_GISTS_LINK = (
-            "https://gist.github.com/WitherredAway/286394d65db106061d8e76918dab9050"
-        )
-
-        types_gist = await self.gists_client.get_gist(TYPES_GISTS_LINK.split("/")[-1])
+        types_gist = await self.gists_client.get_gist(TYPE_GISTS_GIST.split("/")[-1])
         file = types_gist.files[0]
         types_gists_json = json.loads(file.content)
 
@@ -434,8 +435,6 @@ class PoketwoChances(commands.Cog):
             return ""
         pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance", "enabled"]]
         pkm_df["enabled"] = pkm_df["enabled"] > 0
-
-        EVENT_GIST = "https://gist.github.com/caf8fc84a8072cfcd1d07b2d18730d5e"
 
         async with ctx.channel.typing():
             result = await self.format_chances_message(
