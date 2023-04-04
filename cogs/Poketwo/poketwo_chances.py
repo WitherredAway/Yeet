@@ -6,12 +6,10 @@ import json
 import re
 
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 import numpy as np
 import pandas as pd
 import gists
-
-from constants import NL
 
 
 ALL_GIST = "https://gist.github.com/1bc525b05f4cd52555a2a18c331e0cf9"
@@ -179,7 +177,7 @@ class PoketwoChances(commands.Cog):
         pkm_df = pokemon_dataframe
         total_abundance = round(pkm_df["abundance"][pkm_df["catchable"] > 0].sum())
 
-        per_cent = round(total_abundance / self.possible_abundance * 100, 3)
+        per_cent = round(total_abundance / self.possible_abundance * 100, 4)
         out_of = round((1 / per_cent * 100) if per_cent > 0 else 0)
         total_chances = f"**Total chance**: {per_cent}% or 1/{out_of}"
 
@@ -200,30 +198,10 @@ class PoketwoChances(commands.Cog):
 
     @commands.group(
         aliases=("chances",),
-        help="See the chances of pokémon or a rarity.",
+        help="See the chances of a single pokémon.",
         invoke_without_command=True,
     )
-    async def chance(self, ctx):
-        await ctx.send_help(ctx.command)
-
-    @chance.command(name="all", help="See the chances of all pokémon in a nice table")
-    async def all(self, ctx):
-        pkm_df = self.pk.loc[self.pk["catchable"] > 0]
-        pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance"]]
-
-        async with ctx.channel.typing():
-            result = await self.format_chances_message(
-                "All", pkm_df, gist_link=ALL_GIST
-            )
-        await ctx.send(result)
-        return result
-
-    @chance.command(
-        name="pokemon",
-        aliases=("poke", "pkm"),
-        help="See the chances of a specific pokémon.",
-    )
-    async def _pokemon(self, ctx, *, pokemon: str):
+    async def chance(self, ctx, *, pokemon: str):
         pokemon = pokemon.lower()
 
         pkm_df = self.pk.loc[
@@ -243,6 +221,18 @@ class PoketwoChances(commands.Cog):
                 ", ".join([pkm_row["name.en"] for _, pkm_row in pkm_df.iterrows()]),
                 pkm_df,
                 list_pokemon=False,
+            )
+        await ctx.send(result)
+        return result
+
+    @chance.command(name="all", help="See the chances of all pokémon in a nice table")
+    async def all(self, ctx):
+        pkm_df = self.pk.loc[self.pk["catchable"] > 0]
+        pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance"]]
+
+        async with ctx.channel.typing():
+            result = await self.format_chances_message(
+                "All", pkm_df, gist_link=ALL_GIST
             )
         await ctx.send(result)
         return result
@@ -443,6 +433,7 @@ class PoketwoChances(commands.Cog):
         await ctx.send(result)
         return result
 
+    @commands.is_owner()
     @chance.command()
     async def update_all(self, ctx: commands.Context):
         bot = ctx.bot
