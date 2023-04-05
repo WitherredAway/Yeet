@@ -1,7 +1,7 @@
 # **Yeet.** Discord Bot
+# [The bot is finally public! Invite it here :)](https://discord.com/oauth2/authorize?client_id=634409171114262538&scope=bot+applications.commands&permissions=138513083472)
 **Yeet.** is a Discord bot made with love by `Witherr🖤#5417` that offers a range of unique and useful features to make your Discord experience more enjoyable. Below are some of its more prominent features!
-
-It is still in its very early stages, despite the age of the repository and hence is not yet public, but is planned sometime soon after ironing out the kinks! I truly hope you can give it a try and enjoy the features that I've put tons of effort into :D!
+I truly hope you can give it a try and enjoy the features that I've put tons of effort into :D!
 
 ## Features
 ### Draw/Pixel Art command
