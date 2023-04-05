@@ -38,8 +38,6 @@ class Bot(commands.Bot):
     COGS = {
         "poketwo": "Poketwo.poketwo_main",
         "p2": "Poketwo.poketwo_main",
-        "afd_2023": "Poketwo.afd_2023",
-        "afd": "Poketwo.afd_2023",
         "docs": "RDanny.docs",
         "help": "RDanny.help",
         "admin": "admin",
