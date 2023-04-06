@@ -10,3 +10,5 @@ MESSAGE_CHAR_LIMIT = 1900
 
 LOG_BORDER_LENGTH = 50
 LOG_BORDER = "-"*LOG_BORDER_LENGTH
+
+GITHUB_REPO = "https://github.com/WitherredAway/Yeet"

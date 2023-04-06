@@ -536,8 +536,8 @@ class Help(commands.Cog):
     @commands.command(
         name="avatar",
         aliases=["av", "pfp", "profilepicture"],
-        brief="Avatar url",
-        help="Sends the avatar url of author/mentioned member.",
+        brief="View avatar of self or other users.",
+        help="Sends the avatar url of author/mentioned member, or yourself if no member is passed.",
     )
     async def avatar(self, ctx, member: discord.Member = None):
         member = member or ctx.author

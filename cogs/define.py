@@ -152,7 +152,7 @@ class Define(commands.Cog):
     @commands.command(
         name="define",
         aliases=("definition", "definitions", "df"),
-        description=("Show all kinds of information about a term; word or phrase."),
+        description=("Show definitions and other info about a term."),
     )
     async def define(self, ctx: commands.Context, *, term: str):
         try:
@@ -178,7 +178,7 @@ class Define(commands.Cog):
             end = wikipedia.summary(start)
             try:
                 await msg.edit(content=f"```\n{end[:MESSAGE_CHAR_LIMIT] + '...' if len(end) >= MESSAGE_CHAR_LIMIT else ''}\n```")
-            except wikipedia.WikipediaException:
+            except wikipedia.PageError:
                     await msg.edit(content="Not found.")
 
 

@@ -125,7 +125,7 @@ class BotCog(commands.Cog):
     # uptime
     @commands.command(
         name="uptime",
-        brief="Bot's uptime.",
+        brief="How long the bot has been up.",
         help="Shows how long it has been since the bot last went offline.",
     )
     async def uptime(self, ctx: commands.Context):
