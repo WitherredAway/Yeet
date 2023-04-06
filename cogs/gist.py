@@ -417,10 +417,10 @@ class Gist(commands.Cog):
 
     @commands.command(
         name="gist",
-        brief="GitHub Gists utilities",
+        brief="Command to interact with and manage github gists.",
         help=(
             "Create a new gist or pass in the link/ID of a gist initially created through this command"
-            " to Edit or Delete the list with the help of Modals and Buttons"
+            " to Edit or Delete the list with the help of Modals and Buttons."
         ),
         description=(
             "Gists are a way to share text, code, etc with others and acts like a paste service.\n"

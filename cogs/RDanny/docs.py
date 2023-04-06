@@ -194,6 +194,7 @@ class Documentation(commands.Cog):
     @commands.group(
         aliases=["rtfd", "rtfm", "doc", "documentation", "documentations"],
         invoke_without_command=True,
+        brief="Get documentation link for discord.py and python entities",
     )
     async def docs(self, ctx, *, obj: str = None):
         """Gives you a documentation link for a discord.py entity.

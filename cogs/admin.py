@@ -65,6 +65,7 @@ class Developer(commands.Cog):
         aliases=("c",),
         invoke_without_command=True,
         case_insensitive=True,
+        brief="Cog related commands.",
         help="Commands related to cogs, dev only command.",
     )
     async def cog(self, ctx: commands.Context):
