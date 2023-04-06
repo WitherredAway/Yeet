@@ -1,3 +1,11 @@
+.bash_history
+.bash_logout
+.bashrc
+.lesshst
+.profile
+.ssh/
+nohup.out
+run
 .replit
 replit.nix
 .config/
