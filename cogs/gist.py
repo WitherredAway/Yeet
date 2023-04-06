@@ -408,7 +408,7 @@ class GistPageSource(menus.ListPageSource):
 
 
 class Gist(commands.Cog):
-    """Commands for testing."""
+    """Commands for interfacing with Github Gists"""
 
     def __init__(self, bot):
         self.bot = bot

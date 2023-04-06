@@ -72,8 +72,8 @@ class DocsPageSource(menus.ListPageSource):
         return self.embed
 
 
-class Documentations(commands.Cog):
-    """Documentation related category."""
+class Documentation(commands.Cog):
+    """Documentation of Discord.py and source code of features"""
 
     def __init__(self, bot):
         self.bot = bot
@@ -238,4 +238,4 @@ class Documentations(commands.Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(Documentations(bot))
+    await bot.add_cog(Documentation(bot))

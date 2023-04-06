@@ -52,7 +52,7 @@ class ChannelPageSource(menus.ListPageSource):
 
 
 class Channel(commands.Cog):
-    """Utility commands for editing/managing channels"""
+    """Utility commands for managing channels"""
 
     def __init__(self, bot: Bot):
         self.bot = bot

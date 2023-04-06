@@ -12,7 +12,7 @@ if typing.TYPE_CHECKING:
 
 
 class BotCog(commands.Cog):
-    """Commands and events related to the bot."""
+    """Commands and events related to the bot's base functionality."""
 
     def __init__(self, bot: Bot):
         self.bot = bot

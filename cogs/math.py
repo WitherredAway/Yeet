@@ -265,7 +265,7 @@ def calculate(to_calc):
 
 
 class Math(commands.Cog):
-    """Commands for mathematical stuff."""
+    """Commands for mathematical features."""
 
     def __init__(self, bot):
         self.bot = bot

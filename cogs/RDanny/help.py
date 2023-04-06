@@ -516,7 +516,7 @@ class PaginatedHelpCommand(commands.HelpCommand):
 
 
 class Help(commands.Cog):
-    """Commands for utilities related to Discord or the Bot itself."""
+    """Help and Utility commands"""
 
     def __init__(self, bot):
         self.bot = bot
