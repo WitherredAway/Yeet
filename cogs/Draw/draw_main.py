@@ -1621,7 +1621,7 @@ class Draw(commands.Cog):
         elif message_link is None or not isinstance(message_link, discord.Message):
             return await ctx.send_help(ctx.command)
 
-        if message.author != ctx.bot.user:
+        if message.author.id not in (self.bot.TEST_BOT_ID, self.bot.MAIN_BOT_ID):
             raise InvalidDrawMessageError("Not a message from the bot.")
         if len(message.embeds) == 0:
             raise InvalidDrawMessageError("Not a drawing embed.")

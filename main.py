@@ -32,6 +32,8 @@ def get_prefix(bot, message):
 
 
 class Bot(commands.Bot):
+    TEST_BOT_ID = 561963276792102912
+    MAIN_BOT_ID = 634409171114262538
     PREFIXES = os.getenv("PREFIXES").split(", ")
     PREFIX = PREFIXES[0]
 

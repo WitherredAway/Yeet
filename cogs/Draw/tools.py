@@ -7,7 +7,7 @@ import discord
 from discord.ext import commands
 import numpy as np
 
-from .constants import CURSOR, LOADING_EMOJI
+from .constants import CURSOR
 from .colour import Colour
 
 if typing.TYPE_CHECKING:
