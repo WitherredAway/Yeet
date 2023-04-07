@@ -6,8 +6,6 @@ from constants import u200b
 from ..utils.utils import invert_dict
 
 
-LOADING_EMOJI = "<a:typing:878228326802673664>"
-
 
 def base_colour_options():
     return [
