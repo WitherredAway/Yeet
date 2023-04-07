@@ -158,7 +158,7 @@ class Bot(commands.Bot):
                 self.emoji_cache.remove_emoji(
                     emoji_to_delete
                 )  # Delete that emoji from cache if it exists
-                await self.upload_emoji(
+                return await self.upload_emoji(
                     colour, draw_view=draw_view, interaction=interaction
                 )  # Run again
 

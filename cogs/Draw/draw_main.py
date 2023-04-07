@@ -1209,7 +1209,9 @@ class DrawView(discord.ui.View):
                 else:
                     if delete_msg is True:
                         await msg.delete()
-                return notification, msg
+        if msg is None:  # If timed out, update after re-enabling
+            await self.edit_message(interaction)
+        return notification, msg
 
     @property
     def placeholder_button(self) -> discord.ui.Button:
