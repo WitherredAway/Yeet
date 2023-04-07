@@ -109,7 +109,7 @@ class Afd(commands.Cog):
 
         self.update_pokemon.start()
 
-    def cog_unload(self):
+    async def cog_unload(self):
         self.update_pokemon.cancel()
 
     async def fetch_user(self, user_id: int) -> discord.User:
