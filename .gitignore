@@ -11,6 +11,7 @@ replit.nix
 .config/
 *.code-workspace
 .vscode/
+credentials.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -4,6 +4,7 @@ import typing
 from typing import Counter, Union, Optional
 import json
 import re
+from functools import cached_property
 
 import discord
 from discord.ext import commands
@@ -95,11 +96,16 @@ class PoketwoChances(commands.Cog):
         self.gists_client = gists.Client()
         await self.gists_client.authorize(os.getenv("WgithubTOKEN"))
 
-    @property
+    @cached_property
+    def original_pk(self):
+        original_pk = pd.read_csv(self.pokemon_csv)
+        return original_pk
+    
+    @cached_property
     def pk(self):
-        pk = pd.read_csv(self.pokemon_csv)
+        pk = self.original_pk[self.original_pk["catchable"] > 0]
         self.possible_abundance = round(
-            (pk.loc[:, "abundance"][pk.loc[:, "catchable"] > 0]).sum(), 4
+            pk.loc[:, "abundance"].sum(), 4
         )
         return pk
 
@@ -204,13 +210,7 @@ class PoketwoChances(commands.Cog):
     async def chance(self, ctx, *, pokemon: str):
         pokemon = pokemon.lower()
 
-        pkm_df = self.pk.loc[
-            (self.pk["catchable"] > 0)
-            & (
-                (self.pk["slug"].str.casefold() == pokemon)
-                | (self.pk["name.en"].str.casefold() == pokemon)
-            )
-        ]
+        pkm_df = self.pk.loc[(self.pk["slug"].str.casefold() == pokemon) | (self.pk["name.en"].str.casefold() == pokemon)]
         pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance"]]
 
         if len(pkm_df) == 0:
@@ -227,7 +227,7 @@ class PoketwoChances(commands.Cog):
 
     @chance.command(name="all", help="See the chances of all pokémon in a nice table")
     async def all(self, ctx):
-        pkm_df = self.pk.loc[self.pk["catchable"] > 0]
+        pkm_df = self.pk
         pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance"]]
 
         async with ctx.channel.typing():
@@ -243,9 +243,7 @@ class PoketwoChances(commands.Cog):
         help="See the chances of starters.",
     )
     async def _starters(self, ctx):
-        pkm_df = self.pk.loc[
-            (self.pk["catchable"] > 0) & ((self.pk["name.en"].isin(STARTERS)))
-        ]
+        pkm_df = self.pk.loc[self.pk["name.en"].isin(STARTERS)]
         pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance"]]
         async with ctx.channel.typing():
             result = await self.format_chances_message(
@@ -271,9 +269,7 @@ class PoketwoChances(commands.Cog):
                 f'Invalid rarity provided. Valid rarities: {", ".join(options)}.'
             )
 
-        pkm_df = self.pk.loc[
-            (self.pk["catchable"] > 0) & (self.pk[rarity.lower()] == 1)
-        ]
+        pkm_df = self.pk.loc[self.pk[rarity.lower()] == 1]
         pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance"]]
 
         async with ctx.channel.typing():
@@ -298,10 +294,7 @@ class PoketwoChances(commands.Cog):
                 f'Invalid form provided. Options: {", ".join(options)}'
             )
 
-        pkm_df = self.pk.loc[
-            (self.pk["catchable"] > 0)
-            & (self.pk["slug"].str.endswith(form.lower()[:5]))
-        ]
+        pkm_df = self.pk.loc[self.pk["slug"].str.endswith(form.lower()[:5])]
         pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance"]]
 
         async with ctx.channel.typing():
@@ -327,9 +320,7 @@ class PoketwoChances(commands.Cog):
         else:
             region = region.capitalize()
 
-        pkm_df = self.pk.loc[
-            (self.pk["catchable"] > 0) & (self.pk["region"] == region.lower())
-        ]
+        pkm_df = self.pk.loc[self.pk["region"] == region.lower()]
         pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance"]]
 
         if len(pkm_df) == 0:
@@ -419,7 +410,7 @@ class PoketwoChances(commands.Cog):
         name="event", aliases=("ev",), help="Chances of pokemon of the current event"
     )
     async def event(self, ctx):
-        pkm_df = self.pk.loc[(self.pk["event"] > 0) & (self.pk["catchable"] > 0)]
+        pkm_df = self.pk.loc[self.pk["event"] > 0]
         if len(pkm_df) == 0:
             await ctx.send("No currently catchable event pokemon")
             return ""
@@ -463,22 +454,10 @@ class PoketwoChances(commands.Cog):
         await asyncio.sleep(DELAY)
 
         cmd = chance.get_command("region")
-        kanto = pattern.match(await ctx.invoke(cmd, 1))
-        await asyncio.sleep(DELAY)
-        johto = pattern.match(await ctx.invoke(cmd, 2))
-        await asyncio.sleep(DELAY)
-        hoenn = pattern.match(await ctx.invoke(cmd, 3))
-        await asyncio.sleep(DELAY)
-        sinnoh = pattern.match(await ctx.invoke(cmd, 4))
-        await asyncio.sleep(DELAY)
-        unova = pattern.match(await ctx.invoke(cmd, 5))
-        await asyncio.sleep(DELAY)
-        kalos = pattern.match(await ctx.invoke(cmd, 6))
-        await asyncio.sleep(DELAY)
-        alola = pattern.match(await ctx.invoke(cmd, 7))
-        await asyncio.sleep(DELAY)
-        galar = pattern.match(await ctx.invoke(cmd, 8))
-        await asyncio.sleep(DELAY)
+        regions = []
+        for region_idx in range(1, 9):
+            regions.append(pattern.match(await ctx.invoke(cmd, region_idx)))
+            await asyncio.sleep(DELAY)
         hisui = pattern.match(await ctx.invoke(cmd, "hisui"))
 
         cmd = chance.get_command("event")
@@ -488,6 +467,9 @@ class PoketwoChances(commands.Cog):
             if event is not None
             else ""
         )
+        
+        regions_msg = "\n".join([f"""**{idx}. {region.group("title")}** [`{region.group("total")}`] = {region.group("chance_per")}% ({region.group("chance")})
+- <{REGION_GISTS[region.group("title").split(" ")[0]]}>""" for idx, region in enumerate(regions)])
 
         chance_msg = f"""__**Spawn chances:**__ 
 > __Recent updates (Last update: {discord.utils.format_dt(discord.utils.utcnow(), "f")})__
@@ -495,7 +477,7 @@ class PoketwoChances(commands.Cog):
 
 {event_msg}
 
-**All pokémon** - <https://gist.github.com/1bc525b05f4cd52555a2a18c331e0cf9>
+**All pokémon** - <{ALL_GIST}>
 
 **Starter pokémon** = {starters.group("chance_per")} ({starters.group("chance")})
 
@@ -517,24 +499,9 @@ class PoketwoChances(commands.Cog):
 
         reg_msg = f"""__**Regional spawn-chances**__ (Includes all catchable forms)
 
-**1. Kanto** [`{kanto.group("total")}`] = {kanto.group("chance_per")}% ({kanto.group("chance")})
-- <https://gist.github.com/2c48fc73eb1a9e94737634092e1c62e3>
-**2. Johto** [`{johto.group("total")}`] = {johto.group("chance_per")}% ({johto.group("chance")})
-- <https://gist.github.com/4456e7da504e9ff5ddc653cd3bc4e76c>
-**3. Hoenn** [`{hoenn.group("total")}`] = {hoenn.group("chance_per")}% ({hoenn.group("chance")})
-- <https://gist.github.com/ce4facd1f383676bb745cece67fbac50>
-**4. Sinnoh** [`{sinnoh.group("total")}`] = {sinnoh.group("chance_per")}% ({sinnoh.group("chance")})
-- <https://gist.github.com/e9a435742bea160eb588c8812e0730c4>
-**5. Unova** [`{unova.group("total")}`] = {unova.group("chance_per")}% ({unova.group("chance")})
-- <https://gist.github.com/6af2072d0229c3f5582b32f20b65f2f5>
-**6. Kalos** [`{kalos.group("total")}`] = {kalos.group("chance_per")}% ({kalos.group("chance")})
-- <https://gist.github.com/849a6b64a35a505c7afb2eb276eda18d>
-**7. Alola** [`{alola.group("total")}`] = {alola.group("chance_per")}% ({alola.group("chance")})
-- <https://gist.github.com/a55287b7bff61b90b3182bca602b062a>
-**8. Galar** [`{galar.group("total")}`] = {galar.group("chance_per")}% ({galar.group("chance")})
-- <https://gist.github.com/f4d75c84e7ed4ce57273b6ef860a5a54>
+{regions_msg}
 **4.1. Hisui** [`{hisui.group("total")}`] = {hisui.group("chance_per")}% ({hisui.group("chance")})
-- <https://gist.github.com/46bbc638f81687aa42709a83078aa1f8>"""
+- <{REGION_GISTS[hisui.group("title").casefold()]}>"""
 
         await ctx.send(reg_msg)
 

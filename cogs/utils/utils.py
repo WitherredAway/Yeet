@@ -1,6 +1,8 @@
 import typing
 from typing import Dict
 import cProfile
+from typing import Dict
+
 import discord
 
 

@@ -1,24 +1,32 @@
 from __future__ import annotations
 
 import datetime
-import json
 import logging
 import os
-import random
-import re
 import time
 from functools import cached_property
 from typing import Callable, Dict, List, Optional, Tuple
+import json
 
 import aiohttp
 import discord
 import gists
 import pandas as pd
+import numpy as np
 from discord.ext import commands, tasks
+import gspread_asyncio
+import pandas as pd
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
 
-from constants import NL
-from constants import LOG_BORDER
-from keep_alive import app
+from constants import NL, LOG_BORDER
+from ..utils.utils import UrlView
+
+
+EMAIL = os.getenv("myEMAIL")
+SPREADSHEETS_API = "https://sheets.googleapis.com/v4/spreadsheets"
+SERVICE_ACCOUNT_FILE = "credentials.json"
+EXPORT_SUFFIX = "export?format=csv"
 
 IMGUR_API_URL = "https://api.imgur.com/3/album/%s/images"
 IMGUR_CLIENT_ID = os.getenv("IMGUR_CLIENT_ID")
@@ -28,6 +36,7 @@ IMAGE_URL = os.getenv("POKETWO_IMAGE_SERVER_API")
 SHEET_URL = os.getenv("AFD_SHEET_URL")
 AFD_GIST_URL = os.getenv("AFD_GIST_URL")
 AFD_CREDITS_GIST_URL = os.getenv("AFD_CREDITS_GIST_URL")
+
 UPDATE_CHANNEL_ID = os.getenv("AFD_UPDATE_CHANNEL_ID")
 ROW_INDEX_OFFSET = 8  # The number of rows after which the pokemon indexes begin
 DEL_ATTRS_TO_UPDATE = ["unc_amount", "unr_amount", "ml_amount"]
@@ -40,16 +49,18 @@ TOP_PARTICIPANTS_FILENAME = "(1) Top Participants.md"
 CREDITS_FILENAME = "(2) Credits.md"
 PARTICIPANTS_FILENAME = "(3) Participants.md"
 
-ID_LABEL = "Discord ID"
-IMGUR_LABEL = "Imgur Link"
+DEX_LABEL = "Dex"
 PKM_LABEL = "Pokemon"
+USERNAME_LABEL = "Discord Username"
+ID_LABEL = "Discord ID"
+IMGUR_LABEL = "Imgur"
 CMT_LABEL = "Comments"
-DEX_LABEL = "Dex Number"
 STATUS_LABEL = "Status"
+
 APPROVED_TXT = "Approved"
 
 ENGLISH_NAME_LABEL_P = "name.en"
-ID_LABEL_P = "id"
+DEX_LABEL_P = "id"
 
 CR = "\r"
 TOP_N = 5
@@ -60,13 +71,51 @@ HEADERS_FMT = "|   %s   |   %s   |   %s   |   %s   |   %s   |"
 log = logging.getLogger(__name__)
 
 
-class AfdView(discord.ui.View):
-    def __init__(self, cog: Afd):
-        super().__init__()
-        self.cog = cog
+class AfdSheet:
+    def __init__(self, sheet_url: str, *, pokemon_df: pd.DataFrame, index_col: Optional[int] = 0, header: Optional[int] = 0):
+        """sheet_url must be in the format https://docs.google.com/spreadsheets/d/{ID}/export?format=csv"""
+        self.sheet_url = sheet_url
+        self.pk = pokemon_df
+        print(sheet_url)
+        self.df = pd.read_csv(self.sheet_url, index_col=index_col, header=header, dtype={ID_LABEL: "object"}, on_bad_lines='warn')
 
-        self.add_item(discord.ui.Button(label="AFD Gist", url=self.cog.afd_gist.url, style=discord.ButtonStyle.url))
-        self.add_item(discord.ui.Button(label="Credits Gist", url=self.cog.credits_gist.url, style=discord.ButtonStyle.url))
+        self.gc: gspread_asyncio.AsyncioGspreadClient
+        self.spreadsheet: gspread_asyncio.AsyncioGspreadSpreadsheet
+        self.worksheet: gspread_asyncio.AsyncioGspreadWorksheet
+
+    async def authorize(self) -> None:
+        SCOPES = ['https://www.googleapis.com/auth/drive',
+                'https://www.googleapis.com/auth/spreadsheets'] # THIS THE SERVICE KEY JSON FROM GOOGLE CLOUD
+
+        creds = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE).with_scopes(SCOPES)
+
+        self.gc = await gspread_asyncio.AsyncioGspreadClientManager(lambda: creds).authorize()
+
+    async def update_sheet(self) -> None:
+        vals = [self.df.columns.tolist()] + self.df.values.tolist()
+        await self.worksheet.update('A1', vals)
+
+    @classmethod
+    async def create_new(cls, *, pokemon_df: pd.DataFrame) -> AfdSheet:
+        self: AfdSheet = cls.__new__(cls)
+        await self.authorize()
+
+        sheet = await self.gc.create("AFD Sheet")
+        self.spreadsheet = sheet
+        self.worksheet = await self.spreadsheet.get_worksheet(0)
+
+        sheet_url = f"https://docs.google.com/spreadsheets/d/{sheet.id}/{EXPORT_SUFFIX}"
+        await self.gc.insert_permission(sheet.id, EMAIL, perm_type="user", role="writer")
+
+        self.df = pd.DataFrame(columns=[DEX_LABEL, PKM_LABEL, USERNAME_LABEL, ID_LABEL, IMGUR_LABEL, STATUS_LABEL, CMT_LABEL])
+        for idx, row in pokemon_df.iterrows():
+            new_row = [row[DEX_LABEL_P], row[ENGLISH_NAME_LABEL_P], None, None, None, None, None]
+            self.df.loc[len(self.df.index)] = new_row
+
+        await self.update_sheet()
+
+        self.__init__(sheet_url, pokemon_df=pokemon_df)
+        return self
 
 
 class Afd(commands.Cog):
@@ -92,13 +141,6 @@ class Afd(commands.Cog):
         log.info(f"AFD: Fetched spreadsheet in {round(time.time()-start, 2)}s")
         return pk
 
-    def update_pk(self):
-        self.__dict__.pop('pk', None)
-
-    @property
-    def pk_grouped(self, label: Optional[str] = ID_LABEL) -> pd.core.groupby.DataFrameGroupBy:
-        return self.pk.groupby(label)
-
     async def cog_load(self):
         self.gists_client = gists.Client()
         await self.gists_client.authorize(os.getenv("WgithubTOKEN"))
@@ -111,6 +153,120 @@ class Afd(commands.Cog):
 
     async def cog_unload(self):
         self.update_pokemon.cancel()
+
+    # The task that updates the unclaimed pokemon gist
+    @tasks.loop(minutes=5)
+    async def update_pokemon(self):
+        og_start = time.time()
+        log.info(NL + LOG_BORDER + NL + f"AFD: Task started")
+
+        self.update_pk()
+
+        self.pk.reset_index(inplace=True)
+        date = (datetime.datetime.utcnow()).strftime("%I:%M%p, %d/%m/%Y")
+        updated = []
+
+        self.unc = True
+        unc_list, unc_amount = self.validate_unclaimed()
+        self.unr = True
+        unr_list, unr_amount = await self.validate_unreviewed()
+        self.ml = True
+        ml_list, ml_list_mention, ml_amount = await self.validate_missing_link()
+
+        files = []
+        if self.unc:
+            updated.append(f"`Unclaimed pokemon` **({unc_amount})**")
+            unc_content = f'# Unclaimed Pokemon\nCount: {unc_amount}\n## [Pick a random one](https://yeet.witherredaway.repl.co/afd/random)\n## Pokemon: \n<details>\n<summary>Click to expand</summary>\n\n{NL.join(unc_list) if unc_list else "None"}\n\n</details>'
+            files.append(gists.File(name=UNC_FILENAME, content=unc_content))
+
+        if self.unr:
+            updated.append(f"`Unreviewed pokemon` **({unr_amount})**")
+            unr_content = f'# Unreviewed Pokemon\nCount: {unr_amount}\n## Users: \n{NL.join(unr_list) if unr_list else "None"}'
+            files.append(gists.File(name=UNR_FILENAME, content=unr_content))
+
+        if self.ml:
+            updated.append(f"`Incomplete pokemon` **({ml_amount})**")
+            ml_content = f'# Incomplete Pokemon\nCount: {ml_amount}\n## Users: \n<details>\n<summary>Click to expand</summary>\n\n{NL.join(ml_list) if ml_list else "None"}\n\n</details>\n\n## Copy & paste to ping:\n<details>\n<summary>Click to expand</summary>\n\n```\n{NL.join(ml_list_mention) if ml_list else "None"}\n```\n\n</details>'
+            files.append(gists.File(name=ML_FILENAME, content=ml_content))
+
+        contents = f"""# Contents
+- [{ML_FILENAME}](#file-incomplete-pokemon-md)
+- [{UNC_FILENAME}](#file-unclaimed-pokemon-md)
+- [{UNR_FILENAME}](#file-unreviewed-pokemon-md)"""
+        files.append(gists.File(name=CONTENTS_FILENAME, content=contents))
+
+        if not (self.unc or self.unr or self.ml):
+            log.info(f"AFD: Task returned in {round(time.time()-og_start, 2)}s" + NL + LOG_BORDER)
+            return
+
+        description = f"{self.ml_amount} claimed pokemon with missing links, {self.unc_amount} unclaimed pokemon and {self.unr_amount} unreviewed pokemon - As of {date} GMT (Checks every 5 minutes, and updates only if there is a change)"
+        start = time.time()
+        await self.afd_gist.edit(
+            files=files,
+            description=description,
+        )
+
+        try:
+            await self.update_credits()
+        except Exception as e:
+            await self.update_channel.send(e)
+            raise e
+
+        update_msg = f"""Updated {" and ".join(updated)}!
+(<{self.afd_gist.url}>)
+
+Credits: <{self.credits_gist.url}>"""
+        await self.update_channel.send(update_msg)
+        log.info(f"AFD: Task completed in {round(time.time()-og_start, 2)}s" + NL + LOG_BORDER)
+
+    @update_pokemon.before_loop
+    async def before_update(self):
+        await self.bot.wait_until_ready()
+
+    @commands.is_owner()
+    @commands.group(invoke_without_command=True)
+    async def afd(self, ctx: commands.Context):
+        self.update_pk()
+        url_dict = {
+            "AFD Gist": self.afd_gist.url,
+            "AFD Credits": self.credits_gist.url,
+        }
+        view = UrlView(url_dict)
+        
+        unc_list, unc_amount = self.validate_unclaimed()
+        unr_list, unr_amount = await self.validate_unreviewed()
+        ml_list, ml_list_mention, ml_amount = await self.validate_missing_link()
+        
+        embed = self.bot.Embed(
+            title="April Fool's Day Event",
+            description=f"""No. of Unclaimed pokemon: **{unc_amount}**
+No. of Unreviewed pokemon: **{unr_amount}**
+No. of Incomplete pokemon: **{ml_amount}**
+
+Number of participants: **{len(await self.get_participants())}**"""
+        )
+
+        await ctx.send(embed=embed, view=view)
+
+    @commands.is_owner()
+    @afd.command()
+    async def forceupdate(self, ctx: commands.Context):
+        for attr in DEL_ATTRS_TO_UPDATE:
+            try:
+                delattr(self, attr)
+            except AttributeError:
+                pass
+
+        await ctx.message.add_reaction("▶️")
+        self.update_pokemon.restart()
+        await ctx.message.add_reaction("✅")
+
+    def update_pk(self):
+        self.__dict__.pop('pk', None)
+
+    @property
+    def pk_grouped(self, label: Optional[str] = ID_LABEL) -> pd.core.groupby.DataFrameGroupBy:
+        return self.pk.groupby(label)
 
     async def fetch_user(self, user_id: int) -> discord.User:
         user_id = int(user_id)
@@ -129,7 +285,7 @@ class Afd(commands.Cog):
     
     def get_dex_from_name(self, name: str):
         try:
-            return int(self.original_pk[self.original_pk[ENGLISH_NAME_LABEL_P] == name][ID_LABEL_P])
+            return int(self.original_pk[self.original_pk[ENGLISH_NAME_LABEL_P] == name][DEX_LABEL_P])
         except TypeError as e:
             print(name)
             raise e
@@ -256,37 +412,6 @@ class Afd(commands.Cog):
             self.ml_amount = ml_amount
 
         return ml_list, ml_list_mention, ml_amount
-
-    @commands.is_owner()
-    @commands.group(invoke_without_command=True)
-    async def afd(self, ctx: commands.Context):
-        self.update_pk()
-        view = AfdView(self)
-        
-        unc_list, unc_amount = self.validate_unclaimed()
-        unr_list, unr_amount = await self.validate_unreviewed()
-        ml_list, ml_list_mention, ml_amount = await self.validate_missing_link()
-        await ctx.send(
-            f"""Number of Unclaimed pokemon: **{unc_amount}**
-Number of Unreviewed pokemon: **{unr_amount}**
-Number of Incomplete pokemon: **{ml_amount}**
-
-Number of participants: **{len(await self.get_participants())}**""",
-            view=view
-        )
-
-    @commands.is_owner()
-    @afd.command()
-    async def forceupdate(self, ctx: commands.Context):
-        for attr in DEL_ATTRS_TO_UPDATE:
-            try:
-                delattr(self, attr)
-            except AttributeError:
-                pass
-
-        await ctx.message.add_reaction("▶️")
-        self.update_pokemon.restart()
-        await ctx.message.add_reaction("✅")
 
     async def resolve_imgur_url(self, url: str):
         if url.startswith("https://imgur.com/"):
@@ -426,75 +551,6 @@ In alphabetical order. Thank you everyone who participated!
             files=files,
         )
         log.info(f"AFD Credits: Updated credits in {round(time.time()-og_start, 2)}s")
-
-    # The task that updates the unclaimed pokemon gist
-    @tasks.loop(minutes=5)
-    async def update_pokemon(self):
-        og_start = time.time()
-        log.info(NL + LOG_BORDER + NL + f"AFD: Task started")
-
-        self.update_pk()
-
-        self.pk.reset_index(inplace=True)
-        date = (datetime.datetime.utcnow()).strftime("%I:%M%p, %d/%m/%Y")
-        updated = []
-
-        self.unc = True
-        unc_list, unc_amount = self.validate_unclaimed()
-        self.unr = True
-        unr_list, unr_amount = await self.validate_unreviewed()
-        self.ml = True
-        ml_list, ml_list_mention, ml_amount = await self.validate_missing_link()
-
-        files = []
-        if self.unc:
-            updated.append(f"`Unclaimed pokemon` **({unc_amount})**")
-            unc_content = f'# Unclaimed Pokemon\nCount: {unc_amount}\n## [Pick a random one](https://yeet.witherredaway.repl.co/afd/random)\n## Pokemon: \n<details>\n<summary>Click to expand</summary>\n\n{NL.join(unc_list) if unc_list else "None"}\n\n</details>'
-            files.append(gists.File(name=UNC_FILENAME, content=unc_content))
-
-        if self.unr:
-            updated.append(f"`Unreviewed pokemon` **({unr_amount})**")
-            unr_content = f'# Unreviewed Pokemon\nCount: {unr_amount}\n## Users: \n{NL.join(unr_list) if unr_list else "None"}'
-            files.append(gists.File(name=UNR_FILENAME, content=unr_content))
-
-        if self.ml:
-            updated.append(f"`Incomplete pokemon` **({ml_amount})**")
-            ml_content = f'# Incomplete Pokemon\nCount: {ml_amount}\n## Users: \n<details>\n<summary>Click to expand</summary>\n\n{NL.join(ml_list) if ml_list else "None"}\n\n</details>\n\n## Copy & paste to ping:\n<details>\n<summary>Click to expand</summary>\n\n```\n{NL.join(ml_list_mention) if ml_list else "None"}\n```\n\n</details>'
-            files.append(gists.File(name=ML_FILENAME, content=ml_content))
-
-        contents = f"""# Contents
-- [{ML_FILENAME}](#file-incomplete-pokemon-md)
-- [{UNC_FILENAME}](#file-unclaimed-pokemon-md)
-- [{UNR_FILENAME}](#file-unreviewed-pokemon-md)"""
-        files.append(gists.File(name=CONTENTS_FILENAME, content=contents))
-
-        if not (self.unc or self.unr or self.ml):
-            log.info(f"AFD: Task returned in {round(time.time()-og_start, 2)}s" + NL + LOG_BORDER)
-            return
-
-        description = f"{self.ml_amount} claimed pokemon with missing links, {self.unc_amount} unclaimed pokemon and {self.unr_amount} unreviewed pokemon - As of {date} GMT (Checks every 5 minutes, and updates only if there is a change)"
-        start = time.time()
-        await self.afd_gist.edit(
-            files=files,
-            description=description,
-        )
-
-        try:
-            await self.update_credits()
-        except Exception as e:
-            await self.update_channel.send(e)
-            raise e
-
-        update_msg = f"""Updated {" and ".join(updated)}!
-(<{self.afd_gist.url}>)
-
-Credits: <{self.credits_gist.url}>"""
-        await self.update_channel.send(update_msg)
-        log.info(f"AFD: Task completed in {round(time.time()-og_start, 2)}s" + NL + LOG_BORDER)
-
-    @update_pokemon.before_loop
-    async def before_update(self):
-        await self.bot.wait_until_ready()
 
 
 async def setup(bot):
