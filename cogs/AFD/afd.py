@@ -594,6 +594,7 @@ Credits: <{self.credits_gist.url}>"""
         for idx, row in pk.iterrows():
             pkm_name = row[PKM_LABEL]
             pkm_dex = self.get_dex_from_name(pkm_name)
+            link = "None"
             if not pd.isna(person_id := row[ID_LABEL]):
                 person_id = int(person_id)
 
@@ -601,8 +602,6 @@ Credits: <{self.credits_gist.url}>"""
                 if not pd.isna(imgur):
                     imgur = await self.resolve_imgur_url(imgur)
                     link = f"![art]({imgur})"
-                else:
-                    link = "None"
 
                 user = await self.fetch_user(person_id)
                 person = discord.utils.escape_markdown(str(user))
