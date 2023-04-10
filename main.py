@@ -13,6 +13,7 @@ import aiohttp
 import discord
 import gists
 from discord.ext import commands
+import pandas as pd
 
 from cogs.Draw.colour import Colour
 from cogs.Draw.draw_main import DrawView
@@ -51,7 +52,8 @@ class Bot(commands.Bot):
         "jishaku": "jishaku",
         "jsk": "jishaku",
         "math": "math",
-        "test": "test",
+        "afd": "AFD.afd",
+        # "test": "test",
     }
 
     def __init__(self, **kwargs):
@@ -64,6 +66,21 @@ class Bot(commands.Bot):
         self.emoji_cache: EmojiCache = EmojiCache(bot=self)
 
         self.lock = asyncio.Lock()
+
+        self.pokemon_csv = (
+            "https://raw.githubusercontent.com/poketwo/data/master/csv/pokemon.csv"
+            # os.getenv("POKEMON_CSV")
+        )
+
+    @cached_property
+    def original_pk(self):
+        original_pk = pd.read_csv(self.pokemon_csv)
+        return original_pk
+    
+    @cached_property
+    def pk(self):
+        pk = self.original_pk[self.original_pk["catchable"] > 0]
+        return pk
 
     @cached_property
     def invite_url(self) -> str:

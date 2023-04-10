@@ -12,6 +12,9 @@ import numpy as np
 import pandas as pd
 import gists
 
+if typing.TYPE_CHECKING:
+    from main import Bot
+
 
 ALL_GIST = "https://gist.github.com/1bc525b05f4cd52555a2a18c331e0cf9"
 STARTERS_GIST = "https://gist.github.com/1bdee3b3fb2a29ae8f83ebdd70013456"
@@ -83,27 +86,19 @@ class PoketwoChances(commands.Cog):
     """Commands related to the poketwo bot."""
 
     def __init__(self, bot):
-        self.bot = bot
+        self.bot: Bot = bot
 
-        self.pokemon_csv = (
-            "https://raw.githubusercontent.com/poketwo/data/master/csv/pokemon.csv"
-            # os.getenv("POKEMON_CSV")
-        )
+        self.pokemon_csv = self.bot.pokemon_csv
 
     display_emoji = "🔣"
 
     async def cog_load(self):
         self.gists_client = gists.Client()
         await self.gists_client.authorize(os.getenv("WgithubTOKEN"))
-
-    @cached_property
-    def original_pk(self):
-        original_pk = pd.read_csv(self.pokemon_csv)
-        return original_pk
     
     @cached_property
     def pk(self):
-        pk = self.original_pk[self.original_pk["catchable"] > 0]
+        pk = self.bot.pk
         self.possible_abundance = round(
             pk.loc[:, "abundance"].sum(), 4
         )

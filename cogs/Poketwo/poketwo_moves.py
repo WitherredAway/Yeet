@@ -9,6 +9,9 @@ import pandas as pd
 
 from constants import CODE_BLOCK_FMT
 
+if typing.TYPE_CHECKING:
+    from main import Bot
+
 
 D = TypeVar("D", bound="Data")
 
@@ -91,8 +94,8 @@ class Move:
 
 class Data:
     def __init__(self, bot):
-        self.bot = bot
-        self.pk = self.bot.get_cog("Poketwo").pk.set_index("id")
+        self.bot: Bot = bot
+        self.pk = self.bot.original_pk
 
     async def init(self):
         await self.bot.loop.run_in_executor(None, self.fetch_data)
