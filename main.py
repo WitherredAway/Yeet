@@ -134,7 +134,7 @@ class Bot(commands.Bot):
 
     class Embed(discord.Embed):
         def __init__(self, **kwargs):
-            self.EMBED_COLOUR = 0xF1C40F
+            self.EMBED_COLOUR = 0x9BFFD6
 
             color = kwargs.pop("color", self.EMBED_COLOUR)
             super().__init__(**kwargs, color=color)
