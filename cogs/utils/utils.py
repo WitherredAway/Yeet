@@ -66,7 +66,7 @@ PB_BARS = {
     0.7: "🟨",
     1.0: "🟩"
 }
-def make_progress_bar(val: int, max_val: int, *, length: Optional[int] = 10):
+def make_progress_bar(val: int, max_val: int, *, length: Optional[int] = 10) -> str:
     full_bar = np.full(length, PB_BARS[0.0])
 
     if not (val == max_val == 0):

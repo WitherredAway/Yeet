@@ -142,8 +142,9 @@ class Bot(commands.Bot):
         def __init__(self, **kwargs):
             self.EMBED_COLOUR = 0x9BFFD6
 
-            color = kwargs.pop("color", self.EMBED_COLOUR)
-            super().__init__(**kwargs, color=color)
+            if 'color' not in kwargs:
+                kwargs['color'] = self.EMBED_COLOUR
+            super().__init__(**kwargs)
 
     async def upload_emoji(
         self, colour: Colour, *, draw_view: DrawView, interaction: discord.Interaction
