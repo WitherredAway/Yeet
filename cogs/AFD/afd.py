@@ -4,84 +4,93 @@ import datetime
 import logging
 import os
 import time
+import typing
 from functools import cached_property
 from typing import Callable, Dict, List, Optional, Tuple
-import json
 
 import aiohttp
 import discord
 import gists
-import pandas as pd
-import numpy as np
-from discord.ext import commands, tasks
 import gspread_asyncio
+import numpy as np
 import pandas as pd
+from constants import LOG_BORDER, NL
+from discord.ext import commands, tasks
 from google.oauth2 import service_account
-from googleapiclient.discovery import build
 
-from constants import NL, LOG_BORDER
 from ..utils.utils import UrlView
+from .utils.constants import (
+    APPROVED_TXT,
+    CR,
+    DEL_ATTRS_TO_UPDATE,
+    EMAIL,
+    EXPORT_SUFFIX,
+    HEADERS_FMT,
+    ROW_INDEX_OFFSET,
+    TOP_N,
+    UPDATE_CHANNEL_ID
+)
+
+from .utils.filenames import (
+    CONTENTS_FILENAME,
+    CREDITS_FILENAME,
+    ML_FILENAME,
+    PARTICIPANTS_FILENAME, 
+    SERVICE_ACCOUNT_FILE,
+    TOP_PARTICIPANTS_FILENAME,
+    UNC_FILENAME,
+    UNR_FILENAME
+)
+
+from .utils.labels import (
+    CMT_LABEL,
+    DEX_LABEL,
+    DEX_LABEL_P,
+    ENGLISH_NAME_LABEL_P,
+    ID_LABEL,
+    IMGUR_LABEL,
+    PKM_LABEL,
+    STATUS_LABEL,
+    USERNAME_LABEL
+)
+
+from .utils.urls import (
+    AFD_CREDITS_GIST_URL,
+    AFD_GIST_URL,
+    IMAGE_URL,
+    SHEET_URL,
+)
+
+if typing.TYPE_CHECKING:
+    from main import Bot
 
 
-EMAIL = os.getenv("myEMAIL")
-SPREADSHEETS_API = "https://sheets.googleapis.com/v4/spreadsheets"
-SERVICE_ACCOUNT_FILE = "credentials.json"
-EXPORT_SUFFIX = "export?format=csv"
-
-IMGUR_API_URL = "https://api.imgur.com/3/album/%s/images"
 IMGUR_CLIENT_ID = os.getenv("IMGUR_CLIENT_ID")
 IMGUR_CLIENT_SECRET = os.getenv("IMGUR_CLIENT_SECRET")
-
-IMAGE_URL = os.getenv("POKETWO_IMAGE_SERVER_API")
-SHEET_URL = os.getenv("AFD_SHEET_URL")
-AFD_GIST_URL = os.getenv("AFD_GIST_URL")
-AFD_CREDITS_GIST_URL = os.getenv("AFD_CREDITS_GIST_URL")
-
-UPDATE_CHANNEL_ID = os.getenv("AFD_UPDATE_CHANNEL_ID")
-ROW_INDEX_OFFSET = 8  # The number of rows after which the pokemon indexes begin
-DEL_ATTRS_TO_UPDATE = ["unc_amount", "unr_amount", "ml_amount"]
-
-UNC_FILENAME = "Unclaimed Pokemon.md"
-UNR_FILENAME = "Unreviewed Pokemon.md"
-ML_FILENAME = "Incomplete Pokemon.md"
-CONTENTS_FILENAME = "(0) Contents.md"
-TOP_PARTICIPANTS_FILENAME = "(1) Top Participants.md"
-CREDITS_FILENAME = "(2) Credits.md"
-PARTICIPANTS_FILENAME = "(3) Participants.md"
-
-DEX_LABEL = "Dex"
-PKM_LABEL = "Pokemon"
-USERNAME_LABEL = "Discord Username"
-ID_LABEL = "Discord ID"
-IMGUR_LABEL = "Imgur"
-CMT_LABEL = "Comments"
-STATUS_LABEL = "Status"
-
-APPROVED_TXT = "Approved"
-
-ENGLISH_NAME_LABEL_P = "name.en"
-DEX_LABEL_P = "id"
-
-CR = "\r"
-TOP_N = 5
-
-HEADERS_FMT = "|   %s   |   %s   |   %s   |   %s   |   %s   |"
 
 
 log = logging.getLogger(__name__)
 
 
 class AfdSheet:
-    def __init__(self, sheet_url: str, *, pokemon_df: pd.DataFrame, index_col: Optional[int] = 0, header: Optional[int] = 0):
-        """sheet_url must be in the format https://docs.google.com/spreadsheets/d/{ID}/export?format=csv"""
-        self.sheet_url = sheet_url
+    def __init__(self, url: str, *, pokemon_df: pd.DataFrame, index_col: Optional[int] = 0, header: Optional[int] = 0) -> None:
+        """url must be in the format https://docs.google.com/spreadsheets/d/{ID}"""
+        self.url = url
+        self.export_url = f"{url}/{EXPORT_SUFFIX}"
         self.pk = pokemon_df
-        print(sheet_url)
-        self.df = pd.read_csv(self.sheet_url, index_col=index_col, header=header, dtype={ID_LABEL: "object"}, on_bad_lines='warn')
+        
+        self.index_col = index_col
+        self.header = header
 
         self.gc: gspread_asyncio.AsyncioGspreadClient
         self.spreadsheet: gspread_asyncio.AsyncioGspreadSpreadsheet
         self.worksheet: gspread_asyncio.AsyncioGspreadWorksheet
+        
+    async def setup(self) -> None:
+        await self.authorize()
+        self.spreadsheet = await self.gc.open_by_url(self.url)
+        self.worksheet = await self.spreadsheet.get_worksheet(0)
+        self.df = pd.read_csv(self.export_url, index_col=self.index_col, header=self.header, dtype={ID_LABEL: "object"}, on_bad_lines='warn')
 
     async def authorize(self) -> None:
         SCOPES = ['https://www.googleapis.com/auth/drive',
@@ -101,45 +110,49 @@ class AfdSheet:
         await self.authorize()
 
         sheet = await self.gc.create("AFD Sheet")
-        self.spreadsheet = sheet
-        self.worksheet = await self.spreadsheet.get_worksheet(0)
+        try:
+            self.spreadsheet = sheet
+            self.worksheet = await self.spreadsheet.get_worksheet(0)
 
-        sheet_url = f"https://docs.google.com/spreadsheets/d/{sheet.id}/{EXPORT_SUFFIX}"
-        await self.gc.insert_permission(sheet.id, EMAIL, perm_type="user", role="writer")
+            url = f"https://docs.google.com/spreadsheets/d/{sheet.id}"
+            await self.gc.insert_permission(sheet.id, None, perm_type="anyone", role="reader")
+            await self.gc.insert_permission(sheet.id, EMAIL, perm_type="user", role="writer")
 
-        self.df = pd.DataFrame(columns=[DEX_LABEL, PKM_LABEL, USERNAME_LABEL, ID_LABEL, IMGUR_LABEL, STATUS_LABEL, CMT_LABEL])
-        for idx, row in pokemon_df.iterrows():
-            new_row = [row[DEX_LABEL_P], row[ENGLISH_NAME_LABEL_P], None, None, None, None, None]
-            self.df.loc[len(self.df.index)] = new_row
+            self.df = pd.DataFrame(columns=[DEX_LABEL, PKM_LABEL, USERNAME_LABEL, ID_LABEL, IMGUR_LABEL, STATUS_LABEL, CMT_LABEL])
+            for idx, row in pokemon_df.iterrows():
+                new_row = [row[DEX_LABEL_P], row[ENGLISH_NAME_LABEL_P], None, None, None, None, None]
+                self.df.loc[len(self.df.index)] = new_row
 
-        await self.update_sheet()
+            await self.update_sheet()
 
-        self.__init__(sheet_url, pokemon_df=pokemon_df)
-        return self
+            self.__init__(url, pokemon_df=pokemon_df)
+        except Exception as e:
+            await self.gc.del_spreadsheet(sheet.id)
+            log.info("\033[31;1mAFD: Encountered error. Deleted created spreadsheet.\033[0m")
+            raise e
+        else:
+            return self
 
 
 class Afd(commands.Cog):
     def __init__(self, bot):
-        self.bot = bot
+        self.bot: Bot = bot
         self.hidden = True
 
         self.bot.user_cache: dict = {}
         self.user_cache = self.bot.user_cache
+        
+        self.sheet: AfdSheet
 
     display_emoji = "🗓️"
 
-    @cached_property
-    def original_pk(self):
-        return self.bot.get_cog("Poketwo").pk
-    
-    @cached_property
+    @property
     def pk(self) -> pd.DataFrame:
-        start = time.time()
-        pk = pd.read_csv(
-            SHEET_URL, index_col=0, header=6, dtype={ID_LABEL: object}
-        )
-        log.info(f"AFD: Fetched spreadsheet in {round(time.time()-start, 2)}s")
-        return pk
+        return self.bot.pk
+    
+    @property
+    def df(self) -> pd.DataFrame:
+        return self.sheet.df
 
     async def cog_load(self):
         self.gists_client = gists.Client()
@@ -149,10 +162,15 @@ class Afd(commands.Cog):
         self.afd_gist = await self.gists_client.get_gist(AFD_GIST_URL)
         self.credits_gist = await self.gists_client.get_gist(AFD_CREDITS_GIST_URL)
 
-        self.update_pokemon.start()
+        start = time.time()
+        self.sheet = AfdSheet(SHEET_URL, pokemon_df=self.pk)
+        await self.sheet.setup()
+        log.info(f"AFD: Fetched spreadsheet in {round(time.time()-start, 2)}s")
+        # self.update_pokemon.start()
 
     async def cog_unload(self):
-        self.update_pokemon.cancel()
+        # self.update_pokemon.cancel()
+        ...
 
     # The task that updates the unclaimed pokemon gist
     @tasks.loop(minutes=5)
@@ -160,9 +178,9 @@ class Afd(commands.Cog):
         og_start = time.time()
         log.info(NL + LOG_BORDER + NL + f"AFD: Task started")
 
-        self.update_pk()
+        self.update_df()
 
-        self.pk.reset_index(inplace=True)
+        self.df.reset_index(inplace=True)
         date = (datetime.datetime.utcnow()).strftime("%I:%M%p, %d/%m/%Y")
         updated = []
 
@@ -224,9 +242,13 @@ Credits: <{self.credits_gist.url}>"""
         await self.bot.wait_until_ready()
 
     @commands.is_owner()
-    @commands.group(invoke_without_command=True)
+    @commands.group(
+        name="afd",
+        brief="View progress of the april fool's event.",
+        invoke_without_command=True,
+    )
     async def afd(self, ctx: commands.Context):
-        self.update_pk()
+        self.update_df()
         url_dict = {
             "AFD Gist": self.afd_gist.url,
             "AFD Credits": self.credits_gist.url,
@@ -249,7 +271,11 @@ Number of participants: **{len(await self.get_participants())}**"""
         await ctx.send(embed=embed, view=view)
 
     @commands.is_owner()
-    @afd.command()
+    @afd.command(
+        name="forceupdate",
+        brief="Forcefully update AFD gists. Owner only.",
+        description="Used to forcefully update the AFD gist and Credits gist"
+    )
     async def forceupdate(self, ctx: commands.Context):
         for attr in DEL_ATTRS_TO_UPDATE:
             try:
@@ -261,12 +287,28 @@ Number of participants: **{len(await self.get_participants())}**"""
         self.update_pokemon.restart()
         await ctx.message.add_reaction("✅")
 
-    def update_pk(self):
+    @commands.is_owner()
+    @afd.command(
+        name="new_spreadsheet",
+        brief="Used to create a brand new spreadsheet. Intended to be used only once.",
+        description="Sets up a new spreadsheet to use. Owner only."
+    )
+    async def new(self, ctx: commands.Context):
+        if hasattr(self, 'sheet'):
+            return await ctx.send("A spreadsheet already exists.")
+
+        async with ctx.typing():
+            self.sheet: AfdSheet = await AfdSheet.create_new(pokemon_df=self.pk)
+        
+        embed = self.bot.Embed(title="New Spreadsheet created", description=f"[Please set it permanently in the code.]({self.sheet.url})")
+        await ctx.send(embed=embed, view=UrlView({"Go To Spreadsheet": self.sheet.url}))
+
+    def update_df(self):
         self.__dict__.pop('pk', None)
 
     @property
     def pk_grouped(self, label: Optional[str] = ID_LABEL) -> pd.core.groupby.DataFrameGroupBy:
-        return self.pk.groupby(label)
+        return self.df.groupby(label)
 
     async def fetch_user(self, user_id: int) -> discord.User:
         user_id = int(user_id)
@@ -285,14 +327,14 @@ Number of participants: **{len(await self.get_participants())}**"""
     
     def get_dex_from_name(self, name: str):
         try:
-            return int(self.original_pk[self.original_pk[ENGLISH_NAME_LABEL_P] == name][DEX_LABEL_P])
+            return int(self.pk[self.pk[ENGLISH_NAME_LABEL_P] == name][DEX_LABEL_P])
         except TypeError as e:
             print(name)
             raise e
 
     def validate_unclaimed(self):
-        pk = self.pk
-        unc_df = pk[pk["Discord name + tag"].isna()].sort_values(by=DEX_LABEL)
+        df = self.df
+        unc_df = df[df[USERNAME_LABEL].isna()].sort_values(by=DEX_LABEL)
         unc_list = []
         unclaimed = {}
         for idx, row in unc_df.iterrows():
@@ -351,7 +393,7 @@ Number of participants: **{len(await self.get_participants())}**"""
         return df_list
 
     async def validate_unreviewed(self):
-        pk = self.pk
+        pk = self.df
         df = pk.loc[
             (~pk[ID_LABEL].isna())
             & (~pk[IMGUR_LABEL].isna())
@@ -391,7 +433,7 @@ Number of participants: **{len(await self.get_participants())}**"""
         return df_list, mention_list
 
     async def validate_missing_link(self):
-        pk = self.pk
+        pk = self.df
         df = pk.loc[(~pk[ID_LABEL].isna()) & (pk[IMGUR_LABEL].isna())]
 
         df_grouped = df.groupby(ID_LABEL)
@@ -467,7 +509,7 @@ Number of participants: **{len(await self.get_participants())}**"""
         return participants[:n]
 
     async def get_credits(self) -> gists.File:
-        pk = self.pk
+        pk = self.df
         credits_rows = [
             HEADERS_FMT % ("Dex", PKM_LABEL, "Art", "Artist", "Artist's ID"),
             HEADERS_FMT % ("---", "---", "---", "---", "---"),
