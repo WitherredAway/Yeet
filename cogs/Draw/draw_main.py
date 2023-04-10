@@ -1576,12 +1576,6 @@ class Draw(commands.Cog):
 
     display_emoji = "🖌️"
 
-    async def cog_load(self):
-        self.delete_colour_emoji.start()
-
-    async def cog_unload(self):
-        self.delete_colour_emoji.cancel()
-
     @commands.bot_has_permissions(external_emojis=True)
     @commands.group(
         name="draw",
@@ -1663,28 +1657,6 @@ class Draw(commands.Cog):
             colour_options=colour_options,
         )
         await start_view.start()
-
-    @tasks.loop(minutes=30)
-    async def delete_colour_emoji(self):
-        for guild in self.bot.EMOJI_SERVERS:
-            guild_emojis = await guild.fetch_emojis()
-            if len(guild_emojis) == 0:  # Server empty
-                continue
-            for guild_emoji in guild_emojis:
-                try:
-                    await guild_emoji.delete()
-                    self.bot.emoji_cache.remove_emoji(guild_emoji)
-                except discord.HTTPException as e:
-                    await self.bot.log_channel.send(e)
-                else:
-                    return
-            else:  # All servers empty
-                self.delete_colour_emoji.cancel()
-
-    @delete_colour_emoji.before_loop
-    async def before_delete(self):
-        await self.bot.wait_until_ready()
-
 
 async def setup(bot):
     await bot.add_cog(Draw(bot))

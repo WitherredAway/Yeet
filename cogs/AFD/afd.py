@@ -18,7 +18,7 @@ from constants import LOG_BORDER, NL
 from discord.ext import commands, tasks
 from google.oauth2 import service_account
 
-from ..utils.utils import UrlView
+from ..utils.utils import UrlView, make_progress_bar
 from .utils.constants import (
     APPROVED_TXT,
     CR,
@@ -206,14 +206,98 @@ class Afd(commands.Cog):
         self.credits_gist = await self.gists_client.get_gist(AFD_CREDITS_GIST_URL)
 
         start = time.time()
-        self.sheet = AfdSheet(SHEET_URL, pokemon_df=self.pk)
         await self.sheet.setup()
         log.info(f"AFD: Fetched spreadsheet in {round(time.time()-start, 2)}s")
-        # self.update_pokemon.start()
+
+        self.update_pokemon.start()
 
     async def cog_unload(self):
-        # self.update_pokemon.cancel()
-        ...
+        self.update_pokemon.cancel()
+
+    @cached_property
+    def sheet(self) -> AfdSheet:
+        return AfdSheet(SHEET_URL, pokemon_df=self.pk)
+
+    @commands.is_owner()
+    @commands.group(
+        name="afd",
+        brief="View progress of the april fool's event.",
+        invoke_without_command=True,
+    )
+    async def afd(self, ctx: commands.Context):
+        self.update_df()
+        url_dict = {
+            "AFD Gist": (self.afd_gist.url, 0),
+            "AFD Credits": (self.credits_gist.url, 0),
+            "Spreadsheet": (self.sheet.url, 1)
+        }
+        view = UrlView(url_dict)
+
+        total_amount = len(self.df)
+        unc_list, unc_amount = self.validate_unclaimed()
+        claimed_amount = total_amount - unc_amount
+
+        ml_list, ml_list_mention, ml_amount = await self.validate_missing_link()
+        completed_amount = claimed_amount - ml_amount
+
+        unr_list, unr_amount = await self.validate_unreviewed()
+
+
+        embed = self.bot.Embed(title="April Fool's Day Event")
+
+        embed.add_field(
+            name="Claimed",
+            value=f"{make_progress_bar(claimed_amount, total_amount)} {claimed_amount}/{total_amount}",
+            inline=False
+        )
+        embed.add_field(
+            name="Completed",
+            value=f"{make_progress_bar(completed_amount, total_amount)} {completed_amount}/{total_amount}",
+            inline=False
+        )
+        embed.add_field(
+            name="Unreviewed",
+            value=f"{make_progress_bar(unr_amount, completed_amount)} {unr_amount}/{completed_amount}",
+            inline=False
+        )
+
+        await ctx.send(embed=embed, view=view)
+
+    @commands.is_owner()
+    @afd.command(
+        name="forceupdate",
+        brief="Forcefully update AFD gists. Owner only.",
+        description="Used to forcefully update the AFD gist and Credits gist",
+    )
+    async def forceupdate(self, ctx: commands.Context):
+        for attr in DEL_ATTRS_TO_UPDATE:
+            try:
+                delattr(self, attr)
+            except AttributeError:
+                pass
+
+        await ctx.message.add_reaction("▶️")
+        self.update_pokemon.restart()
+        await ctx.message.add_reaction("✅")
+
+    @commands.is_owner()
+    @afd.command(
+        name="new_spreadsheet",
+        brief="Used to create a brand new spreadsheet. Intended to be used only once.",
+        description="Sets up a new spreadsheet to use. Owner only.",
+    )
+    async def new(self, ctx: commands.Context):
+        if hasattr(self, "sheet"):
+            return await ctx.send("A spreadsheet already exists.")
+
+        async with ctx.typing():
+            self.sheet: AfdSheet = await AfdSheet.create_new(pokemon_df=self.pk)
+
+        embed = self.bot.Embed(
+            title="New Spreadsheet created",
+            description=f"[Please set it permanently in the code.]({self.sheet.url})",
+        )
+        await ctx.send(embed=embed, view=UrlView({"Go To Spreadsheet": self.sheet.url}))
 
     # The task that updates the unclaimed pokemon gist
     @tasks.loop(minutes=5)
@@ -291,71 +375,6 @@ Credits: <{self.credits_gist.url}>"""
     @update_pokemon.before_loop
     async def before_update(self):
         await self.bot.wait_until_ready()
-
-    @commands.is_owner()
-    @commands.group(
-        name="afd",
-        brief="View progress of the april fool's event.",
-        invoke_without_command=True,
-    )
-    async def afd(self, ctx: commands.Context):
-        self.update_df()
-        url_dict = {
-            "AFD Gist": self.afd_gist.url,
-            "AFD Credits": self.credits_gist.url,
-        }
-        view = UrlView(url_dict)
-
-        unc_list, unc_amount = self.validate_unclaimed()
-        unr_list, unr_amount = await self.validate_unreviewed()
-        ml_list, ml_list_mention, ml_amount = await self.validate_missing_link()
-
-        embed = self.bot.Embed(
-            title="April Fool's Day Event",
-            description=f"""No. of Unclaimed pokemon: **{unc_amount}**
-No. of Unreviewed pokemon: **{unr_amount}**
-No. of Incomplete pokemon: **{ml_amount}**
-
-Number of participants: **{len(await self.get_participants())}**""",
-        )
-
-        await ctx.send(embed=embed, view=view)
-
-    @commands.is_owner()
-    @afd.command(
-        name="forceupdate",
-        brief="Forcefully update AFD gists. Owner only.",
-        description="Used to forcefully update the AFD gist and Credits gist",
-    )
-    async def forceupdate(self, ctx: commands.Context):
-        for attr in DEL_ATTRS_TO_UPDATE:
-            try:
-                delattr(self, attr)
-            except AttributeError:
-                pass
-
-        await ctx.message.add_reaction("▶️")
-        self.update_pokemon.restart()
-        await ctx.message.add_reaction("✅")
-
-    @commands.is_owner()
-    @afd.command(
-        name="new_spreadsheet",
-        brief="Used to create a brand new spreadsheet. Intended to be used only once.",
-        description="Sets up a new spreadsheet to use. Owner only.",
-    )
-    async def new(self, ctx: commands.Context):
-        if hasattr(self, "sheet"):
-            return await ctx.send("A spreadsheet already exists.")
-
-        async with ctx.typing():
-            self.sheet: AfdSheet = await AfdSheet.create_new(pokemon_df=self.pk)
-
-        embed = self.bot.Embed(
-            title="New Spreadsheet created",
-            description=f"[Please set it permanently in the code.]({self.sheet.url})",
-        )
-        await ctx.send(embed=embed, view=UrlView({"Go To Spreadsheet": self.sheet.url}))
 
     def update_df(self):
         self.__dict__.pop("pk", None)
