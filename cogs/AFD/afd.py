@@ -321,7 +321,7 @@ class Afd(commands.Cog):
         files = []
         if self.unc:
             updated.append(f"`Unclaimed pokemon` **({unc_amount})**")
-            unc_content = f'# Unclaimed Pokemon\nCount: {unc_amount}\n## [Pick a random one](https://yeet.witherredaway.repl.co/afd/random)\n## Pokemon: \n<details>\n<summary>Click to expand</summary>\n\n{NL.join(unc_list) if unc_list else "None"}\n\n</details>'
+            unc_content = f'# Unclaimed Pokemon\nCount: {unc_amount}\n## Pokemon: \n<details>\n<summary>Click to expand</summary>\n\n{NL.join(unc_list) if unc_list else "None"}\n\n</details>'
             files.append(gists.File(name=UNC_FILENAME, content=unc_content))
 
         if self.unr:
