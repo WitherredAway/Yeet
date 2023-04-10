@@ -58,10 +58,7 @@ from .regexes import (
     CUSTOM_EMOJI_REGEX,
 )
 
-from .errors import (
-    DrawError,
-    InvalidDrawMessageError
-)
+from .errors import DrawError, InvalidDrawMessageError
 
 from .colour import Colour
 
@@ -581,7 +578,7 @@ class ToolMenu(discord.ui.Select):
         self, value: Union[str, int]
     ) -> Union[None, discord.SelectOption]:
         return self.value_to_option_dict.get(value)
-    
+
     def set_default(self, def_option: discord.SelectOption):
         for option in self.options:
             option.default = False
@@ -802,7 +799,7 @@ class ColourMenu(discord.ui.Select):
             key=lambda emoji: emoji.index,
         )
         return list(sent_emojis)
-    
+
     def set_default(self, def_option: discord.SelectOption):
         for option in self.options:
             option.default = False
@@ -890,7 +887,8 @@ class ColourMenu(discord.ui.Select):
 
                     sent_emojis.append(
                         SentEmoji(
-                            emoji=emoji, index=max([e.index for e in sent_emojis] + [0]) + 1
+                            emoji=emoji,
+                            index=max([e.index for e in sent_emojis] + [0]) + 1,
                         )
                     )
 

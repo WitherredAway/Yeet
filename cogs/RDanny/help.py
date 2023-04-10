@@ -23,7 +23,7 @@ class FrontPageSource(menus.ListPageSource):
         cogs_and_commands: Dict[commands.Cog, List[commands.Command]],
         *,
         per_page: Optional[int] = 8,
-        bot: Bot
+        bot: Bot,
     ):
         self.cogs_and_commands: List[
             Tuple[commands.Cog, List[commands.Command]]
@@ -59,7 +59,7 @@ Do `{self.prefix}help <category>` (case sensitive) for more info on a category.
             embed.add_field(
                 name=f"{emoji} **{cog.qualified_name}**: {description}",
                 value=f"{NL.join(command_texts)}",
-                inline=False
+                inline=False,
             )
 
         return embed
@@ -541,9 +541,7 @@ class Help(commands.Cog):
     )
     async def avatar(self, ctx, member: discord.Member = None):
         member = member or ctx.author
-        embed = self.bot.Embed(
-            title=f"Avatar of {member}"
-        )
+        embed = self.bot.Embed(title=f"Avatar of {member}")
         embed.set_image(url=member.avatar.url)
         await ctx.send(embed=embed)
 

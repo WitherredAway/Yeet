@@ -38,9 +38,7 @@ class EmojiCache:
         for emoji in emoji_list:
             self.add_emoji(emoji)
 
-    def remove_emoji(
-        self, emoji: Union[discord.Emoji, discord.PartialEmoji]
-    ) -> bool:
+    def remove_emoji(self, emoji: Union[discord.Emoji, discord.PartialEmoji]) -> bool:
         for name, emoji_cache in self.cache.items():
             if emoji is emoji_cache:
                 del self.cache[name]

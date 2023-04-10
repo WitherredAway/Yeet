@@ -28,18 +28,18 @@ from .utils.constants import (
     HEADERS_FMT,
     ROW_INDEX_OFFSET,
     TOP_N,
-    UPDATE_CHANNEL_ID
+    UPDATE_CHANNEL_ID,
 )
 
 from .utils.filenames import (
     CONTENTS_FILENAME,
     CREDITS_FILENAME,
     ML_FILENAME,
-    PARTICIPANTS_FILENAME, 
+    PARTICIPANTS_FILENAME,
     SERVICE_ACCOUNT_FILE,
     TOP_PARTICIPANTS_FILENAME,
     UNC_FILENAME,
-    UNR_FILENAME
+    UNR_FILENAME,
 )
 
 from .utils.labels import (
@@ -51,7 +51,7 @@ from .utils.labels import (
     IMGUR_LABEL,
     PKM_LABEL,
     STATUS_LABEL,
-    USERNAME_LABEL
+    USERNAME_LABEL,
 )
 
 from .utils.urls import (
@@ -73,36 +73,55 @@ log = logging.getLogger(__name__)
 
 
 class AfdSheet:
-    def __init__(self, url: str, *, pokemon_df: pd.DataFrame, index_col: Optional[int] = 0, header: Optional[int] = 0) -> None:
+    def __init__(
+        self,
+        url: str,
+        *,
+        pokemon_df: pd.DataFrame,
+        index_col: Optional[int] = 0,
+        header: Optional[int] = 0,
+    ) -> None:
         """url must be in the format https://docs.google.com/spreadsheets/d/{ID}"""
         self.url = url
         self.export_url = f"{url}/{EXPORT_SUFFIX}"
         self.pk = pokemon_df
-        
+
         self.index_col = index_col
         self.header = header
 
         self.gc: gspread_asyncio.AsyncioGspreadClient
         self.spreadsheet: gspread_asyncio.AsyncioGspreadSpreadsheet
         self.worksheet: gspread_asyncio.AsyncioGspreadWorksheet
-        
+
     async def setup(self) -> None:
         await self.authorize()
         self.spreadsheet = await self.gc.open_by_url(self.url)
         self.worksheet = await self.spreadsheet.get_worksheet(0)
-        self.df = pd.read_csv(self.export_url, index_col=self.index_col, header=self.header, dtype={ID_LABEL: "object"}, on_bad_lines='warn')
+        self.df = pd.read_csv(
+            self.export_url,
+            index_col=self.index_col,
+            header=self.header,
+            dtype={ID_LABEL: "object"},
+            on_bad_lines="warn",
+        )
 
     async def authorize(self) -> None:
-        SCOPES = ['https://www.googleapis.com/auth/drive',
-                'https://www.googleapis.com/auth/spreadsheets'] # THIS THE SERVICE KEY JSON FROM GOOGLE CLOUD
+        SCOPES = [
+            "https://www.googleapis.com/auth/drive",
+            "https://www.googleapis.com/auth/spreadsheets",
+        ]  # THIS THE SERVICE KEY JSON FROM GOOGLE CLOUD
 
-        creds = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE).with_scopes(SCOPES)
+        creds = service_account.Credentials.from_service_account_file(
+            SERVICE_ACCOUNT_FILE
+        ).with_scopes(SCOPES)
 
-        self.gc = await gspread_asyncio.AsyncioGspreadClientManager(lambda: creds).authorize()
+        self.gc = await gspread_asyncio.AsyncioGspreadClientManager(
+            lambda: creds
+        ).authorize()
 
     async def update_sheet(self) -> None:
         vals = [self.df.columns.tolist()] + self.df.values.tolist()
-        await self.worksheet.update('A1', vals)
+        await self.worksheet.update("A1", vals)
 
     @classmethod
     async def create_new(cls, *, pokemon_df: pd.DataFrame) -> AfdSheet:
@@ -115,12 +134,34 @@ class AfdSheet:
             self.worksheet = await self.spreadsheet.get_worksheet(0)
 
             url = f"https://docs.google.com/spreadsheets/d/{sheet.id}"
-            await self.gc.insert_permission(sheet.id, None, perm_type="anyone", role="reader")
-            await self.gc.insert_permission(sheet.id, EMAIL, perm_type="user", role="writer")
+            await self.gc.insert_permission(
+                sheet.id, None, perm_type="anyone", role="reader"
+            )
+            await self.gc.insert_permission(
+                sheet.id, EMAIL, perm_type="user", role="writer"
+            )
 
-            self.df = pd.DataFrame(columns=[DEX_LABEL, PKM_LABEL, USERNAME_LABEL, ID_LABEL, IMGUR_LABEL, STATUS_LABEL, CMT_LABEL])
+            self.df = pd.DataFrame(
+                columns=[
+                    DEX_LABEL,
+                    PKM_LABEL,
+                    USERNAME_LABEL,
+                    ID_LABEL,
+                    IMGUR_LABEL,
+                    STATUS_LABEL,
+                    CMT_LABEL,
+                ]
+            )
             for idx, row in pokemon_df.iterrows():
-                new_row = [row[DEX_LABEL_P], row[ENGLISH_NAME_LABEL_P], None, None, None, None, None]
+                new_row = [
+                    row[DEX_LABEL_P],
+                    row[ENGLISH_NAME_LABEL_P],
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                ]
                 self.df.loc[len(self.df.index)] = new_row
 
             await self.update_sheet()
@@ -128,7 +169,9 @@ class AfdSheet:
             self.__init__(url, pokemon_df=pokemon_df)
         except Exception as e:
             await self.gc.del_spreadsheet(sheet.id)
-            log.info("\033[31;1mAFD: Encountered error. Deleted created spreadsheet.\033[0m")
+            log.info(
+                "\033[31;1mAFD: Encountered error. Deleted created spreadsheet.\033[0m"
+            )
             raise e
         else:
             return self
@@ -141,7 +184,7 @@ class Afd(commands.Cog):
 
         self.bot.user_cache: dict = {}
         self.user_cache = self.bot.user_cache
-        
+
         self.sheet: AfdSheet
 
     display_emoji = "🗓️"
@@ -149,7 +192,7 @@ class Afd(commands.Cog):
     @property
     def pk(self) -> pd.DataFrame:
         return self.bot.pk
-    
+
     @property
     def df(self) -> pd.DataFrame:
         return self.sheet.df
@@ -214,7 +257,11 @@ class Afd(commands.Cog):
         files.append(gists.File(name=CONTENTS_FILENAME, content=contents))
 
         if not (self.unc or self.unr or self.ml):
-            log.info(f"AFD: Task returned in {round(time.time()-og_start, 2)}s" + NL + LOG_BORDER)
+            log.info(
+                f"AFD: Task returned in {round(time.time()-og_start, 2)}s"
+                + NL
+                + LOG_BORDER
+            )
             return
 
         description = f"{self.ml_amount} claimed pokemon with missing links, {self.unc_amount} unclaimed pokemon and {self.unr_amount} unreviewed pokemon - As of {date} GMT (Checks every 5 minutes, and updates only if there is a change)"
@@ -235,7 +282,11 @@ class Afd(commands.Cog):
 
 Credits: <{self.credits_gist.url}>"""
         await self.update_channel.send(update_msg)
-        log.info(f"AFD: Task completed in {round(time.time()-og_start, 2)}s" + NL + LOG_BORDER)
+        log.info(
+            f"AFD: Task completed in {round(time.time()-og_start, 2)}s"
+            + NL
+            + LOG_BORDER
+        )
 
     @update_pokemon.before_loop
     async def before_update(self):
@@ -254,18 +305,18 @@ Credits: <{self.credits_gist.url}>"""
             "AFD Credits": self.credits_gist.url,
         }
         view = UrlView(url_dict)
-        
+
         unc_list, unc_amount = self.validate_unclaimed()
         unr_list, unr_amount = await self.validate_unreviewed()
         ml_list, ml_list_mention, ml_amount = await self.validate_missing_link()
-        
+
         embed = self.bot.Embed(
             title="April Fool's Day Event",
             description=f"""No. of Unclaimed pokemon: **{unc_amount}**
 No. of Unreviewed pokemon: **{unr_amount}**
 No. of Incomplete pokemon: **{ml_amount}**
 
-Number of participants: **{len(await self.get_participants())}**"""
+Number of participants: **{len(await self.get_participants())}**""",
         )
 
         await ctx.send(embed=embed, view=view)
@@ -274,7 +325,7 @@ Number of participants: **{len(await self.get_participants())}**"""
     @afd.command(
         name="forceupdate",
         brief="Forcefully update AFD gists. Owner only.",
-        description="Used to forcefully update the AFD gist and Credits gist"
+        description="Used to forcefully update the AFD gist and Credits gist",
     )
     async def forceupdate(self, ctx: commands.Context):
         for attr in DEL_ATTRS_TO_UPDATE:
@@ -291,23 +342,28 @@ Number of participants: **{len(await self.get_participants())}**"""
     @afd.command(
         name="new_spreadsheet",
         brief="Used to create a brand new spreadsheet. Intended to be used only once.",
-        description="Sets up a new spreadsheet to use. Owner only."
+        description="Sets up a new spreadsheet to use. Owner only.",
     )
     async def new(self, ctx: commands.Context):
-        if hasattr(self, 'sheet'):
+        if hasattr(self, "sheet"):
             return await ctx.send("A spreadsheet already exists.")
 
         async with ctx.typing():
             self.sheet: AfdSheet = await AfdSheet.create_new(pokemon_df=self.pk)
-        
-        embed = self.bot.Embed(title="New Spreadsheet created", description=f"[Please set it permanently in the code.]({self.sheet.url})")
+
+        embed = self.bot.Embed(
+            title="New Spreadsheet created",
+            description=f"[Please set it permanently in the code.]({self.sheet.url})",
+        )
         await ctx.send(embed=embed, view=UrlView({"Go To Spreadsheet": self.sheet.url}))
 
     def update_df(self):
-        self.__dict__.pop('pk', None)
+        self.__dict__.pop("pk", None)
 
     @property
-    def pk_grouped(self, label: Optional[str] = ID_LABEL) -> pd.core.groupby.DataFrameGroupBy:
+    def pk_grouped(
+        self, label: Optional[str] = ID_LABEL
+    ) -> pd.core.groupby.DataFrameGroupBy:
         return self.df.groupby(label)
 
     async def fetch_user(self, user_id: int) -> discord.User:
@@ -324,7 +380,7 @@ Number of participants: **{len(await self.get_participants())}**"""
 
         self.user_cache[user_id] = user
         return user
-    
+
     def get_dex_from_name(self, name: str):
         try:
             return int(self.pk[self.pk[ENGLISH_NAME_LABEL_P] == name][DEX_LABEL_P])
@@ -569,11 +625,15 @@ Thank you to EVERYONE who participated, but here are the top few that deserve ex
                 "\r", ""
             ),
         )
-        log.info(f"AFD Credits: Top participants fetched in {round(time.time()-start, 2)}s")
+        log.info(
+            f"AFD Credits: Top participants fetched in {round(time.time()-start, 2)}s"
+        )
 
         start = time.time()
         credits_file = await self.get_credits()
-        log.info(f"AFD Credits: Credits file completed in {round(time.time()-start, 2)}s")
+        log.info(
+            f"AFD Credits: Credits file completed in {round(time.time()-start, 2)}s"
+        )
 
         participants = NL.join([p for l, p in await self.get_participants()])
         participants_file = gists.File(

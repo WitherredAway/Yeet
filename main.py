@@ -76,7 +76,7 @@ class Bot(commands.Bot):
     def original_pk(self):
         original_pk = pd.read_csv(self.pokemon_csv)
         return original_pk
-    
+
     @cached_property
     def pk(self):
         pk = self.original_pk[self.original_pk["catchable"] > 0]
@@ -123,10 +123,16 @@ class Bot(commands.Bot):
         for filename in set(self.COGS.values()):
             start = time.time()
             await self.load_extension(f"cogs.{filename}")
-            log.info(f"Loaded \033[34;1mcogs.{filename}\033[0m in \033[33;1m{round(time.time()-start, 2)}s\033[0m")
-        log.info(f"Loaded all extensions in \033[33;1m{round(time.time()-ext_start, 2)}s\033[0m" + NL + LOG_BORDER)
+            log.info(
+                f"Loaded \033[34;1mcogs.{filename}\033[0m in \033[33;1m{round(time.time()-start, 2)}s\033[0m"
+            )
+        log.info(
+            f"Loaded all extensions in \033[33;1m{round(time.time()-ext_start, 2)}s\033[0m"
+            + NL
+            + LOG_BORDER
+        )
 
-        total_s: int = (datetime.datetime.utcnow()-self.uptime).seconds
+        total_s: int = (datetime.datetime.utcnow() - self.uptime).seconds
         m, s = divmod(total_s, 60)
         msg = f"\033[32;1m{self.user}\033[0;32m connected in \033[33;1m{m}m{s}s\033[0;32m.\033[0m"
         await self.status_channel.send(f"```ansi\n{msg}\n```")

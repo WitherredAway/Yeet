@@ -6,7 +6,6 @@ from constants import u200b
 from ..utils.utils import invert_dict
 
 
-
 def base_colour_options():
     return [
         discord.SelectOption(label="Red", emoji="🟥", value="🟥"),

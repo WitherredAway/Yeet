@@ -95,13 +95,11 @@ class PoketwoChances(commands.Cog):
     async def cog_load(self):
         self.gists_client = gists.Client()
         await self.gists_client.authorize(os.getenv("WgithubTOKEN"))
-    
+
     @cached_property
     def pk(self):
         pk = self.bot.pk
-        self.possible_abundance = round(
-            pk.loc[:, "abundance"].sum(), 4
-        )
+        self.possible_abundance = round(pk.loc[:, "abundance"].sum(), 4)
         return pk
 
     async def update_chance_gist(
@@ -205,7 +203,10 @@ class PoketwoChances(commands.Cog):
     async def chance(self, ctx, *, pokemon: str):
         pokemon = pokemon.lower()
 
-        pkm_df = self.pk.loc[(self.pk["slug"].str.casefold() == pokemon) | (self.pk["name.en"].str.casefold() == pokemon)]
+        pkm_df = self.pk.loc[
+            (self.pk["slug"].str.casefold() == pokemon)
+            | (self.pk["name.en"].str.casefold() == pokemon)
+        ]
         pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance"]]
 
         if len(pkm_df) == 0:
@@ -462,9 +463,14 @@ class PoketwoChances(commands.Cog):
             if event is not None
             else ""
         )
-        
-        regions_msg = "\n".join([f"""**{idx}. {region.group("title")}** [`{region.group("total")}`] = {region.group("chance_per")}% ({region.group("chance")})
-- <{REGION_GISTS[region.group("title").split(" ")[0]]}>""" for idx, region in enumerate(regions)])
+
+        regions_msg = "\n".join(
+            [
+                f"""**{idx}. {region.group("title")}** [`{region.group("total")}`] = {region.group("chance_per")}% ({region.group("chance")})
+- <{REGION_GISTS[region.group("title").split(" ")[0]]}>"""
+                for idx, region in enumerate(regions)
+            ]
+        )
 
         chance_msg = f"""__**Spawn chances:**__ 
 > __Recent updates (Last update: {discord.utils.format_dt(discord.utils.utcnow(), "f")})__
