@@ -2,7 +2,7 @@ from PIL import ImageFont
 
 import discord
 
-from utils.constants import u200b
+from helpers.constants import u200b
 from ..utils.utils import invert_dict
 
 
@@ -117,6 +117,6 @@ ALPHABETS = tuple(LETTER_TO_NUMBER.keys())
 NUMBERS = tuple(LETTER_TO_NUMBER.values())
 
 
-FONT = ImageFont.truetype("utils/fonts/arial.ttf", 1)
+FONT = ImageFont.truetype("helpers/fonts/arial.ttf", 1)
 
 PADDING = (" " + u200b) * 6

@@ -15,12 +15,12 @@ import gists
 from discord.ext import commands
 import pandas as pd
 
-from utils.context import CustomContext
+from helpers.context import CustomContext
 from cogs.Draw.colour import Colour
 from cogs.Draw.draw_main import DrawView
 from cogs.Draw.emoji_cache import EmojiCache
-from utils.constants import LOG_BORDER, NL
-from utils.keep_alive import keep_alive
+from helpers.constants import LOG_BORDER, NL
+from helpers.keep_alive import keep_alive
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)

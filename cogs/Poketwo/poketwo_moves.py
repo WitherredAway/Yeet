@@ -7,7 +7,7 @@ import gists
 from discord.ext import commands
 import pandas as pd
 
-from utils.constants import CODE_BLOCK_FMT
+from helpers.constants import CODE_BLOCK_FMT
 
 if typing.TYPE_CHECKING:
     from main import Bot

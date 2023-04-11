@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Union, Tuple
 
 from discord.ext import commands, menus
 
-from utils.constants import NL
+from helpers.constants import NL
 from .utils.paginator import BotPages
 from .utils import time
 from .utils.source import source

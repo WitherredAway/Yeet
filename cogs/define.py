@@ -10,7 +10,7 @@ import aiohttp
 import aiowiki
 
 from .RDanny.utils.paginator import BotPages
-from utils.constants import MESSAGE_CHAR_LIMIT
+from helpers.constants import MESSAGE_CHAR_LIMIT
 
 if typing.TYPE_CHECKING:
     from main import Bot

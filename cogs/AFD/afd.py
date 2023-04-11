@@ -17,8 +17,8 @@ import pandas as pd
 from discord.ext import commands, tasks
 from google.oauth2 import service_account
 
-from utils.context import CustomContext
-from utils.constants import LOG_BORDER, NL
+from helpers.context import CustomContext
+from helpers.constants import LOG_BORDER, NL
 from ..utils.utils import UrlView, make_progress_bar
 from .utils.constants import (
     APPROVED_TXT,
