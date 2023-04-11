@@ -1,7 +1,7 @@
 DEX_LABEL = "Dex"
 PKM_LABEL = "Pokemon"
 USERNAME_LABEL = "Discord Username"
-ID_LABEL = "Discord ID"
+USER_ID_LABEL = "Discord ID"
 IMGUR_LABEL = "Imgur"
 CMT_LABEL = "Comments"
 STATUS_LABEL = "Status"
