@@ -81,35 +81,22 @@ class AfdSheet:
         url: str,
         *,
         pokemon_df: pd.DataFrame,
-        index_col: Optional[int] = 0,
-        header: Optional[int] = 0,
     ) -> None:
         """url must be in the format https://docs.google.com/spreadsheets/d/{ID}"""
         self.url = url
         self.export_url = f"{url}/{EXPORT_SUFFIX}"
         self.pk = pokemon_df
 
-        self.index_col = index_col
-        self.header = header
-
+        self.df: pd.DataFrame
         self.gc: gspread_asyncio.AsyncioGspreadClient
         self.spreadsheet: gspread_asyncio.AsyncioGspreadSpreadsheet
         self.worksheet: gspread_asyncio.AsyncioGspreadWorksheet
-        
-    @cached_property
-    def df(self) -> pd.DataFrame:
-        return pd.read_csv(
-            self.export_url,
-            index_col=self.index_col,
-            header=self.header,
-            dtype={ID_LABEL: "object"},
-            on_bad_lines="warn",
-        )
 
     async def setup(self) -> None:
         await self.authorize()
         self.spreadsheet = await self.gc.open_by_url(self.url)
         self.worksheet = await self.spreadsheet.get_worksheet(0)
+        await self.update_df()
 
     async def authorize(self) -> None:
         SCOPES = [
@@ -141,6 +128,10 @@ class AfdSheet:
         vals = [self.df.columns.tolist()] + self.df.values.tolist()
         await self.worksheet.update("A1", vals)
 
+    async def update_df(self):
+        data = await self.worksheet.get_all_values()
+        self.df = pd.DataFrame(data[1:], index=None, columns=data[0], dtype="object")
+    
     @classmethod
     async def create_new(cls, *, pokemon_df: pd.DataFrame) -> AfdSheet:
         self: AfdSheet = cls.__new__(cls)
@@ -183,6 +174,7 @@ class AfdSheet:
                 self.df.loc[len(self.df.index)] = new_row
 
             await self.update_sheet()
+            await self.update_df()
 
             self.__init__(url, pokemon_df=pokemon_df)
         except Exception as e:
@@ -332,13 +324,16 @@ class Afd(commands.Cog):
     @afd.command(
         name="claim",
         brief="Claim a pokemon to draw",
-        description=f"Claim a pokemon to draw. Can have upto {CLAIM_LIMIT} claimed pokemon at a time!"
+        description=f"Claim a pokemon to draw. Can have upto {CLAIM_LIMIT} claimed pokemon at a time!",
+        help="Pass in a pokemon already claimed by you to unclaim, alternatively you can use the `unclaim` command. Pokemon alt names are supported!"
     )
     async def claim(self, ctx: CustomContext, *, pokemon: str):
         try:
             pokemon = self.get_pokemon(pokemon.casefold())
         except IndexError:
             return await ctx.send("Invalid pokemon provided!")
+
+        function = None
 
         row = self.df.loc[self.df[PKM_LABEL] == pokemon]
         user = row[USERNAME_LABEL].iloc[0]
@@ -351,7 +346,7 @@ class Afd(commands.Cog):
             if conf is False:
                 return
 
-            self.sheet.claim(ctx.author, pokemon)
+            function = self.sheet.claim
             content = f"You have successfully claimed **{pokemon}**, have fun! :D\n\nYou can undo this using the `unclaim` command."
         elif user_id == str(ctx.author.id):
             conf, cmsg = await ctx.confirm(
@@ -362,10 +357,22 @@ class Afd(commands.Cog):
             if conf is False:
                 return
             
-            self.sheet.unclaim(pokemon)
+            function = self.sheet.unclaim
             content = f"You have successfully unclaimed **{pokemon}**."
         else:
             return await ctx.send(f"**{pokemon}** is already claimed by **{user}**!")
+
+        # Check once again for any changes to the sheet
+        await self.sheet.update_df()
+        row = self.df.loc[self.df[PKM_LABEL] == pokemon]
+        user = row[USERNAME_LABEL].iloc[0]
+        user_id = row[ID_LABEL].iloc[0]
+        if not any((user_id is np.nan, user_id == '', user_id == str(ctx.author.id))):
+            return await cmsg.edit(content=f"**{pokemon}** is already claimed by **{user}**!")
+
+        # Perform the claiming/unclaiming
+        if function:
+            function()
 
         await self.sheet.update_sheet()
         await cmsg.edit(content=content)
@@ -668,11 +675,11 @@ Credits: <{self.credits_gist.url}>"""
             pkm_name = row[PKM_LABEL]
             pkm_dex = self.get_dex_from_name(pkm_name)
             link = "None"
-            if not (person_id := row[ID_LABEL]):
+            if person_id := row[ID_LABEL]:
                 person_id = int(person_id)
 
                 imgur = row[IMGUR_LABEL]
-                if not (imgur):
+                if imgur:
                     imgur = await self.resolve_imgur_url(imgur)
                     link = f"![art]({imgur})"
 
