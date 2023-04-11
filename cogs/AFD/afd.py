@@ -102,7 +102,7 @@ class AfdSheet:
         SCOPES = [
             "https://www.googleapis.com/auth/drive",
             "https://www.googleapis.com/auth/spreadsheets",
-        ]  # THIS THE SERVICE KEY JSON FROM GOOGLE CLOUD
+        ]
 
         creds = service_account.Credentials.from_service_account_file(
             SERVICE_ACCOUNT_FILE
