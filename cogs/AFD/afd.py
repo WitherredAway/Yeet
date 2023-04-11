@@ -531,6 +531,8 @@ Credits: <{self.credits_gist.url}>"""
     async def get_unreviewed(self, df, df_grouped):
         df_list = []
         for _id, pkm_idx in df_grouped.groups.items():
+            if not _id:
+                continue
             user = await self.fetch_user(int(_id))
             msg = self.format_unreviewed(df, user, pkm_idx)
 
@@ -569,6 +571,8 @@ Credits: <{self.credits_gist.url}>"""
         df_list = []
         mention_list = []
         for _id, pkm_idx in df_grouped.groups.items():
+            if not _id:
+                continue
             pkm_list = df.loc[pkm_idx, PKM_LABEL]
             formatted_list = list(map(lambda x: f"`{x}`", pkm_list))
             msg = f'- **{await self.fetch_user(int(_id))}** [{len(pkm_list)}] - {", ".join(formatted_list)}'
@@ -643,13 +647,11 @@ Credits: <{self.credits_gist.url}>"""
         if sort_key is None:
             sort_key = lambda s: s[-1]
 
-        participants = [
-            (
-                len(pkms),
-                f"1. {await self.fetch_user(user_id)} (`{user_id}`){f' - {len(pkms)} Drawings' if count is True else ''}",
-            )
-            for user_id, pkms in self.pk_grouped.groups.items()
-        ]
+        participants = []
+        for user_id, pkms in self.pk_grouped.groups.items():
+            if not user_id:
+                continue
+            participants.append((len(pkms), f"1. {await self.fetch_user(user_id)} (`{user_id}`){f' - {len(pkms)} Drawings' if count is True else ''}"))
         participants.sort(key=sort_key, reverse=reverse)
 
         return participants[:n]
@@ -666,11 +668,11 @@ Credits: <{self.credits_gist.url}>"""
             pkm_name = row[PKM_LABEL]
             pkm_dex = self.get_dex_from_name(pkm_name)
             link = "None"
-            if not pd.isna(person_id := row[ID_LABEL]):
+            if not (person_id := row[ID_LABEL]):
                 person_id = int(person_id)
 
                 imgur = row[IMGUR_LABEL]
-                if not pd.isna(imgur):
+                if not (imgur):
                     imgur = await self.resolve_imgur_url(imgur)
                     link = f"![art]({imgur})"
 
