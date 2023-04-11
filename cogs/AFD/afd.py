@@ -22,12 +22,10 @@ from helpers.constants import LOG_BORDER, NL
 from ..utils.utils import UrlView, make_progress_bar
 from .utils.constants import (
     APPROVED_TXT,
-    CR,
     DEL_ATTRS_TO_UPDATE,
     EMAIL,
     EXPORT_SUFFIX,
     HEADERS_FMT,
-    ROW_INDEX_OFFSET,
     TOP_N,
     UPDATE_CHANNEL_ID,
 )
@@ -118,7 +116,7 @@ class AfdSheet:
         self.df.loc[self.df[column] == equals_to, set_column] = to_val
     
     def can_claim(self, user: discord.User) -> bool:
-        if len(self.df.loc[self.df[USER_ID_LABEL] == str(user.id)]) >= CLAIM_LIMIT:
+        if len(self.df.loc[(self.df[USER_ID_LABEL] == str(user.id)) & (self.df.loc[self.df[USER_ID_LABEL] == str(user.id)][IMGUR_LABEL].isna())]) >= CLAIM_LIMIT:
             return False
         return True
     
@@ -350,9 +348,6 @@ class Afd(commands.Cog):
         help="Pass in a pokemon already claimed by you to unclaim, alternatively you can use the `unclaim` command. Pokemon alt names are supported!"
     )
     async def claim(self, ctx: CustomContext, *, pokemon: str):
-        if self.sheet.can_claim(ctx.author) is False:
-            return await ctx.send(f"You already have the max number ({CLAIM_LIMIT}) of pokemon claimed!")
-
         try:
             pokemon = self.get_pokemon(pokemon.casefold())
         except IndexError:
@@ -364,6 +359,9 @@ class Afd(commands.Cog):
         user = row[USERNAME_LABEL].iloc[0]
         user_id = row[USER_ID_LABEL].iloc[0]
         if pd.isna(user_id):
+            if self.sheet.can_claim(ctx.author) is False:
+                return await ctx.send(f"You already have the max number ({CLAIM_LIMIT}) of pokemon claimed!")
+
             conf, cmsg = await ctx.confirm(
                 f"Are you sure you want to claim **{pokemon}**?",
                 edit_after="Hang on..."
@@ -611,7 +609,7 @@ Credits: <{self.credits_gist.url}>"""
                 else None
             )
             link = df.loc[pkm_idx, IMGUR_LABEL]
-            location = f"{SHEET_URL[:-24]}/edit#gid=0&range=E{pkm_idx+ROW_INDEX_OFFSET}"
+            location = f"{SHEET_URL[:-24]}/edit#gid=0&range=E{pkm_idx}"
 
             comment_text = f"""(Marked for review)
         - Comments: {comment}
