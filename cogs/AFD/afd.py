@@ -125,8 +125,8 @@ class AfdSheet:
         self.edit_row_where(PKM_LABEL, pokemon, set_column=USER_ID_LABEL, to_val=str(user.id))
     
     def unclaim(self, pokemon: str):
-        self.edit_row_where(PKM_LABEL, pokemon, set_column=USERNAME_LABEL, to_val=None)
-        self.edit_row_where(PKM_LABEL, pokemon, set_column=USER_ID_LABEL, to_val=None)
+        for col in self.df.columns[1:]:  # For all columns after Pokemon
+            self.edit_row_where(PKM_LABEL, pokemon, set_column=col, to_val=None)
     
     async def update_sheet(self) -> None:
         self.df = self.df.fillna('').reset_index()
@@ -358,6 +358,7 @@ class Afd(commands.Cog):
         row = self.df.loc[self.df[PKM_LABEL] == pokemon]
         user = row[USERNAME_LABEL].iloc[0]
         user_id = row[USER_ID_LABEL].iloc[0]
+        complete = not pd.isna(row[IMGUR_LABEL].iloc[0])
         if pd.isna(user_id):
             if self.sheet.can_claim(ctx.author) is False:
                 return await ctx.send(f"You already have the max number ({CLAIM_LIMIT}) of pokemon claimed!")
@@ -374,7 +375,7 @@ class Afd(commands.Cog):
             content = f"You have successfully claimed **{pokemon}**, have fun! :D\n\nYou can undo this using the `unclaim` command."
         elif user_id == str(ctx.author.id):
             conf, cmsg = await ctx.confirm(
-                f"**{pokemon}** is already claimed by you!\n\nWould you like to unclaim?",
+                f"**{pokemon}** is already claimed by you!\n\nWould you like to unclaim?{' You have already submitted a drawing which will be removed.' if complete is True else ''}",
                 edit_after="Hang on...",
                 confirm_label="Unclaim"
             )
@@ -421,6 +422,7 @@ Admins can force unclaim."""
         row = self.df.loc[self.df[PKM_LABEL] == pokemon]
         user = row[USERNAME_LABEL].iloc[0]
         user_id = row[USER_ID_LABEL].iloc[0]
+        complete = not pd.isna(row[IMGUR_LABEL].iloc[0])
         if pd.isna(user_id):
             if self.sheet.can_claim(ctx.author) is False:
                 return await ctx.send(
@@ -440,7 +442,7 @@ I would ask you if you'd like to claim it, but you already have the max number (
             content = f"You have successfully claimed **{pokemon}**, have fun! :D\n\nYou can undo this using the `unclaim` command."
         elif user_id == str(ctx.author.id):
             conf, cmsg = await ctx.confirm(
-                f"Are you sure you want to unclaim **{pokemon}**?",
+                f"Are you sure you want to unclaim **{pokemon}**?{' You have already submitted a drawing which will be removed.' if complete is True else ''}",
                 edit_after="Hang on...",
                 confirm_label="Unclaim"
             )
@@ -455,7 +457,7 @@ I would ask you if you'd like to claim it, but you already have the max number (
             if AFD_ADMIN_ROLE_ID not in (r.id for r in ctx.author.roles):
                 return await ctx.send(prompt)
             conf, cmsg = await ctx.confirm(
-                f"{prompt}\n\nSince you are registered as an Admin, would you like to **force** unclaim it?",
+                f"{prompt}\n\nSince you are registered as an Admin, would you like to **force** unclaim it?{' A drawing has already been submitted which will be removed.' if complete is True else ''}",
                 edit_after="Hang on...",
                 confirm_label="Force Unclaim"
             )
