@@ -6,7 +6,7 @@ from jishaku.flags import Flags
 from jishaku.codeblocks import Codeblock, codeblock_converter
 from jishaku.features.baseclass import Feature
 
-from constants import CODE_BLOCK_FMT
+from utils.constants import CODE_BLOCK_FMT
 from .utils.jishaku_py_modal import CodeView
 
 

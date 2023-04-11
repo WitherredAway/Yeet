@@ -15,11 +15,12 @@ import gists
 from discord.ext import commands
 import pandas as pd
 
+from utils.context import CustomContext
 from cogs.Draw.colour import Colour
 from cogs.Draw.draw_main import DrawView
 from cogs.Draw.emoji_cache import EmojiCache
-from constants import LOG_BORDER, NL
-from keep_alive import keep_alive
+from utils.constants import LOG_BORDER, NL
+from utils.keep_alive import keep_alive
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -97,9 +98,22 @@ class Bot(commands.Bot):
         perms.attach_files = True
         perms.embed_links = True
         return discord.utils.oauth_url(self.user.id, permissions=perms)
+    
+    async def get_context(self, message, *, cls=None):
+        return await super().get_context(message, cls=cls or CustomContext)
 
     async def setup_hook(self):
         self.EMOJI_SERVER_IDS = [
+            1095209373627846706,
+            1095209373627846706,
+            1095209396675559557,
+            1095209424454418522,
+            1095209448810749974,
+            1095211521136656457,
+            1095211546025656340,
+            1095211570264559696,
+            1095211594289528884,
+            1095212928959004694,
             1019908440786735144,
             1019908649293979718,
             1019908721343741952,

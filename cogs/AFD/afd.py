@@ -6,7 +6,7 @@ import os
 import time
 import typing
 from functools import cached_property
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import aiohttp
 import discord
@@ -14,10 +14,11 @@ import gists
 import gspread_asyncio
 import numpy as np
 import pandas as pd
-from constants import LOG_BORDER, NL
 from discord.ext import commands, tasks
 from google.oauth2 import service_account
 
+from utils.context import CustomContext
+from utils.constants import LOG_BORDER, NL
 from ..utils.utils import UrlView, make_progress_bar
 from .utils.constants import (
     APPROVED_TXT,
@@ -65,6 +66,8 @@ if typing.TYPE_CHECKING:
     from main import Bot
 
 
+CLAIM_LIMIT = 5
+
 IMGUR_CLIENT_ID = os.getenv("IMGUR_CLIENT_ID")
 IMGUR_CLIENT_SECRET = os.getenv("IMGUR_CLIENT_SECRET")
 
@@ -92,18 +95,21 @@ class AfdSheet:
         self.gc: gspread_asyncio.AsyncioGspreadClient
         self.spreadsheet: gspread_asyncio.AsyncioGspreadSpreadsheet
         self.worksheet: gspread_asyncio.AsyncioGspreadWorksheet
-
-    async def setup(self) -> None:
-        await self.authorize()
-        self.spreadsheet = await self.gc.open_by_url(self.url)
-        self.worksheet = await self.spreadsheet.get_worksheet(0)
-        self.df = pd.read_csv(
+        
+    @cached_property
+    def df(self) -> pd.DataFrame:
+        return pd.read_csv(
             self.export_url,
             index_col=self.index_col,
             header=self.header,
             dtype={ID_LABEL: "object"},
             on_bad_lines="warn",
         )
+
+    async def setup(self) -> None:
+        await self.authorize()
+        self.spreadsheet = await self.gc.open_by_url(self.url)
+        self.worksheet = await self.spreadsheet.get_worksheet(0)
 
     async def authorize(self) -> None:
         SCOPES = [
@@ -118,8 +124,20 @@ class AfdSheet:
         self.gc = await gspread_asyncio.AsyncioGspreadClientManager(
             lambda: creds
         ).authorize()
-
+    
+    def edit_row_where(self, column: str, equals_to: str, *, set_column: str, to_val: str):
+        self.df.loc[self.df[column] == equals_to, set_column] = to_val
+    
+    def claim(self, user: Union[discord.User, discord.Member], pokemon: str):
+        self.edit_row_where(PKM_LABEL, pokemon, set_column=USERNAME_LABEL, to_val=str(user))
+        self.edit_row_where(PKM_LABEL, pokemon, set_column=ID_LABEL, to_val=str(user.id))
+    
+    def unclaim(self, pokemon: str):
+        self.edit_row_where(PKM_LABEL, pokemon, set_column=USERNAME_LABEL, to_val=None)
+        self.edit_row_where(PKM_LABEL, pokemon, set_column=ID_LABEL, to_val=None)
+    
     async def update_sheet(self) -> None:
+        self.df = self.df.fillna('')
         vals = [self.df.columns.tolist()] + self.df.values.tolist()
         await self.worksheet.update("A1", vals)
 
@@ -224,7 +242,7 @@ class Afd(commands.Cog):
         brief="View progress of the april fool's event.",
         invoke_without_command=True,
     )
-    async def afd(self, ctx: commands.Context):
+    async def afd(self, ctx: CustomContext):
         self.update_df()
         url_dict = {
             "AFD Gist": (self.afd_gist.url, 0),
@@ -246,13 +264,13 @@ class Afd(commands.Cog):
         embed = self.bot.Embed(title="April Fool's Day Event")
 
         embed.add_field(
-            name="Claimed",
-            value=f"{make_progress_bar(claimed_amount, total_amount)} {claimed_amount}/{total_amount}",
+            name="Completed",
+            value=f"{make_progress_bar(completed_amount, total_amount)} {completed_amount}/{total_amount}",
             inline=False
         )
         embed.add_field(
-            name="Completed",
-            value=f"{make_progress_bar(completed_amount, total_amount)} {completed_amount}/{total_amount}",
+            name="Claimed",
+            value=f"{make_progress_bar(claimed_amount, total_amount)} {claimed_amount}/{total_amount}",
             inline=False
         )
         embed.add_field(
@@ -266,10 +284,10 @@ class Afd(commands.Cog):
     @commands.is_owner()
     @afd.command(
         name="forceupdate",
-        brief="Forcefully update AFD gists. Owner only.",
+        brief="Forcefully update AFD gists.",
         description="Used to forcefully update the AFD gist and Credits gist",
     )
-    async def forceupdate(self, ctx: commands.Context):
+    async def forceupdate(self, ctx: CustomContext):
         for attr in DEL_ATTRS_TO_UPDATE:
             try:
                 delattr(self, attr)
@@ -283,10 +301,10 @@ class Afd(commands.Cog):
     @commands.is_owner()
     @afd.command(
         name="new_spreadsheet",
-        brief="Used to create a brand new spreadsheet. Intended to be used only once.",
-        description="Sets up a new spreadsheet to use. Owner only.",
+        brief="Used to create a brand new spreadsheet.",
+        description="Sets up a new spreadsheet to use. Intended to be used only once.",
     )
-    async def new(self, ctx: commands.Context):
+    async def new(self, ctx: CustomContext):
         if hasattr(self, "sheet"):
             return await ctx.send("A spreadsheet already exists.")
 
@@ -299,6 +317,59 @@ class Afd(commands.Cog):
         )
         await ctx.send(embed=embed, view=UrlView({"Go To Spreadsheet": self.sheet.url}))
 
+    def get_pokemon(self, name: Union[str, int]) -> str:
+        return self.pk.loc[
+            (self.pk["slug"].str.casefold() == name)
+            | (self.pk["name.ja"].str.casefold() == name)
+            | (self.pk["name.ja_r"].str.casefold() == name)
+            | (self.pk["name.ja_t"].str.casefold() == name)
+            | (self.pk["name.en"].str.casefold() == name)
+            | (self.pk["name.en2"].str.casefold() == name)
+            | (self.pk["name.de"].str.casefold() == name)
+            | (self.pk["name.fr"].str.casefold() == name)
+        ]["name.en"].iloc[0]
+    
+    @afd.command(
+        name="claim",
+        brief="Claim a pokemon to draw",
+        description=f"Claim a pokemon to draw. Can have upto {CLAIM_LIMIT} claimed pokemon at a time!"
+    )
+    async def claim(self, ctx: CustomContext, *, pokemon: str):
+        try:
+            pokemon = self.get_pokemon(pokemon.casefold())
+        except IndexError:
+            return await ctx.send("Invalid pokemon provided!")
+
+        row = self.df.loc[self.df[PKM_LABEL] == pokemon]
+        user = row[USERNAME_LABEL].iloc[0]
+        user_id = row[ID_LABEL].iloc[0]
+        if user_id is np.nan or user_id == '':
+            conf, cmsg = await ctx.confirm(
+                f"Are you sure you want to claim **{pokemon}**?",
+                edit_after="Hang on..."
+            )
+            if conf is False:
+                return
+
+            self.sheet.claim(ctx.author, pokemon)
+            content = f"You have successfully claimed **{pokemon}**, have fun! :D\n\nYou can undo this using the `unclaim` command."
+        elif user_id == str(ctx.author.id):
+            conf, cmsg = await ctx.confirm(
+                f"**{pokemon}** is already claimed by you!\n\nDo you want to unclaim?",
+                edit_after="Hang on...",
+                confirm_label="Unclaim"
+            )
+            if conf is False:
+                return
+            
+            self.sheet.unclaim(pokemon)
+            content = f"You have successfully unclaimed **{pokemon}**."
+        else:
+            return await ctx.send(f"**{pokemon}** is already claimed by **{user}**!")
+
+        await self.sheet.update_sheet()
+        await cmsg.edit(content=content)
+    
     # The task that updates the unclaimed pokemon gist
     @tasks.loop(minutes=5)
     async def update_pokemon(self):

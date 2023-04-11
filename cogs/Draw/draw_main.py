@@ -13,7 +13,7 @@ import numpy as np
 import discord
 from discord.ext import commands, tasks
 
-from constants import u200b, NL
+from utils.constants import u200b, NL
 from .constants import (
     ROW_ICONS_DICT,
     ROW_ICONS,

@@ -9,7 +9,7 @@ import discord
 from discord.ext import commands, menus, tasks
 
 from .RDanny.utils.paginator import BotPages
-from constants import CODE_BLOCK_FMT
+from utils.constants import CODE_BLOCK_FMT
 
 if typing.TYPE_CHECKING:
     from main import Bot
