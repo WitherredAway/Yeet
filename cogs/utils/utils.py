@@ -2,6 +2,7 @@ import typing
 from typing import Dict
 import cProfile
 from typing import Dict, Optional
+import unicodedata
 
 import discord
 import numpy as np
@@ -78,3 +79,11 @@ def make_progress_bar(val: int, max_val: int, *, length: Optional[int] = 10) -> 
 
     full_bar[:to_val] = cell
     return "".join(full_bar)
+
+
+def deaccent(text: str) -> str:
+    """Taken from poketwo!"""
+    text = text.replace("’", "'").replace("′", "'")
+    norm = unicodedata.normalize("NFD", text)
+    result = "".join(ch for ch in norm if unicodedata.category(ch) != "Mn")
+    return unicodedata.normalize("NFKC", result)

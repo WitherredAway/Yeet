@@ -20,7 +20,7 @@ from google.oauth2 import service_account
 
 from helpers.context import CustomContext
 from helpers.constants import LOG_BORDER, NL
-from ..utils.utils import UrlView, make_progress_bar
+from ..utils.utils import UrlView, make_progress_bar, deaccent
 from .utils.constants import (
     APPROVED_TXT,
     DEL_ATTRS_TO_UPDATE,
@@ -372,6 +372,7 @@ class Afd(commands.Cog):
         )
 
     def get_pokemon(self, name: Union[str, int]) -> str:
+        name = deaccent(name)
         return self.pk.loc[
             (self.pk["slug"].str.casefold() == name)
             | (self.pk["name.ja"].str.casefold() == name)
