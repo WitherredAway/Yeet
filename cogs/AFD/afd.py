@@ -361,6 +361,11 @@ class Afd(commands.Cog):
             | (self.pk["name.fr"].str.casefold() == name)
         ]["name.en"].iloc[0]
 
+    def conf_embed(self, ctx: CustomContext, msg: str) -> Bot.Embed:
+        embed = self.bot.Embed(description=msg)
+        embed.set_author(name=f"{ctx.author} ({ctx.author.id})", icon_url=ctx.author.avatar.url)
+        return embed
+
     @afd.command(
         name="claim",
         brief="Claim a pokemon to draw",
@@ -386,7 +391,7 @@ class Afd(commands.Cog):
                 )
 
             conf, cmsg = await ctx.confirm(
-                f"Are you sure you want to claim **{pokemon}**?",
+                embed=self.conf_embed(ctx, f"Are you sure you want to claim **{pokemon}**?"),
                 edit_after="Hang on...",
             )
             if conf is False:
@@ -397,7 +402,11 @@ class Afd(commands.Cog):
             content = f"You have successfully claimed **{pokemon}**, have fun! :D\n\nYou can undo this using the `unclaim` command."
         elif user_id == str(ctx.author.id):
             conf, cmsg = await ctx.confirm(
-                f"**{pokemon}** is already claimed by you!\n\nWould you like to unclaim?{' You have already submitted a drawing which will be removed.' if complete is True else ''}",
+                embed=self.conf_embed(
+                    ctx,
+                    f"**{pokemon}** is already claimed by you!\n\nWould you like to unclaim?\
+                        {' You have already submitted a drawing which will be removed.' if complete is True else ''}"
+                ),
                 edit_after="Hang on...",
                 confirm_label="Unclaim",
             )
@@ -425,7 +434,7 @@ class Afd(commands.Cog):
             function(*args)
 
         await self.sheet.update_sheet()
-        await cmsg.edit(content=content)
+        await cmsg.edit(embed=self.conf_embed(ctx, content)                    )
 
     @afd.command(
         name="unclaim",
@@ -455,7 +464,10 @@ Admins can force unclaim.""",
 I would ask you if you'd like to claim it, but you already have the max number ({CLAIM_LIMIT}) of pokemon claimed :("""
                 )
             conf, cmsg = await ctx.confirm(
-                f"**{pokemon}** is not claimed yet, would you like to claim it?",
+                embed=self.conf_embed(
+                    ctx,
+                    f"**{pokemon}** is not claimed yet, would you like to claim it?"
+                ),
                 edit_after="Hang on...",
                 confirm_label="Claim",
             )
@@ -467,7 +479,11 @@ I would ask you if you'd like to claim it, but you already have the max number (
             content = f"You have successfully claimed **{pokemon}**, have fun! :D\n\nYou can undo this using the `unclaim` command."
         elif user_id == str(ctx.author.id):
             conf, cmsg = await ctx.confirm(
-                f"Are you sure you want to unclaim **{pokemon}**?{' You have already submitted a drawing which will be removed.' if complete is True else ''}",
+                embed=self.conf_embed(
+                    ctx,
+                    f"Are you sure you want to unclaim **{pokemon}**?\
+                        {' You have already submitted a drawing which will be removed.' if complete is True else ''}"
+                ),
                 edit_after="Hang on...",
                 confirm_label="Unclaim",
             )
@@ -482,7 +498,11 @@ I would ask you if you'd like to claim it, but you already have the max number (
             if AFD_ADMIN_ROLE_ID not in (r.id for r in ctx.author.roles):
                 return await ctx.send(prompt)
             conf, cmsg = await ctx.confirm(
-                f"{prompt}\n\nSince you are registered as an Admin, would you like to **force** unclaim it?{' A drawing has already been submitted which will be removed.' if complete is True else ''}",
+                embed=self.conf_embed(
+                    ctx,
+                    f"{prompt}\n\nSince you are registered as an Admin, would you like to **force** unclaim it?\
+                        {' A drawing has already been submitted which will be removed.' if complete is True else ''}"
+                ),
                 edit_after="Hang on...",
                 confirm_label="Force Unclaim",
             )
@@ -500,7 +520,7 @@ I would ask you if you'd like to claim it, but you already have the max number (
             function(*args)
 
         await self.sheet.update_sheet()
-        await cmsg.edit(content=content)
+        await cmsg.edit(embed=self.conf_embed(ctx, content)                    )
 
     # The task that updates the unclaimed pokemon gist
     @tasks.loop(minutes=5)

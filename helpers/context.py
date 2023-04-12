@@ -15,12 +15,14 @@ class ConfirmView(discord.ui.View):
         self,
         ctx: CustomContext,
         *,
+        embed: Optional[Bot.Embed] = None,
         edit_after: Optional[str] = None,
         confirm_label: Optional[str] = "Confirm",
         cancel_label: Optional[str] = "Cancel",
     ):
         super().__init__(timeout=30)
         self.ctx = ctx
+        self.embed = embed
         self.edit_after = edit_after
         self.result: bool = False
 
@@ -45,7 +47,10 @@ class ConfirmView(discord.ui.View):
         self.result = True
 
         kwargs = {"view": None}
-        if self.edit_after:
+        if self.embed:
+            self.embed.description = self.edit_after
+            kwargs["embed"] = self.embed
+        elif self.edit_after:
             kwargs["content"] = self.edit_after
 
         await self.message.edit(**kwargs)
@@ -65,18 +70,20 @@ class CustomContext(commands.Context):
 
     async def confirm(
         self,
-        msg: str,
+        msg: Optional[str] = None,
         *,
+        embed: Optional[Bot.Embed] = None,
         edit_after: Optional[str] = None,
         confirm_label: Optional[str] = "Confirm",
         cancel_label: Optional[str] = "Cancel",
     ) -> Tuple[bool, discord.Message]:
         view = ConfirmView(
             self,
+            embed=embed,
             edit_after=edit_after,
             confirm_label=confirm_label,
             cancel_label=cancel_label,
         )
-        view.message = await self.send(msg, view=view)
+        view.message = await self.message.reply(msg, embed=embed, view=view)
         await view.wait()
         return view.result, view.message
