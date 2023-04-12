@@ -338,7 +338,7 @@ class Afd(commands.Cog):
     )
     async def new(self, ctx: CustomContext):
         if hasattr(self, "sheet"):
-            return await ctx.send("A spreadsheet already exists.")
+            return await ctx.reply("A spreadsheet already exists.")
 
         async with ctx.typing():
             self.sheet: AfdSheet = await AfdSheet.create_new(pokemon_df=self.pk)
@@ -347,7 +347,9 @@ class Afd(commands.Cog):
             title="New Spreadsheet created",
             description=f"[Please set it permanently in the code.]({self.sheet.url})",
         )
-        await ctx.send(embed=embed, view=UrlView({"Go To Spreadsheet": self.sheet.url}))
+        await ctx.reply(
+            embed=embed, view=UrlView({"Go To Spreadsheet": self.sheet.url})
+        )
 
     def get_pokemon(self, name: Union[str, int]) -> str:
         return self.pk.loc[
@@ -361,9 +363,15 @@ class Afd(commands.Cog):
             | (self.pk["name.fr"].str.casefold() == name)
         ]["name.en"].iloc[0]
 
-    def conf_embed(self, ctx: CustomContext, msg: str) -> Bot.Embed:
+    def conf_embed(
+        self, ctx: CustomContext, msg: str, *, footer: Optional[str] = None
+    ) -> Bot.Embed:
         embed = self.bot.Embed(description=msg)
-        embed.set_author(name=f"{ctx.author} ({ctx.author.id})", icon_url=ctx.author.avatar.url)
+        embed.set_author(
+            name=f"{ctx.author} ({ctx.author.id})", icon_url=ctx.author.avatar.url
+        )
+        if footer:
+            embed.set_footer(text=footer)
         return embed
 
     @afd.command(
@@ -376,7 +384,9 @@ class Afd(commands.Cog):
         try:
             pokemon = self.get_pokemon(pokemon.casefold())
         except IndexError:
-            return await ctx.send("Invalid pokemon provided!")
+            return await ctx.reply(
+                embed=self.conf_embed(ctx, "Invalid pokemon provided!")
+            )
 
         function = None
 
@@ -386,12 +396,17 @@ class Afd(commands.Cog):
         complete = not pd.isna(row[IMGUR_LABEL].iloc[0])
         if pd.isna(user_id):
             if self.sheet.can_claim(ctx.author) is False:
-                return await ctx.send(
-                    f"You already have the max number ({CLAIM_LIMIT}) of pokemon claimed!"
+                return await ctx.reply(
+                    embed=self.conf_embed(
+                        ctx,
+                        f"You already have the max number ({CLAIM_LIMIT}) of pokemon claimed!",
+                    )
                 )
 
             conf, cmsg = await ctx.confirm(
-                embed=self.conf_embed(ctx, f"Are you sure you want to claim **{pokemon}**?"),
+                embed=self.conf_embed(
+                    ctx, f"Are you sure you want to claim **{pokemon}**?"
+                ),
                 edit_after="Hang on...",
             )
             if conf is False:
@@ -399,13 +414,16 @@ class Afd(commands.Cog):
 
             function = self.sheet.claim
             args = (ctx.author, pokemon)
-            content = f"You have successfully claimed **{pokemon}**, have fun! :D\n\nYou can undo this using the `unclaim` command."
+            content = (
+                f"You have successfully claimed **{pokemon}**, have fun! :D",
+                f"You can undo this using the `unclaim` command.",
+            )
         elif user_id == str(ctx.author.id):
             conf, cmsg = await ctx.confirm(
                 embed=self.conf_embed(
                     ctx,
                     f"**{pokemon}** is already claimed by you!\n\nWould you like to unclaim?\
-                        {' You have already submitted a drawing which will be removed.' if complete is True else ''}"
+                        {' You have already submitted a drawing which will be removed.' if complete is True else ''}",
                 ),
                 edit_after="Hang on...",
                 confirm_label="Unclaim",
@@ -415,9 +433,13 @@ class Afd(commands.Cog):
 
             function = self.sheet.unclaim
             args = (pokemon,)
-            content = f"You have successfully unclaimed **{pokemon}**."
+            content = (f"You have successfully unclaimed **{pokemon}**.", None)
         else:
-            return await ctx.send(f"**{pokemon}** is already claimed by **{user}**!")
+            return await ctx.reply(
+                embed=self.conf_embed(
+                    ctx, f"**{pokemon}** is already claimed by **{user}**!"
+                )
+            )
 
         # Check once again for any changes to the sheet
         await self.sheet.update_df()
@@ -426,7 +448,9 @@ class Afd(commands.Cog):
         user_id = row[USER_ID_LABEL].iloc[0]
         if not any((pd.isna(user_id), user_id == str(ctx.author.id))):
             return await cmsg.edit(
-                content=f"**{pokemon}** is already claimed by **{user}**!"
+                embed=self.conf_embed(
+                    ctx, f"**{pokemon}** is already claimed by **{user}**!"
+                )
             )
 
         # Perform the claiming/unclaiming
@@ -434,7 +458,7 @@ class Afd(commands.Cog):
             function(*args)
 
         await self.sheet.update_sheet()
-        await cmsg.edit(embed=self.conf_embed(ctx, content)                    )
+        await cmsg.edit(embed=self.conf_embed(ctx, content[0], footer=content[1]))
 
     @afd.command(
         name="unclaim",
@@ -448,7 +472,9 @@ Admins can force unclaim.""",
         try:
             pokemon = self.get_pokemon(pokemon.casefold())
         except IndexError:
-            return await ctx.send("Invalid pokemon provided!")
+            return await ctx.reply(
+                embed=self.conf_embed(ctx, "Invalid pokemon provided!")
+            )
 
         function = None
 
@@ -458,15 +484,18 @@ Admins can force unclaim.""",
         complete = not pd.isna(row[IMGUR_LABEL].iloc[0])
         if pd.isna(user_id):
             if self.sheet.can_claim(ctx.author) is False:
-                return await ctx.send(
-                    f"""**{pokemon}** is not claimed yet.
-
-I would ask you if you'd like to claim it, but you already have the max number ({CLAIM_LIMIT}) of pokemon claimed :("""
+                return await ctx.reply(
+                    embed=self.conf_embed(
+                        ctx,
+                        f"**{pokemon}** is not claimed yet.",
+                        footer=f"I would ask you if you'd like to claim it, but you already have the max number ({CLAIM_LIMIT}) of pokemon claimed :("
+                        "",
+                    )
                 )
             conf, cmsg = await ctx.confirm(
                 embed=self.conf_embed(
                     ctx,
-                    f"**{pokemon}** is not claimed yet, would you like to claim it?"
+                    f"**{pokemon}** is not claimed yet, would you like to claim it?",
                 ),
                 edit_after="Hang on...",
                 confirm_label="Claim",
@@ -476,13 +505,16 @@ I would ask you if you'd like to claim it, but you already have the max number (
 
             function = self.sheet.claim
             args = (ctx.author, pokemon)
-            content = f"You have successfully claimed **{pokemon}**, have fun! :D\n\nYou can undo this using the `unclaim` command."
+            content = (
+                f"You have successfully claimed **{pokemon}**, have fun! :D",
+                "You can undo this using the `unclaim` command.",
+            )
         elif user_id == str(ctx.author.id):
             conf, cmsg = await ctx.confirm(
                 embed=self.conf_embed(
                     ctx,
                     f"Are you sure you want to unclaim **{pokemon}**?\
-                        {' You have already submitted a drawing which will be removed.' if complete is True else ''}"
+                        {' You have already submitted a drawing which will be removed.' if complete is True else ''}",
                 ),
                 edit_after="Hang on...",
                 confirm_label="Unclaim",
@@ -492,16 +524,16 @@ I would ask you if you'd like to claim it, but you already have the max number (
 
             function = self.sheet.unclaim
             args = (pokemon,)
-            content = f"You have successfully unclaimed **{pokemon}**."
+            content = (f"You have successfully unclaimed **{pokemon}**.", None)
         else:
-            prompt = f"**{pokemon}** is claimed by **{user}**!"
+            prompt = f"**{pokemon}** is already claimed by **{user}**!"
             if AFD_ADMIN_ROLE_ID not in (r.id for r in ctx.author.roles):
-                return await ctx.send(prompt)
+                return await ctx.reply(embed=self.conf_embed(ctx, prompt))
             conf, cmsg = await ctx.confirm(
                 embed=self.conf_embed(
                     ctx,
                     f"{prompt}\n\nSince you are registered as an Admin, would you like to **force** unclaim it?\
-                        {' A drawing has already been submitted which will be removed.' if complete is True else ''}"
+                        {' A drawing has already been submitted which will be removed.' if complete is True else ''}",
                 ),
                 edit_after="Hang on...",
                 confirm_label="Force Unclaim",
@@ -512,7 +544,8 @@ I would ask you if you'd like to claim it, but you already have the max number (
             function = self.sheet.unclaim
             args = (pokemon,)
             content = (
-                f"You have successfully force unclaimed **{pokemon}** from **{user}**."
+                f"You have successfully force unclaimed **{pokemon}** from **{user}**.",
+                None,
             )
 
         # Perform the claiming/unclaiming
@@ -520,7 +553,7 @@ I would ask you if you'd like to claim it, but you already have the max number (
             function(*args)
 
         await self.sheet.update_sheet()
-        await cmsg.edit(embed=self.conf_embed(ctx, content)                    )
+        await cmsg.edit(embed=self.conf_embed(ctx, content[0], footer=content[1]))
 
     # The task that updates the unclaimed pokemon gist
     @tasks.loop(minutes=5)
