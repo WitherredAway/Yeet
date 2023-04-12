@@ -52,20 +52,14 @@ class UrlView(discord.ui.View):
         for text, (url, row) in url_dict.items():
             self.add_item(
                 discord.ui.Button(
-                    label=text,
-                    url=url,
-                    style=discord.ButtonStyle.url,
-                    row=row
+                    label=text, url=url, style=discord.ButtonStyle.url, row=row
                 )
             )
 
 
-PB_BARS = {
-    0.0: "⬜",
-    0.3: "🟧",
-    0.7: "🟨",
-    1.0: "🟩"
-}
+PB_BARS = {0.0: "⬜", 0.3: "🟧", 0.7: "🟨", 1.0: "🟩"}
+
+
 def make_progress_bar(val: int, max_val: int, *, length: Optional[int] = 10) -> str:
     full_bar = np.full(length, PB_BARS[0.0])
 
@@ -73,7 +67,7 @@ def make_progress_bar(val: int, max_val: int, *, length: Optional[int] = 10) -> 
         to_val = round((length / max_val) * val)
     else:
         to_val = 0
-    percent = (to_val / length)
+    percent = to_val / length
     cell = ""
     for per, bar in PB_BARS.items():
         if per < percent:

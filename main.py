@@ -99,7 +99,7 @@ class Bot(commands.Bot):
         perms.attach_files = True
         perms.embed_links = True
         return discord.utils.oauth_url(self.user.id, permissions=perms)
-    
+
     async def get_context(self, message, *, cls=None):
         return await super().get_context(message, cls=cls or CustomContext)
 
@@ -155,8 +155,8 @@ class Bot(commands.Bot):
 
     class Embed(discord.Embed):
         def __init__(self, **kwargs):
-            if 'color' not in kwargs:
-                kwargs['color'] = self.EMBED_COLOUR
+            if "color" not in kwargs:
+                kwargs["color"] = self.EMBED_COLOUR
             super().__init__(**kwargs)
 
     async def upload_emoji(

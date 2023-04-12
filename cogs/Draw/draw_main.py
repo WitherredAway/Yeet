@@ -1658,5 +1658,6 @@ class Draw(commands.Cog):
         )
         await start_view.start()
 
+
 async def setup(bot):
     await bot.add_cog(Draw(bot))

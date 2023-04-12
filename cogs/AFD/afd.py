@@ -111,32 +111,54 @@ class AfdSheet:
         self.gc = await gspread_asyncio.AsyncioGspreadClientManager(
             lambda: creds
         ).authorize()
-    
-    def edit_row_where(self, column: str, equals_to: str, *, set_column: str, to_val: str):
+
+    def edit_row_where(
+        self, column: str, equals_to: str, *, set_column: str, to_val: str
+    ):
         self.df.loc[self.df[column] == equals_to, set_column] = to_val
-    
+
     def can_claim(self, user: discord.User) -> bool:
-        if len(self.df.loc[(self.df[USER_ID_LABEL] == str(user.id)) & (self.df.loc[self.df[USER_ID_LABEL] == str(user.id)][IMGUR_LABEL].isna())]) >= CLAIM_LIMIT:
+        if (
+            len(
+                self.df.loc[
+                    (self.df[USER_ID_LABEL] == str(user.id))
+                    & (
+                        self.df.loc[self.df[USER_ID_LABEL] == str(user.id)][
+                            IMGUR_LABEL
+                        ].isna()
+                    )
+                ]
+            )
+            >= CLAIM_LIMIT
+        ):
             return False
         return True
-    
+
     def claim(self, user: Union[discord.User, discord.Member], pokemon: str):
-        self.edit_row_where(PKM_LABEL, pokemon, set_column=USERNAME_LABEL, to_val=str(user))
-        self.edit_row_where(PKM_LABEL, pokemon, set_column=USER_ID_LABEL, to_val=str(user.id))
-    
+        self.edit_row_where(
+            PKM_LABEL, pokemon, set_column=USERNAME_LABEL, to_val=str(user)
+        )
+        self.edit_row_where(
+            PKM_LABEL, pokemon, set_column=USER_ID_LABEL, to_val=str(user.id)
+        )
+
     def unclaim(self, pokemon: str):
         for col in self.df.columns[1:]:  # For all columns after Pokemon
             self.edit_row_where(PKM_LABEL, pokemon, set_column=col, to_val=None)
-    
+
     async def update_sheet(self) -> None:
-        self.df = self.df.fillna('').reset_index()
+        self.df = self.df.fillna("").reset_index()
         vals = [self.df.columns.tolist()] + self.df.values.tolist()
         await self.worksheet.update("A1", vals)
 
     async def update_df(self):
         data = await self.worksheet.get_all_values()
-        self.df = pd.DataFrame(data[1:], columns=data[0], dtype="object").set_index('Dex').replace('', np.nan)
-    
+        self.df = (
+            pd.DataFrame(data[1:], columns=data[0], dtype="object")
+            .set_index("Dex")
+            .replace("", np.nan)
+        )
+
     @classmethod
     async def create_new(cls, *, pokemon_df: pd.DataFrame) -> AfdSheet:
         self: AfdSheet = cls.__new__(cls)
@@ -215,7 +237,7 @@ class Afd(commands.Cog):
     @property
     def total_amount(self) -> int:
         return len(self.df)
-    
+
     async def cog_load(self):
         self.gists_client = gists.Client()
         await self.gists_client.authorize(os.getenv("WgithubTOKEN"))
@@ -236,21 +258,18 @@ class Afd(commands.Cog):
     @cached_property
     def sheet(self) -> AfdSheet:
         return AfdSheet(SHEET_URL, pokemon_df=self.pk)
-    
-    @commands.check_any(
-        commands.is_owner(),
-        commands.has_role(AFD_ROLE_ID)
-    )
+
+    @commands.check_any(commands.is_owner(), commands.has_role(AFD_ROLE_ID))
     @commands.group(
         name="afd",
         brief="Afd commands",
-        description="Command with a variety of afd subcommands!"
+        description="Command with a variety of afd subcommands!",
     )
     async def afd(self, ctx: CustomContext):
         await self.sheet.update_df()
         if ctx.invoked_subcommand is None:
             await ctx.invoke(self.info)
-    
+
     @afd.command(
         name="info",
         aliases=("information", "progress"),
@@ -260,7 +279,7 @@ class Afd(commands.Cog):
         url_dict = {
             "AFD Gist": (self.afd_gist.url, 0),
             "AFD Credits": (self.credits_gist.url, 0),
-            "Spreadsheet": (self.sheet.url, 1)
+            "Spreadsheet": (self.sheet.url, 1),
         }
         view = UrlView(url_dict)
 
@@ -272,23 +291,22 @@ class Afd(commands.Cog):
 
         unr_list, unr_amount = await self.validate_unreviewed()
 
-
         embed = self.bot.Embed(title="April Fool's Day Event")
 
         embed.add_field(
             name="Completed",
             value=f"{make_progress_bar(completed_amount, self.total_amount)} {completed_amount}/{self.total_amount}",
-            inline=False
+            inline=False,
         )
         embed.add_field(
             name="Claimed",
             value=f"{make_progress_bar(claimed_amount, self.total_amount)} {claimed_amount}/{self.total_amount}",
-            inline=False
+            inline=False,
         )
         embed.add_field(
             name="Unreviewed",
             value=f"{make_progress_bar(unr_amount, completed_amount)} {unr_amount}/{completed_amount}",
-            inline=False
+            inline=False,
         )
 
         await ctx.send(embed=embed, view=view)
@@ -345,7 +363,7 @@ class Afd(commands.Cog):
         name="claim",
         brief="Claim a pokemon to draw",
         description=f"Claim a pokemon to draw. Can have upto {CLAIM_LIMIT} claimed pokemon at a time!",
-        help="Pass in a pokemon already claimed by you to unclaim, alternatively you can use the `unclaim` command. Pokemon alt names are supported!"
+        help="Pass in a pokemon already claimed by you to unclaim, alternatively you can use the `unclaim` command. Pokemon alt names are supported!",
     )
     async def claim(self, ctx: CustomContext, *, pokemon: str):
         try:
@@ -361,11 +379,13 @@ class Afd(commands.Cog):
         complete = not pd.isna(row[IMGUR_LABEL].iloc[0])
         if pd.isna(user_id):
             if self.sheet.can_claim(ctx.author) is False:
-                return await ctx.send(f"You already have the max number ({CLAIM_LIMIT}) of pokemon claimed!")
+                return await ctx.send(
+                    f"You already have the max number ({CLAIM_LIMIT}) of pokemon claimed!"
+                )
 
             conf, cmsg = await ctx.confirm(
                 f"Are you sure you want to claim **{pokemon}**?",
-                edit_after="Hang on..."
+                edit_after="Hang on...",
             )
             if conf is False:
                 return
@@ -377,11 +397,11 @@ class Afd(commands.Cog):
             conf, cmsg = await ctx.confirm(
                 f"**{pokemon}** is already claimed by you!\n\nWould you like to unclaim?{' You have already submitted a drawing which will be removed.' if complete is True else ''}",
                 edit_after="Hang on...",
-                confirm_label="Unclaim"
+                confirm_label="Unclaim",
             )
             if conf is False:
                 return
-            
+
             function = self.sheet.unclaim
             args = (pokemon,)
             content = f"You have successfully unclaimed **{pokemon}**."
@@ -394,7 +414,9 @@ class Afd(commands.Cog):
         user = row[USERNAME_LABEL].iloc[0]
         user_id = row[USER_ID_LABEL].iloc[0]
         if not any((pd.isna(user_id), user_id == str(ctx.author.id))):
-            return await cmsg.edit(content=f"**{pokemon}** is already claimed by **{user}**!")
+            return await cmsg.edit(
+                content=f"**{pokemon}** is already claimed by **{user}**!"
+            )
 
         # Perform the claiming/unclaiming
         if function:
@@ -402,14 +424,14 @@ class Afd(commands.Cog):
 
         await self.sheet.update_sheet()
         await cmsg.edit(content=content)
-    
+
     @afd.command(
         name="unclaim",
         brief="Unclaim a pokemon",
         description=f"Unclaim a pokemon already claimed by you.",
         help="""Pass in a pokemon already claimed by you to unclaim. Pokemon alt names are supported!
 
-Admins can force unclaim."""
+Admins can force unclaim.""",
     )
     async def unclaim(self, ctx: CustomContext, *, pokemon: str):
         try:
@@ -428,11 +450,12 @@ Admins can force unclaim."""
                 return await ctx.send(
                     f"""**{pokemon}** is not claimed yet.
 
-I would ask you if you'd like to claim it, but you already have the max number ({CLAIM_LIMIT}) of pokemon claimed :(""")
+I would ask you if you'd like to claim it, but you already have the max number ({CLAIM_LIMIT}) of pokemon claimed :("""
+                )
             conf, cmsg = await ctx.confirm(
                 f"**{pokemon}** is not claimed yet, would you like to claim it?",
                 edit_after="Hang on...",
-                confirm_label="Claim"
+                confirm_label="Claim",
             )
             if conf is False:
                 return
@@ -444,7 +467,7 @@ I would ask you if you'd like to claim it, but you already have the max number (
             conf, cmsg = await ctx.confirm(
                 f"Are you sure you want to unclaim **{pokemon}**?{' You have already submitted a drawing which will be removed.' if complete is True else ''}",
                 edit_after="Hang on...",
-                confirm_label="Unclaim"
+                confirm_label="Unclaim",
             )
             if conf is False:
                 return
@@ -459,14 +482,16 @@ I would ask you if you'd like to claim it, but you already have the max number (
             conf, cmsg = await ctx.confirm(
                 f"{prompt}\n\nSince you are registered as an Admin, would you like to **force** unclaim it?{' A drawing has already been submitted which will be removed.' if complete is True else ''}",
                 edit_after="Hang on...",
-                confirm_label="Force Unclaim"
+                confirm_label="Force Unclaim",
             )
             if conf is False:
                 return
 
             function = self.sheet.unclaim
             args = (pokemon,)
-            content = f"You have successfully force unclaimed **{pokemon}** from **{user}**."
+            content = (
+                f"You have successfully force unclaimed **{pokemon}** from **{user}**."
+            )
 
         # Perform the claiming/unclaiming
         if function:
@@ -474,7 +499,7 @@ I would ask you if you'd like to claim it, but you already have the max number (
 
         await self.sheet.update_sheet()
         await cmsg.edit(content=content)
-    
+
     # The task that updates the unclaimed pokemon gist
     @tasks.loop(minutes=5)
     async def update_pokemon(self):
@@ -751,7 +776,12 @@ Credits: <{self.credits_gist.url}>"""
         for user_id, pkms in self.pk_grouped.groups.items():
             if pd.isna(user_id):
                 continue
-            participants.append((len(pkms), f"1. {await self.fetch_user(user_id)} (`{user_id}`){f' - {len(pkms)} Drawings' if count is True else ''}"))
+            participants.append(
+                (
+                    len(pkms),
+                    f"1. {await self.fetch_user(user_id)} (`{user_id}`){f' - {len(pkms)} Drawings' if count is True else ''}",
+                )
+            )
         participants.sort(key=sort_key, reverse=reverse)
 
         return participants[:n]
