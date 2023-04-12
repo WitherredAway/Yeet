@@ -81,9 +81,12 @@ def make_progress_bar(val: int, max_val: int, *, length: Optional[int] = 10) -> 
     return "".join(full_bar)
 
 
-def deaccent(text: str) -> str:
+def normalize(text: str) -> str:
     """Taken from poketwo!"""
-    text = text.replace("’", "'").replace("′", "'")
+    try:
+        text = text.casefold()
+    except AttributeError:
+        return ''
     norm = unicodedata.normalize("NFD", text)
     result = "".join(ch for ch in norm if unicodedata.category(ch) != "Mn")
     return unicodedata.normalize("NFKC", result)

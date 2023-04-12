@@ -2,6 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import datetime
+from enum import Enum
 import logging
 import os
 import time
@@ -19,8 +20,8 @@ from discord.ext import commands, tasks
 from google.oauth2 import service_account
 
 from helpers.context import CustomContext
-from helpers.constants import LOG_BORDER, NL
-from ..utils.utils import UrlView, make_progress_bar, deaccent
+from helpers.constants import LOG_BORDER, NL, INDENT
+from ..utils.utils import UrlView, make_progress_bar, normalize
 from .utils.constants import (
     APPROVED_TXT,
     DEL_ATTRS_TO_UPDATE,
@@ -76,6 +77,28 @@ IMGUR_CLIENT_SECRET = os.getenv("IMGUR_CLIENT_SECRET")
 log = logging.getLogger(__name__)
 
 
+@dataclass
+class Row:
+    row: pd.Series
+    username: Optional[discord.User] = None
+    user_id: Optional[int] = None
+    imgur: Optional[str] = None
+    status: Optional[str] = None
+    comment: Optional[str] = None
+
+    claimed: Optional[bool] = None
+    complete: Optional[bool] = None
+
+    def __post_init__(self):
+        self.username = self.row[USERNAME_LABEL].iloc[0]
+        self.user_id = self.row[USER_ID_LABEL].iloc[0]
+        self.imgur = self.row[IMGUR_LABEL].iloc[0]
+        self.status = self.row[STATUS_LABEL].iloc[0]
+        self.comment = self.row[CMT_LABEL].iloc[0]
+
+        self.claimed = not pd.isna(self.user_id)
+        self.complete = not pd.isna(self.imgur)
+
 class AfdSheet:
     def __init__(
         self,
@@ -112,6 +135,32 @@ class AfdSheet:
         self.gc = await gspread_asyncio.AsyncioGspreadClientManager(
             lambda: creds
         ).authorize()
+
+    def get_pokemon(self, name: str) -> str:
+        name = name.replace("’", "'").replace("′", "'").casefold()
+        return self.pk.loc[
+            (self.pk["slug"].apply(normalize) == name)
+            | (self.pk["name.ja"].apply(normalize) == name)
+            | (self.pk["name.ja_r"].apply(normalize) == name)
+            | (self.pk["name.ja_t"].apply(normalize) == name)
+            | (self.pk["name.en"].apply(normalize) == name)
+            | (self.pk["name.en2"].apply(normalize) == name)
+            | (self.pk["name.de"].apply(normalize) == name)
+            | (self.pk["name.fr"].apply(normalize) == name)
+        ]["name.en"].iloc[0]
+
+    def get_pokemon_dex(self, pokemon: str) -> int:
+        try:
+            return int(self.pk[self.pk[ENGLISH_NAME_LABEL_P] == pokemon][DEX_LABEL_P])
+        except TypeError as e:
+            print(pokemon)
+            raise e
+
+    def get_pokemon_row(self, pokemon: str) -> Row:
+        return Row(self.df.loc[self.df[PKM_LABEL] == pokemon])
+
+    def get_pokemon_image(self, pokemon: str) -> str:
+        return IMAGE_URL % self.get_pokemon_dex(pokemon)
 
     def edit_row_where(
         self, column: str, equals_to: str, *, set_column: str, to_val: str
@@ -217,24 +266,13 @@ class AfdSheet:
             return self
 
 
-@dataclass
-class Row:
-    row: pd.Series
-    username: Optional[discord.User] = None
-    user_id: Optional[int] = None
-    imgur: Optional[str] = None
-    status: Optional[str] = None
-    comment: Optional[str] = None
-    complete: Optional[bool] = None
-
-    def __post_init__(self):
-        self.username = self.row[USERNAME_LABEL].iloc[0]
-        self.user_id = self.row[USER_ID_LABEL].iloc[0]
-        self.imgur = self.row[IMGUR_LABEL].iloc[0]
-        self.status = self.row[STATUS_LABEL].iloc[0]
-        self.comment = self.row[CMT_LABEL].iloc[0]
-
-        self.complete = not pd.isna(self.imgur)
+class EmbedColours(Enum):
+    INVALID: int = 0xcb3f49
+    UNCLAIMED: int = 0x6d6f77
+    CLAIMED: int = 0xe69537
+    REVIEW: int = 0x6baae8
+    COMMENT: int = 0xf5cd6b
+    COMPLETE: int = 0x85af63
 
 class Afd(commands.Cog):
     def __init__(self, bot):
@@ -263,7 +301,8 @@ class Afd(commands.Cog):
         self.update_pokemon.start()
 
     async def cog_unload(self):
-        self.update_pokemon.cancel()
+        if self.update_pokemon.is_running():
+            self.update_pokemon.cancel()
 
     @property
     def pk(self) -> pd.DataFrame:
@@ -281,18 +320,18 @@ class Afd(commands.Cog):
     def sheet(self) -> AfdSheet:
         return AfdSheet(SHEET_URL, pokemon_df=self.pk)
 
-    def get_pokemon(self, name: Union[str, int]) -> str:
-        name = deaccent(name)
-        return self.pk.loc[
-            (self.pk["slug"].str.casefold() == name)
-            | (self.pk["name.ja"].str.casefold() == name)
-            | (self.pk["name.ja_r"].str.casefold() == name)
-            | (self.pk["name.ja_t"].str.casefold() == name)
-            | (self.pk["name.en"].str.casefold() == name)
-            | (self.pk["name.en2"].str.casefold() == name)
-            | (self.pk["name.de"].str.casefold() == name)
-            | (self.pk["name.fr"].str.casefold() == name)
-        ]["name.en"].iloc[0]
+    def confirmation_embed(
+        self, msg: str, *, pokemon: Optional[str] = None, color: Optional[EmbedColours] = None, footer: Optional[str] = None
+    ) -> Bot.Embed:
+        pokemon_image = self.sheet.get_pokemon_image(pokemon)
+        embed = self.bot.Embed(description=msg, color=color.value if color else color)
+        if pokemon is not None:
+            embed.set_thumbnail(
+                url=pokemon_image
+            )
+        if footer:
+            embed.set_footer(text=footer)
+        return embed
 
     @commands.check_any(commands.is_owner(), commands.has_role(AFD_ROLE_ID))
     @commands.group(
@@ -301,6 +340,7 @@ class Afd(commands.Cog):
         description="Command with a variety of afd subcommands!",
     )
     async def afd(self, ctx: CustomContext):
+        await ctx.typing()
         await self.sheet.update_df()
         if ctx.invoked_subcommand is None:
             await ctx.invoke(self.info)
@@ -310,7 +350,10 @@ class Afd(commands.Cog):
         aliases=("information", "progress"),
         brief="View progress of the april fool's event.",
     )
-    async def info(self, ctx: CustomContext):
+    async def info(self, ctx: CustomContext, *, pokemon: Optional[str] = None):
+        if pokemon:
+            return await ctx.invoke(self.pokemon, kwargs=pokemon)
+
         url_dict = {
             "AFD Gist": (self.afd_gist.url, 0),
             "AFD Credits": (self.credits_gist.url, 0),
@@ -346,16 +389,33 @@ class Afd(commands.Cog):
 
         await ctx.send(embed=embed, view=view)
 
-    def confirmation_embed(
-        self, ctx: CustomContext, msg: str, *, footer: Optional[str] = None
-    ) -> Bot.Embed:
-        embed = self.bot.Embed(description=msg)
-        embed.set_author(
-            name=f"{ctx.author} ({ctx.author.id})", icon_url=ctx.author.avatar.url
-        )
-        if footer:
-            embed.set_footer(text=footer)
-        return embed
+    async def check_claim(
+        self,
+        ctx: CustomContext,
+        msg: str,
+        pokemon: str,
+        *,
+        row: Optional[Row] = None,
+        footer: Optional[str] = None,
+        cmsg: Optional[bool] = None
+    ) -> bool:
+        if not row:
+            # Check once again for any changes to the sheet
+            await self.sheet.update_df()
+            row = self.sheet.get_pokemon_row(pokemon)
+
+        if all((row.claimed, not row.user_id == str(ctx.author.id))):
+            embed = self.confirmation_embed(
+                msg,
+                pokemon=pokemon,
+                color=EmbedColours.INVALID,
+                footer=footer
+            )
+            if cmsg:
+                await cmsg.edit(embed=embed)
+            await ctx.reply(embed=embed)
+            return False
+        return True
 
     @afd.command(
         name="claim",
@@ -365,38 +425,60 @@ class Afd(commands.Cog):
     )
     async def claim(self, ctx: CustomContext, *, pokemon: str):
         try:
-            pokemon = self.get_pokemon(pokemon.casefold())
+            pokemon = self.sheet.get_pokemon(pokemon)
         except IndexError:
             return await ctx.reply(
-                embed=self.confirmation_embed(ctx, "Invalid pokemon provided!")
+                embed=self.confirmation_embed("Invalid pokemon provided!"),
+                color=EmbedColours.INVALID
             )
 
-        function = None
-
-        row = Row(self.df.loc[self.df[PKM_LABEL] == pokemon])
-        if pd.isna(row.user_id):
+        conf = cmsg = None
+        row = self.sheet.get_pokemon_row(pokemon)
+        if not row.claimed:
             if self.sheet.can_claim(ctx.author) is False:
                 return await ctx.reply(
                     embed=self.confirmation_embed(
-                        ctx,
                         f"You already have the max number ({CLAIM_LIMIT}) of pokemon claimed!",
+                        color=EmbedColours.INVALID
                     )
                 )
 
             conf, cmsg = await ctx.confirm(
                 embed=self.confirmation_embed(
-                    ctx, f"Are you sure you want to claim **{pokemon}**?"
+                    f"Are you sure you want to claim **{pokemon}**?",
+                    pokemon=pokemon
                 ),
-                edit_after="Hang on...",
             )
             if conf is False:
                 return
+        elif row.user_id == str(ctx.author.id):
+            return await ctx.reply(
+                embed=self.confirmation_embed(
+                    f"**{pokemon}** is already claimed by you!",
+                    pokemon=pokemon,
+                    color=EmbedColours.INVALID,
+                    footer="You can unclaim it using the `unclaim` command."
+                )
+            )
 
-            function = self.sheet.claim
-            args = (ctx.author, pokemon)
-            content = (
+        check = await self.check_claim(
+            ctx,
+            f"**{pokemon}** is already claimed by **{row.username}**!",
+            pokemon,
+            row=row if conf is None else None,
+            cmsg=cmsg
+        )
+        if check is False:
+            return
+
+        self.sheet.claim(ctx.author, pokemon)
+        await self.sheet.update_sheet()
+        await cmsg.edit(
+            embed=self.confirmation_embed(
                 f"You have successfully claimed **{pokemon}**, have fun! :D",
-                f"You can undo this using the `unclaim` command.",
+                pokemon=pokemon,
+                color=EmbedColours.CLAIMED,
+                footer=f"You can undo this using the `unclaim` command."
             )
         elif row.user_id == str(ctx.author.id):
             conf, cmsg = await ctx.confirm(
