@@ -1,4 +1,5 @@
 from __future__ import annotations
+from dataclasses import dataclass
 
 import datetime
 import logging
@@ -216,6 +217,25 @@ class AfdSheet:
             return self
 
 
+@dataclass
+class Row:
+    row: pd.Series
+    username: Optional[discord.User] = None
+    user_id: Optional[int] = None
+    imgur: Optional[str] = None
+    status: Optional[str] = None
+    comment: Optional[str] = None
+    complete: Optional[bool] = None
+
+    def __post_init__(self):
+        self.username = self.row[USERNAME_LABEL].iloc[0]
+        self.user_id = self.row[USER_ID_LABEL].iloc[0]
+        self.imgur = self.row[IMGUR_LABEL].iloc[0]
+        self.status = self.row[STATUS_LABEL].iloc[0]
+        self.comment = self.row[CMT_LABEL].iloc[0]
+
+        self.complete = not pd.isna(self.imgur)
+
 class Afd(commands.Cog):
     def __init__(self, bot):
         self.bot: Bot = bot
@@ -390,11 +410,8 @@ class Afd(commands.Cog):
 
         function = None
 
-        row = self.df.loc[self.df[PKM_LABEL] == pokemon]
-        user = row[USERNAME_LABEL].iloc[0]
-        user_id = row[USER_ID_LABEL].iloc[0]
-        complete = not pd.isna(row[IMGUR_LABEL].iloc[0])
-        if pd.isna(user_id):
+        row = Row(self.df.loc[self.df[PKM_LABEL] == pokemon])
+        if pd.isna(row.user_id):
             if self.sheet.can_claim(ctx.author) is False:
                 return await ctx.reply(
                     embed=self.conf_embed(
@@ -418,12 +435,12 @@ class Afd(commands.Cog):
                 f"You have successfully claimed **{pokemon}**, have fun! :D",
                 f"You can undo this using the `unclaim` command.",
             )
-        elif user_id == str(ctx.author.id):
+        elif row.user_id == str(ctx.author.id):
             conf, cmsg = await ctx.confirm(
                 embed=self.conf_embed(
                     ctx,
                     f"**{pokemon}** is already claimed by you!\n\nWould you like to unclaim?\
-                        {' You have already submitted a drawing which will be removed.' if complete is True else ''}",
+                        {' You have already submitted a drawing which will be removed.' if row.complete is True else ''}",
                 ),
                 edit_after="Hang on...",
                 confirm_label="Unclaim",
@@ -437,19 +454,17 @@ class Afd(commands.Cog):
         else:
             return await ctx.reply(
                 embed=self.conf_embed(
-                    ctx, f"**{pokemon}** is already claimed by **{user}**!"
+                    ctx, f"**{pokemon}** is already claimed by **{row.username}**!"
                 )
             )
 
         # Check once again for any changes to the sheet
         await self.sheet.update_df()
-        row = self.df.loc[self.df[PKM_LABEL] == pokemon]
-        user = row[USERNAME_LABEL].iloc[0]
-        user_id = row[USER_ID_LABEL].iloc[0]
-        if not any((pd.isna(user_id), user_id == str(ctx.author.id))):
+        row = Row(self.df.loc[self.df[PKM_LABEL] == pokemon])
+        if not any((pd.isna(row.user_id), row.user_id == str(ctx.author.id))):
             return await cmsg.edit(
                 embed=self.conf_embed(
-                    ctx, f"**{pokemon}** is already claimed by **{user}**!"
+                    ctx, f"**{pokemon}** is already claimed by **{row.username}**!"
                 )
             )
 
@@ -478,11 +493,8 @@ Admins can force unclaim.""",
 
         function = None
 
-        row = self.df.loc[self.df[PKM_LABEL] == pokemon]
-        user = row[USERNAME_LABEL].iloc[0]
-        user_id = row[USER_ID_LABEL].iloc[0]
-        complete = not pd.isna(row[IMGUR_LABEL].iloc[0])
-        if pd.isna(user_id):
+        row = Row(self.df.loc[self.df[PKM_LABEL] == pokemon])
+        if pd.isna(row.user_id):
             if self.sheet.can_claim(ctx.author) is False:
                 return await ctx.reply(
                     embed=self.conf_embed(
@@ -509,12 +521,12 @@ Admins can force unclaim.""",
                 f"You have successfully claimed **{pokemon}**, have fun! :D",
                 "You can undo this using the `unclaim` command.",
             )
-        elif user_id == str(ctx.author.id):
+        elif row.user_id == str(ctx.author.id):
             conf, cmsg = await ctx.confirm(
                 embed=self.conf_embed(
                     ctx,
                     f"Are you sure you want to unclaim **{pokemon}**?\
-                        {' You have already submitted a drawing which will be removed.' if complete is True else ''}",
+                        {' You have already submitted a drawing which will be removed.' if row.complete is True else ''}",
                 ),
                 edit_after="Hang on...",
                 confirm_label="Unclaim",
@@ -526,14 +538,14 @@ Admins can force unclaim.""",
             args = (pokemon,)
             content = (f"You have successfully unclaimed **{pokemon}**.", None)
         else:
-            prompt = f"**{pokemon}** is already claimed by **{user}**!"
-            if AFD_ADMIN_ROLE_ID not in (r.id for r in ctx.author.roles):
+            prompt = f"**{pokemon}** is already claimed by **{row.username}**!"
+            if AFD_ADMIN_ROLE_ID not in [r.id for r in ctx.author.roles]:
                 return await ctx.reply(embed=self.conf_embed(ctx, prompt))
             conf, cmsg = await ctx.confirm(
                 embed=self.conf_embed(
                     ctx,
                     f"{prompt}\n\nSince you are registered as an Admin, would you like to **force** unclaim it?\
-                        {' A drawing has already been submitted which will be removed.' if complete is True else ''}",
+                        {' A drawing has already been submitted which will be removed.' if row.complete is True else ''}",
                 ),
                 edit_after="Hang on...",
                 confirm_label="Force Unclaim",
@@ -544,7 +556,7 @@ Admins can force unclaim.""",
             function = self.sheet.unclaim
             args = (pokemon,)
             content = (
-                f"You have successfully force unclaimed **{pokemon}** from **{user}**.",
+                f"You have successfully force unclaimed **{pokemon}** from **{row.username}**.",
                 None,
             )
 
