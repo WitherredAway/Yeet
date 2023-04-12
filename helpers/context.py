@@ -73,7 +73,7 @@ class CustomContext(commands.Context):
         msg: Optional[str] = None,
         *,
         embed: Optional[Bot.Embed] = None,
-        edit_after: Optional[str] = None,
+        edit_after: Optional[str] = "Hang on...",
         confirm_label: Optional[str] = "Confirm",
         cancel_label: Optional[str] = "Cancel",
     ) -> Tuple[bool, discord.Message]:

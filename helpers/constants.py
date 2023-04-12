@@ -12,3 +12,5 @@ LOG_BORDER_LENGTH = 50
 LOG_BORDER = "-" * LOG_BORDER_LENGTH
 
 GITHUB_REPO = "https://github.com/WitherredAway/Yeet"
+
+INDENT = (" " + u200b) * 4

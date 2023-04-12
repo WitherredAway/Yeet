@@ -386,12 +386,12 @@ class PaginatedHelpCommand(commands.HelpCommand):
                 "brief": "Shows help about the bot, a command, or a category",
                 "description": """
                 Shows help about the bot, a command, or a category
-                
+
                 Code taken and modified from [Robodanny](https://github.com/Rapptz/RoboDanny).
                 """,
                 "help": """
                 Shows this message.
-                
+
                 Do `help <command>` to view the help of a specific command
                 Do `help <category/cog>` (case-sensitive) to view help of a specific category or cog.
                 """,
@@ -414,18 +414,14 @@ class PaginatedHelpCommand(commands.HelpCommand):
         return (f"{alias} `{command.signature}`") if command.signature else alias
 
     @staticmethod
-    def common_command_formatting(ctx, embed_like, command):
+    def common_command_formatting(ctx, embed_like: Bot.Embed, command: commands.Command):
         bot = ctx.bot
         embed_like.title = (
             f"`{ctx.clean_prefix}`{PaginatedHelpCommand.get_command_signature(command)}"
         )
         embed_like.url = source(bot, command=command.qualified_name)
         if command.help:
-            embed_like.add_field(
-                name="Help",
-                value=command.help,
-                inline=False,
-            )
+            embed_like.description = command.help
         if command.description:
             embed_like.add_field(
                 name="Description",
