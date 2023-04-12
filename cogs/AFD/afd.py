@@ -141,6 +141,8 @@ class AfdSheet:
         self.edit_row_where(
             PKM_LABEL, pokemon, set_column=USER_ID_LABEL, to_val=str(user.id)
         )
+        for col in self.df.columns[3:]:  # For all columns after Discord ID
+            self.edit_row_where(PKM_LABEL, pokemon, set_column=col, to_val=None)
 
     def unclaim(self, pokemon: str):
         for col in self.df.columns[1:]:  # For all columns after Pokemon
