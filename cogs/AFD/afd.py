@@ -333,6 +333,19 @@ class Afd(commands.Cog):
             embed.set_footer(text=footer)
         return embed
 
+    async def get_pokemon(self, ctx: CustomContext, name: str) -> Union[str, None]:
+        try:
+            name = self.sheet.get_pokemon(name)
+        except IndexError:
+            await ctx.reply(
+                embed=self.confirmation_embed(
+                    "Invalid pokemon provided!",
+                    color=EmbedColours.INVALID
+                )
+            )
+            return
+        return name
+
     @commands.check_any(commands.is_owner(), commands.has_role(AFD_ROLE_ID))
     @commands.group(
         name="afd",
@@ -436,13 +449,9 @@ class Afd(commands.Cog):
 {INDENT}**ii. If it's already claimed by *you* or *someone else*, you will be informed of such.**""",
     )
     async def claim(self, ctx: CustomContext, *, pokemon: str):
-        try:
-            pokemon = self.sheet.get_pokemon(pokemon)
-        except IndexError:
-            return await ctx.reply(
-                embed=self.confirmation_embed("Invalid pokemon provided!"),
-                color=EmbedColours.INVALID
-            )
+        pokemon = self.get_pokemon(ctx, pokemon)
+        if not pokemon:
+            return
 
         conf = cmsg = None
         row = self.sheet.get_pokemon_row(pokemon)
@@ -510,15 +519,9 @@ class Afd(commands.Cog):
 {INDENT}**iii. If it's already claimed by *someone else*, you will be informed of such.**""",
     )
     async def unclaim(self, ctx: CustomContext, *, pokemon: str):
-        try:
-            pokemon = self.sheet.get_pokemon(pokemon)
-        except IndexError:
-            return await ctx.reply(
-                embed=self.confirmation_embed(
-                    "Invalid pokemon provided!",
-                    color=EmbedColours.INVALID
-                )
-            )
+        pokemon = self.get_pokemon(ctx, pokemon)
+        if not pokemon:
+            return
 
         conf = cmsg = None
         row = self.sheet.get_pokemon_row(pokemon)
