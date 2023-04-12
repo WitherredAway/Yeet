@@ -38,6 +38,7 @@ class Bot(commands.Bot):
     MAIN_BOT_ID = 634409171114262538
     PREFIXES = os.getenv("PREFIXES").split(", ")
     PREFIX = PREFIXES[0]
+    EMBED_COLOUR = 0x9BFFD6
 
     COGS = {
         "poketwo": "Poketwo.poketwo_main",
@@ -154,8 +155,6 @@ class Bot(commands.Bot):
 
     class Embed(discord.Embed):
         def __init__(self, **kwargs):
-            self.EMBED_COLOUR = 0x9BFFD6
-
             if 'color' not in kwargs:
                 kwargs['color'] = self.EMBED_COLOUR
             super().__init__(**kwargs)
