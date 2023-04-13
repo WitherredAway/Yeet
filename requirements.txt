@@ -1,5 +1,6 @@
 aiohttp==3.8.3
 aiosignal==1.2.0
+aiowiki==1.0.0
 astunparse==1.6.3
 async-timeout==4.0.2
 attrs==22.1.0
@@ -63,6 +64,5 @@ uritemplate==4.1.1
 urllib3==1.26.12
 validators==0.20.0
 Werkzeug==2.2.2
-wikipedia==1.4.0
 yarg==0.1.9
 yarl==1.8.1

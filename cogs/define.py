@@ -1,17 +1,20 @@
+from __future__ import annotations
+
 import urllib
 import typing
-from typing import Type, TypeVar
+from typing import Optional, Type, TypeVar
 
 import discord
 from discord.ext import commands, menus
 import aiohttp
-import wikipedia
+import aiowiki
 
 from .RDanny.utils.paginator import BotPages
-from constants import MESSAGE_CHAR_LIMIT
+from constants import MESSAGE_CHAR_LIMIT, NL
+from .utils.utils import UrlView
 
-
-T = TypeVar("T", bound="Term")
+if typing.TYPE_CHECKING:
+    from main import Bot
 
 
 class TermSelectMenu(discord.ui.Select):
@@ -50,12 +53,12 @@ class TermPages(BotPages):
 
 
 class TermPageSource(menus.ListPageSource):
-    def __init__(self, term_obj: T, *, ctx: commands.Context, per_page: int = 1):
+    def __init__(self, term_obj: Term, *, ctx: commands.Context, per_page: int = 1):
         self.ctx = ctx
         self.bot: discord.Bot = self.ctx.bot
         self.embed = self.bot.Embed()
 
-        self.term: T = term_obj
+        self.term: Term = term_obj
         self.entries: typing.List = self.term.meanings
         self.per_page = per_page
         self.phonetics: typing.List = [self.term.phonetic]
@@ -144,10 +147,14 @@ class Term:
 class Define(commands.Cog):
     """Command(s) for all kinds of information of a term; word or phrase."""
 
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: Bot):
         self.bot = bot
+        self.wiki_client = aiowiki.Wiki.wikipedia("en")
 
     display_emoji: discord.PartialEmoji = "🔍"
+
+    async def cog_unload(self) -> None:
+        await self.wiki_client.close()
 
     @commands.command(
         name="define",
@@ -169,17 +176,25 @@ class Define(commands.Cog):
         brief="Searches wikipedia for info.",
         help="Use this command to look up anything on wikipedia. Sends the first 10 sentences from wikipedia.",
     )
-    async def wiki(self, ctx, *, arg=None):
-        if arg == None:
-            await ctx.send("Please specify what you want me to search.")
-        elif arg:
-            msg = await ctx.send("Fetching...")
-            start = arg.replace(" ", "")
-            end = wikipedia.summary(start)
-            try:
-                await msg.edit(content=f"```\n{end[:MESSAGE_CHAR_LIMIT] + '...' if len(end) >= MESSAGE_CHAR_LIMIT else ''}\n```")
-            except wikipedia.PageError:
-                    await msg.edit(content="Not found.")
+    async def wiki(self, ctx: commands.Context, *, query: Optional[str] = None):
+        await ctx.typing()
+        if query is None:
+            pages = await self.wiki_client.get_random_pages(1)
+        else:
+            pages = await self.wiki_client.opensearch(query)
+        try:
+            page = pages[0]
+        except IndexError:
+            return await ctx.reply("Not found, sorry!")
+        summary = await page.summary() or "No summary found, please visit the page instead:"
+        text = summary[:MESSAGE_CHAR_LIMIT] + ('...' if len(summary) >= MESSAGE_CHAR_LIMIT else '')
+        url = (await page.urls()).view
+
+        embed = self.bot.Embed(title=page.title, description=(NL*2).join(text.split(NL)))
+        await ctx.reply(
+            embed=embed,
+            view=UrlView({'Wikipedia URL': (url, 0)})
+        )
 
 
 async def setup(bot: commands.Bot) -> None:

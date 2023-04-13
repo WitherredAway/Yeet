@@ -1,5 +1,7 @@
 import typing
+from typing import Dict
 import cProfile
+import discord
 
 
 def isfloat(input):
@@ -33,3 +35,14 @@ def async_profile(func):
         pr.print_stats(sort='tottime')
         return result
     return decorator
+
+class UrlView(discord.ui.View):
+    def __init__(self, url_dict: Dict[str, str]):
+        super().__init__()
+
+        for text, (url, row) in url_dict.items():
+            self.add_item(
+                discord.ui.Button(
+                    label=text, url=url, style=discord.ButtonStyle.url, row=row
+                )
+            )
