@@ -521,7 +521,7 @@ class Afd(commands.Cog):
 {INDENT}**ii. If it's already claimed by *you* or *someone else*, you will be informed of such.**""",
     )
     async def claim(self, ctx: CustomContext, *, pokemon: str):
-        pokemon = self.get_pokemon(ctx, pokemon)
+        pokemon = await self.get_pokemon(ctx, pokemon)
         if not pokemon:
             return
 
@@ -591,7 +591,7 @@ class Afd(commands.Cog):
 {INDENT}**iii. If it's already claimed by *someone else*, you will be informed of such.**""",
     )
     async def unclaim(self, ctx: CustomContext, *, pokemon: str):
-        pokemon = self.get_pokemon(ctx, pokemon)
+        pokemon = await self.get_pokemon(ctx, pokemon)
         if not pokemon:
             return
 
