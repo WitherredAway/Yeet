@@ -66,6 +66,7 @@ if typing.TYPE_CHECKING:
     from main import Bot
 
 
+COL_OFFSET = 1  # How many rows after the pokemon rows start.
 CLAIM_LIMIT = 5
 AFD_ROLE_ID = 1095381341178183851
 AFD_ADMIN_ROLE_ID = 1095393318281678848
@@ -232,6 +233,10 @@ class AfdSheet:
     def unclaim(self, pokemon: str):
         for col in self.df.columns[1:]:  # For all columns after Pokemon
             self.edit_row_where(PKM_LABEL, pokemon, set_column=col, to_val=None)
+
+    async def update_row(self, dex: str) -> None:
+        row_vals = [self.df.iloc[int(dex) - COL_OFFSET].fillna("").tolist()]
+        await self.worksheet.update(f"B{int(dex) + COL_OFFSET}", row_vals)
 
     async def update_sheet(self) -> None:
         self.df = self.df.fillna("").reset_index()
@@ -504,6 +509,9 @@ class Afd(commands.Cog):
             return False
         return True
 
+    def is_admin(self, user: discord.Member) -> bool:
+        return AFD_ADMIN_ROLE_ID in [r.id for r in user.roles]
+
     @afd.command(
         name="claim",
         brief="Claim a pokemon to draw",
@@ -528,7 +536,7 @@ class Afd(commands.Cog):
         conf = cmsg = None
         row = self.sheet.get_pokemon_row(pokemon)
         if not row.claimed:
-            if self.sheet.can_claim(ctx.author) is False:
+            if self.sheet.can_claim(ctx.author) is False and not self.is_admin(ctx.author):
                 return await ctx.reply(
                     embed=self.confirmation_embed(
                         f"You already have the max number ({CLAIM_LIMIT}) of pokemon claimed!",
@@ -561,7 +569,7 @@ class Afd(commands.Cog):
             return
 
         self.sheet.claim(ctx.author, pokemon)
-        await self.sheet.update_sheet()
+        await self.sheet.update_row(row.dex)
         await cmsg.edit(
             embed=self.confirmation_embed(
                 f"You have successfully claimed **{pokemon}**, have fun! :D",
@@ -616,7 +624,7 @@ class Afd(commands.Cog):
             if not row.claimed
             else (
                 "You can force unclaim it using the `forceunclaim` command."
-                if AFD_ADMIN_ROLE_ID in [r.id for r in ctx.author.roles]
+                if self.is_admin(ctx.author)
                 else None)
         )
         claimed = await self.check_claim(
@@ -632,7 +640,7 @@ class Afd(commands.Cog):
             return
 
         self.sheet.unclaim(pokemon)
-        await self.sheet.update_sheet()
+        await self.sheet.update_row(row.dex)
         await cmsg.edit(
             embed=self.confirmation_embed(
                 f"You have successfully unclaimed **{pokemon}**.",
