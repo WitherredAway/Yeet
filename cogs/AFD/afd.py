@@ -432,6 +432,48 @@ class Afd(commands.Cog):
 
         await ctx.send(embed=embed, view=view)
 
+    @afd.command(
+        name="view",
+        aliases=("pokemon", "pkm", "d", "dex"),
+        brief="See info of a pokemon from the sheet"
+    )
+    async def pokemon(self, ctx: CustomContext, *, pokemon: str):
+        pokemon = await self.get_pokemon(ctx, pokemon)
+        if not pokemon:
+            return
+
+        row = self.sheet.get_pokemon_row(pokemon)
+        base_image = self.sheet.get_pokemon_image(pokemon)
+
+        embed = ctx.bot.Embed(title=f"#{row.dex} - {pokemon}", colour=row.colour)
+        embed.set_thumbnail(url=base_image)
+
+        if row.claimed:
+            user = await self.fetch_user(int(row.user_id))
+
+            if row.imgur:
+                embed.set_image(url=row.imgur)
+
+            if row.approved_by:
+                status = "Complete and approved."
+            elif row.comment:
+                status = "Correction pending."
+                embed.add_field(
+                    name=CMT_LABEL,
+                    value=str(row.comment),
+                    inline=False
+                )
+            elif row.unreviewed:
+                status = "Submitted, Awaiting review."
+            else:
+                status = "Claimed by"
+
+            embed.set_footer(text=f"{status}\n{row.username} ({row.user_id})", icon_url=user.avatar.url)
+        else:
+            status = "Not claimed"
+            embed.set_footer(text=status)
+        await ctx.send(embed=embed)
+
     async def check_claim(
         self,
         ctx: CustomContext,
