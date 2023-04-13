@@ -404,10 +404,13 @@ class Afd(commands.Cog):
         unc_list, unc_amount = self.validate_unclaimed()
         claimed_amount = self.total_amount - unc_amount
 
-        ml_list, ml_list_mention, ml_amount = await self.validate_missing_link()
-        completed_amount = claimed_amount - ml_amount
-
         unr_list, unr_amount = await self.validate_unreviewed()
+
+        ml_list, ml_list_mention, ml_amount = await self.validate_missing_link()
+        submitted_amount = claimed_amount - ml_amount
+        completed_amount = submitted_amount - unr_amount
+
+
 
         embed = self.bot.Embed(title="April Fool's Day Event")
 
@@ -417,13 +420,13 @@ class Afd(commands.Cog):
             inline=False,
         )
         embed.add_field(
-            name="Claimed",
-            value=f"{make_progress_bar(claimed_amount, self.total_amount)} {claimed_amount}/{self.total_amount}",
+            name="Submitted",
+            value=f"{make_progress_bar(submitted_amount, self.total_amount)} {submitted_amount}/{self.total_amount}",
             inline=False,
         )
         embed.add_field(
-            name="Unreviewed",
-            value=f"{make_progress_bar(unr_amount, completed_amount)} {unr_amount}/{completed_amount}",
+            name="Claimed",
+            value=f"{make_progress_bar(claimed_amount, self.total_amount)} {claimed_amount}/{self.total_amount}",
             inline=False,
         )
 
@@ -797,7 +800,7 @@ Credits: <{self.credits_gist.url}>"""
         df = pk.loc[
             (~pk[USER_ID_LABEL].isna())
             & (~pk[IMGUR_LABEL].isna())
-            & (pk[STATUS_LABEL] != APPROVED_TXT)
+            & (pk[APPROVED_LABEL].isna())
         ]
 
         df_grouped = df.groupby(USER_ID_LABEL)
