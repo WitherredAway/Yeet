@@ -641,9 +641,6 @@ class Afd(commands.Cog):
             )
         )
 
-            )
-        )
-
     @commands.is_owner()
     @afd.command(
         name="new_spreadsheet",
