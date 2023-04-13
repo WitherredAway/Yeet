@@ -348,9 +348,9 @@ class Afd(commands.Cog):
         return AfdSheet(SHEET_URL, pokemon_df=self.pk)
 
     def confirmation_embed(
-        self, msg: str, *, pokemon: Optional[str] = None, color: Optional[EmbedColours] = None, footer: Optional[str] = None
+        self, msg: str, *, pokemon: Optional[str] = None, colour: Optional[EmbedColours] = None, footer: Optional[str] = None
     ) -> Bot.Embed:
-        embed = self.bot.Embed(description=msg, color=color.value if color else color)
+        embed = self.bot.Embed(description=msg, colour=colour.value if colour else colour)
         if pokemon is not None:
             pokemon_image = self.sheet.get_pokemon_image(pokemon)
             embed.set_thumbnail(
@@ -367,10 +367,10 @@ class Afd(commands.Cog):
             await ctx.reply(
                 embed=self.confirmation_embed(
                     "Invalid pokemon provided!",
-                    color=EmbedColours.INVALID
+                    colour=EmbedColours.INVALID
                 )
             )
-            return
+            return None
         return name
 
     @commands.check_any(commands.is_owner(), commands.has_role(AFD_ROLE_ID))
@@ -494,7 +494,7 @@ class Afd(commands.Cog):
             embed = self.confirmation_embed(
                 decide_msg(row),
                 pokemon=pokemon,
-                color=EmbedColours.INVALID,
+                colour=EmbedColours.INVALID,
                 footer=decide_footer(row) if decide_footer else decide_footer
             )
             if cmsg:
@@ -532,7 +532,7 @@ class Afd(commands.Cog):
                 return await ctx.reply(
                     embed=self.confirmation_embed(
                         f"You already have the max number ({CLAIM_LIMIT}) of pokemon claimed!",
-                        color=EmbedColours.INVALID
+                        colour=EmbedColours.INVALID
                     )
                 )
 
@@ -566,7 +566,7 @@ class Afd(commands.Cog):
             embed=self.confirmation_embed(
                 f"You have successfully claimed **{pokemon}**, have fun! :D",
                 pokemon=pokemon,
-                color=EmbedColours.CLAIMED,
+                colour=EmbedColours.CLAIMED,
                 footer=f"You can undo this using the `unclaim` command."
             )
         )
@@ -601,7 +601,7 @@ class Afd(commands.Cog):
             conf, cmsg = await ctx.confirm(
                 embed=self.confirmation_embed(
                     f"Are you sure you want to unclaim **{pokemon}**?\
-                        {' You have already submitted a drawing which will be removed.' if row.complete is True else ''}",
+                        {' You have already submitted a drawing which will be removed.' if row.unreviewed is True else ''}",
                     pokemon=pokemon,
                 ),
                 confirm_label="Unclaim",
@@ -637,7 +637,10 @@ class Afd(commands.Cog):
             embed=self.confirmation_embed(
                 f"You have successfully unclaimed **{pokemon}**.",
                 pokemon=pokemon,
-                color=EmbedColours.UNCLAIMED
+                colour=EmbedColours.UNCLAIMED
+            )
+        )
+
             )
         )
 
