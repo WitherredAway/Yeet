@@ -1,6 +1,6 @@
 aiohttp==3.8.3
 aiosignal==1.2.0
-aiowiki==1.0.0
+aiowiki @ git+https://github.com/Gelbpunkt/aiowiki@34f24bdcaedfd5da96cb6125714505945211287c
 astunparse==1.6.3
 async-timeout==4.0.2
 attrs==22.1.0
