@@ -176,12 +176,9 @@ class Define(commands.Cog):
         brief="Searches wikipedia for info.",
         help="Use this command to look up anything on wikipedia. Sends the first 10 sentences from wikipedia.",
     )
-    async def wiki(self, ctx: commands.Context, *, query: Optional[str] = None):
+    async def wiki(self, ctx: commands.Context, *, query: str = None):
         await ctx.typing()
-        if query is None:
-            pages = await self.wiki_client.get_random_pages(1)
-        else:
-            pages = await self.wiki_client.opensearch(query)
+        pages = await self.wiki_client.opensearch(query)
         try:
             page = pages[0]
         except IndexError:
@@ -189,8 +186,11 @@ class Define(commands.Cog):
         summary = await page.summary() or "No summary found, please visit the page instead:"
         text = summary[:MESSAGE_CHAR_LIMIT] + ('...' if len(summary) >= MESSAGE_CHAR_LIMIT else '')
         url = (await page.urls()).view
+        images = await page.media()
 
         embed = self.bot.Embed(title=page.title, description=(NL*2).join(text.split(NL)))
+        if images:
+            embed.set_image(url=images[0])
         await ctx.reply(
             embed=embed,
             view=UrlView({'Wikipedia URL': (url, 0)})
