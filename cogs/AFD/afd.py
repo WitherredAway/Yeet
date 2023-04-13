@@ -51,7 +51,7 @@ from .utils.labels import (
     USER_ID_LABEL,
     IMGUR_LABEL,
     PKM_LABEL,
-    STATUS_LABEL,
+    APPROVED_LABEL,
     USERNAME_LABEL,
 )
 
@@ -77,27 +77,62 @@ IMGUR_CLIENT_SECRET = os.getenv("IMGUR_CLIENT_SECRET")
 log = logging.getLogger(__name__)
 
 
+class EmbedColours(Enum):
+    INVALID: int = 0xcb3f49  # Invalid, Red
+    UNCLAIMED: int = 0x6d6f77  # Not claimed, Grey
+    CLAIMED: int = 0xe69537  # Claimed but not complete, Orange
+    UNREVIEWED: int = 0x6baae8  # Link present awaiting review, Blue
+    COMMENT: int = 0xf5cd6b # Has a comment, Yellow
+    APPROVED: int = 0x85af63 # Link present and approved, Green
+
+
 @dataclass
 class Row:
     row: pd.Series
+
+    dex: Optional[int] = None
     username: Optional[discord.User] = None
     user_id: Optional[int] = None
     imgur: Optional[str] = None
-    status: Optional[str] = None
+    approved_by: Optional[int] = None
     comment: Optional[str] = None
 
     claimed: Optional[bool] = None
-    complete: Optional[bool] = None
+    unreviewed: Optional[bool] = None
 
     def __post_init__(self):
+        self.dex = self.row.index.values[0]
         self.username = self.row[USERNAME_LABEL].iloc[0]
+        self.username = self.username if not pd.isna(self.username) else None
+
         self.user_id = self.row[USER_ID_LABEL].iloc[0]
+        self.user_id = self.user_id if not pd.isna(self.user_id) else None
+
         self.imgur = self.row[IMGUR_LABEL].iloc[0]
-        self.status = self.row[STATUS_LABEL].iloc[0]
+        self.imgur = self.imgur if not pd.isna(self.imgur) else None
+
+        self.approved_by = self.row[APPROVED_LABEL].iloc[0]
+        self.approved_by = self.approved_by if not pd.isna(self.approved_by) else None
+
         self.comment = self.row[CMT_LABEL].iloc[0]
+        self.comment = self.comment if not pd.isna(self.comment) else None
 
         self.claimed = not pd.isna(self.user_id)
-        self.complete = not pd.isna(self.imgur)
+        self.unreviewed = all((not pd.isna(self.imgur), not self.approved_by))
+
+    @property
+    def colour(self) -> int:
+        if self.claimed:
+            if self.approved_by:
+                return EmbedColours.APPROVED.value
+            elif self.comment:
+                return EmbedColours.COMMENT.value
+            elif self.unreviewed:
+                return EmbedColours.UNREVIEWED.value
+            else:
+                return EmbedColours.CLAIMED.value
+        else:
+            return EmbedColours.UNCLAIMED.value
 
 class AfdSheet:
     def __init__(
@@ -236,7 +271,7 @@ class AfdSheet:
                     USERNAME_LABEL,
                     USER_ID_LABEL,
                     IMGUR_LABEL,
-                    STATUS_LABEL,
+                    APPROVED_LABEL,
                     CMT_LABEL,
                 ]
             )
@@ -265,14 +300,6 @@ class AfdSheet:
         else:
             return self
 
-
-class EmbedColours(Enum):
-    INVALID: int = 0xcb3f49
-    UNCLAIMED: int = 0x6d6f77
-    CLAIMED: int = 0xe69537
-    REVIEW: int = 0x6baae8
-    COMMENT: int = 0xf5cd6b
-    COMPLETE: int = 0x85af63
 
 class Afd(commands.Cog):
     def __init__(self, bot):
