@@ -176,7 +176,7 @@ class Define(commands.Cog):
         brief="Searches wikipedia for info.",
         help="Use this command to look up anything on wikipedia. Sends the first 10 sentences from wikipedia.",
     )
-    async def wiki(self, ctx: commands.Context, *, query: str = None):
+    async def wiki(self, ctx: commands.Context, *, query: str):
         await ctx.typing()
         pages = await self.wiki_client.opensearch(query)
         try:
