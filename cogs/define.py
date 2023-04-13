@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import urllib
 import typing
-from typing import Optional, Type, TypeVar
 
 import discord
 from discord.ext import commands, menus
@@ -10,7 +9,8 @@ import aiohttp
 import aiowiki
 
 from .RDanny.utils.paginator import BotPages
-from helpers.constants import MESSAGE_CHAR_LIMIT
+from helpers.constants import MESSAGE_CHAR_LIMIT, NL
+from .utils.utils import UrlView
 
 if typing.TYPE_CHECKING:
     from main import Bot
