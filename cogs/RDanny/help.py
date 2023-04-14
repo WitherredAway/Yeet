@@ -14,22 +14,18 @@ from .utils import time
 from .utils.source import source
 
 
-if typing.TYPE_CHECKING:
-    from main import Bot
-
-
 class FrontPageSource(menus.ListPageSource):
     def __init__(
         self,
         cogs_and_commands: Dict[commands.Cog, List[commands.Command]],
         *,
         per_page: Optional[int] = 8,
-        bot: Bot,
+        bot: commands.Bot,
     ):
         self.cogs_and_commands: List[
             Tuple[commands.Cog, List[commands.Command]]
         ] = list(cogs_and_commands.items())
-        self.bot: Bot = bot
+        self.bot: commands.Bot = bot
         self.prefix: str = bot.PREFIX
         super().__init__(self.cogs_and_commands, per_page=per_page)
 
@@ -400,7 +396,7 @@ class PaginatedHelpCommand(commands.HelpCommand):
         )
 
     @property
-    def bot(self) -> Bot:
+    def bot(self) -> commands.Bot:
         return self.context.bot
 
     @staticmethod
@@ -419,7 +415,7 @@ class PaginatedHelpCommand(commands.HelpCommand):
         return (f"{alias} `{command.signature}`") if command.signature else alias
 
     @staticmethod
-    def common_command_formatting(ctx, embed_like: Bot.Embed, command: commands.Command):
+    def common_command_formatting(ctx, embed_like: discord.Embed, command: commands.Command):
         bot = ctx.bot
         embed_like.title = (
             f"`{ctx.clean_prefix}`{PaginatedHelpCommand.get_command_signature(command)}"

@@ -4,11 +4,10 @@ import subprocess
 import re
 import typing
 
-if typing.TYPE_CHECKING:
-    from main import Bot
+from discord.ext import commands
 
 
-def source(bot: Bot, *, command: str):
+def source(bot: commands.Bot, *, command: str):
     """Displays the full source code or for a specific command of the bot.
 
     To display the source code of a subcommand you can separate it by periods, e.g. timer.start for the start subcommand of the timer command or by spaces.
