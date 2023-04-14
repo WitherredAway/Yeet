@@ -709,6 +709,54 @@ class Afd(commands.Cog):
             )
         )
 
+    @commands.has_role(AFD_ADMIN_ROLE_ID)
+    @afd.command(
+        name="forceunclaim",
+        brief="Forcefully unclaim a pokemon",
+        description="AFD Admin-only command to forcefully unclaim a pokemon",
+        help=f"""When this command is ran, first the sheet data will be fetched. Then:
+1. A pokemon, with the normalized and deaccented version of the provided name *including alt names*, will be searched for. If not found, it will return invalid.
+2. That pokemon's availability on the sheet will be checked:
+{INDENT}**i. If it is claimed:**
+{INDENT}{INDENT}- You will be prompted to confirm that you want to force unclaim the pokemon.\
+    Will warn you if there is a drawing submitted already.
+{INDENT}{INDENT}- The sheet will finally be updated and remove the user's Username and ID
+{INDENT}**ii. If it's *not* claimed, you will be informed of such.**"""
+    )
+    async def forceunclaim(self, ctx, *, pokemon: str):
+        pokemon = await self.get_pokemon(ctx, pokemon)
+        if not pokemon:
+            return
+
+        row = self.sheet.get_pokemon_row(pokemon)
+        if not row.claimed:
+            return await ctx.reply(
+                embed=self.confirmation_embed(
+                    f"**{pokemon}** is not claimed.",
+                    pokemon=pokemon,
+                    colour=EmbedColours.INVALID
+                )
+            )
+        conf, cmsg = await ctx.confirm(
+            embed=self.confirmation_embed(
+                f"**{pokemon}** is currently claimed by **{row.username}**, forcefully unclaim?\
+                        {' There is a drawing already submitted which will be removed.' if row.imgur else ''}",
+                pokemon=pokemon,
+            ),
+            confirm_label="Force Unclaim",
+        )
+        if conf is False:
+            return
+
+        self.sheet.unclaim(pokemon,)
+        await cmsg.edit(
+            embed=self.confirmation_embed(
+                f"You have successfully force unclaimed **{pokemon}** from **{row.username}**.",
+                pokemon=pokemon,
+                colour=EmbedColours.UNCLAIMED
+            )
+        )
+
     @commands.is_owner()
     @afd.command(
         name="new_spreadsheet",
