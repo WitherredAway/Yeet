@@ -506,8 +506,8 @@ class Afd(commands.Cog):
                 await cmsg.edit(embed=embed)
             else:
                 await ctx.reply(embed=embed)
-            return False
-        return True
+            return True
+        return False
 
     def is_admin(self, user: discord.Member) -> bool:
         return AFD_ADMIN_ROLE_ID in [r.id for r in user.roles]
@@ -521,7 +521,7 @@ class Afd(commands.Cog):
 2. Pokemon with the provided name, *including alt names*, will be searched for. If not found, it will return invalid.
 3. That pokemon's availability on the sheet will be checked:
 {INDENT}**i. If it's *not* claimed yet:**
-{INDENT}{INDENT}- If you already have max claims ({CLAIM_LIMIT}), it will not let you claim.
+{INDENT}{INDENT}- If you already have max claims ({CLAIM_LIMIT}), it will not let you claim. Does not apply to admins.
 {INDENT}{INDENT}- Otherwise, you will be prompted to confirm that you want to claim the pokemon.
 {INDENT}{INDENT}- The sheet data will be fetched again to check for any changes since.
 {INDENT}{INDENT}{INDENT}- If the pokemon has since been claimed, you will be informed of such.
@@ -556,7 +556,7 @@ class Afd(commands.Cog):
         decide_msg = lambda row: f"**{pokemon}** is already claimed by **{'you' if row.user_id == str(ctx.author.id) else row.username}**!"
         check = lambda row: row.claimed
         decide_footer = lambda row: "You can unclaim it using the `unclaim` command." if row.user_id == str(ctx.author.id) else None
-        not_claimed = await self.check_claim(
+        claimed = await self.check_claim(
             ctx,
             decide_msg,
             pokemon,
@@ -565,7 +565,7 @@ class Afd(commands.Cog):
             decide_footer=decide_footer,
             cmsg=cmsg
         )
-        if not_claimed is False:
+        if claimed is True:
             return
 
         self.sheet.claim(ctx.author, pokemon)
@@ -579,6 +579,73 @@ class Afd(commands.Cog):
             )
         )
 
+    @commands.has_role(AFD_ADMIN_ROLE_ID)
+    @afd.command(
+        name="forceclaim",
+        aliases=("fc",),
+        brief="Forcefully claim a pokemon in someone's behalf.",
+        description="AFD Admin-only command to forcefully claim a pokemon in someone's behalf.",
+        help=f"""When this command is ran, first the sheet data will be fetched. Then:
+1. The pokemon name provided will be normalized and deaccented (to match for pokemon with special characters or accents).
+2. Pokemon with the provided name, *including alt names*, will be searched for. If not found, it will return invalid.
+3. That pokemon's availability on the sheet will be checked:
+{INDENT}**i. If it's *not* claimed yet:**
+{INDENT}{INDENT}- If the user already has max claims ({CLAIM_LIMIT}), it will still give you the option to proceed.
+{INDENT}{INDENT}- Otherwise, you will be prompted to confirm that you want to forceclaim the pokemon for the user.
+{INDENT}**ii. If it's already claimed by *the same user*, you will be informed of such.**
+{INDENT}**iii. If it's already claimed by *another user*, you will be prompted to confirm if you want to override. Will warn you \
+    if there is already a drawing submitted.**
+4. The sheet will finally be updated with the user's Username and ID"""
+    )
+    async def forceclaim(self, ctx: CustomContext, user: discord.User, *, pokemon: str):
+        pokemon = await self.get_pokemon(ctx, pokemon)
+        if not pokemon:
+            return
+
+        row = self.sheet.get_pokemon_row(pokemon)
+        if not row.claimed:
+            content = None
+            if self.sheet.can_claim(user) is False:
+                content = f"**{user}** already has the max number ({CLAIM_LIMIT}) of pokemon claimed, still continue?"
+
+            conf, cmsg = await ctx.confirm(
+                embed=self.confirmation_embed(
+                    content or f"Are you sure you want to forceclaim **{pokemon}** for **{user}**?",
+                    pokemon=pokemon,
+                ),
+                confirm_label="Force Claim"
+            )
+            if conf is False:
+                return
+        elif row.user_id == str(user.id):
+            return await ctx.reply(
+                embed=self.confirmation_embed(
+                    f"**{pokemon}** is already claimed by **{user}**!",
+                    pokemon=pokemon,
+                    colour=EmbedColours.INVALID
+                )
+            )
+        else:
+            conf, cmsg = await ctx.confirm(
+                embed=self.confirmation_embed(
+                    f"**{pokemon}** is already claimed by **{row.username}**, override and claim it for **{user}**?\
+                        {' There is a drawing submitted alraedy which will be removed.' if row.imgur else ''}",
+                    pokemon=pokemon,
+                ),
+                confirm_label="Force Claim",
+            )
+            if conf is False:
+                return
+
+        self.sheet.claim(user, pokemon)
+        await self.sheet.update_row(row.dex)
+        await cmsg.edit(embed=self.confirmation_embed(
+            f"You have successfully force claimed **{pokemon}** for **{user}**.",
+            pokemon=pokemon,
+            colour=EmbedColours.CLAIMED
+            )
+        )
+
     @afd.command(
         name="unclaim",
         brief="Unclaim a pokemon",
@@ -589,7 +656,7 @@ class Afd(commands.Cog):
 3. That pokemon's availability on the sheet will be checked:
 {INDENT}**i. If it is claimed by *you*:**
 {INDENT}{INDENT}- You will be prompted to confirm that you want to unclaim the pokemon.\
-    If you have already submitted a drawing, it will give you a warning.
+    Will warn you if you have already submitted a drawing.
 {INDENT}{INDENT}- The sheet data will be fetched again to check for any changes since.
 {INDENT}{INDENT}{INDENT}- If the pokemon has since been claimed, you will be informed of such.
 {INDENT}{INDENT}- The sheet will finally be updated with your Username and ID
@@ -609,7 +676,7 @@ class Afd(commands.Cog):
             conf, cmsg = await ctx.confirm(
                 embed=self.confirmation_embed(
                     f"Are you sure you want to unclaim **{pokemon}**?\
-                        {' You have already submitted a drawing which will be removed.' if row.unreviewed is True else ''}",
+                        {' You have already submitted a drawing which will be removed.' if row.imgur else ''}",
                     pokemon=pokemon,
                 ),
                 confirm_label="Unclaim",
@@ -627,7 +694,7 @@ class Afd(commands.Cog):
                 if self.is_admin(ctx.author)
                 else None)
         )
-        claimed = await self.check_claim(
+        not_claimed = await self.check_claim(
             ctx,
             decide_msg,
             pokemon,
@@ -636,7 +703,7 @@ class Afd(commands.Cog):
             decide_footer=decide_footer,
             cmsg=cmsg
         )
-        if claimed is False:
+        if not_claimed is True:
             return
 
         self.sheet.unclaim(pokemon)
