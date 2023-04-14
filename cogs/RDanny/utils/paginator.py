@@ -110,7 +110,7 @@ class BotPages(discord.ui.View):
                 self.go_to_next_page.label = NEXT_PAGE_SYMBOL
             if page_number == 0:
                 self.go_to_previous_page.disabled = True
-                self.go_to_previous_page.label = LAST_PAGE_SYMBOL
+                self.go_to_previous_page.label = PREVIOUS_PAGE_SYMBOL
 
     async def show_checked_page(
         self, interaction: discord.Interaction, page_number: int

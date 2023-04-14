@@ -592,7 +592,7 @@ class Afd(commands.Cog):
 {INDENT}{INDENT}- Otherwise, you will be prompted to confirm that you want to forceclaim the pokemon for the user.
 {INDENT}**ii. If it's already claimed by *the same user*, you will be informed of such.**
 {INDENT}**iii. If it's already claimed by *another user*, you will be prompted to confirm if you want to override. Will warn you \
-    if there is already a drawing submitted.**
+    if there is a drawing submitted already.**
 3. The sheet will finally be updated with the user's Username and ID"""
     )
     async def forceclaim(self, ctx: CustomContext, user: discord.User, *, pokemon: str):
