@@ -1,0 +1,7 @@
+pkill -f "python3 -u main.py"
+source venv/bin/activate
+git pull
+python3 -m pip install -r requirements.txt
+nohup python3 -u main.py &> activity.log &
+sleep 5s
+tail activity.log
