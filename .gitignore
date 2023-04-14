@@ -5,6 +5,7 @@
 .profile
 .ssh/
 nohup.out
+run
 .replit
 replit.nix
 .config/
