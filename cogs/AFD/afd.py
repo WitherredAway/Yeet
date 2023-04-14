@@ -656,7 +656,9 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
     if there is a drawing submitted already.**
 3. The sheet will finally be updated with the user's Username and ID"""
     )
-    async def forceclaim(self, ctx: CustomContext, user: discord.User, *, pokemon: str):
+    async def forceclaim(self, ctx: CustomContext, user: Optional[discord.User] = None, *, pokemon: str):
+        if user is None:
+            user = ctx.author
         pokemon = await self.get_pokemon(ctx, pokemon)
         if not pokemon:
             return
