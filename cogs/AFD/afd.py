@@ -775,6 +775,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
     @commands.has_role(AFD_ADMIN_ROLE_ID)
     @afd.command(
         name="forceunclaim",
+        aliases=("ufc",),
         brief="Forcefully unclaim a pokemon",
         description="AFD Admin-only command to forcefully unclaim a pokemon",
         help=f"""When this command is ran, first the sheet data will be fetched. Then:
