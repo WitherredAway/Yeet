@@ -273,19 +273,6 @@ class Math(commands.Cog):
     display_emoji = "🔢"
 
     @commands.command(
-        name="simplecalculate",
-        aliases=["simplecalc", "sc", "simplecalculator"],
-        brief="Simple calculator. Use `calculate` for fanciness.",
-        help="Supports simple [python arithmetic operators](https://www.w3schools.com/python/python_operators.asp#:~:text=Python%20Arithmetic%20Operators) for calculation.",
-        description="Simple calculate command to perform arithmetic calculations. Use the `calculate` command for a more interactive calculator.",
-    )
-    async def simplecalculate(self, ctx, *, string=""):
-        string = string.replace("\\", "")
-        string = string.replace(" ", "")
-        result = calculate(string)
-        await ctx.send(result)
-
-    @commands.command(
         name="calculate",
         aliases=["calc", "calculator"],
         brief="Interactive and fancy calculator.",
@@ -320,6 +307,19 @@ R% - Modulus operator, shows remainder of a division
         response = await ctx.send(result, view=view)
         view.response = response
         await view.wait()
+
+    @commands.command(
+        name="simplecalculate",
+        aliases=["simplecalc", "sc", "simplecalculator"],
+        brief="Simple calculator. Use `calculate` for fanciness.",
+        help="Supports simple [python arithmetic operators](https://www.w3schools.com/python/python_operators.asp#:~:text=Python%20Arithmetic%20Operators) for calculation.",
+        description="Simple calculate command to perform arithmetic calculations. Use the `calculate` command for a more interactive calculator.",
+    )
+    async def simplecalculate(self, ctx, *, string=""):
+        string = string.replace("\\", "")
+        string = string.replace(" ", "")
+        result = calculate(string)
+        await ctx.send(result)
 
 
 async def setup(bot):

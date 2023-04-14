@@ -1,4 +1,5 @@
 from __future__ import annotations
+import inspect
 
 import discord
 import itertools
@@ -398,6 +399,10 @@ class PaginatedHelpCommand(commands.HelpCommand):
             }
         )
 
+    @property
+    def bot(self) -> Bot:
+        return self.context.bot
+
     @staticmethod
     def get_command_signature(command):
         parent = command.full_parent_name
@@ -434,26 +439,32 @@ class PaginatedHelpCommand(commands.HelpCommand):
             inline=False,
         )
 
-    async def send_bot_help(self, mapping):
-        bot = self.context.bot
+    @staticmethod
+    def key(command: commands.Command) -> str:
+        cog = command.cog
+        return cog.qualified_name if cog else "\U0010ffff"
 
-        def key(command) -> str:
-            cog = command.cog
-            return cog.qualified_name if cog else "\U0010ffff"
+    @staticmethod
+    def define_order_key(command: commands.Command) -> int:
+        return inspect.getsourcelines(command.callback.__code__)[1]
 
-        entries: List[commands.Command] = await self.filter_commands(
-            bot.commands, sort=True, key=key
+    async def cog_commands_dict(self) -> Dict[commands.Cog, List[commands.Command]]:
+        cmd_list: List[commands.Command] = await self.filter_commands(
+            self.bot.commands, sort=True, key=self.key
         )
-
-        all_commands: Dict[commands.Cog, List[commands.Command]] = {}
-        for name, children in itertools.groupby(entries, key=key):
-            children = sorted(children, key=lambda c: c.qualified_name)
+        all_commands = {}
+        for name, children in itertools.groupby(cmd_list, key=self.key):
+            children = sorted(children, key=self.define_order_key)
             if any((name == "\U0010ffff", len(children) == 0)):
                 continue
 
-            cog = bot.get_cog(name)
+            cog = self.bot.get_cog(name)
 
             all_commands[cog] = children
+        return all_commands
+
+    async def send_bot_help(self, mapping):
+        all_commands = await self.cog_commands_dict()
 
         initial = FrontPageSource(all_commands, bot=self.cog.bot)
         initial.bot = self.context.bot
@@ -463,30 +474,13 @@ class PaginatedHelpCommand(commands.HelpCommand):
 
     async def send_cog_help(self, cog):
         # For the cog help
-        cog_commands = await self.filter_commands(cog.get_commands(), sort=True)
+        cog_commands = await self.filter_commands(cog.get_commands(), sort=True, key=self.define_order_key)
         source = GroupHelpPageSource(self.context, cog, cog_commands)
         menu = HelpMenu(source, ctx=self.context)
         menu.initial_source = source
 
         # For the selectmenu
-        bot = self.context.bot
-
-        def key(command) -> str:
-            cog = command.cog
-            return cog.qualified_name if cog else "\U0010ffff"
-
-        all_commands_list: List[commands.Command] = await self.filter_commands(
-            bot.commands, sort=True, key=key
-        )
-
-        all_commands_dict: Dict[commands.Cog, List[commands.Command]] = {}
-        for name, children in itertools.groupby(all_commands_list, key=key):
-            children = sorted(children, key=lambda c: c.qualified_name)
-            if any((name == "\U0010ffff", len(children) == 0)):
-                continue
-
-            cog = bot.get_cog(name)
-            all_commands_dict[cog] = children
+        all_commands_dict = await self.cog_commands_dict
 
         menu.add_categories_and_commands(
             all_commands_dict, cog_commands, help_command=self
@@ -503,7 +497,7 @@ class PaginatedHelpCommand(commands.HelpCommand):
         if len(subcommands) == 0:
             return await self.send_command_help(group)
 
-        entries = await self.filter_commands(subcommands, sort=True)
+        entries = await self.filter_commands(subcommands, sort=True, key=self.define_order_key)
 
         source = GroupHelpPageSource(self.context, group, entries)
         menu = HelpMenu(source, ctx=self.context)
