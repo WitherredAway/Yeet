@@ -1,5 +1,7 @@
 # **Yeet.** Discord Bot
 # [The bot is finally public! Invite it here :)](https://discord.com/oauth2/authorize?client_id=634409171114262538&scope=bot+applications.commands&permissions=138513083472)
+[![Discord Bots](https://top.gg/api/widget/634409171114262538.svg)](https://top.gg/bot/634409171114262538)
+
 **Yeet.** is a Discord bot made with love by `Witherr🖤#5417` that offers a range of unique and useful features to make your Discord experience more enjoyable. Below are some of its more prominent features!
 I truly hope you can give it a try and enjoy the features that I've put tons of effort into :D!
 
