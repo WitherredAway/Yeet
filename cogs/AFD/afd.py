@@ -1,6 +1,6 @@
 from __future__ import annotations
-from dataclasses import dataclass
 
+from dataclasses import dataclass
 import datetime
 from enum import Enum
 import logging
@@ -12,6 +12,7 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import aiohttp
 import discord
+from cogs.Draw.constants import PADDING
 import gists
 import gspread_asyncio
 import numpy as np
@@ -126,7 +127,7 @@ class Row:
         self.comment = self.comment if not pd.isna(self.comment) else None
 
         self.claimed = not pd.isna(self.user_id)
-        self.unreviewed = all((not pd.isna(self.imgur), not self.approved_by))
+        self.unreviewed = all((not pd.isna(self.imgur), not self.approved_by, not self.comment))
 
     @property
     def colour(self) -> int:
@@ -316,6 +317,41 @@ class AfdSheet:
             return self
 
 
+COMPLETED_EMOJI = "✅"
+UNREVIEWED_EMOJI = "☑️"
+REVIEW_EMOJI = "❗"
+
+@dataclass
+class Claimed:
+    claimed_df: pd.DataFrame
+    sheet: AfdSheet
+
+    def __post_init__(self):
+        self.review = []
+        self.claimed = []
+        self.unreviewed = []
+        self.completed = []
+        for idx, row in self.claimed_df.iterrows():
+            row = self.sheet.get_row(idx)
+            pkm = row.pokemon
+            if row.approved_by:
+                self.completed.append(f"{pkm} {COMPLETED_EMOJI}")
+            elif row.unreviewed:
+                self.unreviewed.append(f"{pkm} {UNREVIEWED_EMOJI}")
+            elif row.comment:
+                self.review.append(f"{pkm} {REVIEW_EMOJI}")
+            else:
+                self.claimed.append(f"{pkm}")
+        self.total_list = self.review + self.claimed + self.unreviewed + self.completed
+        self.total_list = [f"{idx + 1}. {pkm}" for idx, pkm in enumerate(self.total_list)]
+
+        self.total_amount = len(self.total_list)
+        self.review_amount = len(self.review)
+        self.claimed_amount = len(self.claimed)
+        self.unreviewed_amount = len(self.unreviewed)
+        self.completed_amount = len(self.completed)
+
+
 class Afd(commands.Cog):
     def __init__(self, bot):
         self.bot: Bot = bot
@@ -392,7 +428,7 @@ class Afd(commands.Cog):
     @commands.group(
         name="afd",
         brief="Afd commands",
-        description="Command with a variety of afd subcommands!",
+        description="Command with a variety of afd event subcommands! If invoked alone, it will show event stats.",
     )
     async def afd(self, ctx: CustomContext):
         await ctx.typing()
@@ -404,10 +440,15 @@ class Afd(commands.Cog):
         name="info",
         aliases=("information", "progress"),
         brief="View progress of the april fool's event.",
+        help="""If `pokemon` arg is passed and `user` is not, it will show info of that pokemon.
+If `user` arg is passed, it will show stats of that user. Otherwise it will show your stats. If `user` is a non-participant, it will not show their stats.""",
+        description="Shows user and community stats."
     )
-    async def info(self, ctx: CustomContext, *, pokemon: Optional[str] = None):
-        if pokemon:
-            return await ctx.invoke(self.pokemon, kwargs=pokemon)
+    async def info(self, ctx: CustomContext, user: Optional[discord.User] = None, *, pokemon: Optional[str] = None):
+        if pokemon and (user is None):
+            return await ctx.invoke(self.pokemon, pokemon=pokemon)
+        if user is None:
+            user = ctx.author
 
         url_dict = {
             "AFD Gist": (self.afd_gist.url, 0),
@@ -425,27 +466,37 @@ class Afd(commands.Cog):
         submitted_amount = claimed_amount - ml_amount
         completed_amount = submitted_amount - unr_amount
 
+        description = None
+        claimed = self.validate_claimed(user)
+        if claimed is not False:
+            description = f"""**{user.name}'s Stats**
+{LOG_BORDER}
+{PADDING} **Total**: {claimed.total_amount}
+{PADDING} **Claimed** (incomplete): {claimed.claimed_amount}
+{REVIEW_EMOJI} **Submitted** (correction pending): {claimed.review_amount}
+{UNREVIEWED_EMOJI} **Submitted** (approval pending): {claimed.unreviewed_amount}
+{COMPLETED_EMOJI} **Completed**: {claimed.completed_amount}
+`Use the `**`afd view`**` command for more info.`
+{LOG_BORDER}
+{NL.join(claimed.total_list)}
+{LOG_BORDER}"""
 
-
-        embed = self.bot.Embed(title="April Fool's Day Event")
+        embed = self.bot.Embed(
+            title="April Fool's Day Event",
+            description=description
+        )
 
         embed.add_field(
-            name="Completed",
-            value=f"{make_progress_bar(completed_amount, self.total_amount)} {completed_amount}/{self.total_amount}",
-            inline=False,
-        )
-        embed.add_field(
-            name="Submitted",
-            value=f"{make_progress_bar(submitted_amount, self.total_amount)} {submitted_amount}/{self.total_amount}",
-            inline=False,
-        )
-        embed.add_field(
-            name="Claimed",
-            value=f"{make_progress_bar(claimed_amount, self.total_amount)} {claimed_amount}/{self.total_amount}",
-            inline=False,
+            name="Community Stats",
+            value=f"""**Completed**
+{make_progress_bar(completed_amount, self.total_amount)} {completed_amount}/{self.total_amount}
+**Submitted**
+{make_progress_bar(submitted_amount, self.total_amount)} {submitted_amount}/{self.total_amount}
+**Claimed**
+{make_progress_bar(claimed_amount, self.total_amount)} {claimed_amount}/{self.total_amount}"""
         )
 
-        await ctx.send(embed=embed, view=view)
+        await ctx.reply(embed=embed, view=view)
 
     @afd.command(
         name="view",
@@ -899,7 +950,14 @@ Credits: <{self.credits_gist.url}>"""
         self.user_cache[user_id] = user
         return user
 
-    def validate_unclaimed(self):
+    def validate_claimed(self, user: discord.User) -> Claimed:
+        try:
+            c_df: pd.DataFrame = self.user_grouped.get_group(str(user))
+        except KeyError:
+            return False
+        return Claimed(c_df, self.sheet)
+
+    def validate_unclaimed(self) -> Tuple[List[str], int]:
         unc_df = self.df[self.df[USERNAME_LABEL].isna()].sort_values(by=DEX_LABEL)
         unc_list = []
         for idx, row in unc_df.iterrows():
@@ -910,14 +968,13 @@ Credits: <{self.credits_gist.url}>"""
         if hasattr(self, "unc_amount"):
             if self.unc_amount == unc_amount:
                 self.unc = False
-                return False, unc_amount
         self.unc_amount = unc_amount
 
         return unc_list, unc_amount
 
     def format_unreviewed(
         self, df: pd.DataFrame, row: Row, pkm_indexes: list
-    ):
+    ) -> str:
         pkm_list = []
         for idx, pkm_idx in enumerate(pkm_indexes):
             pokename = df.loc[pkm_idx, PKM_LABEL]
@@ -944,7 +1001,7 @@ Credits: <{self.credits_gist.url}>"""
 </details>"""
         return return_text
 
-    def get_unreviewed(self, df, df_grouped):
+    def get_unreviewed(self, df, df_grouped) -> List[str]:
         df_list = []
         for username, pkm_indexes in df_grouped.groups.items():
             row_0 = self.sheet.get_row(pkm_indexes[0])
@@ -956,7 +1013,7 @@ Credits: <{self.credits_gist.url}>"""
 
         return df_list
 
-    def validate_unreviewed(self):
+    def validate_unreviewed(self) -> Tuple[List[str], int]:
         df = self.df.loc[
             (~self.df[USER_ID_LABEL].isna())
             & (~self.df[IMGUR_LABEL].isna())
@@ -972,13 +1029,12 @@ Credits: <{self.credits_gist.url}>"""
         if hasattr(self, "unr_amount"):
             if self.unr_amount == unr_amount:
                 self.unr = False
-                return False, unr_amount
         unr_list = self.get_unreviewed(df, df_grouped)
         self.unr_amount = unr_amount
 
         return unr_list, unr_amount
 
-    def get_missing_link(self, df_grouped):
+    def get_missing_link(self, df_grouped) -> Tuple[List[str], List[str]]:
         ml_list = []
         mention_list = []
         for _id, pkms in df_grouped.groups.items():
@@ -995,7 +1051,7 @@ Credits: <{self.credits_gist.url}>"""
 
         return ml_list, mention_list
 
-    def validate_missing_link(self):
+    def validate_missing_link(self) -> Tuple[List[str], List[str], int]:
         df = self.df
         df = df.loc[(~df[USER_ID_LABEL].isna()) & (df[IMGUR_LABEL].isna())]
 
@@ -1008,13 +1064,12 @@ Credits: <{self.credits_gist.url}>"""
         if hasattr(self, "ml_amount"):
             if self.ml_amount == ml_amount:
                 self.ml = False
-                return False, False, ml_amount
         ml_list, ml_list_mention = self.get_missing_link(df_grouped)
         self.ml_amount = ml_amount
 
         return ml_list, ml_list_mention, ml_amount
 
-    async def resolve_imgur_url(self, url: str):
+    async def resolve_imgur_url(self, url: str) -> str:
         if url.startswith("https://imgur.com/"):
             link = (url.replace("https://imgur.com/", "").strip()).split("/")
             _id = link[-1]
@@ -1034,11 +1089,11 @@ Credits: <{self.credits_gist.url}>"""
         async with self.bot.session.get(req_url, headers=headers) as resp:
             try:
                 result = await resp.json()
-            except aiohttp.ContentTypeError:
+            except aiohttp.ContentTypeError as e:
                 print("Error requesting", req_url)
                 print("Text:")
                 print(await resp.text())
-                raise
+                raise e
             else:
                 try:
                     return result["data"]["images"][0]["link"]
