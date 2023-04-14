@@ -16,6 +16,7 @@ import gists
 import gspread_asyncio
 import numpy as np
 import pandas as pd
+from pandas.core.groupby.generic import GroupBy
 from discord.ext import commands, tasks
 from google.oauth2 import service_account
 
@@ -89,9 +90,10 @@ class EmbedColours(Enum):
 
 @dataclass
 class Row:
-    row: pd.Series
+    row: Union[pd.DataFrame, pd.Series]
 
     dex: Optional[int] = None
+    pokemon: Optional[str] = None
     username: Optional[discord.User] = None
     user_id: Optional[int] = None
     imgur: Optional[str] = None
@@ -103,19 +105,24 @@ class Row:
 
     def __post_init__(self):
         self.dex = self.row.index.values[0]
-        self.username = self.row[USERNAME_LABEL].iloc[0]
-        self.username = self.username if not pd.isna(self.username) else None
+        if isinstance(self.row, pd.DataFrame):
+            self.row = self.row.loc[self.dex, :]
 
-        self.user_id = self.row[USER_ID_LABEL].iloc[0]
+        self.pokemon = self.row[PKM_LABEL]
+
+        self.username = self.row[USERNAME_LABEL]
+        self.username = discord.utils.escape_markdown(self.username) if not pd.isna(self.username) else None
+
+        self.user_id = self.row[USER_ID_LABEL]
         self.user_id = self.user_id if not pd.isna(self.user_id) else None
 
-        self.imgur = self.row[IMGUR_LABEL].iloc[0]
+        self.imgur = self.row[IMGUR_LABEL]
         self.imgur = self.imgur if not pd.isna(self.imgur) else None
 
-        self.approved_by = self.row[APPROVED_LABEL].iloc[0]
+        self.approved_by = self.row[APPROVED_LABEL]
         self.approved_by = self.approved_by if not pd.isna(self.approved_by) else None
 
-        self.comment = self.row[CMT_LABEL].iloc[0]
+        self.comment = self.row[CMT_LABEL]
         self.comment = self.comment if not pd.isna(self.comment) else None
 
         self.claimed = not pd.isna(self.user_id)
@@ -191,6 +198,9 @@ class AfdSheet:
         except TypeError as e:
             print(pokemon)
             raise e
+
+    def get_row(self, dex_num: str) -> Row:
+        return Row(self.df.iloc[int(dex_num) - COL_OFFSET])
 
     def get_pokemon_row(self, pokemon: str) -> Row:
         return Row(self.df.loc[self.df[PKM_LABEL] == pokemon])
@@ -409,9 +419,9 @@ class Afd(commands.Cog):
         unc_list, unc_amount = self.validate_unclaimed()
         claimed_amount = self.total_amount - unc_amount
 
-        unr_list, unr_amount = await self.validate_unreviewed()
+        unr_list, unr_amount = self.validate_unreviewed()
 
-        ml_list, ml_list_mention, ml_amount = await self.validate_missing_link()
+        ml_list, ml_list_mention, ml_amount = self.validate_missing_link()
         submitted_amount = claimed_amount - ml_amount
         completed_amount = submitted_amount - unr_amount
 
@@ -809,9 +819,9 @@ class Afd(commands.Cog):
         self.unc = True
         unc_list, unc_amount = self.validate_unclaimed()
         self.unr = True
-        unr_list, unr_amount = await self.validate_unreviewed()
+        unr_list, unr_amount = self.validate_unreviewed()
         self.ml = True
-        ml_list, ml_list_mention, ml_amount = await self.validate_missing_link()
+        ml_list, ml_list_mention, ml_amount = self.validate_missing_link()
 
         files = []
         if self.unc:
@@ -844,7 +854,6 @@ class Afd(commands.Cog):
             return
 
         description = f"{self.ml_amount} claimed pokemon with missing links, {self.unc_amount} unclaimed pokemon and {self.unr_amount} unreviewed pokemon - As of {date} GMT (Checks every 5 minutes, and updates only if there is a change)"
-        start = time.time()
         await self.afd_gist.edit(
             files=files,
             description=description,
@@ -872,10 +881,8 @@ Credits: <{self.credits_gist.url}>"""
         await self.bot.wait_until_ready()
 
     @property
-    def pk_grouped(
-        self, label: Optional[str] = USER_ID_LABEL
-    ) -> pd.core.groupby.DataFrameGroupBy:
-        return self.df.groupby(label)
+    def user_grouped(self) -> GroupBy:
+        return self.df.groupby(USERNAME_LABEL)
 
     async def fetch_user(self, user_id: int) -> discord.User:
         user_id = int(user_id)
@@ -893,8 +900,7 @@ Credits: <{self.credits_gist.url}>"""
         return user
 
     def validate_unclaimed(self):
-        df = self.df
-        unc_df = df[df[USERNAME_LABEL].isna()].sort_values(by=DEX_LABEL)
+        unc_df = self.df[self.df[USERNAME_LABEL].isna()].sort_values(by=DEX_LABEL)
         unc_list = []
         for idx, row in unc_df.iterrows():
             pkm = row[PKM_LABEL]
@@ -905,15 +911,12 @@ Credits: <{self.credits_gist.url}>"""
             if self.unc_amount == unc_amount:
                 self.unc = False
                 return False, unc_amount
-            else:
-                self.unc_amount = unc_amount
-        else:
-            self.unc_amount = unc_amount
+        self.unc_amount = unc_amount
 
         return unc_list, unc_amount
 
     def format_unreviewed(
-        self, df: pd.DataFrame, user: discord.User, pkm_indexes: list
+        self, df: pd.DataFrame, row: Row, pkm_indexes: list
     ):
         pkm_list = []
         for idx, pkm_idx in enumerate(pkm_indexes):
@@ -926,8 +929,8 @@ Credits: <{self.credits_gist.url}>"""
             link = df.loc[pkm_idx, IMGUR_LABEL]
             location = f"{SHEET_URL[:-24]}/edit#gid=0&range=E{pkm_idx}"
 
-            comment_text = f"""(Marked for review)
-        - Comments: {comment}
+            comment_text = f""" (Marked for review)
+        - Comment: {comment}
             """
             text = f"""
 1. `{pokename}` {comment_text if comment else ""}"""
@@ -936,32 +939,31 @@ Credits: <{self.credits_gist.url}>"""
             pkm_list.append(text)
         format_list = "\n".join(pkm_list)
         return_text = f"""<details>
-<summary>{user} ({user.id}) - {len(pkm_list)}</summary>
+<summary>{row.username} ({row.user_id}) - {len(pkm_list)}</summary>
 {format_list}
 </details>"""
         return return_text
 
-    async def get_unreviewed(self, df, df_grouped):
+    def get_unreviewed(self, df, df_grouped):
         df_list = []
-        for _id, pkm_idx in df_grouped.groups.items():
-            if pd.isna(_id):
+        for username, pkm_indexes in df_grouped.groups.items():
+            row_0 = self.sheet.get_row(pkm_indexes[0])
+            if pd.isna(username):
                 continue
-            user = await self.fetch_user(int(_id))
-            msg = self.format_unreviewed(df, user, pkm_idx)
+            msg = self.format_unreviewed(df, row_0, pkm_indexes)
 
             df_list.append(msg)
 
         return df_list
 
-    async def validate_unreviewed(self):
-        pk = self.df
-        df = pk.loc[
-            (~pk[USER_ID_LABEL].isna())
-            & (~pk[IMGUR_LABEL].isna())
-            & (pk[APPROVED_LABEL].isna())
+    def validate_unreviewed(self):
+        df = self.df.loc[
+            (~self.df[USER_ID_LABEL].isna())
+            & (~self.df[IMGUR_LABEL].isna())
+            & (self.df[APPROVED_LABEL].isna())
         ]
 
-        df_grouped = df.groupby(USER_ID_LABEL)
+        df_grouped = df.groupby(USERNAME_LABEL)
 
         unr_amount = len(
             [pkm_id for pkm_idx in df_grouped.groups.values() for pkm_id in pkm_idx]
@@ -971,35 +973,33 @@ Credits: <{self.credits_gist.url}>"""
             if self.unr_amount == unr_amount:
                 self.unr = False
                 return False, unr_amount
-            else:
-                unr_list = await self.get_unreviewed(df, df_grouped)
-                self.unr_amount = unr_amount
-        else:
-            unr_list = await self.get_unreviewed(df, df_grouped)
-            self.unr_amount = unr_amount
+        unr_list = self.get_unreviewed(df, df_grouped)
+        self.unr_amount = unr_amount
 
         return unr_list, unr_amount
 
-    async def get_missing_link(self, df, df_grouped):
-        df_list = []
+    def get_missing_link(self, df_grouped):
+        ml_list = []
         mention_list = []
-        for _id, pkm_idx in df_grouped.groups.items():
-            if pd.isna(_id):
-                continue
-            pkm_list = df.loc[pkm_idx, PKM_LABEL]
-            formatted_list = list(map(lambda x: f"`{x}`", pkm_list))
-            msg = f'- **{await self.fetch_user(int(_id))}** [{len(pkm_list)}] - {", ".join(formatted_list)}'
-            df_list.append(msg)
-            mention_msg = f'- **{(await self.fetch_user(int(_id))).mention}** [{len(pkm_list)}] - {", ".join(formatted_list)}'
+        for _id, pkms in df_grouped.groups.items():
+            pkm_list = []
+            for pkm in pkms:
+                row = self.sheet.get_row(pkm)
+                if not row.claimed and not row.imgur:
+                    continue
+                pkm_list.append(f"`{row.pokemon}`")
+            msg = f'- **{row.username}** [{len(pkm_list)}] - {", ".join(pkm_list)}'
+            ml_list.append(msg)
+            mention_msg = f'- **<@{row.user_id}>** [{len(pkm_list)}] - {", ".join(pkm_list)}'
             mention_list.append(mention_msg)
 
-        return df_list, mention_list
+        return ml_list, mention_list
 
-    async def validate_missing_link(self):
-        pk = self.df
-        df = pk.loc[(~pk[USER_ID_LABEL].isna()) & (pk[IMGUR_LABEL].isna())]
+    def validate_missing_link(self):
+        df = self.df
+        df = df.loc[(~df[USER_ID_LABEL].isna()) & (df[IMGUR_LABEL].isna())]
 
-        df_grouped = df.groupby(USER_ID_LABEL)
+        df_grouped = df.groupby(USERNAME_LABEL)
 
         ml_amount = len(
             [pkm_id for pkm_idx in df_grouped.groups.values() for pkm_id in pkm_idx]
@@ -1009,12 +1009,8 @@ Credits: <{self.credits_gist.url}>"""
             if self.ml_amount == ml_amount:
                 self.ml = False
                 return False, False, ml_amount
-            else:
-                ml_list, ml_list_mention = await self.get_missing_link(df, df_grouped)
-                self.ml_amount = ml_amount
-        else:
-            ml_list, ml_list_mention = await self.get_missing_link(df, df_grouped)
-            self.ml_amount = ml_amount
+        ml_list, ml_list_mention = self.get_missing_link(df_grouped)
+        self.ml_amount = ml_amount
 
         return ml_list, ml_list_mention, ml_amount
 
@@ -1049,7 +1045,7 @@ Credits: <{self.credits_gist.url}>"""
                 except KeyError as e:
                     print(result)
 
-    async def get_participants(
+    def get_participants(
         self,
         *,
         n: Optional[int] = None,
@@ -1060,46 +1056,44 @@ Credits: <{self.credits_gist.url}>"""
         if sort_key is None:
             sort_key = lambda s: s[-1]
 
-        participants = []
-        for user_id, pkms in self.pk_grouped.groups.items():
-            if pd.isna(user_id):
-                continue
-            participants.append(
-                (
-                    len(pkms),
-                    f"1. {await self.fetch_user(user_id)} (`{user_id}`){f' - {len(pkms)} Drawings' if count is True else ''}",
-                )
-            )
-        participants.sort(key=sort_key, reverse=reverse)
+        participants_dict = {}
+        for user_id, pkms in self.user_grouped.groups.items():
+            for pkm in pkms:
+                row = self.sheet.get_row(pkm)
+                if not row.approved_by:
+                    continue
+                participants[row.user_id] = (
+                        len(pkms),
+                        f"1. {row.username} (`{user_id}`){f' - {len(pkms)} Drawings' if count is True else ''}",
+                    )
+        participants = list(sorted(list(participants_dict.values()), key=sort_key, reverse=reverse))
 
         return participants[:n]
 
     async def get_credits(self) -> gists.File:
-        pk = self.df
         credits_rows = [
             HEADERS_FMT % ("Dex", PKM_LABEL, "Art", "Artist", "Artist's ID"),
             HEADERS_FMT % ("---", "---", "---", "---", "---"),
         ]
 
         start = time.time()
-        for idx, row in pk.iterrows():
+        for idx, row in self.df.iterrows():
             pkm_name = row[PKM_LABEL]
+            row = self.sheet.get_pokemon_row(pkm_name)
             pkm_dex = self.sheet.get_pokemon_dex(pkm_name)
             link = "None"
-            if not pd.isna(person_id := row[USER_ID_LABEL]):
-                person_id = int(person_id)
+            if row.approved_by:
+                user_id = int(row.user_id)
 
-                imgur = row[IMGUR_LABEL]
-                if not pd.isna(imgur):
-                    imgur = await self.resolve_imgur_url(imgur)
+                if row.imgur:
+                    imgur = await self.resolve_imgur_url(row.imgur)
                     link = f"![art]({imgur})"
 
-                user = await self.fetch_user(person_id)
-                person = discord.utils.escape_markdown(str(user))
+                user = row.username
             else:
-                person = person_id = "None"
+                user = user_id = "None"
             credits_rows.append(
-                HEADERS_FMT % (pkm_dex, pkm_name, link, person, person_id)
+                HEADERS_FMT % (pkm_dex, pkm_name, link, user, user_id)
             )
         log.info(f"AFD Credits: Row loop complete in {round(time.time()-start, 2)}s")
         return gists.File(
@@ -1130,7 +1124,7 @@ Credits: <{self.credits_gist.url}>"""
             content=f"""# Top {TOP_N} Participants
 Thank you to EVERYONE who participated, but here are the top few that deserve extra recognition!
 
-{NL.join([p for l, p in (await self.get_participants(n=TOP_N, count=True, sort_key=lambda s: s[0], reverse=True))])}""".replace(
+{NL.join([p for l, p in (self.get_participants(n=TOP_N, count=True, sort_key=lambda s: s[0], reverse=True))])}""".replace(
                 "\r", ""
             ),
         )
@@ -1144,7 +1138,7 @@ Thank you to EVERYONE who participated, but here are the top few that deserve ex
             f"AFD Credits: Credits file completed in {round(time.time()-start, 2)}s"
         )
 
-        participants = NL.join([p for l, p in await self.get_participants()])
+        participants = NL.join([p for l, p in self.get_participants()])
         participants_file = gists.File(
             name=PARTICIPANTS_FILENAME,
             content=f"""# List of participants
@@ -1158,7 +1152,7 @@ In alphabetical order. Thank you everyone who participated!
         start = time.time()
         files = [contents_file, top_participants_file, credits_file, participants_file]
         await self.credits_gist.edit(
-            description=f"THANKS TO ALL {len(self.pk_grouped)} PARTICIPANTS WITHOUT WHOM THIS WOULDN'T HAVE BEEN POSSIBLE!",
+            description=f"THANKS TO ALL {len(participants)} PARTICIPANTS WITHOUT WHOM THIS WOULDN'T HAVE BEEN POSSIBLE!",
             files=files,
         )
         log.info(f"AFD Credits: Updated credits in {round(time.time()-og_start, 2)}s")
