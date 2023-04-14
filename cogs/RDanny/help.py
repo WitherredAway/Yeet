@@ -476,7 +476,7 @@ class PaginatedHelpCommand(commands.HelpCommand):
         menu.initial_source = source
 
         # For the selectmenu
-        all_commands_dict = await self.cog_commands_dict
+        all_commands_dict = await self.cog_commands_dict()
 
         menu.add_categories_and_commands(
             all_commands_dict, cog_commands, help_command=self
