@@ -517,9 +517,8 @@ class Afd(commands.Cog):
         brief="Claim a pokemon to draw",
         description=f"Claim a pokemon to draw. Can have upto {CLAIM_LIMIT} claimed pokemon at a time. Pokemon alt names are supported!",
         help=f"""When this command is ran, first the sheet data will be fetched. Then:
-1. The pokemon name provided will be normalized and deaccented (to match for pokemon with special characters or accents).
-2. Pokemon with the provided name, *including alt names*, will be searched for. If not found, it will return invalid.
-3. That pokemon's availability on the sheet will be checked:
+1. A pokemon, with the normalized and deaccented version of the provided name *including alt names*, will be searched for. If not found, it will return invalid.
+2. That pokemon's availability on the sheet will be checked:
 {INDENT}**i. If it's *not* claimed yet:**
 {INDENT}{INDENT}- If you already have max claims ({CLAIM_LIMIT}), it will not let you claim. Does not apply to admins.
 {INDENT}{INDENT}- Otherwise, you will be prompted to confirm that you want to claim the pokemon.
@@ -586,16 +585,15 @@ class Afd(commands.Cog):
         brief="Forcefully claim a pokemon in someone's behalf.",
         description="AFD Admin-only command to forcefully claim a pokemon in someone's behalf.",
         help=f"""When this command is ran, first the sheet data will be fetched. Then:
-1. The pokemon name provided will be normalized and deaccented (to match for pokemon with special characters or accents).
-2. Pokemon with the provided name, *including alt names*, will be searched for. If not found, it will return invalid.
-3. That pokemon's availability on the sheet will be checked:
+1. A pokemon, with the normalized and deaccented version of the provided name *including alt names*, will be searched for. If not found, it will return invalid.
+2. That pokemon's availability on the sheet will be checked:
 {INDENT}**i. If it's *not* claimed yet:**
 {INDENT}{INDENT}- If the user already has max claims ({CLAIM_LIMIT}), it will still give you the option to proceed.
 {INDENT}{INDENT}- Otherwise, you will be prompted to confirm that you want to forceclaim the pokemon for the user.
 {INDENT}**ii. If it's already claimed by *the same user*, you will be informed of such.**
 {INDENT}**iii. If it's already claimed by *another user*, you will be prompted to confirm if you want to override. Will warn you \
     if there is already a drawing submitted.**
-4. The sheet will finally be updated with the user's Username and ID"""
+3. The sheet will finally be updated with the user's Username and ID"""
     )
     async def forceclaim(self, ctx: CustomContext, user: discord.User, *, pokemon: str):
         pokemon = await self.get_pokemon(ctx, pokemon)
@@ -629,7 +627,7 @@ class Afd(commands.Cog):
             conf, cmsg = await ctx.confirm(
                 embed=self.confirmation_embed(
                     f"**{pokemon}** is already claimed by **{row.username}**, override and claim it for **{user}**?\
-                        {' There is a drawing submitted alraedy which will be removed.' if row.imgur else ''}",
+                        {' There is a drawing submitted already which will be removed.' if row.imgur else ''}",
                     pokemon=pokemon,
                 ),
                 confirm_label="Force Claim",
@@ -649,21 +647,16 @@ class Afd(commands.Cog):
     @afd.command(
         name="unclaim",
         brief="Unclaim a pokemon",
-        description=f"Unclaim a pokemon already claimed by you.",
+        description=f"Unclaim a pokemon claimed by you.",
         help=f"""When this command is ran, first the sheet data will be fetched. Then:
-1. The pokemon name provided will be normalized and deaccented (to match for pokemon with special characters or accents).
-2. Pokemon with the provided name, *including alt names*, will be searched for. If not found, it will return invalid.
-3. That pokemon's availability on the sheet will be checked:
+1. A pokemon, with the normalized and deaccented version of the provided name *including alt names*, will be searched for. If not found, it will return invalid.
+2. That pokemon's availability on the sheet will be checked:
 {INDENT}**i. If it is claimed by *you*:**
 {INDENT}{INDENT}- You will be prompted to confirm that you want to unclaim the pokemon.\
     Will warn you if you have already submitted a drawing.
-{INDENT}{INDENT}- The sheet data will be fetched again to check for any changes since.
-{INDENT}{INDENT}{INDENT}- If the pokemon has since been claimed, you will be informed of such.
-{INDENT}{INDENT}- The sheet will finally be updated with your Username and ID
-{INDENT}**ii. If it's already claimed by *you*:**
-{INDENT}{INDENT}- You will be prompted if you want to unclaim. You may also unclaim using the unclaim command.
-{INDENT}{INDENT}- You will also be informed if you have already submitted a drawing.
-{INDENT}**iii. If it's already claimed by *someone else*, you will be informed of such.**""",
+{INDENT}{INDENT}- The sheet will finally be updated and remove your Username and ID
+{INDENT}**ii. If it's *not* claimed, you will be informed of such.**
+{INDENT}**iii. If it's claimed by *someone else*, you will be informed of such.**""",
     )
     async def unclaim(self, ctx: CustomContext, *, pokemon: str):
         pokemon = await self.get_pokemon(ctx, pokemon)
