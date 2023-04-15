@@ -60,6 +60,42 @@ class UrlView(discord.ui.View):
             )
 
 
+class RoleButton(discord.ui.Button):
+    def __init__(self, role_name: str, **kwargs):
+        self.role_name = role_name
+        kwargs['label'] = self.role_name
+        super().__init__(**kwargs)
+
+    async def callback(self, interaction: discord.Interaction):
+        user = interaction.user
+        role = discord.utils.get(interaction.guild.roles, name=self.role_name)
+        if role is None:
+            return await interaction.response.send_message(f"Role {self.role_name} not found.")
+
+        if role in user.roles:
+            await user.remove_roles(role)
+            return await interaction.response.send_message(
+                content=f"Took away {role.mention}!",
+                ephemeral=True,
+                allowed_mentions=discord.AllowedMentions(roles=False)
+            )
+        await user.add_roles(role)
+        await interaction.response.send_message(
+            content=f"Gave you {role.mention}!",
+            ephemeral=True,
+            allowed_mentions=discord.AllowedMentions(roles=False)
+        )
+
+class RoleMenu(discord.ui.View):
+    def __init__(self, roles_dict: Dict[str, discord.ButtonStyle]):
+        self.roles_dict = roles_dict
+        super().__init__(timeout=None)
+        for role_name, style in self.roles_dict.items():
+            if len(self.children) == 25:
+                break
+            self.add_item(RoleButton(role_name, style=style, custom_id=f"rolemenu:{role_name}"))
+
+
 PB_BARS = {0.0: "⬜", 0.3: "🟧", 0.7: "🟨", 1.0: "🟩"}
 
 

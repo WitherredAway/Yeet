@@ -14,3 +14,8 @@ CR = "\r"
 TOP_N = 5
 
 HEADERS_FMT = "|   %s   |   %s   |   %s   |   %s   |   %s   |"
+
+COL_OFFSET = 1  # How many rows after the pokemon rows start.
+CLAIM_LIMIT = 5
+AFD_ROLE_ID = 1095381341178183851
+AFD_ADMIN_ROLE_ID = 1095393318281678848

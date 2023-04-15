@@ -11,6 +11,8 @@ from typing import Union
 
 import aiohttp
 import discord
+from cogs.AFD.afd import AFDRoleMenu
+from cogs.utils.utils import RoleMenu
 import gists
 from discord.ext import commands
 import pandas as pd
@@ -132,6 +134,8 @@ class Bot(commands.Bot):
 
         self.gists_client = gists.Client()
         await self.gists_client.authorize(os.getenv("githubTOKEN"))
+
+        self.add_view(AFDRoleMenu())
 
         ext_start = time.time()
         log.info("Started loading extensions" + NL + LOG_BORDER)

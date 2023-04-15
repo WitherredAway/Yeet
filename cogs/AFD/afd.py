@@ -23,9 +23,13 @@ from google.oauth2 import service_account
 
 from helpers.context import CustomContext
 from helpers.constants import LOG_BORDER, NL, INDENT
-from ..utils.utils import UrlView, make_progress_bar, normalize
+from ..utils.utils import UrlView, RoleMenu, make_progress_bar, normalize
 from .utils.constants import (
+    AFD_ADMIN_ROLE_ID,
+    AFD_ROLE_ID,
     APPROVED_TXT,
+    CLAIM_LIMIT,
+    COL_OFFSET,
     DEL_ATTRS_TO_UPDATE,
     EMAIL,
     EXPORT_SUFFIX,
@@ -67,11 +71,6 @@ from .utils.urls import (
 if typing.TYPE_CHECKING:
     from main import Bot
 
-
-COL_OFFSET = 1  # How many rows after the pokemon rows start.
-CLAIM_LIMIT = 5
-AFD_ROLE_ID = 1095381341178183851
-AFD_ADMIN_ROLE_ID = 1095393318281678848
 
 IMGUR_CLIENT_ID = os.getenv("IMGUR_CLIENT_ID")
 IMGUR_CLIENT_SECRET = os.getenv("IMGUR_CLIENT_SECRET")
@@ -351,6 +350,14 @@ class Claimed:
         self.unreviewed_amount = len(self.unreviewed)
         self.completed_amount = len(self.completed)
 
+
+class AFDRoleMenu(RoleMenu):
+    def __init__(self):
+        roles_dict = {
+            'AFD': discord.ButtonStyle.green,
+            'AFD Admin': discord.ButtonStyle.red
+        }
+        super().__init__(roles_dict)
 
 class Afd(commands.Cog):
     def __init__(self, bot):
@@ -858,6 +865,17 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
         await ctx.message.add_reaction("▶️")
         self.update_pokemon.restart()
         await ctx.message.add_reaction("✅")
+
+    @commands.is_owner()
+    @afd.command(name="rolemenu")
+    async def rolemenu(self, ctx: CustomContext):
+        role_menu = AFDRoleMenu()
+        await ctx.send(
+            f"""<@&{AFD_ROLE_ID}>: Role required to access `afd` commands
+<@&{AFD_ADMIN_ROLE_ID}>: Role required to access AFD Admin only `afd` commands.""",
+            view=role_menu,
+            allowed_mentions=discord.AllowedMentions(roles=False)
+        )
 
     # The task that updates the unclaimed pokemon gist
     @tasks.loop(minutes=5)
