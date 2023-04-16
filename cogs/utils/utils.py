@@ -100,3 +100,34 @@ def resize(file: io.BytesIO, *, height: int, width: int) -> bytes:
     with io.BytesIO() as image_bytes:
         img.save(image_bytes, "PNG")
         return image_bytes.getvalue()
+
+def center_resize(file: io.BytesIO, *, height: int, width: int) -> bytes:
+    att_image = Image.open(file)
+    bbox = att_image.getbbox()
+    att_image = att_image.crop(bbox)
+
+    h_issmall = height <= att_image.size[1]
+    w_issmall = width <= att_image.size[0]
+    if h_issmall and w_issmall:
+        with io.BytesIO() as file:
+            att_image.save(file, "PNG")
+            return resize(file=file, height=height, width=width)
+    elif h_issmall:
+        att_image = Image.open(io.BytesIO(resize(file, height=height, width=att_image.size[0])))
+    elif w_issmall:
+        att_image = Image.open(io.BytesIO(resize(file, height=att_image.size[1], width=width)))
+
+    bg_image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+
+    offset = (
+        (bg_image.size[0] - bbox[2] + bbox[0]) // 2,
+        (bg_image.size[1] - bbox[3] + bbox[1]) // 2
+    )
+
+    region_image = Image.new("RGBA", (bbox[2] - bbox[0], bbox[3] - bbox[1]), (0, 0, 0, 0))
+    region_image.paste(att_image, (0, 0))
+
+    bg_image.paste(att_image, offset)
+    with io.BytesIO() as image_bytes:
+        bg_image.save(image_bytes, "PNG")
+        return image_bytes.getvalue()

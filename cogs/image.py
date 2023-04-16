@@ -8,7 +8,7 @@ from typing import Optional
 
 import discord
 from discord.ext import commands
-from cogs.utils.utils import resize
+from cogs.utils.utils import center_resize, resize
 from helpers.constants import NL
 
 from helpers.context import CustomContext
@@ -17,15 +17,19 @@ if typing.TYPE_CHECKING:
     from main import Bot
 
 
-RESIZE_LIMIT = 3840
+RESIZE_LIMIT = 4000
 ASPECT_RATIO_ORIGINAL = ('retain', 'keep', 'same', 'original', 'og')
 
 
 class FlagDescriptions(Enum):
-    height = "Height flag to specify height when resizing."
-    width = "Width flag to specify width when resizing."
+    height = "Height flag to specify height."
+    width = "Width flag to specify width."
     aspect_ratio = f"Aspect Ratio flag to specify width:height aspect ratio when resizing. \
-        Pass in either of`{', '.join(ASPECT_RATIO_ORIGINAL)}` to retain the original aspect ratio of file(s)."
+Pass either of `{', '.join(ASPECT_RATIO_ORIGINAL)}` to retain the original aspect ratio of file(s). \
+If either height/width flag is passed, it will resized based on it, but will not work if both are passed. \
+If neither is specified, it will use the original width to resize the height."
+    centered = f"Flag `(yes or true)` to specify if you want to resize image(s)' background while keeping the \
+non-transparent content centered. Automatically crops out transparent background to center it perfectly."
 
 class ResizeFlags(commands.FlagConverter, prefix='--', delimiter=' ', case_insensitive=True):
     height: Optional[int] = commands.flag(aliases=("h",), max_args=1, description=FlagDescriptions.height.value)
@@ -35,6 +39,13 @@ class ResizeFlags(commands.FlagConverter, prefix='--', delimiter=' ', case_insen
         aliases=("ar",),
         max_args=1,
         description=FlagDescriptions.aspect_ratio.value
+    )
+    centered: Optional[bool] = commands.flag(
+        name="centered",
+        aliases=("centred",),
+        default=False,
+        max_args=1,
+        description=FlagDescriptions.centered.value
     )
 
 
@@ -53,29 +64,30 @@ class Image(commands.Cog):
 The way height, width or aspect ratio parameters are passed is through flags.
 
 **Flags**
-`--height <number>` - {FlagDescriptions.height.value}
-`--width <number>` - {FlagDescriptions.width.value}
-`--aspect_ratio <width>:<height>` - {FlagDescriptions.aspect_ratio.value} If either height/width flag is passed, it will resized based on it, but will not work if both are passed. If neither is specified, it will use the original width.
+- `--height/h <number>` - {FlagDescriptions.height.value}
+- `--width/w <number>` - {FlagDescriptions.width.value}
+- `--aspect_ratio/ar <width>:<height>` - {FlagDescriptions.aspect_ratio.value}
+- `--centered/centred <yes/true>=false` - {FlagDescriptions.centered.value}
 
 **Examples**
 - `resize --height 400 --width 600`
-- `resize --h 400 --w 600`
-- `resize --aspect_ratio 16:9` Resizes based on original width. If original width is 1600, will change height to 900
-- `resize --h 900 --ar 16:9` Resizes to height 900 and width 1600 (16/9 * 900)
-- `resize --w 1600 --ar 16:9` Resizes to width 1600 and height 900 (9/16 * 1600)
-- `resize --h 3000 --ar original` Resizes to height 3000 and width proportional to height based on original AR of file(s)
-
-If either height or width is not passed, it will keep the original for each attachment respectively.""",
+- `resize --h 700` - Resizes height to 700 while keeping width the same.
+- `resize --h 475 --w 475 --centered yes` - Resizes while keeping the image centered (crops out transparent background!) to 475x475
+- `resize --aspect_ratio 16:9` - Resizes height based on original width. If original width is 1600, will change height to 900
+- `resize --h 900 --ar 16:9` - Resizes to height 900 and width 1600 (16/9 * 900)
+- `resize --h 3000 --ar original` - Resizes to height 3000 and width proportional to height based on original AR of file(s)""",
         description="Resize image(s) to custom height/width while retaining maximum quality."
     )
     async def _resize(self, ctx: CustomContext, *, flags: ResizeFlags):
         await ctx.typing()
         if len(ctx.message.attachments) == 0:
+            await ctx.reply("Please attach 1 or more images to resize!")
             return await ctx.send_help(ctx.command)
 
         height = flags.height
         width = flags.width
         ar = flags.ar
+        centered = flags.centered
         if all((height is None, width is None, ar is None)):
             await ctx.reply("Please provide atleast one flag!")
             return await ctx.send_help(ctx.command)
@@ -130,8 +142,18 @@ If either height or width is not passed, it will keep the original for each atta
                 files_result.append(f"`{attachment.filename}`: The width cannot be larger than {RESIZE_LIMIT}!")
                 continue
 
+            h_equal = _height == attachment.height
+            w_equal = _width == attachment.width
+            if h_equal and w_equal:
+                files_result.append(f"`{attachment.filename}`: The height and width are unchanged.")
+                continue
+
             file = io.BytesIO(await attachment.read())
-            resized = io.BytesIO(resize(file, height=_height, width=_width))
+            if centered is True:
+                resized = io.BytesIO(center_resize(file, height=_height, width=_width))
+            else:
+                resized = io.BytesIO(resize(file, height=_height, width=_width))
+
             filename = f"{attachment.filename.split('.')[0]}.png"
             files.append(discord.File(resized, filename=filename))
             files_result.append(f"`{attachment.filename}`: **{attachment.height}**x**{attachment.width}** -> **{_height}**x**{_width}**")
@@ -139,7 +161,7 @@ If either height or width is not passed, it will keep the original for each atta
         flags_result = []
         l = len(files)
         if l > 0:
-            flags_result.append(f"Resized {l} image{'' if l == 1 else 's'} to:")
+            flags_result.append(f"Resized{' and centered' if centered else ''} {l} image{'' if l == 1 else 's'} to:")
             if flags.height:
                 flags_result.append(f"`height = {flags.height}`")
             if flags.width:
