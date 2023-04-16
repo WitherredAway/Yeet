@@ -53,6 +53,7 @@ class Bot(commands.Bot):
         "jishaku": "jishaku",
         "jsk": "jishaku",
         "math": "math",
+        "image": "image"
         # "afd": "AFD.afd",
         # "test": "test",
     }

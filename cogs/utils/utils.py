@@ -1,8 +1,10 @@
+import io
 import typing
 from typing import Dict
 import cProfile
 from typing import Dict, Optional
 import unicodedata
+from PIL import Image
 
 import discord
 import numpy as np
@@ -90,3 +92,11 @@ def normalize(text: str) -> str:
     norm = unicodedata.normalize("NFD", text)
     result = "".join(ch for ch in norm if unicodedata.category(ch) != "Mn")
     return unicodedata.normalize("NFKC", result)
+
+
+def resize(file: io.BytesIO, *, height: int, width: int) -> bytes:
+    img = Image.open(file)
+    img = img.resize((width, height), Image.ANTIALIAS)
+    with io.BytesIO() as image_bytes:
+        img.save(image_bytes, "PNG")
+        return image_bytes.getvalue()
