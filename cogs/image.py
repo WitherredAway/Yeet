@@ -59,7 +59,7 @@ class ResizeFlags(commands.FlagConverter, prefix='--', delimiter=' ', case_insen
     )
 
 
-class Image(commands.Cog):
+class ImageCog(commands.Cog):
     """Cog for image processing commands"""
 
     def __init__(self, bot: Bot):
@@ -207,4 +207,4 @@ The way height, width or aspect ratio parameters are passed is through flags.
 
 
 async def setup(bot):
-    await bot.add_cog(Image(bot))
+    await bot.add_cog(ImageCog(bot))
