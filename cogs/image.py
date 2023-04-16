@@ -28,9 +28,9 @@ class FlagDescriptions(Enum):
 Pass either of `{', '.join(ASPECT_RATIO_ORIGINAL)}` to retain the original aspect ratio of file(s). \
 If either height/width flag is passed, it will resized based on it, but will not work if both are passed. \
 If neither is specified, it will use the original width to resize the height."
-    center = f"Flag `(yes/true)` to specify if you want to resize image(s)' background while keeping the image centered."
-    crop = f"Flag `(yes/true)` to specify if you want the bot to crop your image when resizing."
     fit = f"Flag `(yes/true)` to specify if you want the bot to fit the image to the edges by cropping away transparent surrounding areas."
+    center = f"Flag `(yes/true)` to specify if you want to resize image(s)' background while keeping the image centered and unwarped."
+    crop = f"Flag `(yes/true)` to specify if you want the bot to crop your image when resizing."
 
 class ResizeFlags(commands.FlagConverter, prefix='--', delimiter=' ', case_insensitive=True):
     height: Optional[int] = commands.flag(aliases=("h",), max_args=1, description=FlagDescriptions.height.value)
