@@ -94,28 +94,52 @@ def normalize(text: str) -> str:
     return unicodedata.normalize("NFKC", result)
 
 
-def resize(file: io.BytesIO, *, height: int, width: int) -> bytes:
-    img = Image.open(file)
-    img = img.resize((width, height), Image.ANTIALIAS)
+def resize(file: io.BytesIO, *, height: int, width: int, crop: Optional[bool] = False, fit: Optional[bool] = False) -> bytes:
+    att_image = Image.open(file)
+    if fit is True:
+        bbox = att_image.getbbox()
+        att_image = att_image.crop(bbox)
+    else:
+        bbox = (0, 0, *att_image.size)
+
+    if crop is True:
+        image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+
+        offset = (
+            (image.size[0] - bbox[2] + bbox[0]) // 2,
+            (image.size[1] - bbox[3] + bbox[1]) // 2
+        )
+
+        region_image = Image.new("RGBA", (bbox[2] - bbox[0], bbox[3] - bbox[1]), (0, 0, 0, 0))
+        region_image.paste(att_image, (0, 0))
+
+        image.paste(att_image, offset)
+    else:
+        image = att_image.resize((width, height), Image.ANTIALIAS)
+
     with io.BytesIO() as image_bytes:
-        img.save(image_bytes, "PNG")
+        image.save(image_bytes, "PNG")
         return image_bytes.getvalue()
 
-def center_resize(file: io.BytesIO, *, height: int, width: int) -> bytes:
+def center_resize(file: io.BytesIO, *, height: int, width: int, crop: Optional[bool] = None, fit: Optional[bool] = False) -> bytes:
     att_image = Image.open(file)
-    bbox = att_image.getbbox()
-    att_image = att_image.crop(bbox)
-
-    h_issmall = height <= att_image.size[1]
-    w_issmall = width <= att_image.size[0]
-    if h_issmall and w_issmall:
-        with io.BytesIO() as file:
-            att_image.save(file, "PNG")
-            return resize(file=file, height=height, width=width)
-    elif h_issmall:
-        att_image = Image.open(io.BytesIO(resize(file, height=height, width=att_image.size[0])))
-    elif w_issmall:
-        att_image = Image.open(io.BytesIO(resize(file, height=att_image.size[1], width=width)))
+    if crop is not True:
+        h_issmall = height <= att_image.size[1]
+        w_issmall = width <= att_image.size[0]
+        if h_issmall and w_issmall:
+            with io.BytesIO() as file:
+                att_image.save(file, "PNG")
+                return resize(file=file, height=height, width=width, crop=crop, fit=fit)
+        elif h_issmall:
+            att_image = Image.open(io.BytesIO(resize(file, height=height, width=att_image.size[0], fit=fit)))
+        elif w_issmall:
+            att_image = Image.open(io.BytesIO(resize(file, height=att_image.size[1], width=width, fit=fit)))
+    else:
+        if fit is True:
+            bbox = att_image.getbbox()
+            att_image = att_image.crop(bbox)
+        else:
+            bbox = (0, 0, *att_image.size)
 
     bg_image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
 
@@ -128,6 +152,7 @@ def center_resize(file: io.BytesIO, *, height: int, width: int) -> bytes:
     region_image.paste(att_image, (0, 0))
 
     bg_image.paste(att_image, offset)
+
     with io.BytesIO() as image_bytes:
         bg_image.save(image_bytes, "PNG")
         return image_bytes.getvalue()

@@ -22,14 +22,15 @@ ASPECT_RATIO_ORIGINAL = ('retain', 'keep', 'same', 'original', 'og')
 
 
 class FlagDescriptions(Enum):
-    height = "Height flag to specify height."
-    width = "Width flag to specify width."
-    aspect_ratio = f"Aspect Ratio flag to specify width:height aspect ratio when resizing. \
+    height = "Flag to specify height."
+    width = "Flag to specify width."
+    aspect_ratio = f"Flag to specify width:height aspect ratio when resizing. \
 Pass either of `{', '.join(ASPECT_RATIO_ORIGINAL)}` to retain the original aspect ratio of file(s). \
 If either height/width flag is passed, it will resized based on it, but will not work if both are passed. \
 If neither is specified, it will use the original width to resize the height."
-    centered = f"Flag `(yes or true)` to specify if you want to resize image(s)' background while keeping the \
-non-transparent content centered. Automatically crops out transparent background to center it perfectly."
+    center = f"Flag `(yes/true)` to specify if you want to resize image(s)' background while keeping the image centered."
+    crop = f"Flag `(yes/true)` to specify if you want the bot to crop your image when resizing."
+    fit = f"Flag `(yes/true)` to specify if you want the bot to fit the image to the edges by cropping away transparent surrounding areas."
 
 class ResizeFlags(commands.FlagConverter, prefix='--', delimiter=' ', case_insensitive=True):
     height: Optional[int] = commands.flag(aliases=("h",), max_args=1, description=FlagDescriptions.height.value)
@@ -40,12 +41,21 @@ class ResizeFlags(commands.FlagConverter, prefix='--', delimiter=' ', case_insen
         max_args=1,
         description=FlagDescriptions.aspect_ratio.value
     )
-    centered: Optional[bool] = commands.flag(
-        name="centered",
-        aliases=("centred",),
-        default=False,
+    fit: Optional[bool] = commands.flag(
+        name="fit",
         max_args=1,
-        description=FlagDescriptions.centered.value
+        description=FlagDescriptions.fit.value
+    )
+    center: Optional[bool] = commands.flag(
+        name="center",
+        aliases=("centre",),
+        max_args=1,
+        description=FlagDescriptions.center.value
+    )
+    crop: Optional[bool] = commands.flag(
+        name="crop",
+        max_args=1,
+        description=FlagDescriptions.crop.value
     )
 
 
@@ -59,23 +69,29 @@ class Image(commands.Cog):
 
     @commands.command(
         name="resize",
+        aliases=("crop",),
         brief="Resize image(s) to any size with minimum quality loss.",
         help=f"""**Attach files to resize them to specified height and/or width or aspect ratio.**
 The way height, width or aspect ratio parameters are passed is through flags.
 
 **Flags**
+*Standalone flags*
 - `--height/h <number>` - {FlagDescriptions.height.value}
 - `--width/w <number>` - {FlagDescriptions.width.value}
 - `--aspect_ratio/ar <width>:<height>` - {FlagDescriptions.aspect_ratio.value}
-- `--centered/centred <yes/true>=false` - {FlagDescriptions.centered.value}
+- `--fit <yes/true>=false` - {FlagDescriptions.fit.value}
+*Supporting flags*
+- `--center/centre <yes/true>=false` - {FlagDescriptions.center.value}
+- `--crop <yes/true>=false` - {FlagDescriptions.crop.value}
 
 **Examples**
 - `resize --height 400 --width 600`
-- `resize --h 700` - Resizes height to 700 while keeping width the same.
-- `resize --h 475 --w 475 --centered yes` - Resizes while keeping the image centered (crops out transparent background!) to 475x475
+- `resize --h 700 --crop yes` - CROPS height to 700, while keeping the width same.
+- `resize --h 475 --w 475 --center yes` - Resizes while keeping the image centered (crops out transparent background!) to 475x475
 - `resize --aspect_ratio 16:9` - Resizes height based on original width. If original width is 1600, will change height to 900
 - `resize --h 900 --ar 16:9` - Resizes to height 900 and width 1600 (16/9 * 900)
-- `resize --h 3000 --ar original` - Resizes to height 3000 and width proportional to height based on original AR of file(s)""",
+- `resize --h 3000 --ar original` - Resizes to height 3000 and width proportional to height based on original AR of file(s)
+- `resize --fit yes` - Crops away surrounding transparent areas to fit the content fully.""",
         description="Resize image(s) to custom height/width while retaining maximum quality."
     )
     async def _resize(self, ctx: CustomContext, *, flags: ResizeFlags):
@@ -87,9 +103,12 @@ The way height, width or aspect ratio parameters are passed is through flags.
         height = flags.height
         width = flags.width
         ar = flags.ar
-        centered = flags.centered
-        if all((height is None, width is None, ar is None)):
-            await ctx.reply("Please provide atleast one flag!")
+        fit = flags.fit
+        center = flags.center
+        crop = flags.crop
+
+        if all((height is None, width is None, ar is None, fit is None)):
+            await ctx.reply("Please provide atleast one standalone flag!")
             return await ctx.send_help(ctx.command)
         if any((height == 0, width == 0)):
             return await ctx.reply("Height or width cannot be zero!")
@@ -144,24 +163,35 @@ The way height, width or aspect ratio parameters are passed is through flags.
 
             h_equal = _height == attachment.height
             w_equal = _width == attachment.width
-            if h_equal and w_equal:
+            if h_equal and w_equal and (fit is not True):
                 files_result.append(f"`{attachment.filename}`: The height and width are unchanged.")
                 continue
 
             file = io.BytesIO(await attachment.read())
-            if centered is True:
-                resized = io.BytesIO(center_resize(file, height=_height, width=_width))
+            if center is True:
+                resized = io.BytesIO(center_resize(file, height=_height, width=_width, crop=crop, fit=fit))
             else:
-                resized = io.BytesIO(resize(file, height=_height, width=_width))
+                resized = io.BytesIO(resize(file, height=_height, width=_width, crop=crop, fit=fit))
 
             filename = f"{attachment.filename.split('.')[0]}.png"
             files.append(discord.File(resized, filename=filename))
-            files_result.append(f"`{attachment.filename}`: **{attachment.height}**x**{attachment.width}** -> **{_height}**x**{_width}**")
+            files_result.append(
+                f"`{attachment.filename}`: **{attachment.height}**x**{attachment.width}** -> **{_height}**x**{_width}**"
+            )
+
+        actions = []
+        if fit is True:
+            actions.append(f"*`fit`*")
+        if center is True:
+            actions.append(f"*`center`*")
+        if crop is True:
+            actions.append(f"*`crop`*")
 
         flags_result = []
         l = len(files)
         if l > 0:
-            flags_result.append(f"Resized{' and centered' if centered else ''} {l} image{'' if l == 1 else 's'} to:")
+            flags_result.append(f"Performed the following actions on {l} image{'' if l == 1 else 's'}:")
+            flags_result.append(", ".join(actions))
             if flags.height:
                 flags_result.append(f"`height = {flags.height}`")
             if flags.width:
