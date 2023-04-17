@@ -63,28 +63,31 @@ class UrlView(discord.ui.View):
 class RoleButton(discord.ui.Button):
     def __init__(self, role_name: str, **kwargs):
         self.role_name = role_name
-        kwargs['label'] = self.role_name
+        kwargs["label"] = self.role_name
         super().__init__(**kwargs)
 
     async def callback(self, interaction: discord.Interaction):
         user = interaction.user
         role = discord.utils.get(interaction.guild.roles, name=self.role_name)
         if role is None:
-            return await interaction.response.send_message(f"Role {self.role_name} not found.")
+            return await interaction.response.send_message(
+                f"Role {self.role_name} not found."
+            )
 
         if role in user.roles:
             await user.remove_roles(role)
             return await interaction.response.send_message(
                 content=f"Took away {role.mention}!",
                 ephemeral=True,
-                allowed_mentions=discord.AllowedMentions(roles=False)
+                allowed_mentions=discord.AllowedMentions(roles=False),
             )
         await user.add_roles(role)
         await interaction.response.send_message(
             content=f"Gave you {role.mention}!",
             ephemeral=True,
-            allowed_mentions=discord.AllowedMentions(roles=False)
+            allowed_mentions=discord.AllowedMentions(roles=False),
         )
+
 
 class RoleMenu(discord.ui.View):
     def __init__(self, roles_dict: Dict[str, discord.ButtonStyle]):
@@ -93,7 +96,9 @@ class RoleMenu(discord.ui.View):
         for role_name, style in self.roles_dict.items():
             if len(self.children) == 25:
                 break
-            self.add_item(RoleButton(role_name, style=style, custom_id=f"rolemenu:{role_name}"))
+            self.add_item(
+                RoleButton(role_name, style=style, custom_id=f"rolemenu:{role_name}")
+            )
 
 
 PB_BARS = {0.0: "⬜", 0.3: "🟧", 0.7: "🟨", 1.0: "🟩"}
@@ -124,13 +129,20 @@ def normalize(text: str) -> str:
     try:
         text = text.casefold()
     except AttributeError:
-        return ''
+        return ""
     norm = unicodedata.normalize("NFD", text)
     result = "".join(ch for ch in norm if unicodedata.category(ch) != "Mn")
     return unicodedata.normalize("NFKC", result)
 
 
-def resize(file: io.BytesIO, *, height: int, width: int, crop: Optional[bool] = False, fit: Optional[bool] = False) -> Tuple[bytes, Tuple[int]]:
+def resize(
+    file: io.BytesIO,
+    *,
+    height: int,
+    width: int,
+    crop: Optional[bool] = False,
+    fit: Optional[bool] = False,
+) -> Tuple[bytes, Tuple[int]]:
     att_image = Image.open(file)
     if fit is True:
         bbox = att_image.getbbox()
@@ -146,7 +158,7 @@ def resize(file: io.BytesIO, *, height: int, width: int, crop: Optional[bool] = 
 
         offset = (
             (image.size[0] - bbox[2] + bbox[0]) // 2,
-            (image.size[1] - bbox[3] + bbox[1]) // 2
+            (image.size[1] - bbox[3] + bbox[1]) // 2,
         )
 
         image.paste(att_image, offset)
@@ -157,7 +169,15 @@ def resize(file: io.BytesIO, *, height: int, width: int, crop: Optional[bool] = 
         image.save(image_bytes, "PNG")
         return image_bytes.getvalue(), image.size
 
-def center_resize(file: io.BytesIO, *, height: int, width: int, crop: Optional[bool] = None, fit: Optional[bool] = False) -> Tuple[bytes, Tuple[int]]:
+
+def center_resize(
+    file: io.BytesIO,
+    *,
+    height: int,
+    width: int,
+    crop: Optional[bool] = None,
+    fit: Optional[bool] = False,
+) -> Tuple[bytes, Tuple[int]]:
     att_image = Image.open(file)
     if crop is not True:
         h_issmall = height <= att_image.size[1]
@@ -167,9 +187,15 @@ def center_resize(file: io.BytesIO, *, height: int, width: int, crop: Optional[b
                 att_image.save(file, "PNG")
                 return resize(file=file, height=height, width=width, crop=crop, fit=fit)
         elif h_issmall:
-            att_image = Image.open(io.BytesIO(resize(file, height=height, width=att_image.size[0], fit=fit)))
+            att_image = Image.open(
+                io.BytesIO(
+                    resize(file, height=height, width=att_image.size[0], fit=fit)
+                )
+            )
         elif w_issmall:
-            att_image = Image.open(io.BytesIO(resize(file, height=att_image.size[1], width=width, fit=fit)))
+            att_image = Image.open(
+                io.BytesIO(resize(file, height=att_image.size[1], width=width, fit=fit))
+            )
     else:
         if fit is True:
             bbox = att_image.getbbox()
@@ -181,10 +207,12 @@ def center_resize(file: io.BytesIO, *, height: int, width: int, crop: Optional[b
 
     offset = (
         (bg_image.size[0] - bbox[2] + bbox[0]) // 2,
-        (bg_image.size[1] - bbox[3] + bbox[1]) // 2
+        (bg_image.size[1] - bbox[3] + bbox[1]) // 2,
     )
 
-    region_image = Image.new("RGBA", (bbox[2] - bbox[0], bbox[3] - bbox[1]), (0, 0, 0, 0))
+    region_image = Image.new(
+        "RGBA", (bbox[2] - bbox[0], bbox[3] - bbox[1]), (0, 0, 0, 0)
+    )
     region_image.paste(att_image, (0, 0))
 
     bg_image.paste(att_image, offset)

@@ -80,12 +80,12 @@ log = logging.getLogger(__name__)
 
 
 class EmbedColours(Enum):
-    INVALID: int = 0xcb3f49  # Invalid, Red
-    UNCLAIMED: int = 0x6d6f77  # Not claimed, Grey
-    CLAIMED: int = 0xe69537  # Claimed but not complete, Orange
-    UNREVIEWED: int = 0x6baae8  # Link present awaiting review, Blue
-    COMMENT: int = 0xf5cd6b # Has a comment, Yellow
-    APPROVED: int = 0x85af63 # Link present and approved, Green
+    INVALID: int = 0xCB3F49  # Invalid, Red
+    UNCLAIMED: int = 0x6D6F77  # Not claimed, Grey
+    CLAIMED: int = 0xE69537  # Claimed but not complete, Orange
+    UNREVIEWED: int = 0x6BAAE8  # Link present awaiting review, Blue
+    COMMENT: int = 0xF5CD6B  # Has a comment, Yellow
+    APPROVED: int = 0x85AF63  # Link present and approved, Green
 
 
 @dataclass
@@ -111,7 +111,11 @@ class Row:
         self.pokemon = self.row[PKM_LABEL]
 
         self.username = self.row[USERNAME_LABEL]
-        self.username = discord.utils.escape_markdown(self.username) if not pd.isna(self.username) else None
+        self.username = (
+            discord.utils.escape_markdown(self.username)
+            if not pd.isna(self.username)
+            else None
+        )
 
         self.user_id = self.row[USER_ID_LABEL]
         self.user_id = self.user_id if not pd.isna(self.user_id) else None
@@ -126,7 +130,9 @@ class Row:
         self.comment = self.comment if not pd.isna(self.comment) else None
 
         self.claimed = not pd.isna(self.user_id)
-        self.unreviewed = all((not pd.isna(self.imgur), not self.approved_by, not self.comment))
+        self.unreviewed = all(
+            (not pd.isna(self.imgur), not self.approved_by, not self.comment)
+        )
 
     @property
     def colour(self) -> int:
@@ -141,6 +147,7 @@ class Row:
                 return EmbedColours.CLAIMED.value
         else:
             return EmbedColours.UNCLAIMED.value
+
 
 class AfdSheet:
     def __init__(
@@ -320,6 +327,7 @@ COMPLETED_EMOJI = "✅"
 UNREVIEWED_EMOJI = "☑️"
 REVIEW_EMOJI = "❗"
 
+
 @dataclass
 class Claimed:
     claimed_df: pd.DataFrame
@@ -342,7 +350,9 @@ class Claimed:
             else:
                 self.claimed.append(f"{pkm}")
         self.total_list = self.review + self.claimed + self.unreviewed + self.completed
-        self.total_list = [f"{idx + 1}. {pkm}" for idx, pkm in enumerate(self.total_list)]
+        self.total_list = [
+            f"{idx + 1}. {pkm}" for idx, pkm in enumerate(self.total_list)
+        ]
 
         self.total_amount = len(self.total_list)
         self.review_amount = len(self.review)
@@ -354,10 +364,11 @@ class Claimed:
 class AFDRoleMenu(RoleMenu):
     def __init__(self):
         roles_dict = {
-            'AFD': discord.ButtonStyle.green,
-            'AFD Admin': discord.ButtonStyle.red
+            "AFD": discord.ButtonStyle.green,
+            "AFD Admin": discord.ButtonStyle.red,
         }
         super().__init__(roles_dict)
+
 
 class Afd(commands.Cog):
     def __init__(self, bot):
@@ -406,14 +417,19 @@ class Afd(commands.Cog):
         return AfdSheet(SHEET_URL, pokemon_df=self.pk)
 
     def confirmation_embed(
-        self, msg: str, *, pokemon: Optional[str] = None, colour: Optional[EmbedColours] = None, footer: Optional[str] = None
+        self,
+        msg: str,
+        *,
+        pokemon: Optional[str] = None,
+        colour: Optional[EmbedColours] = None,
+        footer: Optional[str] = None,
     ) -> Bot.Embed:
-        embed = self.bot.Embed(description=msg, colour=colour.value if colour else colour)
+        embed = self.bot.Embed(
+            description=msg, colour=colour.value if colour else colour
+        )
         if pokemon is not None:
             pokemon_image = self.sheet.get_pokemon_image(pokemon)
-            embed.set_thumbnail(
-                url=pokemon_image
-            )
+            embed.set_thumbnail(url=pokemon_image)
         if footer:
             embed.set_footer(text=footer)
         return embed
@@ -424,8 +440,7 @@ class Afd(commands.Cog):
         except IndexError:
             await ctx.reply(
                 embed=self.confirmation_embed(
-                    "Invalid pokemon provided!",
-                    colour=EmbedColours.INVALID
+                    "Invalid pokemon provided!", colour=EmbedColours.INVALID
                 )
             )
             return None
@@ -449,9 +464,15 @@ class Afd(commands.Cog):
         brief="View progress of the april fool's event.",
         help="""If `pokemon` arg is passed and `user` is not, it will show info of that pokemon.
 If `user` arg is passed, it will show stats of that user. Otherwise it will show your stats. If `user` is a non-participant, it will not show their stats.""",
-        description="Shows user and community stats."
+        description="Shows user and community stats.",
     )
-    async def info(self, ctx: CustomContext, user: Optional[discord.User] = None, *, pokemon: Optional[str] = None):
+    async def info(
+        self,
+        ctx: CustomContext,
+        user: Optional[discord.User] = None,
+        *,
+        pokemon: Optional[str] = None,
+    ):
         if pokemon and (user is None):
             return await ctx.invoke(self.pokemon, pokemon=pokemon)
         if user is None:
@@ -488,10 +509,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
 {NL.join(claimed.total_list)}
 {LOG_BORDER}"""
 
-        embed = self.bot.Embed(
-            title="April Fool's Day Event",
-            description=description
-        )
+        embed = self.bot.Embed(title="April Fool's Day Event", description=description)
 
         embed.add_field(
             name="Community Stats",
@@ -500,7 +518,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
 **Submitted**
 {make_progress_bar(submitted_amount, self.total_amount)} {submitted_amount}/{self.total_amount}
 **Claimed**
-{make_progress_bar(claimed_amount, self.total_amount)} {claimed_amount}/{self.total_amount}"""
+{make_progress_bar(claimed_amount, self.total_amount)} {claimed_amount}/{self.total_amount}""",
         )
 
         await ctx.reply(embed=embed, view=view)
@@ -508,7 +526,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
     @afd.command(
         name="view",
         aliases=("pokemon", "pkm", "d", "dex"),
-        brief="See info of a pokemon from the sheet"
+        brief="See info of a pokemon from the sheet",
     )
     async def pokemon(self, ctx: CustomContext, *, pokemon: str):
         pokemon = await self.get_pokemon(ctx, pokemon)
@@ -531,17 +549,16 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
                 status = "Complete and approved."
             elif row.comment:
                 status = "Correction pending."
-                embed.add_field(
-                    name=CMT_LABEL,
-                    value=str(row.comment),
-                    inline=False
-                )
+                embed.add_field(name=CMT_LABEL, value=str(row.comment), inline=False)
             elif row.unreviewed:
                 status = "Submitted, Awaiting review."
             else:
                 status = "Claimed by"
 
-            embed.set_footer(text=f"{status}\n{row.username} ({row.user_id})", icon_url=user.avatar.url)
+            embed.set_footer(
+                text=f"{status}\n{row.username} ({row.user_id})",
+                icon_url=user.avatar.url,
+            )
         else:
             status = "Not claimed"
             embed.set_footer(text=status)
@@ -556,7 +573,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
         check: Callable[[Row], bool],
         row: Optional[Row] = None,
         decide_footer: Optional[Callable[[Row], str]] = None,
-        cmsg: Optional[bool] = None
+        cmsg: Optional[bool] = None,
     ) -> bool:
         if not row:
             # Check once again for any changes to the sheet
@@ -568,7 +585,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
                 decide_msg(row),
                 pokemon=pokemon,
                 colour=EmbedColours.INVALID,
-                footer=decide_footer(row) if decide_footer else decide_footer
+                footer=decide_footer(row) if decide_footer else decide_footer,
             )
             if cmsg:
                 await cmsg.edit(embed=embed)
@@ -603,26 +620,33 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
         conf = cmsg = None
         row = self.sheet.get_pokemon_row(pokemon)
         if not row.claimed:
-            if self.sheet.can_claim(ctx.author) is False and not self.is_admin(ctx.author):
+            if self.sheet.can_claim(ctx.author) is False and not self.is_admin(
+                ctx.author
+            ):
                 return await ctx.reply(
                     embed=self.confirmation_embed(
                         f"You already have the max number ({CLAIM_LIMIT}) of pokemon claimed!",
-                        colour=EmbedColours.INVALID
+                        colour=EmbedColours.INVALID,
                     )
                 )
 
             conf, cmsg = await ctx.confirm(
                 embed=self.confirmation_embed(
-                    f"Are you sure you want to claim **{pokemon}**?",
-                    pokemon=pokemon
+                    f"Are you sure you want to claim **{pokemon}**?", pokemon=pokemon
                 ),
             )
             if conf is False:
                 return
 
-        decide_msg = lambda row: f"**{pokemon}** is already claimed by **{'you' if row.user_id == str(ctx.author.id) else row.username}**!"
+        decide_msg = (
+            lambda row: f"**{pokemon}** is already claimed by **{'you' if row.user_id == str(ctx.author.id) else row.username}**!"
+        )
         check = lambda row: row.claimed
-        decide_footer = lambda row: "You can unclaim it using the `unclaim` command." if row.user_id == str(ctx.author.id) else None
+        decide_footer = (
+            lambda row: "You can unclaim it using the `unclaim` command."
+            if row.user_id == str(ctx.author.id)
+            else None
+        )
         claimed = await self.check_claim(
             ctx,
             decide_msg,
@@ -630,7 +654,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
             check=check,
             row=row if conf is None else None,
             decide_footer=decide_footer,
-            cmsg=cmsg
+            cmsg=cmsg,
         )
         if claimed is True:
             return
@@ -642,7 +666,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
                 f"You have successfully claimed **{pokemon}**, have fun! :D",
                 pokemon=pokemon,
                 colour=EmbedColours.CLAIMED,
-                footer=f"You can undo this using the `unclaim` command."
+                footer=f"You can undo this using the `unclaim` command.",
             )
         )
 
@@ -661,9 +685,11 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
 {INDENT}**ii. If it's already claimed by *the same user*, you will be informed of such.**
 {INDENT}**iii. If it's already claimed by *another user*, you will be prompted to confirm if you want to override. Will warn you \
     if there is a drawing submitted already.**
-3. The sheet will finally be updated with the user's Username and ID"""
+3. The sheet will finally be updated with the user's Username and ID""",
     )
-    async def forceclaim(self, ctx: CustomContext, user: Optional[discord.User] = None, *, pokemon: str):
+    async def forceclaim(
+        self, ctx: CustomContext, user: Optional[discord.User] = None, *, pokemon: str
+    ):
         if user is None:
             user = ctx.author
         pokemon = await self.get_pokemon(ctx, pokemon)
@@ -678,10 +704,11 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
 
             conf, cmsg = await ctx.confirm(
                 embed=self.confirmation_embed(
-                    content or f"Are you sure you want to forceclaim **{pokemon}** for **{user}**?",
+                    content
+                    or f"Are you sure you want to forceclaim **{pokemon}** for **{user}**?",
                     pokemon=pokemon,
                 ),
-                confirm_label="Force Claim"
+                confirm_label="Force Claim",
             )
             if conf is False:
                 return
@@ -690,7 +717,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
                 embed=self.confirmation_embed(
                     f"**{pokemon}** is already claimed by **{user}**!",
                     pokemon=pokemon,
-                    colour=EmbedColours.INVALID
+                    colour=EmbedColours.INVALID,
                 )
             )
         else:
@@ -707,10 +734,11 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
 
         self.sheet.claim(user, pokemon)
         await self.sheet.update_row(row.dex)
-        await cmsg.edit(embed=self.confirmation_embed(
-            f"You have successfully force claimed **{pokemon}** for **{user}**.",
-            pokemon=pokemon,
-            colour=EmbedColours.CLAIMED
+        await cmsg.edit(
+            embed=self.confirmation_embed(
+                f"You have successfully force claimed **{pokemon}** for **{user}**.",
+                pokemon=pokemon,
+                colour=EmbedColours.CLAIMED,
             )
         )
 
@@ -748,14 +776,19 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
                 return
 
         check = lambda row: (not row.claimed) or row.user_id != str(ctx.author.id)
-        decide_msg = lambda row: f"**{pokemon}** is not claimed." if not row.claimed else f"**{pokemon}** is claimed by **{row.username}**!"
+        decide_msg = (
+            lambda row: f"**{pokemon}** is not claimed."
+            if not row.claimed
+            else f"**{pokemon}** is claimed by **{row.username}**!"
+        )
         decide_footer = (
             lambda row: None
             if not row.claimed
             else (
                 "You can force unclaim it using the `forceunclaim` command."
                 if self.is_admin(ctx.author)
-                else None)
+                else None
+            )
         )
         not_claimed = await self.check_claim(
             ctx,
@@ -764,7 +797,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
             check=check,
             row=row if conf is None else None,
             decide_footer=decide_footer,
-            cmsg=cmsg
+            cmsg=cmsg,
         )
         if not_claimed is True:
             return
@@ -775,7 +808,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
             embed=self.confirmation_embed(
                 f"You have successfully unclaimed **{pokemon}**.",
                 pokemon=pokemon,
-                colour=EmbedColours.UNCLAIMED
+                colour=EmbedColours.UNCLAIMED,
             )
         )
 
@@ -792,7 +825,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
 {INDENT}{INDENT}- You will be prompted to confirm that you want to force unclaim the pokemon.\
     Will warn you if there is a drawing submitted already.
 {INDENT}{INDENT}- The sheet will finally be updated and remove the user's Username and ID
-{INDENT}**ii. If it's *not* claimed, you will be informed of such.**"""
+{INDENT}**ii. If it's *not* claimed, you will be informed of such.**""",
     )
     async def forceunclaim(self, ctx, *, pokemon: str):
         pokemon = await self.get_pokemon(ctx, pokemon)
@@ -805,7 +838,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
                 embed=self.confirmation_embed(
                     f"**{pokemon}** is not claimed.",
                     pokemon=pokemon,
-                    colour=EmbedColours.INVALID
+                    colour=EmbedColours.INVALID,
                 )
             )
         conf, cmsg = await ctx.confirm(
@@ -819,12 +852,14 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
         if conf is False:
             return
 
-        self.sheet.unclaim(pokemon,)
+        self.sheet.unclaim(
+            pokemon,
+        )
         await cmsg.edit(
             embed=self.confirmation_embed(
                 f"You have successfully force unclaimed **{pokemon}** from **{row.username}**.",
                 pokemon=pokemon,
-                colour=EmbedColours.UNCLAIMED
+                colour=EmbedColours.UNCLAIMED,
             )
         )
 
@@ -874,7 +909,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
             f"""<@&{AFD_ROLE_ID}>: Role required to access `afd` commands
 <@&{AFD_ADMIN_ROLE_ID}>: Role required to access AFD Admin only `afd` commands.""",
             view=role_menu,
-            allowed_mentions=discord.AllowedMentions(roles=False)
+            allowed_mentions=discord.AllowedMentions(roles=False),
         )
 
     # The task that updates the unclaimed pokemon gist
@@ -993,9 +1028,7 @@ Credits: <{self.credits_gist.url}>"""
 
         return unc_list, unc_amount
 
-    def format_unreviewed(
-        self, df: pd.DataFrame, row: Row, pkm_indexes: list
-    ) -> str:
+    def format_unreviewed(self, df: pd.DataFrame, row: Row, pkm_indexes: list) -> str:
         pkm_list = []
         for idx, pkm_idx in enumerate(pkm_indexes):
             pokename = df.loc[pkm_idx, PKM_LABEL]
@@ -1067,7 +1100,9 @@ Credits: <{self.credits_gist.url}>"""
                 pkm_list.append(f"`{row.pokemon}`")
             msg = f'- **{row.username}** [{len(pkm_list)}] - {", ".join(pkm_list)}'
             ml_list.append(msg)
-            mention_msg = f'- **<@{row.user_id}>** [{len(pkm_list)}] - {", ".join(pkm_list)}'
+            mention_msg = (
+                f'- **<@{row.user_id}>** [{len(pkm_list)}] - {", ".join(pkm_list)}'
+            )
             mention_list.append(mention_msg)
 
         return ml_list, mention_list
@@ -1139,10 +1174,12 @@ Credits: <{self.credits_gist.url}>"""
                 if not row.approved_by:
                     continue
                 participants[row.user_id] = (
-                        len(pkms),
-                        f"1. {row.username} (`{user_id}`){f' - {len(pkms)} Drawings' if count is True else ''}",
-                    )
-        participants = list(sorted(list(participants_dict.values()), key=sort_key, reverse=reverse))
+                    len(pkms),
+                    f"1. {row.username} (`{user_id}`){f' - {len(pkms)} Drawings' if count is True else ''}",
+                )
+        participants = list(
+            sorted(list(participants_dict.values()), key=sort_key, reverse=reverse)
+        )
 
         return participants[:n]
 
@@ -1168,9 +1205,7 @@ Credits: <{self.credits_gist.url}>"""
                 user = row.username
             else:
                 user = user_id = "None"
-            credits_rows.append(
-                HEADERS_FMT % (pkm_dex, pkm_name, link, user, user_id)
-            )
+            credits_rows.append(HEADERS_FMT % (pkm_dex, pkm_name, link, user, user_id))
         log.info(f"AFD Credits: Row loop complete in {round(time.time()-start, 2)}s")
         return gists.File(
             name=CREDITS_FILENAME,

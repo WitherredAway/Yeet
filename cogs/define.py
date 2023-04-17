@@ -182,18 +182,21 @@ class Define(commands.Cog):
             page = pages[0]
         except IndexError:
             return await ctx.reply("Not found, sorry!")
-        summary = await page.summary() or "No summary found, please visit the page instead:"
-        text = summary[:MESSAGE_CHAR_LIMIT] + ('...' if len(summary) >= MESSAGE_CHAR_LIMIT else '')
+        summary = (
+            await page.summary() or "No summary found, please visit the page instead:"
+        )
+        text = summary[:MESSAGE_CHAR_LIMIT] + (
+            "..." if len(summary) >= MESSAGE_CHAR_LIMIT else ""
+        )
         url = (await page.urls()).view
         images = await page.media()
 
-        embed = self.bot.Embed(title=page.title, description=(NL*2).join(text.split(NL)))
+        embed = self.bot.Embed(
+            title=page.title, description=(NL * 2).join(text.split(NL))
+        )
         if images:
             embed.set_image(url=images[0])
-        await ctx.reply(
-            embed=embed,
-            view=UrlView({'Wikipedia URL': (url, 0)})
-        )
+        await ctx.reply(embed=embed, view=UrlView({"Wikipedia URL": (url, 0)}))
 
 
 async def setup(bot: commands.Bot) -> None:

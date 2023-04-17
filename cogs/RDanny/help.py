@@ -415,7 +415,9 @@ class PaginatedHelpCommand(commands.HelpCommand):
         return (f"{alias} `{command.signature}`") if command.signature else alias
 
     @staticmethod
-    def common_command_formatting(ctx, embed_like: discord.Embed, command: commands.Command):
+    def common_command_formatting(
+        ctx, embed_like: discord.Embed, command: commands.Command
+    ):
         bot = ctx.bot
         embed_like.title = (
             f"`{ctx.clean_prefix}`{PaginatedHelpCommand.get_command_signature(command)}"
@@ -470,7 +472,9 @@ class PaginatedHelpCommand(commands.HelpCommand):
 
     async def send_cog_help(self, cog):
         # For the cog help
-        cog_commands = await self.filter_commands(cog.get_commands(), sort=True, key=self.define_order_key)
+        cog_commands = await self.filter_commands(
+            cog.get_commands(), sort=True, key=self.define_order_key
+        )
         source = GroupHelpPageSource(self.context, cog, cog_commands)
         menu = HelpMenu(source, ctx=self.context)
         menu.initial_source = source
@@ -493,7 +497,9 @@ class PaginatedHelpCommand(commands.HelpCommand):
         if len(subcommands) == 0:
             return await self.send_command_help(group)
 
-        entries = await self.filter_commands(subcommands, sort=True, key=self.define_order_key)
+        entries = await self.filter_commands(
+            subcommands, sort=True, key=self.define_order_key
+        )
 
         source = GroupHelpPageSource(self.context, group, entries)
         menu = HelpMenu(source, ctx=self.context)
