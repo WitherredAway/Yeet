@@ -8,9 +8,9 @@ from typing import Optional
 
 import discord
 from discord.ext import commands
+
 from cogs.utils.utils import center_resize, resize
 from helpers.constants import NL
-
 from helpers.context import CustomContext
 
 if typing.TYPE_CHECKING:
@@ -169,12 +169,12 @@ The way height, width or aspect ratio parameters are passed is through flags.
 
             file = io.BytesIO(await attachment.read())
             if center is True:
-                resized = io.BytesIO(center_resize(file, height=_height, width=_width, crop=crop, fit=fit))
+                resized, (_width, _height) = center_resize(file, height=_height, width=_width, crop=crop, fit=fit)
             else:
-                resized = io.BytesIO(resize(file, height=_height, width=_width, crop=crop, fit=fit))
+                resized, (_width, _height) = resize(file, height=_height, width=_width, crop=crop, fit=fit)
 
             filename = f"{attachment.filename.split('.')[0]}.png"
-            files.append(discord.File(resized, filename=filename))
+            files.append(discord.File(io.BytesIO(resized), filename=filename))
             files_result.append(
                 f"`{attachment.filename}`: **{attachment.height}**x**{attachment.width}** -> **{_height}**x**{_width}**"
             )

@@ -1,6 +1,6 @@
 import io
 import typing
-from typing import Dict
+from typing import Dict, Tuple
 import cProfile
 from typing import Dict, Optional
 import unicodedata
@@ -130,10 +130,13 @@ def normalize(text: str) -> str:
     return unicodedata.normalize("NFKC", result)
 
 
-def resize(file: io.BytesIO, *, height: int, width: int, crop: Optional[bool] = False, fit: Optional[bool] = False) -> bytes:
+def resize(file: io.BytesIO, *, height: int, width: int, crop: Optional[bool] = False, fit: Optional[bool] = False) -> Tuple[bytes, Tuple[int]]:
     att_image = Image.open(file)
     if fit is True:
         bbox = att_image.getbbox()
+        if (width, height) == att_image.size:
+            # if h and w are the same as the original file, set it to the new bbox so it doesn't resize the image
+            width, height = (bbox[2] - bbox[0], bbox[3] - bbox[1])
         att_image = att_image.crop(bbox)
     else:
         bbox = (0, 0, *att_image.size)
@@ -146,18 +149,15 @@ def resize(file: io.BytesIO, *, height: int, width: int, crop: Optional[bool] = 
             (image.size[1] - bbox[3] + bbox[1]) // 2
         )
 
-        region_image = Image.new("RGBA", (bbox[2] - bbox[0], bbox[3] - bbox[1]), (0, 0, 0, 0))
-        region_image.paste(att_image, (0, 0))
-
         image.paste(att_image, offset)
     else:
-        image = att_image.resize((width, height), Image.ANTIALIAS)
+        image = att_image.resize((width, height))
 
     with io.BytesIO() as image_bytes:
         image.save(image_bytes, "PNG")
-        return image_bytes.getvalue()
+        return image_bytes.getvalue(), image.size
 
-def center_resize(file: io.BytesIO, *, height: int, width: int, crop: Optional[bool] = None, fit: Optional[bool] = False) -> bytes:
+def center_resize(file: io.BytesIO, *, height: int, width: int, crop: Optional[bool] = None, fit: Optional[bool] = False) -> Tuple[bytes, Tuple[int]]:
     att_image = Image.open(file)
     if crop is not True:
         h_issmall = height <= att_image.size[1]
@@ -191,4 +191,4 @@ def center_resize(file: io.BytesIO, *, height: int, width: int, crop: Optional[b
 
     with io.BytesIO() as image_bytes:
         bg_image.save(image_bytes, "PNG")
-        return image_bytes.getvalue()
+        return image_bytes.getvalue(), bg_image.size
