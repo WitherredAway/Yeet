@@ -1,5 +1,4 @@
 from __future__ import annotations
-from enum import Enum
 import re
 
 import typing
@@ -9,57 +8,14 @@ from typing import Optional
 import discord
 from discord.ext import commands
 
-from cogs.utils.utils import center_resize, resize
+from .utils import center_resize, fit_image, resize
 from helpers.constants import NL
 from helpers.context import CustomContext
+from .constants import RESIZE_LIMIT, ASPECT_RATIO_ORIGINAL
+from .flags import ResizeFlagDescriptions, ResizeFlags
 
 if typing.TYPE_CHECKING:
     from main import Bot
-
-
-RESIZE_LIMIT = 4000
-ASPECT_RATIO_ORIGINAL = ("retain", "keep", "same", "original", "og")
-
-
-class FlagDescriptions(Enum):
-    height = "Flag to specify height."
-    width = "Flag to specify width."
-    aspect_ratio = f"Flag to specify width:height aspect ratio when resizing. \
-Pass either of `{', '.join(ASPECT_RATIO_ORIGINAL)}` to retain the original aspect ratio of file(s). \
-If either height/width flag is passed, it will resized based on it, but will not work if both are passed. \
-If neither is specified, it will use the original width to resize the height."
-    fit = f"Flag `(yes/true)` to specify if you want the bot to fit the image to the edges by cropping away transparent surrounding areas."
-    center = f"Flag `(yes/true)` to specify if you want to resize image(s)' background while keeping the image centered and unwarped."
-    crop = f"Flag `(yes/true)` to specify if you want the bot to crop your image when resizing."
-
-
-class ResizeFlags(
-    commands.FlagConverter, prefix="--", delimiter=" ", case_insensitive=True
-):
-    height: Optional[int] = commands.flag(
-        aliases=("h",), max_args=1, description=FlagDescriptions.height.value
-    )
-    width: Optional[int] = commands.flag(
-        aliases=("w",), max_args=1, description=FlagDescriptions.width.value
-    )
-    ar: Optional[str] = commands.flag(
-        name="aspect_ratio",
-        aliases=("ar",),
-        max_args=1,
-        description=FlagDescriptions.aspect_ratio.value,
-    )
-    fit: Optional[bool] = commands.flag(
-        name="fit", max_args=1, description=FlagDescriptions.fit.value
-    )
-    center: Optional[bool] = commands.flag(
-        name="center",
-        aliases=("centre",),
-        max_args=1,
-        description=FlagDescriptions.center.value,
-    )
-    crop: Optional[bool] = commands.flag(
-        name="crop", max_args=1, description=FlagDescriptions.crop.value
-    )
 
 
 class ImageCog(commands.Cog):
@@ -79,13 +35,13 @@ The way height, width or aspect ratio parameters are passed is through flags.
 
 **Flags**
 *Standalone flags*
-- `--height/h <number>` - {FlagDescriptions.height.value}
-- `--width/w <number>` - {FlagDescriptions.width.value}
-- `--aspect_ratio/ar <width>:<height>` - {FlagDescriptions.aspect_ratio.value}
-- `--fit <yes/true>=false` - {FlagDescriptions.fit.value}
+- `--height/h <number>` - {ResizeFlagDescriptions.height.value}
+- `--width/w <number>` - {ResizeFlagDescriptions.width.value}
+- `--aspect_ratio/ar <width>:<height>` - {ResizeFlagDescriptions.aspect_ratio.value}
+- `--fit <yes/true>=false` - {ResizeFlagDescriptions.fit.value}
 *Supporting flags*
-- `--center/centre <yes/true>=false` - {FlagDescriptions.center.value}
-- `--crop <yes/true>=false` - {FlagDescriptions.crop.value}
+- `--center/centre <yes/true>=false` - {ResizeFlagDescriptions.center.value}
+- `--crop <yes/true>=false` - {ResizeFlagDescriptions.crop.value}
 
 **Examples**
 - `resize --height 400 --width 600`
@@ -183,13 +139,19 @@ The way height, width or aspect ratio parameters are passed is through flags.
                 continue
 
             file = io.BytesIO(await attachment.read())
+            if fit is True:
+                file, fit_size = fit_image(file, crop=crop)
+                file = io.BytesIO(file)
+                if all((height is None, width is None, ar is None)):
+                    _width, _height = fit_size
+
             if center is True:
                 resized, (_width, _height) = center_resize(
-                    file, height=_height, width=_width, crop=crop, fit=fit
+                    file, height=_height, width=_width, crop=crop
                 )
             else:
                 resized, (_width, _height) = resize(
-                    file, height=_height, width=_width, crop=crop, fit=fit
+                    file, height=_height, width=_width, crop=crop
                 )
 
             filename = f"{attachment.filename.split('.')[0]}.png"
