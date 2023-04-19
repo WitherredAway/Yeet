@@ -114,9 +114,9 @@ class PoketwoChances(commands.Cog):
         df["Chance"] = np.nan
         df["Chance percentage"] = np.nan
         for idx in df.index:
-            chance = round(df.at[idx, "abundance"] / self.possible_abundance * 100, 4)
+            chance = df.at[idx, "abundance"] / self.possible_abundance * 100
             df.at[idx, "Chance"] = "1/" + str(round(1 / chance * 100))
-            df.at[idx, "Chance percentage"] = str(chance) + "%"
+            df.at[idx, "Chance percentage"] = str(round(chance, 4)) + "%"
 
         df.sort_values("abundance", ascending=False, inplace=True)
         if keep_cols is None:
