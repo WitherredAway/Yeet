@@ -13,6 +13,7 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 import aiohttp
 import discord
 from cogs.Draw.constants import PADDING
+from cogs.Poketwo.utils import get_pokemon
 import gists
 import gspread_asyncio
 import numpy as np
@@ -187,17 +188,7 @@ class AfdSheet:
         ).authorize()
 
     def get_pokemon(self, name: str) -> str:
-        name = name.replace("’", "'").replace("′", "'").casefold()
-        return self.pk.loc[
-            (self.pk["slug"].apply(normalize) == name)
-            | (self.pk["name.ja"].apply(normalize) == name)
-            | (self.pk["name.ja_r"].apply(normalize) == name)
-            | (self.pk["name.ja_t"].apply(normalize) == name)
-            | (self.pk["name.en"].apply(normalize) == name)
-            | (self.pk["name.en2"].apply(normalize) == name)
-            | (self.pk["name.de"].apply(normalize) == name)
-            | (self.pk["name.fr"].apply(normalize) == name)
-        ]["name.en"].iloc[0]
+        return get_pokemon(name, pk=self.pk)
 
     def get_pokemon_dex(self, pokemon: str) -> int:
         try:

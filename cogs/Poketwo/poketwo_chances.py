@@ -10,6 +10,7 @@ import discord
 from discord.ext import commands
 import numpy as np
 import pandas as pd
+from cogs.Poketwo.utils import get_pokemon
 import gists
 
 if typing.TYPE_CHECKING:
@@ -99,7 +100,7 @@ class PoketwoChances(commands.Cog):
     @cached_property
     def pk(self):
         pk = self.bot.pk
-        self.possible_abundance = round(pk.loc[:, "abundance"].sum(), 4)
+        self.possible_abundance = round(pk.loc[pk["catchable"] > 0, "abundance"].sum(), 4)
         return pk
 
     async def update_chance_gist(
@@ -201,12 +202,7 @@ class PoketwoChances(commands.Cog):
         invoke_without_command=True,
     )
     async def chance(self, ctx, *, pokemon: str):
-        pokemon = pokemon.lower()
-
-        pkm_df = self.pk.loc[
-            (self.pk["slug"].str.casefold() == pokemon)
-            | (self.pk["name.en"].str.casefold() == pokemon)
-        ]
+        pkm_df = self.pk.loc[self.pk['name.en'] == get_pokemon(pokemon, df=self.pk)]
         pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance"]]
 
         if len(pkm_df) == 0:
@@ -472,7 +468,7 @@ class PoketwoChances(commands.Cog):
             ]
         )
 
-        chance_msg = f"""__**Spawn chances:**__ 
+        chance_msg = f"""__**Spawn chances:**__
 > __Recent updates (Last update: {discord.utils.format_dt(discord.utils.utcnow(), "f")})__
 > - Updated chances
 
