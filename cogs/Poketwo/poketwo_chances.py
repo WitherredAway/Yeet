@@ -177,8 +177,8 @@ class PoketwoChances(commands.Cog):
         pkm_df = pokemon_dataframe
         total_abundance = round(pkm_df["abundance"][pkm_df["catchable"] > 0].sum())
 
-        per_cent = round(total_abundance / self.possible_abundance * 100, 4)
-        out_of = round((1 / per_cent * 100) if per_cent > 0 else 0)
+        out_of = round(self.possible_abundance / total_abundance)
+        per_cent = round(1 / out_of * 100, 4)
         total_chances = f"**Total chance**: {per_cent}% or 1/{out_of}"
 
         extra = "\n"
