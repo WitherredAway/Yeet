@@ -202,7 +202,7 @@ class PoketwoChances(commands.Cog):
         invoke_without_command=True,
     )
     async def chance(self, ctx, *, pokemon: str):
-        pkm_df = self.pk.loc[self.pk['name.en'] == get_pokemon(pokemon, df=self.pk)]
+        pkm_df = self.pk.loc[self.pk['name.en'] == get_pokemon(pokemon, pk=self.pk)]
         pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance"]]
 
         if len(pkm_df) == 0:
