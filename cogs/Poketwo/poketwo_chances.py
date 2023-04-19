@@ -114,9 +114,9 @@ class PoketwoChances(commands.Cog):
         df["Chance"] = np.nan
         df["Chance percentage"] = np.nan
         for idx in df.index:
-            chance = df.at[idx, "abundance"] / self.possible_abundance * 100
-            df.at[idx, "Chance"] = "1/" + str(round(1 / chance * 100))
-            df.at[idx, "Chance percentage"] = str(round(chance, 4)) + "%"
+            chance = self.possible_abundance / df.at[idx, "abundance"]
+            df.at[idx, "Chance"] = "1/" + str(round(chance))
+            df.at[idx, "Chance percentage"] = str(round(1 / chance * 100, 4)) + "%"
 
         df.sort_values("abundance", ascending=False, inplace=True)
         if keep_cols is None:
@@ -129,14 +129,14 @@ class PoketwoChances(commands.Cog):
             rename_cols["enabled"] = "Currently catchable"
         df.rename(columns=rename_cols, inplace=True)
 
-        df_groupby = df.set_index("Pokemon").groupby("Chance percentage")
+        df_groupby = df.set_index("Pokemon").groupby("Chance")
         df_groupby = [
-            (float(chance[:-1]), pokemons)
+            (int(chance.split('/')[-1]), pokemons)
             for chance, pokemons in df_groupby.groups.items()
         ]
-        df_groupby.sort(key=lambda x: x[0], reverse=True)
+        df_groupby.sort(key=lambda x: x[0])
         df_groupby = {
-            f"{chance}% or 1/{round(1/chance*100)} ({len(pokemons)})": sorted(pokemons)
+            f"{round(1 / chance * 100, 4)}% or 1/{chance} ({len(pokemons)})": sorted(pokemons)
             for chance, pokemons in df_groupby
         }
 
@@ -498,7 +498,7 @@ class PoketwoChances(commands.Cog):
 
 {regions_msg}
 **4.1. Hisui** [`{hisui.group("total")}`] = {hisui.group("chance_per")}% ({hisui.group("chance")})
-- <{REGION_GISTS[hisui.group("title").casefold()]}>"""
+- <{REGION_GISTS[hisui.group("title").split(" ")[0]]}>"""
 
         await ctx.send(reg_msg)
 
