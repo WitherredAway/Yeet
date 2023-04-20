@@ -24,7 +24,8 @@ from google.oauth2 import service_account
 
 from helpers.context import CustomContext
 from helpers.constants import LOG_BORDER, NL, INDENT
-from ..utils.utils import UrlView, RoleMenu, make_progress_bar, normalize
+from ..utils.utils import UrlView, RoleMenu, make_progress_bar
+from .utils.afd_view import AfdView
 from .utils.constants import (
     AFD_ADMIN_ROLE_ID,
     AFD_ROLE_ID,
@@ -60,6 +61,11 @@ from .utils.labels import (
     PKM_LABEL,
     APPROVED_LABEL,
     USERNAME_LABEL,
+    TOPIC_LABEL,
+    RULES_LABEL,
+    DEADLINE_LABEL,
+    CLAIM_MAX_LABEL,
+    UNAPP_MAX_LABEL
 )
 
 from .utils.urls import (
@@ -243,9 +249,10 @@ class AfdSheet:
         for col in self.df.columns[1:]:  # For all columns after Pokemon
             self.edit_row_where(PKM_LABEL, pokemon, set_column=col, to_val=None)
 
-    async def update_row(self, dex: str) -> None:
-        row_vals = [self.df.iloc[int(dex) - COL_OFFSET].fillna("").tolist()]
-        await self.worksheet.update(f"B{int(dex) + COL_OFFSET}", row_vals)
+    async def update_row(self, dex: str, *, from_col: Optional[str] = 'B', to_col: Optional[str] = 'H') -> None:
+        ABC = 'ABCDEFGHIJKLMNOP'
+        row_vals = [self.df.iloc[int(dex) - COL_OFFSET, ABC.index(from_col)-1:ABC.index(to_col)-1].fillna("").tolist()]
+        await self.worksheet.update(f"{from_col}{int(dex) + COL_OFFSET}", row_vals)
 
     async def update_sheet(self) -> None:
         self.df = self.df.fillna("").reset_index()
@@ -259,6 +266,30 @@ class AfdSheet:
             .set_index("Dex")
             .replace("", np.nan)
         )
+
+    @property
+    def TOPIC(self):
+        return self.df.loc['1', TOPIC_LABEL]
+
+    @property
+    def RULES(self):
+        return self.df.loc['1', RULES_LABEL]
+
+    @property
+    def DEADLINE(self):
+        return self.df.loc['1', DEADLINE_LABEL]
+
+    @property
+    def DEADLINE_TS(self):
+        return discord.utils.format_dt(datetime.datetime.strptime(self.DEADLINE, "%d/%m/%Y %H:%M"), 'f')
+
+    @property
+    def CLAIM_MAX(self):
+        return int(self.df.loc['1', CLAIM_MAX_LABEL])
+
+    @property
+    def UNAPP_MAX(self):
+        return int(self.df.loc['1', UNAPP_MAX_LABEL])
 
     @classmethod
     async def create_new(cls, *, pokemon_df: pd.DataFrame) -> AfdSheet:
@@ -642,6 +673,38 @@ class Afd(commands.Cog):
             allowed_mentions=discord.AllowedMentions(roles=False),
         )
 
+    @property
+    def embed(self) -> Bot.Embed:
+        unc_list, unc_amount = self.validate_unclaimed()
+        claimed_amount = self.total_amount - unc_amount
+
+        unr_list, unr_amount = self.validate_unreviewed()
+
+        ml_list, ml_list_mention, ml_amount = self.validate_missing_link()
+        submitted_amount = claimed_amount - ml_amount
+        completed_amount = submitted_amount - unr_amount
+
+        rules = self.sheet.RULES.format(CLAIM_MAX=self.sheet.CLAIM_MAX, UNAPP_MAX=self.sheet.UNAPP_MAX)
+        description = f"""__**Topic:**__ {self.sheet.TOPIC}
+__**Deadline**__: {self.sheet.DEADLINE_TS}
+__**Max claimed (unfinished) pokemon**__: {self.sheet.CLAIM_MAX}
+__**Max unapproved pokemon**__: {self.sheet.UNAPP_MAX}
+__**Rules**__
+{rules}
+"""
+        embed = self.bot.Embed(title="Welcome to the April Fools community project!", description=description)
+
+        embed.add_field(
+            name="Community Stats",
+            value=f"""**Completed**
+{make_progress_bar(completed_amount, self.total_amount)} {completed_amount}/{self.total_amount}
+**Submitted**
+{make_progress_bar(submitted_amount, self.total_amount)} {submitted_amount}/{self.total_amount}
+**Claimed**
+{make_progress_bar(claimed_amount, self.total_amount)} {claimed_amount}/{self.total_amount}""",
+        )
+        return embed
+
     @afd.command(
         name="info",
         aliases=("information", "progress"),
@@ -662,50 +725,8 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
         if user is None:
             user = ctx.author
 
-        url_dict = {
-            "AFD Gist": (self.afd_gist.url, 0),
-            "AFD Credits": (self.credits_gist.url, 0),
-            "Spreadsheet": (self.sheet.url, 1),
-        }
-        view = UrlView(url_dict)
-
-        unc_list, unc_amount = self.validate_unclaimed()
-        claimed_amount = self.total_amount - unc_amount
-
-        unr_list, unr_amount = self.validate_unreviewed()
-
-        ml_list, ml_list_mention, ml_amount = self.validate_missing_link()
-        submitted_amount = claimed_amount - ml_amount
-        completed_amount = submitted_amount - unr_amount
-
-        description = None
-        claimed = self.validate_claimed(user)
-        if claimed is not False:
-            description = f"""**{user.name}'s Stats**
-{LOG_BORDER}
-{PADDING} **Total**: {claimed.total_amount}
-{PADDING} **Claimed** (incomplete): {claimed.claimed_amount}
-{REVIEW_EMOJI} **Submitted** (correction pending): {claimed.review_amount}
-{UNREVIEWED_EMOJI} **Submitted** (approval pending): {claimed.unreviewed_amount}
-{COMPLETED_EMOJI} **Completed**: {claimed.completed_amount}
-`Use the `**`afd view`**` command for more info.`
-{LOG_BORDER}
-{NL.join(claimed.total_list)}
-{LOG_BORDER}"""
-
-        embed = self.bot.Embed(title="April Fool's Day Event", description=description)
-
-        embed.add_field(
-            name="Community Stats",
-            value=f"""**Completed**
-{make_progress_bar(completed_amount, self.total_amount)} {completed_amount}/{self.total_amount}
-**Submitted**
-{make_progress_bar(submitted_amount, self.total_amount)} {submitted_amount}/{self.total_amount}
-**Claimed**
-{make_progress_bar(claimed_amount, self.total_amount)} {claimed_amount}/{self.total_amount}""",
-        )
-
-        await ctx.reply(embed=embed, view=view)
+        view = AfdView(self, ctx=ctx)
+        view.msg = await ctx.reply(embed=self.embed, view=view)
 
     @afd.command(
         name="view",
