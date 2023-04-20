@@ -73,6 +73,7 @@ if typing.TYPE_CHECKING:
     from main import Bot
 
 
+LOG_CHANNEL_ID = 1098442880202313779
 IMGUR_CLIENT_ID = os.getenv("IMGUR_CLIENT_ID")
 IMGUR_CLIENT_SECRET = os.getenv("IMGUR_CLIENT_SECRET")
 
@@ -377,6 +378,7 @@ class Afd(commands.Cog):
         self.gists_client = gists.Client()
         await self.gists_client.authorize(os.getenv("WgithubTOKEN"))
 
+        self.log_channel = await self.bot.fetch_channel(LOG_CHANNEL_ID)
         self.update_channel = await self.bot.fetch_channel(UPDATE_CHANNEL_ID)
         self.afd_gist = await self.gists_client.get_gist(AFD_GIST_URL)
         self.credits_gist = await self.gists_client.get_gist(AFD_CREDITS_GIST_URL)
@@ -451,6 +453,194 @@ class Afd(commands.Cog):
         await self.sheet.update_df()
         if ctx.invoked_subcommand is None:
             await ctx.invoke(self.info)
+
+    @commands.has_role(AFD_ADMIN_ROLE_ID)
+    @afd.command(
+        name="forceclaim",
+        aliases=("fc",),
+        brief="Forcefully claim a pokemon in someone's behalf.",
+        description="AFD Admin-only command to forcefully claim a pokemon in someone's behalf.",
+        help=f"""When this command is ran, first the sheet data will be fetched. Then:
+1. A pokemon, with the normalized and deaccented version of the provided name *including alt names*, will be searched for. If not found, it will return invalid.
+2. That pokemon's availability on the sheet will be checked:
+{INDENT}**i. If it's *not* claimed yet:**
+{INDENT}{INDENT}- If the user already has max claims ({CLAIM_LIMIT}), it will still give you the option to proceed.
+{INDENT}{INDENT}- Otherwise, you will be prompted to confirm that you want to forceclaim the pokemon for the user.
+{INDENT}**ii. If it's already claimed by *the same user*, you will be informed of such.**
+{INDENT}**iii. If it's already claimed by *another user*, you will be prompted to confirm if you want to override. Will warn you \
+    if there is a drawing submitted already.**
+3. The sheet will finally be updated with the user's Username and ID""",
+    )
+    async def forceclaim(
+        self, ctx: CustomContext, user: Optional[discord.User] = None, *, pokemon: str
+    ):
+        if user is None:
+            user = ctx.author
+        pokemon = await self.get_pokemon(ctx, pokemon)
+        if not pokemon:
+            return
+
+        row = self.sheet.get_pokemon_row(pokemon)
+        if not row.claimed:
+            content = None
+            if self.sheet.can_claim(user) is False:
+                content = f"**{user}** already has the max number ({CLAIM_LIMIT}) of pokemon claimed, still continue?"
+
+            conf, cmsg = await ctx.confirm(
+                embed=self.confirmation_embed(
+                    content
+                    or f"Are you sure you want to forceclaim **{pokemon}** for **{user}**?",
+                    pokemon=pokemon,
+                ),
+                confirm_label="Force Claim",
+            )
+            if conf is False:
+                return
+        elif row.user_id == str(user.id):
+            return await ctx.reply(
+                embed=self.confirmation_embed(
+                    f"**{pokemon}** is already claimed by **{user}**!",
+                    pokemon=pokemon,
+                    colour=EmbedColours.INVALID,
+                )
+            )
+        else:
+            conf, cmsg = await ctx.confirm(
+                embed=self.confirmation_embed(
+                    f"**{pokemon}** is already claimed by **{row.username}**, override and claim it for **{user}**?\
+                        {' There is a drawing submitted already which will be removed.' if row.imgur else ''}",
+                    pokemon=pokemon,
+                ),
+                confirm_label="Force Claim",
+            )
+            if conf is False:
+                return
+
+        self.sheet.claim(user, pokemon)
+        await self.sheet.update_row(row.dex)
+        await cmsg.edit(
+            embed=self.confirmation_embed(
+                f"You have successfully force claimed **{pokemon}** for **{user}**.",
+                pokemon=pokemon,
+                colour=EmbedColours.CLAIMED,
+            )
+        )
+        await self.log_channel.send(
+            embed=self.confirmation_embed(
+                f"**{pokemon}** has been forcefully claimed for **{user}**.",
+                pokemon=pokemon,
+                colour=EmbedColours.CLAIMED,
+            ),
+            view=UrlView({"Go to message": cmsg.jump_url})
+        )
+
+    @commands.has_role(AFD_ADMIN_ROLE_ID)
+    @afd.command(
+        name="forceunclaim",
+        aliases=("ufc",),
+        brief="Forcefully unclaim a pokemon",
+        description="AFD Admin-only command to forcefully unclaim a pokemon",
+        help=f"""When this command is ran, first the sheet data will be fetched. Then:
+1. A pokemon, with the normalized and deaccented version of the provided name *including alt names*, will be searched for. If not found, it will return invalid.
+2. That pokemon's availability on the sheet will be checked:
+{INDENT}**i. If it is claimed:**
+{INDENT}{INDENT}- You will be prompted to confirm that you want to force unclaim the pokemon.\
+    Will warn you if there is a drawing submitted already.
+{INDENT}{INDENT}- The sheet will finally be updated and remove the user's Username and ID
+{INDENT}**ii. If it's *not* claimed, you will be informed of such.**""",
+    )
+    async def forceunclaim(self, ctx, *, pokemon: str):
+        pokemon = await self.get_pokemon(ctx, pokemon)
+        if not pokemon:
+            return
+
+        row = self.sheet.get_pokemon_row(pokemon)
+        if not row.claimed:
+            return await ctx.reply(
+                embed=self.confirmation_embed(
+                    f"**{pokemon}** is not claimed.",
+                    pokemon=pokemon,
+                    colour=EmbedColours.INVALID,
+                )
+            )
+        conf, cmsg = await ctx.confirm(
+            embed=self.confirmation_embed(
+                f"**{pokemon}** is currently claimed by **{row.username}**, forcefully unclaim?\
+                        {' There is a drawing already submitted which will be removed.' if row.imgur else ''}",
+                pokemon=pokemon,
+            ),
+            confirm_label="Force Unclaim",
+        )
+        if conf is False:
+            return
+
+        self.sheet.unclaim(
+            pokemon,
+        )
+        await cmsg.edit(
+            embed=self.confirmation_embed(
+                f"You have successfully force unclaimed **{pokemon}** from **{row.username}**.",
+                pokemon=pokemon,
+                colour=EmbedColours.UNCLAIMED,
+            )
+        )
+        await self.log_channel.send(
+            embed=self.confirmation_embed(
+                f"**{pokemon}** has been forcefully unclaimed from **{row.username}**.",
+                pokemon=pokemon,
+                colour=EmbedColours.UNCLAIMED,
+            ),
+            view=UrlView({"Go to message": cmsg.jump_url})
+        )
+
+    @commands.is_owner()
+    @afd.command(
+        name="new_spreadsheet",
+        brief="Used to create a brand new spreadsheet.",
+        description="Sets up a new spreadsheet to use. Intended to be used only once.",
+    )
+    async def new(self, ctx: CustomContext):
+        if hasattr(self, "sheet"):
+            return await ctx.reply("A spreadsheet already exists.")
+
+        async with ctx.typing():
+            self.sheet: AfdSheet = await AfdSheet.create_new(pokemon_df=self.pk)
+
+        embed = self.bot.Embed(
+            title="New Spreadsheet created",
+            description=f"[Please set it permanently in the code.]({self.sheet.url})",
+        )
+        await ctx.reply(
+            embed=embed, view=UrlView({"Go To Spreadsheet": self.sheet.url})
+        )
+
+    @commands.is_owner()
+    @afd.command(
+        name="forceupdate",
+        brief="Forcefully update AFD gists.",
+        description="Used to forcefully update the AFD gist and Credits gist",
+    )
+    async def forceupdate(self, ctx: CustomContext):
+        for attr in DEL_ATTRS_TO_UPDATE:
+            try:
+                delattr(self, attr)
+            except AttributeError:
+                pass
+
+        await ctx.message.add_reaction("▶️")
+        self.update_pokemon.restart()
+        await ctx.message.add_reaction("✅")
+
+    @commands.is_owner()
+    @afd.command(name="rolemenu")
+    async def rolemenu(self, ctx: CustomContext):
+        role_menu = AFDRoleMenu()
+        await ctx.send(
+            f"""<@&{AFD_ROLE_ID}>: Role required to access `afd` commands
+<@&{AFD_ADMIN_ROLE_ID}>: Role required to access AFD Admin only `afd` commands.""",
+            view=role_menu,
+            allowed_mentions=discord.AllowedMentions(roles=False),
+        )
 
     @afd.command(
         name="info",
@@ -630,77 +820,13 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
                 footer=f"You can undo this using the `unclaim` command.",
             )
         )
-
-    @commands.has_role(AFD_ADMIN_ROLE_ID)
-    @afd.command(
-        name="forceclaim",
-        aliases=("fc",),
-        brief="Forcefully claim a pokemon in someone's behalf.",
-        description="AFD Admin-only command to forcefully claim a pokemon in someone's behalf.",
-        help=f"""When this command is ran, first the sheet data will be fetched. Then:
-1. A pokemon, with the normalized and deaccented version of the provided name *including alt names*, will be searched for. If not found, it will return invalid.
-2. That pokemon's availability on the sheet will be checked:
-{INDENT}**i. If it's *not* claimed yet:**
-{INDENT}{INDENT}- If the user already has max claims ({CLAIM_LIMIT}), it will still give you the option to proceed.
-{INDENT}{INDENT}- Otherwise, you will be prompted to confirm that you want to forceclaim the pokemon for the user.
-{INDENT}**ii. If it's already claimed by *the same user*, you will be informed of such.**
-{INDENT}**iii. If it's already claimed by *another user*, you will be prompted to confirm if you want to override. Will warn you \
-    if there is a drawing submitted already.**
-3. The sheet will finally be updated with the user's Username and ID""",
-    )
-    async def forceclaim(
-        self, ctx: CustomContext, user: Optional[discord.User] = None, *, pokemon: str
-    ):
-        if user is None:
-            user = ctx.author
-        pokemon = await self.get_pokemon(ctx, pokemon)
-        if not pokemon:
-            return
-
-        row = self.sheet.get_pokemon_row(pokemon)
-        if not row.claimed:
-            content = None
-            if self.sheet.can_claim(user) is False:
-                content = f"**{user}** already has the max number ({CLAIM_LIMIT}) of pokemon claimed, still continue?"
-
-            conf, cmsg = await ctx.confirm(
-                embed=self.confirmation_embed(
-                    content
-                    or f"Are you sure you want to forceclaim **{pokemon}** for **{user}**?",
-                    pokemon=pokemon,
-                ),
-                confirm_label="Force Claim",
-            )
-            if conf is False:
-                return
-        elif row.user_id == str(user.id):
-            return await ctx.reply(
-                embed=self.confirmation_embed(
-                    f"**{pokemon}** is already claimed by **{user}**!",
-                    pokemon=pokemon,
-                    colour=EmbedColours.INVALID,
-                )
-            )
-        else:
-            conf, cmsg = await ctx.confirm(
-                embed=self.confirmation_embed(
-                    f"**{pokemon}** is already claimed by **{row.username}**, override and claim it for **{user}**?\
-                        {' There is a drawing submitted already which will be removed.' if row.imgur else ''}",
-                    pokemon=pokemon,
-                ),
-                confirm_label="Force Claim",
-            )
-            if conf is False:
-                return
-
-        self.sheet.claim(user, pokemon)
-        await self.sheet.update_row(row.dex)
-        await cmsg.edit(
+        await self.log_channel.send(
             embed=self.confirmation_embed(
-                f"You have successfully force claimed **{pokemon}** for **{user}**.",
+                f"**{ctx.author}** has claimed **{pokemon}**.",
                 pokemon=pokemon,
                 colour=EmbedColours.CLAIMED,
-            )
+            ),
+            view=UrlView({"Go to message": cmsg.jump_url})
         )
 
     @afd.command(
@@ -772,105 +898,13 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
                 colour=EmbedColours.UNCLAIMED,
             )
         )
-
-    @commands.has_role(AFD_ADMIN_ROLE_ID)
-    @afd.command(
-        name="forceunclaim",
-        aliases=("ufc",),
-        brief="Forcefully unclaim a pokemon",
-        description="AFD Admin-only command to forcefully unclaim a pokemon",
-        help=f"""When this command is ran, first the sheet data will be fetched. Then:
-1. A pokemon, with the normalized and deaccented version of the provided name *including alt names*, will be searched for. If not found, it will return invalid.
-2. That pokemon's availability on the sheet will be checked:
-{INDENT}**i. If it is claimed:**
-{INDENT}{INDENT}- You will be prompted to confirm that you want to force unclaim the pokemon.\
-    Will warn you if there is a drawing submitted already.
-{INDENT}{INDENT}- The sheet will finally be updated and remove the user's Username and ID
-{INDENT}**ii. If it's *not* claimed, you will be informed of such.**""",
-    )
-    async def forceunclaim(self, ctx, *, pokemon: str):
-        pokemon = await self.get_pokemon(ctx, pokemon)
-        if not pokemon:
-            return
-
-        row = self.sheet.get_pokemon_row(pokemon)
-        if not row.claimed:
-            return await ctx.reply(
-                embed=self.confirmation_embed(
-                    f"**{pokemon}** is not claimed.",
-                    pokemon=pokemon,
-                    colour=EmbedColours.INVALID,
-                )
-            )
-        conf, cmsg = await ctx.confirm(
+        await self.log_channel.send(
             embed=self.confirmation_embed(
-                f"**{pokemon}** is currently claimed by **{row.username}**, forcefully unclaim?\
-                        {' There is a drawing already submitted which will be removed.' if row.imgur else ''}",
-                pokemon=pokemon,
-            ),
-            confirm_label="Force Unclaim",
-        )
-        if conf is False:
-            return
-
-        self.sheet.unclaim(
-            pokemon,
-        )
-        await cmsg.edit(
-            embed=self.confirmation_embed(
-                f"You have successfully force unclaimed **{pokemon}** from **{row.username}**.",
+                f"**{ctx.author}** has unclaimed **{pokemon}**.",
                 pokemon=pokemon,
                 colour=EmbedColours.UNCLAIMED,
-            )
-        )
-
-    @commands.is_owner()
-    @afd.command(
-        name="new_spreadsheet",
-        brief="Used to create a brand new spreadsheet.",
-        description="Sets up a new spreadsheet to use. Intended to be used only once.",
-    )
-    async def new(self, ctx: CustomContext):
-        if hasattr(self, "sheet"):
-            return await ctx.reply("A spreadsheet already exists.")
-
-        async with ctx.typing():
-            self.sheet: AfdSheet = await AfdSheet.create_new(pokemon_df=self.pk)
-
-        embed = self.bot.Embed(
-            title="New Spreadsheet created",
-            description=f"[Please set it permanently in the code.]({self.sheet.url})",
-        )
-        await ctx.reply(
-            embed=embed, view=UrlView({"Go To Spreadsheet": self.sheet.url})
-        )
-
-    @commands.is_owner()
-    @afd.command(
-        name="forceupdate",
-        brief="Forcefully update AFD gists.",
-        description="Used to forcefully update the AFD gist and Credits gist",
-    )
-    async def forceupdate(self, ctx: CustomContext):
-        for attr in DEL_ATTRS_TO_UPDATE:
-            try:
-                delattr(self, attr)
-            except AttributeError:
-                pass
-
-        await ctx.message.add_reaction("▶️")
-        self.update_pokemon.restart()
-        await ctx.message.add_reaction("✅")
-
-    @commands.is_owner()
-    @afd.command(name="rolemenu")
-    async def rolemenu(self, ctx: CustomContext):
-        role_menu = AFDRoleMenu()
-        await ctx.send(
-            f"""<@&{AFD_ROLE_ID}>: Role required to access `afd` commands
-<@&{AFD_ADMIN_ROLE_ID}>: Role required to access AFD Admin only `afd` commands.""",
-            view=role_menu,
-            allowed_mentions=discord.AllowedMentions(roles=False),
+            ),
+            view=UrlView({"Go to message": cmsg.jump_url})
         )
 
     async def check_claim(
