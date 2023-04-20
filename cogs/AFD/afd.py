@@ -407,6 +407,9 @@ class Afd(commands.Cog):
     def sheet(self) -> AfdSheet:
         return AfdSheet(SHEET_URL, pokemon_df=self.pk)
 
+    def is_admin(self, user: discord.Member) -> bool:
+        return AFD_ADMIN_ROLE_ID in [r.id for r in user.roles]
+
     def confirmation_embed(
         self,
         msg: str,
@@ -554,39 +557,6 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
             status = "Not claimed"
             embed.set_footer(text=status)
         await ctx.send(embed=embed)
-
-    async def check_claim(
-        self,
-        ctx: CustomContext,
-        decide_msg: Callable[[Row], str],
-        pokemon: str,
-        *,
-        check: Callable[[Row], bool],
-        row: Optional[Row] = None,
-        decide_footer: Optional[Callable[[Row], str]] = None,
-        cmsg: Optional[bool] = None,
-    ) -> bool:
-        if not row:
-            # Check once again for any changes to the sheet
-            await self.sheet.update_df()
-            row = self.sheet.get_pokemon_row(pokemon)
-
-        if check(row):
-            embed = self.confirmation_embed(
-                decide_msg(row),
-                pokemon=pokemon,
-                colour=EmbedColours.INVALID,
-                footer=decide_footer(row) if decide_footer else decide_footer,
-            )
-            if cmsg:
-                await cmsg.edit(embed=embed)
-            else:
-                await ctx.reply(embed=embed)
-            return True
-        return False
-
-    def is_admin(self, user: discord.Member) -> bool:
-        return AFD_ADMIN_ROLE_ID in [r.id for r in user.roles]
 
     @afd.command(
         name="claim",
@@ -902,6 +872,36 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
             view=role_menu,
             allowed_mentions=discord.AllowedMentions(roles=False),
         )
+
+    async def check_claim(
+        self,
+        ctx: CustomContext,
+        decide_msg: Callable[[Row], str],
+        pokemon: str,
+        *,
+        check: Callable[[Row], bool],
+        row: Optional[Row] = None,
+        decide_footer: Optional[Callable[[Row], str]] = None,
+        cmsg: Optional[bool] = None,
+    ) -> bool:
+        if not row:
+            # Check once again for any changes to the sheet
+            await self.sheet.update_df()
+            row = self.sheet.get_pokemon_row(pokemon)
+
+        if check(row):
+            embed = self.confirmation_embed(
+                decide_msg(row),
+                pokemon=pokemon,
+                colour=EmbedColours.INVALID,
+                footer=decide_footer(row) if decide_footer else decide_footer,
+            )
+            if cmsg:
+                await cmsg.edit(embed=embed)
+            else:
+                await ctx.reply(embed=embed)
+            return True
+        return False
 
     # The task that updates the unclaimed pokemon gist
     @tasks.loop(minutes=5)

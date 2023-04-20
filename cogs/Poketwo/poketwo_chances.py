@@ -100,7 +100,9 @@ class PoketwoChances(commands.Cog):
     @cached_property
     def pk(self):
         pk = self.bot.pk
-        self.possible_abundance = round(pk.loc[pk["catchable"] > 0, "abundance"].sum(), 4)
+        self.possible_abundance = round(
+            pk.loc[pk["catchable"] > 0, "abundance"].sum(), 4
+        )
         return pk
 
     async def update_chance_gist(
@@ -131,12 +133,14 @@ class PoketwoChances(commands.Cog):
 
         df_groupby = df.set_index("Pokemon").groupby("Chance")
         df_groupby = [
-            (int(chance.split('/')[-1]), pokemons)
+            (int(chance.split("/")[-1]), pokemons)
             for chance, pokemons in df_groupby.groups.items()
         ]
         df_groupby.sort(key=lambda x: x[0])
         df_groupby = {
-            f"{round(1 / chance * 100, 4)}% or 1/{chance} ({len(pokemons)})": sorted(pokemons)
+            f"{round(1 / chance * 100, 4)}% or 1/{chance} ({len(pokemons)})": sorted(
+                pokemons
+            )
             for chance, pokemons in df_groupby
         }
 
@@ -202,7 +206,7 @@ class PoketwoChances(commands.Cog):
         invoke_without_command=True,
     )
     async def chance(self, ctx, *, pokemon: str):
-        pkm_df = self.pk.loc[self.pk['name.en'] == get_pokemon(pokemon, pk=self.pk)]
+        pkm_df = self.pk.loc[self.pk["name.en"] == get_pokemon(pokemon, pk=self.pk)]
         pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance"]]
 
         if len(pkm_df) == 0:

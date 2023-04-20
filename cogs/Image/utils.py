@@ -62,7 +62,7 @@ def center_resize(
     final_img.paste(img, (x, y))
 
     with io.BytesIO() as img_bytes:
-        final_img.save(img_bytes, 'PNG')
+        final_img.save(img_bytes, "PNG")
         return img_bytes.getvalue(), final_img.size
 
 
