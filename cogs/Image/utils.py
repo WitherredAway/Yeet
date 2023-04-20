@@ -1,7 +1,10 @@
 import io
-from typing import Tuple, Optional
+import re
+from typing import Tuple, Optional, Union
+
 from PIL import Image
 
+from cogs.Image.constants import ASPECT_RATIO_ORIGINAL
 
 
 def resize(
@@ -23,7 +26,7 @@ def resize(
         )
         image.paste(att_image, offset)
     else:
-        image = att_image.resize((width, height))
+        image = att_image.resize((width, height), Image.ANTIALIAS)
 
     with io.BytesIO() as image_bytes:
         image.save(image_bytes, "PNG")
@@ -37,53 +40,36 @@ def center_resize(
     width: int,
     crop: Optional[bool] = None,
 ) -> Tuple[bytes, Tuple[int]]:
-    att_image = Image.open(file)
-    if crop is not True:
-        h_issmall = height <= att_image.size[1]
-        w_issmall = width <= att_image.size[0]
-        if h_issmall and w_issmall:
-            with io.BytesIO() as file:
-                att_image.save(file, "PNG")
-                return resize(file=file, height=height, width=width, crop=crop)
-        elif h_issmall:
-            att_image = Image.open(
-                io.BytesIO(
-                    resize(file, height=height, width=att_image.size[0])
-                )
-            )
-        elif w_issmall:
-            att_image = Image.open(
-                io.BytesIO(resize(file, height=att_image.size[1], width=width))
-            )
-    img_width, img_height = att_image.size
-
-    bg_image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-
-    offset = (
-        (bg_image.size[0] - img_width) // 2,
-        (bg_image.size[1] - img_height) // 2,
-    )
-    bg_image.paste(att_image, offset)
-    with io.BytesIO() as image_bytes:
-        bg_image.save(image_bytes, "PNG")
-        return image_bytes.getvalue(), bg_image.size
-
-
-def fit_image(file: io.BytesIO, *, crop: Optional[bool] = False) -> bytes:
+    new_size = (width, height)
     img = Image.open(file)
-    og_size = img.size
+    original_size = img.size
+
+    # Calculate the new size of the image while maintaining its aspect ratio
+    width_ratio = new_size[0] / original_size[0]
+    height_ratio = new_size[1] / original_size[1]
+    ratio = min(width_ratio, height_ratio)
+    new_width = int(original_size[0] * ratio)
+    new_height = int(original_size[1] * ratio)
+
+    # Resize the image only if crop is not true
+    if crop is not True:
+        img = img.resize((new_width, new_height), Image.ANTIALIAS)
+
+    # Create a new image with the desired size and paste the resized image on top
+    final_img = Image.new("RGBA", new_size, (255, 255, 255, 0))
+    x = int((new_size[0] - new_width) / 2)
+    y = int((new_size[1] - new_height) / 2)
+    final_img.paste(img, (x, y))
+
+    with io.BytesIO() as img_bytes:
+        final_img.save(img_bytes, 'PNG')
+        return img_bytes.getvalue(), final_img.size
+
+
+def fit_image(file: io.BytesIO) -> bytes:
+    img = Image.open(file)
     bbox = img.getbbox()
     img = img.crop(bbox)
-
-    if crop is not True:
-        image = Image.new("RGBA", og_size, (0, 0, 0, 0))
-
-        offset = (
-            (image.width - img.width) // 2,
-            (image.height - img.height) // 2,
-        )
-        image.paste(img, offset)
-        img = image
 
     with io.BytesIO() as image_bytes:
         img.save(image_bytes, "PNG")

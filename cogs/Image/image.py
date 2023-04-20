@@ -72,6 +72,7 @@ The way height, width or aspect ratio parameters are passed is through flags.
         if any((height == 0, width == 0)):
             return await ctx.reply("Height or width cannot be zero!")
 
+        ar_multiplier = None
         if ar is not None:
             if all((height is not None, width is not None)):
                 await ctx.reply(
@@ -140,10 +141,15 @@ The way height, width or aspect ratio parameters are passed is through flags.
 
             file = io.BytesIO(await attachment.read())
             if fit is True:
-                file, fit_size = fit_image(file, crop=crop)
+                file, fit_size = fit_image(file)
                 file = io.BytesIO(file)
-                if all((height is None, width is None, ar is None)):
-                    _width, _height = fit_size
+                if all((ar is None, crop is True)):
+                    if all((height is None, width is None)):
+                        _width, _height = fit_size
+                    elif height is None:
+                        _height = fit_size[-1]
+                    elif width is None:
+                        _width = fit_size[0]
 
             if center is True:
                 resized, (_width, _height) = center_resize(
