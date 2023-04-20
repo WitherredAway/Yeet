@@ -684,15 +684,18 @@ class Afd(commands.Cog):
         submitted_amount = claimed_amount - ml_amount
         completed_amount = submitted_amount - unr_amount
 
-        rules = self.sheet.RULES.format(CLAIM_MAX=self.sheet.CLAIM_MAX, UNAPP_MAX=self.sheet.UNAPP_MAX)
-        description = f"""__**Topic:**__ {self.sheet.TOPIC}
-__**Deadline**__: {self.sheet.DEADLINE_TS}
-__**Max claimed (unfinished) pokemon**__: {self.sheet.CLAIM_MAX}
-__**Max unapproved pokemon**__: {self.sheet.UNAPP_MAX}
-__**Rules**__
-{rules}
+        description = f"""**Topic:** {self.sheet.TOPIC}
+
+**Deadline**: {self.sheet.DEADLINE_TS}
+**Max claimed (unfinished) pokemon**: {self.sheet.CLAIM_MAX}
+**Max unapproved pokemon**: {self.sheet.UNAPP_MAX}
 """
         embed = self.bot.Embed(title="Welcome to the April Fools community project!", description=description)
+        embed.add_field(
+            name="Rules",
+            value=self.sheet.RULES.format(CLAIM_MAX=self.sheet.CLAIM_MAX, UNAPP_MAX=self.sheet.UNAPP_MAX),
+            inline=False
+        )
 
         embed.add_field(
             name="Community Stats",
@@ -702,6 +705,7 @@ __**Rules**__
 {make_progress_bar(submitted_amount, self.total_amount)} {submitted_amount}/{self.total_amount}
 **Claimed**
 {make_progress_bar(claimed_amount, self.total_amount)} {claimed_amount}/{self.total_amount}""",
+            inline=False
         )
         return embed
 
