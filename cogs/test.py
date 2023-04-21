@@ -1,15 +1,18 @@
-import re
-import os
+from __future__ import annotations
 
-import pandas as pd
+import typing
+
 import discord
 from discord.ext import commands
 
+if typing.TYPE_CHECKING:
+    from main import Bot
 
-class Test(commands.Cog):
-    def __init__(self, bot):
+
+class NewCog(commands.Cog):
+    def __init__(self, bot: Bot):
         self.bot = bot
 
 
 async def setup(bot):
-    await bot.add_cog(Test(bot))
+    await bot.add_cog(NewCog(bot))
