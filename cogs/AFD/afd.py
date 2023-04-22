@@ -5,6 +5,7 @@ import datetime
 from enum import Enum
 import logging
 import os
+import re
 import time
 import typing
 from functools import cached_property
@@ -80,11 +81,50 @@ if typing.TYPE_CHECKING:
 
 
 LOG_CHANNEL_ID = 1098442880202313779
+
 IMGUR_CLIENT_ID = os.getenv("IMGUR_CLIENT_ID")
 IMGUR_CLIENT_SECRET = os.getenv("IMGUR_CLIENT_SECRET")
 
 
 log = logging.getLogger(__name__)
+
+
+imgur_regex = re.compile("(?:https?:\/\/)?(?:www\.)?((?:i\.)?imgur.com\/(?P<dir>a|gallery)?(?P<id>.+))", re.MULTILINE)
+
+async def resolve_imgur_url(url: str, *, session: aiohttp.ClientSession) -> str:
+    if (match := imgur_regex.match(url)) is None:
+        raise ValueError(f"Invalid url: {url}")
+
+    url = re.sub("$(?:https?:\/\/)?(?:www\.)?", "", url)  # Remove prefixing http(s)://www.
+
+    if url.startswith("i.imgur.com/"):
+        return f"https://{url}"
+
+    img_dir = match.group('dir')
+    _id = match.group('id')
+    if img_dir == "a":
+        req_url = f"https://api.imgur.com/3/album/{_id}"
+    elif img_dir == "gallery":
+        req_url = f"https://api.imgur.com/3/gallery/{_id}"
+    elif not img_dir:
+        return f"https://i.imgur.com/{_id}.png"
+
+    headers = {"Authorization": f"Client-ID {IMGUR_CLIENT_ID}"}
+    log.info("Calling Imgur API")
+    async with session.get(req_url, headers=headers) as resp:
+        try:
+            result = await resp.json()
+        except aiohttp.ContentTypeError as e:
+            print("Error requesting", req_url)
+            print("Text:")
+            print(await resp.text())
+            raise e
+        else:
+            try:
+                return result["data"]["images"][0]["link"]
+            except KeyError as e:
+                print(result)
+                raise e
 
 
 class EmbedColours(Enum):
@@ -1175,37 +1215,6 @@ Credits: <{self.credits_gist.url}>"""
 
         return ml_list, ml_list_mention, ml_amount
 
-    async def resolve_imgur_url(self, url: str) -> str:
-        if url.startswith("https://imgur.com/"):
-            link = (url.replace("https://imgur.com/", "").strip()).split("/")
-            _id = link[-1]
-            if link[0] == "a":
-                req_url = f"https://api.imgur.com/3/album/{_id}"
-            elif link[0] == "gallery":
-                req_url = f"https://api.imgur.com/3/gallery/{_id}"
-            elif len(link) == 1:
-                return f"https://i.imgur.com/{_id}.png"
-        elif url.startswith("https://i.imgur.com/"):
-            return url
-        else:
-            raise ValueError(f"Invalid url: {url}")
-
-        headers = {"Authorization": f"Client-ID {IMGUR_CLIENT_ID}"}
-        log.info("Calling Imgur API")
-        async with self.bot.session.get(req_url, headers=headers) as resp:
-            try:
-                result = await resp.json()
-            except aiohttp.ContentTypeError as e:
-                print("Error requesting", req_url)
-                print("Text:")
-                print(await resp.text())
-                raise e
-            else:
-                try:
-                    return result["data"]["images"][0]["link"]
-                except KeyError as e:
-                    print(result)
-
     def get_participants(
         self,
         *,
@@ -1249,7 +1258,7 @@ Credits: <{self.credits_gist.url}>"""
                 user_id = int(row.user_id)
 
                 if row.imgur:
-                    imgur = await self.resolve_imgur_url(row.imgur)
+                    imgur = await resolve_imgur_url(row.imgur, session=self.bot.session)
                     link = f"![art]({imgur})"
 
                 user = row.username
