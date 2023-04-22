@@ -402,6 +402,89 @@ class AFDRoleMenu(RoleMenu):
         super().__init__(roles_dict)
 
 
+class PokemonView(discord.ui.View):
+    def __init__(self, ctx: CustomContext, row: Row, *, afdcog: Afd, user: Optional[discord.User] = None):
+        super().__init__(timeout=180)
+        self.ctx = ctx
+        self.row = row
+        self.pokemon = self.row.pokemon
+        self.afdcog = afdcog
+        self.sheet = self.afdcog.sheet
+        self.user = user
+
+        self.msg: discord.Message
+
+    async def on_timeout(self):
+        self.clear_items()
+        await self.msg.edit(embed=self.embed, view=self)
+        self.stop()
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user != self.ctx.author:
+            await interaction.response.send_message(
+                f"You can't use this!",
+                ephemeral=True,
+            )
+            return False
+        return True
+
+    @property
+    def embed(self) -> Bot.Embed:
+        ctx = self.ctx
+        row = self.row
+        pokemon = self.pokemon
+        base_image = self.sheet.get_pokemon_image(pokemon)
+
+        embed = ctx.bot.Embed(title=f"#{row.dex} - {pokemon}", colour=row.colour)
+        embed.set_thumbnail(url=base_image)
+        self.update_buttons(embed)
+        return embed
+
+    def update_buttons(self, embed: Bot.Embed):
+        row = self.row
+        self.clear_items()
+        if row.claimed:
+            self.add_item(self.unclaim_btn)
+            if row.imgur:
+                embed.set_image(url=row.imgur)
+
+            if row.approved_by:
+                status = "Complete and approved."
+            elif row.comment:
+                status = "Correction pending."
+                embed.add_field(name=CMT_LABEL, value=str(row.comment), inline=False)
+            elif row.unreviewed:
+                status = "Submitted, Awaiting review."
+            else:
+                status = "Claimed by"
+
+            embed.set_footer(
+                text=f"{status}\n{row.username} ({row.user_id})",
+                icon_url=self.user.avatar.url,
+            )
+        else:
+            status = "Not claimed"
+            embed.set_footer(text=status)
+            self.add_item(self.claim_btn)
+
+    async def update_msg(self):
+        await self.sheet.update_df()
+        self.row = self.sheet.get_pokemon_row(self.pokemon)
+        self.user = (await self.afdcog.fetch_user(int(self.row.user_id))) if self.row.claimed else None
+        await self.msg.edit(embed=self.embed, view=self)
+
+    @discord.ui.button(label="Claim", style=discord.ButtonStyle.blurple)
+    async def claim_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        await self.afdcog.claim(self.ctx, self.pokemon)
+        await self.update_msg()
+
+    @discord.ui.button(label="Unclaim", style=discord.ButtonStyle.red)
+    async def unclaim_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        await self.afdcog.unclaim(self.ctx, self.pokemon)
+        await self.update_msg()
+
 class Afd(commands.Cog):
     def __init__(self, bot):
         self.bot: Bot = bot
@@ -741,7 +824,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
         pokemon: Optional[str] = None,
     ):
         if pokemon and (user is None):
-            return await ctx.invoke(self.pokemon, pokemon=pokemon)
+            return await ctx.invoke(self.view, pokemon=pokemon)
         if user is None:
             user = ctx.author
 
@@ -753,58 +836,18 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
         aliases=("pokemon", "pkm", "d", "dex"),
         brief="See info of a pokemon from the sheet",
     )
-    async def pokemon(self, ctx: CustomContext, *, pokemon: str):
+    async def view(self, ctx: CustomContext, *, pokemon: str):
         pokemon = await self.get_pokemon(ctx, pokemon)
         if not pokemon:
             return
 
         row = self.sheet.get_pokemon_row(pokemon)
-        base_image = self.sheet.get_pokemon_image(pokemon)
+        user = (await self.fetch_user(int(row.user_id))) if row.claimed else None
 
-        embed = ctx.bot.Embed(title=f"#{row.dex} - {pokemon}", colour=row.colour)
-        embed.set_thumbnail(url=base_image)
+        view = PokemonView(ctx, row, afdcog=self, user=user)
+        view.msg = await ctx.send(embed=view.embed, view=view)
 
-        if row.claimed:
-            user = await self.fetch_user(int(row.user_id))
-
-            if row.imgur:
-                embed.set_image(url=row.imgur)
-
-            if row.approved_by:
-                status = "Complete and approved."
-            elif row.comment:
-                status = "Correction pending."
-                embed.add_field(name=CMT_LABEL, value=str(row.comment), inline=False)
-            elif row.unreviewed:
-                status = "Submitted, Awaiting review."
-            else:
-                status = "Claimed by"
-
-            embed.set_footer(
-                text=f"{status}\n{row.username} ({row.user_id})",
-                icon_url=user.avatar.url,
-            )
-        else:
-            status = "Not claimed"
-            embed.set_footer(text=status)
-        await ctx.send(embed=embed)
-
-    @afd.command(
-        name="claim",
-        brief="Claim a pokemon to draw",
-        description=f"Claim a pokemon to draw. Can have upto {CLAIM_LIMIT} claimed pokemon at a time. Pokemon alt names are supported!",
-        help=f"""When this command is ran, first the sheet data will be fetched. Then:
-1. A pokemon, with the normalized and deaccented version of the provided name *including alt names*, will be searched for. If not found, it will return invalid.
-2. That pokemon's availability on the sheet will be checked:
-{INDENT}**i. If it's *not* claimed yet:**
-{INDENT}{INDENT}- If you already have max claims ({CLAIM_LIMIT}), it will not let you claim. Does not apply to admins.
-{INDENT}{INDENT}- Otherwise, you will be prompted to confirm that you want to claim the pokemon.
-{INDENT}{INDENT}- The sheet data will be fetched again to check for any changes since.
-{INDENT}{INDENT}{INDENT}- If the pokemon has since been claimed, you will be informed of such.
-{INDENT}{INDENT}- The sheet will finally be updated with your Username and ID
-{INDENT}**ii. If it's already claimed by *you* or *someone else*, you will be informed of such.**""",
-    )
-    async def claim(self, ctx: CustomContext, *, pokemon: str):
+    async def claim(self, ctx: CustomContext, pokemon: str):
         pokemon = await self.get_pokemon(ctx, pokemon)
         if not pokemon:
             return
@@ -871,20 +914,24 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
         )
 
     @afd.command(
-        name="unclaim",
-        brief="Unclaim a pokemon",
-        description=f"Unclaim a pokemon claimed by you.",
+        name="claim",
+        brief="Claim a pokemon to draw",
+        description=f"Claim a pokemon to draw. Can have upto {CLAIM_LIMIT} claimed pokemon at a time. Pokemon alt names are supported!",
         help=f"""When this command is ran, first the sheet data will be fetched. Then:
 1. A pokemon, with the normalized and deaccented version of the provided name *including alt names*, will be searched for. If not found, it will return invalid.
 2. That pokemon's availability on the sheet will be checked:
-{INDENT}**i. If it is claimed by *you*:**
-{INDENT}{INDENT}- You will be prompted to confirm that you want to unclaim the pokemon.\
-    Will warn you if you have already submitted a drawing.
-{INDENT}{INDENT}- The sheet will finally be updated and remove your Username and ID
-{INDENT}**ii. If it's *not* claimed, you will be informed of such.**
-{INDENT}**iii. If it's claimed by *someone else*, you will be informed of such.**""",
+{INDENT}**i. If it's *not* claimed yet:**
+{INDENT}{INDENT}- If you already have max claims ({CLAIM_LIMIT}), it will not let you claim. Does not apply to admins.
+{INDENT}{INDENT}- Otherwise, you will be prompted to confirm that you want to claim the pokemon.
+{INDENT}{INDENT}- The sheet data will be fetched again to check for any changes since.
+{INDENT}{INDENT}{INDENT}- If the pokemon has since been claimed, you will be informed of such.
+{INDENT}{INDENT}- The sheet will finally be updated with your Username and ID
+{INDENT}**ii. If it's already claimed by *you* or *someone else*, you will be informed of such.**""",
     )
-    async def unclaim(self, ctx: CustomContext, *, pokemon: str):
+    async def claim_cmd(self, ctx: CustomContext, *, pokemon: str):
+        await self.claim(ctx, pokemon)
+
+    async def unclaim(self, ctx: CustomContext, pokemon: str):
         pokemon = await self.get_pokemon(ctx, pokemon)
         if not pokemon:
             return
@@ -947,6 +994,23 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
             ),
             view=UrlView({"Go to message": cmsg.jump_url}),
         )
+
+    @afd.command(
+        name="unclaim",
+        brief="Unclaim a pokemon",
+        description=f"Unclaim a pokemon claimed by you.",
+        help=f"""When this command is ran, first the sheet data will be fetched. Then:
+1. A pokemon, with the normalized and deaccented version of the provided name *including alt names*, will be searched for. If not found, it will return invalid.
+2. That pokemon's availability on the sheet will be checked:
+{INDENT}**i. If it is claimed by *you*:**
+{INDENT}{INDENT}- You will be prompted to confirm that you want to unclaim the pokemon.\
+    Will warn you if you have already submitted a drawing.
+{INDENT}{INDENT}- The sheet will finally be updated and remove your Username and ID
+{INDENT}**ii. If it's *not* claimed, you will be informed of such.**
+{INDENT}**iii. If it's claimed by *someone else*, you will be informed of such.**""",
+    )
+    async def unclaim_cmd(self, ctx: CustomContext, *, pokemon: str):
+        await self.unclaim(ctx, pokemon)
 
     async def check_claim(
         self,
