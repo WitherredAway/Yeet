@@ -1,31 +1,32 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import datetime
-from enum import Enum
 import logging
 import os
 import re
 import time
 import typing
+from dataclasses import dataclass
+from enum import Enum
 from functools import cached_property
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import aiohttp
 import discord
-from cogs.Draw.constants import PADDING
-from cogs.Poketwo.utils import get_pokemon
 import gists
 import gspread_asyncio
 import numpy as np
 import pandas as pd
-from pandas.core.groupby.generic import GroupBy
 from discord.ext import commands, tasks
 from google.oauth2 import service_account
+from pandas.core.groupby.generic import GroupBy
 
+from cogs.Draw.constants import PADDING
+from cogs.Poketwo.utils import get_pokemon
+from helpers.constants import INDENT, LOG_BORDER, NL
 from helpers.context import CustomContext
-from helpers.constants import LOG_BORDER, NL, INDENT
-from ..utils.utils import UrlView, RoleMenu, make_progress_bar
+
+from ..utils.utils import RoleMenu, UrlView, make_progress_bar
 from .utils.afd_view import AfdView
 from .utils.constants import (
     AFD_ADMIN_ROLE_ID,
@@ -40,7 +41,6 @@ from .utils.constants import (
     TOP_N,
     UPDATE_CHANNEL_ID,
 )
-
 from .utils.filenames import (
     CONTENTS_FILENAME,
     CREDITS_FILENAME,
@@ -51,30 +51,23 @@ from .utils.filenames import (
     UNC_FILENAME,
     UNR_FILENAME,
 )
-
 from .utils.labels import (
+    APPROVED_LABEL,
+    CLAIM_MAX_LABEL,
     CMT_LABEL,
+    DEADLINE_LABEL,
     DEX_LABEL,
     DEX_LABEL_P,
     ENGLISH_NAME_LABEL_P,
-    USER_ID_LABEL,
     IMGUR_LABEL,
     PKM_LABEL,
-    APPROVED_LABEL,
-    USERNAME_LABEL,
-    TOPIC_LABEL,
     RULES_LABEL,
-    DEADLINE_LABEL,
-    CLAIM_MAX_LABEL,
-    UNAPP_MAX_LABEL
+    TOPIC_LABEL,
+    UNAPP_MAX_LABEL,
+    USER_ID_LABEL,
+    USERNAME_LABEL,
 )
-
-from .utils.urls import (
-    AFD_CREDITS_GIST_URL,
-    AFD_GIST_URL,
-    IMAGE_URL,
-    SHEET_URL,
-)
+from .utils.urls import AFD_CREDITS_GIST_URL, AFD_GIST_URL, IMAGE_URL, SHEET_URL
 
 if typing.TYPE_CHECKING:
     from main import Bot
@@ -89,19 +82,25 @@ IMGUR_CLIENT_SECRET = os.getenv("IMGUR_CLIENT_SECRET")
 log = logging.getLogger(__name__)
 
 
-imgur_regex = re.compile("(?:https?:\/\/)?(?:www\.)?((?:i\.)?imgur.com\/(?P<dir>a|gallery)?(?P<id>.+))", re.MULTILINE)
+imgur_regex = re.compile(
+    "(?:https?:\/\/)?(?:www\.)?((?:i\.)?imgur.com\/(?P<dir>a|gallery)?(?P<id>.+))",
+    re.MULTILINE,
+)
+
 
 async def resolve_imgur_url(url: str, *, session: aiohttp.ClientSession) -> str:
     if (match := imgur_regex.match(url)) is None:
         raise ValueError(f"Invalid url: {url}")
 
-    url = re.sub("$(?:https?:\/\/)?(?:www\.)?", "", url)  # Remove prefixing http(s)://www.
+    url = re.sub(
+        "$(?:https?:\/\/)?(?:www\.)?", "", url
+    )  # Remove prefixing http(s)://www.
 
     if url.startswith("i.imgur.com/"):
         return f"https://{url}"
 
-    img_dir = match.group('dir')
-    _id = match.group('id')
+    img_dir = match.group("dir")
+    _id = match.group("id")
     if img_dir == "a":
         req_url = f"https://api.imgur.com/3/album/{_id}"
     elif img_dir == "gallery":
@@ -289,9 +288,17 @@ class AfdSheet:
         for col in self.df.columns[1:]:  # For all columns after Pokemon
             self.edit_row_where(PKM_LABEL, pokemon, set_column=col, to_val=None)
 
-    async def update_row(self, dex: str, *, from_col: Optional[str] = 'B', to_col: Optional[str] = 'H') -> None:
-        ABC = 'ABCDEFGHIJKLMNOP'
-        row_vals = [self.df.iloc[int(dex) - COL_OFFSET, ABC.index(from_col)-1:ABC.index(to_col)-1].fillna("").tolist()]
+    async def update_row(
+        self, dex: str, *, from_col: Optional[str] = "B", to_col: Optional[str] = "H"
+    ) -> None:
+        ABC = "ABCDEFGHIJKLMNOP"
+        row_vals = [
+            self.df.iloc[
+                int(dex) - COL_OFFSET, ABC.index(from_col) - 1 : ABC.index(to_col) - 1
+            ]
+            .fillna("")
+            .tolist()
+        ]
         await self.worksheet.update(f"{from_col}{int(dex) + COL_OFFSET}", row_vals)
 
     async def update_sheet(self) -> None:
@@ -309,27 +316,29 @@ class AfdSheet:
 
     @property
     def TOPIC(self):
-        return self.df.loc['1', TOPIC_LABEL]
+        return self.df.loc["1", TOPIC_LABEL]
 
     @property
     def RULES(self):
-        return self.df.loc['1', RULES_LABEL]
+        return self.df.loc["1", RULES_LABEL]
 
     @property
     def DEADLINE(self):
-        return self.df.loc['1', DEADLINE_LABEL]
+        return self.df.loc["1", DEADLINE_LABEL]
 
     @property
     def DEADLINE_TS(self):
-        return discord.utils.format_dt(datetime.datetime.strptime(self.DEADLINE, "%d/%m/%Y %H:%M"), 'f')
+        return discord.utils.format_dt(
+            datetime.datetime.strptime(self.DEADLINE, "%d/%m/%Y %H:%M"), "f"
+        )
 
     @property
     def CLAIM_MAX(self):
-        return int(self.df.loc['1', CLAIM_MAX_LABEL])
+        return int(self.df.loc["1", CLAIM_MAX_LABEL])
 
     @property
     def UNAPP_MAX(self):
-        return int(self.df.loc['1', UNAPP_MAX_LABEL])
+        return int(self.df.loc["1", UNAPP_MAX_LABEL])
 
     @classmethod
     async def create_new(cls, *, pokemon_df: pd.DataFrame) -> AfdSheet:
@@ -602,7 +611,7 @@ class Afd(commands.Cog):
                 pokemon=pokemon,
                 colour=EmbedColours.CLAIMED,
             ),
-            view=UrlView({"Go to message": cmsg.jump_url})
+            view=UrlView({"Go to message": cmsg.jump_url}),
         )
 
     @commands.has_role(AFD_ADMIN_ROLE_ID)
@@ -661,7 +670,7 @@ class Afd(commands.Cog):
                 pokemon=pokemon,
                 colour=EmbedColours.UNCLAIMED,
             ),
-            view=UrlView({"Go to message": cmsg.jump_url})
+            view=UrlView({"Go to message": cmsg.jump_url}),
         )
 
     @commands.is_owner()
@@ -730,11 +739,16 @@ class Afd(commands.Cog):
 **Max claimed (unfinished) pokemon**: {self.sheet.CLAIM_MAX}
 **Max unapproved pokemon**: {self.sheet.UNAPP_MAX}
 """
-        embed = self.bot.Embed(title="Welcome to the April Fools community project!", description=description)
+        embed = self.bot.Embed(
+            title="Welcome to the April Fools community project!",
+            description=description,
+        )
         embed.add_field(
             name="Rules",
-            value=self.sheet.RULES.format(CLAIM_MAX=self.sheet.CLAIM_MAX, UNAPP_MAX=self.sheet.UNAPP_MAX),
-            inline=False
+            value=self.sheet.RULES.format(
+                CLAIM_MAX=self.sheet.CLAIM_MAX, UNAPP_MAX=self.sheet.UNAPP_MAX
+            ),
+            inline=False,
         )
 
         embed.add_field(
@@ -745,7 +759,7 @@ class Afd(commands.Cog):
 {make_progress_bar(submitted_amount, self.total_amount)} {submitted_amount}/{self.total_amount}
 **Claimed**
 {make_progress_bar(claimed_amount, self.total_amount)} {claimed_amount}/{self.total_amount}""",
-            inline=False
+            inline=False,
         )
         return embed
 
@@ -891,7 +905,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
                 pokemon=pokemon,
                 colour=EmbedColours.CLAIMED,
             ),
-            view=UrlView({"Go to message": cmsg.jump_url})
+            view=UrlView({"Go to message": cmsg.jump_url}),
         )
 
     @afd.command(
@@ -969,7 +983,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
                 pokemon=pokemon,
                 colour=EmbedColours.UNCLAIMED,
             ),
-            view=UrlView({"Go to message": cmsg.jump_url})
+            view=UrlView({"Go to message": cmsg.jump_url}),
         )
 
     async def check_claim(

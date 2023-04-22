@@ -14,7 +14,7 @@ from .labels import (
     RULES_LABEL,
     DEADLINE_LABEL,
     CLAIM_MAX_LABEL,
-    UNAPP_MAX_LABEL
+    UNAPP_MAX_LABEL,
 )
 
 if typing.TYPE_CHECKING:
@@ -32,7 +32,7 @@ class EditModal(discord.ui.Modal):
                 label=TOPIC_LABEL,
                 default=self.sheet.TOPIC,
                 style=discord.TextStyle.short,
-                custom_id="topic"
+                custom_id="topic",
             )
         )
         self.add_item(
@@ -40,7 +40,7 @@ class EditModal(discord.ui.Modal):
                 label=RULES_LABEL,
                 default=self.sheet.RULES,
                 style=discord.TextStyle.long,
-                custom_id="rules"
+                custom_id="rules",
             )
         )
         self.add_item(
@@ -49,7 +49,7 @@ class EditModal(discord.ui.Modal):
                 default=self.sheet.DEADLINE,
                 placeholder="dd/MM/YYYY HH:mm",
                 style=discord.TextStyle.short,
-                custom_id="deadline"
+                custom_id="deadline",
             )
         )
         self.add_item(
@@ -57,7 +57,7 @@ class EditModal(discord.ui.Modal):
                 label=CLAIM_MAX_LABEL,
                 default=self.sheet.CLAIM_MAX,
                 style=discord.TextStyle.short,
-                custom_id="claim_max"
+                custom_id="claim_max",
             )
         )
         self.add_item(
@@ -65,7 +65,7 @@ class EditModal(discord.ui.Modal):
                 label=UNAPP_MAX_LABEL,
                 default=self.sheet.UNAPP_MAX,
                 style=discord.TextStyle.short,
-                custom_id="unapp_max"
+                custom_id="unapp_max",
             )
         )
 
@@ -83,28 +83,33 @@ class EditModal(discord.ui.Modal):
         claim_max = children["claim_max"]
         unapp_max = children["unapp_max"]
 
-        self.df.loc['1', TOPIC_LABEL] = topic
-        self.df.loc['1', RULES_LABEL] = rules
+        self.df.loc["1", TOPIC_LABEL] = topic
+        self.df.loc["1", RULES_LABEL] = rules
         resp = []
         try:
             datetime.datetime.strptime(deadline.value, "%d/%m/%Y %H:%M")
         except ValueError:
-            resp.append("- Invalid deadline format. Expected format: `dd/MM/YYYY HH:mm`")
+            resp.append(
+                "- Invalid deadline format. Expected format: `dd/MM/YYYY HH:mm`"
+            )
         else:
-            self.df.loc['1', DEADLINE_LABEL] = deadline.value
+            self.df.loc["1", DEADLINE_LABEL] = deadline.value
 
         if claim_max.value.isdigit():
-            self.df.loc['1', CLAIM_MAX_LABEL] = claim_max.value
+            self.df.loc["1", CLAIM_MAX_LABEL] = claim_max.value
         else:
             resp.append("- Invalid claim max: Expected a number")
 
         if unapp_max.value.isdigit():
-            self.df.loc['1', UNAPP_MAX_LABEL] = unapp_max.value
+            self.df.loc["1", UNAPP_MAX_LABEL] = unapp_max.value
         else:
             resp.append("- Invalid unapproved max: Expected a number")
 
-        await self.sheet.update_row(1, from_col='I', to_col='N')
-        await interaction.followup.send(f"Successfully updated information{(' except:' + NL + NL.join(resp)) if resp else '!'}", ephemeral=True)
+        await self.sheet.update_row(1, from_col="I", to_col="N")
+        await interaction.followup.send(
+            f"Successfully updated information{(' except:' + NL + NL.join(resp)) if resp else '!'}",
+            ephemeral=True,
+        )
 
 
 class AfdView(discord.ui.View):
@@ -144,7 +149,9 @@ class AfdView(discord.ui.View):
         return True
 
     @discord.ui.button(label="Edit info", style=discord.ButtonStyle.blurple)
-    async def edit_fields(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def edit_fields(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
         await self.sheet.update_df()
         modal = EditModal(self.sheet)
         await interaction.response.send_modal(modal)
