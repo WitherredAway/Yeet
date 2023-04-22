@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import datetime
+import io
+import json
 import logging
 import os
 import re
@@ -68,6 +70,7 @@ from .utils.labels import (
     USERNAME_LABEL,
 )
 from .utils.urls import AFD_CREDITS_GIST_URL, AFD_GIST_URL, IMAGE_URL, SHEET_URL
+from .utils.imgur import Imgur
 
 if typing.TYPE_CHECKING:
     from main import Bot
@@ -75,55 +78,12 @@ if typing.TYPE_CHECKING:
 
 LOG_CHANNEL_ID = 1098442880202313779
 
+
 IMGUR_CLIENT_ID = os.getenv("IMGUR_CLIENT_ID")
 IMGUR_CLIENT_SECRET = os.getenv("IMGUR_CLIENT_SECRET")
 
 
 log = logging.getLogger(__name__)
-
-
-imgur_regex = re.compile(
-    "(?:https?:\/\/)?(?:www\.)?((?:i\.)?imgur.com\/(?P<dir>a|gallery)?(?P<id>.+))",
-    re.MULTILINE,
-)
-
-
-async def resolve_imgur_url(url: str, *, session: aiohttp.ClientSession) -> str:
-    if (match := imgur_regex.match(url)) is None:
-        raise ValueError(f"Invalid url: {url}")
-
-    url = re.sub(
-        "$(?:https?:\/\/)?(?:www\.)?", "", url
-    )  # Remove prefixing http(s)://www.
-
-    if url.startswith("i.imgur.com/"):
-        return f"https://{url}"
-
-    img_dir = match.group("dir")
-    _id = match.group("id")
-    if img_dir == "a":
-        req_url = f"https://api.imgur.com/3/album/{_id}"
-    elif img_dir == "gallery":
-        req_url = f"https://api.imgur.com/3/gallery/{_id}"
-    elif not img_dir:
-        return f"https://i.imgur.com/{_id}.png"
-
-    headers = {"Authorization": f"Client-ID {IMGUR_CLIENT_ID}"}
-    log.info("Calling Imgur API")
-    async with session.get(req_url, headers=headers) as resp:
-        try:
-            result = await resp.json()
-        except aiohttp.ContentTypeError as e:
-            print("Error requesting", req_url)
-            print("Text:")
-            print(await resp.text())
-            raise e
-        else:
-            try:
-                return result["data"]["images"][0]["link"]
-            except KeyError as e:
-                print(result)
-                raise e
 
 
 class EmbedColours(Enum):
@@ -466,6 +426,8 @@ class Afd(commands.Cog):
         start = time.time()
         await self.sheet.setup()
         log.info(f"AFD: Fetched spreadsheet in {round(time.time()-start, 2)}s")
+
+        self.imgur = Imgur(IMGUR_CLIENT_ID, session=self.bot.session)
 
         self.update_pokemon.start()
 
@@ -1272,7 +1234,7 @@ Credits: <{self.credits_gist.url}>"""
                 user_id = int(row.user_id)
 
                 if row.imgur:
-                    imgur = await resolve_imgur_url(row.imgur, session=self.bot.session)
+                    imgur = await self.imgur.resolve_url(row.imgur)
                     link = f"![art]({imgur})"
 
                 user = row.username
