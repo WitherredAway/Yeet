@@ -42,6 +42,7 @@ from .utils.constants import (
     HEADERS_FMT,
     TOP_N,
     UPDATE_CHANNEL_ID,
+    UNORD_FMT
 )
 from .utils.filenames import (
     CONTENTS_FILENAME,
@@ -71,6 +72,7 @@ from .utils.labels import (
 )
 from .utils.urls import AFD_CREDITS_GIST_URL, AFD_GIST_URL, IMAGE_URL, SHEET_URL
 from .utils.imgur import Imgur
+
 
 if typing.TYPE_CHECKING:
     from main import Bot
@@ -287,9 +289,13 @@ class AfdSheet:
         return self.df.loc["1", DEADLINE_LABEL]
 
     @property
+    def DEADLINE_DT(self):
+        return datetime.datetime.strptime(self.DEADLINE, "%d/%m/%Y %H:%M")
+
+    @property
     def DEADLINE_TS(self):
         return discord.utils.format_dt(
-            datetime.datetime.strptime(self.DEADLINE, "%d/%m/%Y %H:%M"), "f"
+            self.DEADLINE_DT, "f"
         )
 
     @property
@@ -445,18 +451,20 @@ class PokemonView(discord.ui.View):
         self.clear_items()
         if row.claimed:
             self.add_item(self.unclaim_btn)
+            status = "Claimed by"
             if row.imgur:
                 embed.set_image(url=row.imgur)
-
-            if row.approved_by:
-                status = "Complete and approved."
-            elif row.comment:
-                status = "Correction pending."
-                embed.add_field(name=CMT_LABEL, value=str(row.comment), inline=False)
-            elif row.unreviewed:
-                status = "Submitted, Awaiting review."
-            else:
-                status = "Claimed by"
+                if row.approved_by:
+                    status = "Complete and approved."
+                elif row.comment:
+                    status = "Correction pending."
+                    embed.add_field(name=CMT_LABEL, value=str(row.comment), inline=False)
+                    if self.afdcog.is_admin(self.ctx.author):
+                        self.add_item(self.remind_btn)
+                elif row.unreviewed:
+                    status = "Submitted, Awaiting review."
+            elif self.afdcog.is_admin(self.ctx.author):
+                self.add_item(self.remind_btn)
 
             embed.set_footer(
                 text=f"{status}\n{row.username} ({row.user_id})",
@@ -484,6 +492,14 @@ class PokemonView(discord.ui.View):
         await interaction.response.defer()
         await self.afdcog.unclaim(self.ctx, self.pokemon)
         await self.update_msg()
+
+    @discord.ui.button(label="Remind", style=discord.ButtonStyle.blurple)
+    async def remind_btn(self, interaction: discord.Interaction, button: discord.Buttons):
+        try:
+            await self.user.send(embed=self.afdcog.remind_embed(self.row))
+        except (discord.Forbidden, discord.HTTPException):
+            await self.ctx.send(f"{self.user.mention} (Unable to DM)", embed=self.afdcog.remind_embed(self.row))
+        await interaction.response.send_message(f"Successfully sent a reminder to **{self.user}**.", ephemeral=True)
 
 class Afd(commands.Cog):
     def __init__(self, bot):
@@ -553,6 +569,18 @@ class Afd(commands.Cog):
             embed.set_thumbnail(url=pokemon_image)
         if footer:
             embed.set_footer(text=footer)
+        return embed
+
+    def remind_embed(self, pkm_rows: Union[Row, List[Row]]) -> Bot.Embed:
+        if not isinstance(pkm_rows, list):
+            pkm_rows = [pkm_rows]
+        embed = self.bot.Embed(
+            title="AFD Reminder",
+        )
+        pkms = [f"- {row.pokemon}{f' (`{row.comment}`)' if row.comment else ''}" for row in pkm_rows]
+        embed.add_field(name="Your following claimed Pokémon have not been completed yet", value=NL.join(pkms), inline=False)
+        embed.add_field(name="Deadline", value=self.sheet.DEADLINE_TS, inline=False)
+        embed.set_footer(text="Please draw them or unclaim any you think you cannot finish. Thank you!")
         return embed
 
     async def get_pokemon(self, ctx: CustomContext, name: str) -> Union[str, None]:
