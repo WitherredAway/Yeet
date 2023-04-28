@@ -1,19 +1,13 @@
 from __future__ import annotations
 
 import datetime
-import io
-import json
 import logging
 import os
-import re
 import time
-import typing
 from dataclasses import dataclass
-from enum import Enum
 from functools import cached_property
-from typing import Callable, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
 
-import aiohttp
 import discord
 import gists
 import gspread_asyncio
@@ -23,26 +17,27 @@ from discord.ext import commands, tasks
 from google.oauth2 import service_account
 from pandas.core.groupby.generic import GroupBy
 
-from cogs.Draw.constants import PADDING
 from cogs.Poketwo.utils import get_pokemon
 from helpers.constants import INDENT, LOG_BORDER, NL
 from helpers.context import CustomContext
 
-from ..utils.utils import RoleMenu, UrlView, make_progress_bar
+from ..utils.utils import UrlView, make_progress_bar
 from .utils.afd_view import AfdView
+from .utils.utils import AFDRoleMenu, EmbedColours, Row
+from .utils.urls import AFD_CREDITS_GIST_URL, AFD_GIST_URL, IMAGE_URL, SHEET_URL
+from .utils.imgur import IMGUR_CLIENT_ID, Imgur
 from .utils.constants import (
     AFD_ADMIN_ROLE_ID,
     AFD_ROLE_ID,
-    APPROVED_TXT,
     CLAIM_LIMIT,
     COL_OFFSET,
     DEL_ATTRS_TO_UPDATE,
     EMAIL,
     EXPORT_SUFFIX,
     HEADERS_FMT,
+    LOG_CHANNEL_ID,
     TOP_N,
     UPDATE_CHANNEL_ID,
-    UNORD_FMT
 )
 from .utils.filenames import (
     CONTENTS_FILENAME,
@@ -70,92 +65,13 @@ from .utils.labels import (
     USER_ID_LABEL,
     USERNAME_LABEL,
 )
-from .utils.urls import AFD_CREDITS_GIST_URL, AFD_GIST_URL, IMAGE_URL, SHEET_URL
-from .utils.imgur import Imgur
 
 
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
     from main import Bot
 
 
-LOG_CHANNEL_ID = 1098442880202313779
-
-
-IMGUR_CLIENT_ID = os.getenv("IMGUR_CLIENT_ID")
-IMGUR_CLIENT_SECRET = os.getenv("IMGUR_CLIENT_SECRET")
-
-
 log = logging.getLogger(__name__)
-
-
-class EmbedColours(Enum):
-    INVALID: int = 0xCB3F49  # Invalid, Red
-    UNCLAIMED: int = 0x6D6F77  # Not claimed, Grey
-    CLAIMED: int = 0xE69537  # Claimed but not complete, Orange
-    UNREVIEWED: int = 0x6BAAE8  # Link present awaiting review, Blue
-    COMMENT: int = 0xF5CD6B  # Has a comment, Yellow
-    APPROVED: int = 0x85AF63  # Link present and approved, Green
-
-
-@dataclass
-class Row:
-    row: Union[pd.DataFrame, pd.Series]
-
-    dex: Optional[int] = None
-    pokemon: Optional[str] = None
-    username: Optional[discord.User] = None
-    user_id: Optional[int] = None
-    imgur: Optional[str] = None
-    approved_by: Optional[int] = None
-    comment: Optional[str] = None
-
-    claimed: Optional[bool] = None
-    unreviewed: Optional[bool] = None
-
-    def __post_init__(self):
-        self.dex = self.row.index.values[0]
-        if isinstance(self.row, pd.DataFrame):
-            self.row = self.row.loc[self.dex, :]
-
-        self.pokemon = self.row[PKM_LABEL]
-
-        self.username = self.row[USERNAME_LABEL]
-        self.username = (
-            discord.utils.escape_markdown(self.username)
-            if not pd.isna(self.username)
-            else None
-        )
-
-        self.user_id = self.row[USER_ID_LABEL]
-        self.user_id = self.user_id if not pd.isna(self.user_id) else None
-
-        self.imgur = self.row[IMGUR_LABEL]
-        self.imgur = self.imgur if not pd.isna(self.imgur) else None
-
-        self.approved_by = self.row[APPROVED_LABEL]
-        self.approved_by = self.approved_by if not pd.isna(self.approved_by) else None
-
-        self.comment = self.row[CMT_LABEL]
-        self.comment = self.comment if not pd.isna(self.comment) else None
-
-        self.claimed = not pd.isna(self.user_id)
-        self.unreviewed = all(
-            (not pd.isna(self.imgur), not self.approved_by, not self.comment)
-        )
-
-    @property
-    def colour(self) -> int:
-        if self.claimed:
-            if self.approved_by:
-                return EmbedColours.APPROVED.value
-            elif self.comment:
-                return EmbedColours.COMMENT.value
-            elif self.unreviewed:
-                return EmbedColours.UNREVIEWED.value
-            else:
-                return EmbedColours.CLAIMED.value
-        else:
-            return EmbedColours.UNCLAIMED.value
 
 
 class AfdSheet:
@@ -294,9 +210,7 @@ class AfdSheet:
 
     @property
     def DEADLINE_TS(self):
-        return discord.utils.format_dt(
-            self.DEADLINE_DT, "f"
-        )
+        return discord.utils.format_dt(self.DEADLINE_DT, "f")
 
     @property
     def CLAIM_MAX(self):
@@ -399,17 +313,15 @@ class Claimed:
         self.completed_amount = len(self.completed)
 
 
-class AFDRoleMenu(RoleMenu):
-    def __init__(self):
-        roles_dict = {
-            "AFD": discord.ButtonStyle.green,
-            "AFD Admin": discord.ButtonStyle.red,
-        }
-        super().__init__(roles_dict)
-
-
 class PokemonView(discord.ui.View):
-    def __init__(self, ctx: CustomContext, row: Row, *, afdcog: Afd, user: Optional[discord.User] = None):
+    def __init__(
+        self,
+        ctx: CustomContext,
+        row: Row,
+        *,
+        afdcog: Afd,
+        user: Optional[discord.User] = None,
+    ):
         super().__init__(timeout=180)
         self.ctx = ctx
         self.row = row
@@ -458,7 +370,9 @@ class PokemonView(discord.ui.View):
                     status = "Complete and approved."
                 elif row.comment:
                     status = "Correction pending."
-                    embed.add_field(name=CMT_LABEL, value=str(row.comment), inline=False)
+                    embed.add_field(
+                        name=CMT_LABEL, value=str(row.comment), inline=False
+                    )
                     if self.afdcog.is_admin(self.ctx.author):
                         self.add_item(self.remind_btn)
                 elif row.unreviewed:
@@ -478,28 +392,44 @@ class PokemonView(discord.ui.View):
     async def update_msg(self):
         await self.sheet.update_df()
         self.row = self.sheet.get_pokemon_row(self.pokemon)
-        self.user = (await self.afdcog.fetch_user(int(self.row.user_id))) if self.row.claimed else None
+        self.user = (
+            (await self.afdcog.fetch_user(int(self.row.user_id)))
+            if self.row.claimed
+            else None
+        )
         await self.msg.edit(embed=self.embed, view=self)
 
     @discord.ui.button(label="Claim", style=discord.ButtonStyle.blurple)
-    async def claim_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def claim_btn(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
         await interaction.response.defer()
         await self.afdcog.claim(self.ctx, self.pokemon)
         await self.update_msg()
 
     @discord.ui.button(label="Unclaim", style=discord.ButtonStyle.red)
-    async def unclaim_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def unclaim_btn(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
         await interaction.response.defer()
         await self.afdcog.unclaim(self.ctx, self.pokemon)
         await self.update_msg()
 
     @discord.ui.button(label="Remind", style=discord.ButtonStyle.blurple)
-    async def remind_btn(self, interaction: discord.Interaction, button: discord.Buttons):
+    async def remind_btn(
+        self, interaction: discord.Interaction, button: discord.Buttons
+    ):
         try:
             await self.user.send(embed=self.afdcog.remind_embed(self.row))
         except (discord.Forbidden, discord.HTTPException):
-            await self.ctx.send(f"{self.user.mention} (Unable to DM)", embed=self.afdcog.remind_embed(self.row))
-        await interaction.response.send_message(f"Successfully sent a reminder to **{self.user}**.", ephemeral=True)
+            await self.ctx.send(
+                f"{self.user.mention} (Unable to DM)",
+                embed=self.afdcog.remind_embed(self.row),
+            )
+        await interaction.response.send_message(
+            f"Successfully sent a reminder to **{self.user}**.", ephemeral=True
+        )
+
 
 class Afd(commands.Cog):
     def __init__(self, bot):
@@ -577,10 +507,19 @@ class Afd(commands.Cog):
         embed = self.bot.Embed(
             title="AFD Reminder",
         )
-        pkms = [f"- {row.pokemon}{f' (`{row.comment}`)' if row.comment else ''}" for row in pkm_rows]
-        embed.add_field(name="Your following claimed Pokémon have not been completed yet", value=NL.join(pkms), inline=False)
+        pkms = [
+            f"- {row.pokemon}{f' (`{row.comment}`)' if row.comment else ''}"
+            for row in pkm_rows
+        ]
+        embed.add_field(
+            name="Your following claimed Pokémon have not been completed yet",
+            value=NL.join(pkms),
+            inline=False,
+        )
         embed.add_field(name="Deadline", value=self.sheet.DEADLINE_TS, inline=False)
-        embed.set_footer(text="Please draw them or unclaim any you think you cannot finish. Thank you!")
+        embed.set_footer(
+            text="Please draw them or unclaim any you think you cannot finish. Thank you!"
+        )
         return embed
 
     async def get_pokemon(self, ctx: CustomContext, name: str) -> Union[str, None]:

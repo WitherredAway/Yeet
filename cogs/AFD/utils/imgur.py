@@ -1,4 +1,5 @@
 import io
+import os
 import re
 from typing import Optional, Tuple, Union
 
@@ -7,12 +8,16 @@ import aiohttp
 
 IMGUR_API_URL = "https://api.imgur.com/3"
 
+IMGUR_CLIENT_ID = os.getenv("IMGUR_CLIENT_ID")
+IMGUR_CLIENT_SECRET = os.getenv("IMGUR_CLIENT_SECRET")
+
 
 class ImgurImage:
     def __init__(self, response: dict, *, content: io.BytesIO) -> None:
         for key, val in response.items():
             setattr(self, key, val)
         self.content = content
+
 
 class Response:
     def __init__(self, response: dict) -> None:
@@ -25,6 +30,8 @@ imgur_url_regex = re.compile(
     re.MULTILINE,
 )
 prefix_regex = re.compile("^(?:https?:\/\/)?(?:www\.)?")
+
+
 class Imgur:
     def __init__(self, client_id: str, *, session: aiohttp.ClientSession) -> None:
         self.client_id = client_id
@@ -32,7 +39,9 @@ class Imgur:
 
         self.session = session
 
-    async def request(self, method: str, url: str, *, payload: Optional[dict] = None) -> Union[dict, bytes]:
+    async def request(
+        self, method: str, url: str, *, payload: Optional[dict] = None
+    ) -> Union[dict, bytes]:
         async with self.session.request(
             method, url, headers=self.headers, data=payload
         ) as resp:
@@ -44,10 +53,10 @@ class Imgur:
 
     async def fetch_image(self, url: str) -> ImgurImage:
         data = await self.request("get", (await self.resolve_api_url(url))[0])
-        return ImgurImage(data['data'], content=await self.fetch_image_bytes(url))
+        return ImgurImage(data["data"], content=await self.fetch_image_bytes(url))
 
     async def fetch_image_bytes(self, url: str) -> io.BytesIO:
-        url = (await self.resolve_url(url))
+        url = await self.resolve_url(url)
         con = await self.request("get", url)
         return io.BytesIO(con)
 
@@ -60,10 +69,10 @@ class Imgur:
         name: Optional[str] = None,
     ) -> Tuple[ImgurImage, Response]:
         payload = {
-            'title': title,
-            'description': description,
-            'name': name,
-            'image': image
+            "title": title,
+            "description": description,
+            "name": name,
+            "image": image,
         }
         data = await self.request("post", f"{IMGUR_API_URL}/image", payload=payload)
         image = ImgurImage(data["data"])
@@ -91,7 +100,7 @@ class Imgur:
             print(result)
             raise e
         else:
-            return f'{IMGUR_API_URL}/image/{image_id}', image_id
+            return f"{IMGUR_API_URL}/image/{image_id}", image_id
 
     async def resolve_url(self, url: str) -> str:
         """Takes any image url and returns the direct url"""
