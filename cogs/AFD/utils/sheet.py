@@ -21,7 +21,7 @@ from .labels import (
     DEX_LABEL,
     DEX_LABEL_P,
     ENGLISH_NAME_LABEL_P,
-    IMGUR_LABEL,
+    IMAGE_LABEL,
     PKM_LABEL,
     RULES_LABEL,
     TOPIC_LABEL,
@@ -104,7 +104,7 @@ class AfdSheet:
                     (self.df[USER_ID_LABEL] == str(user.id))
                     & (
                         self.df.loc[self.df[USER_ID_LABEL] == str(user.id)][
-                            IMGUR_LABEL
+                            IMAGE_LABEL
                         ].isna()
                     )
                 ]
@@ -206,7 +206,7 @@ class AfdSheet:
                     PKM_LABEL,
                     USERNAME_LABEL,
                     USER_ID_LABEL,
-                    IMGUR_LABEL,
+                    IMAGE_LABEL,
                     APPROVED_LABEL,
                     CMT_LABEL,
                 ]

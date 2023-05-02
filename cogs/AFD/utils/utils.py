@@ -6,7 +6,7 @@ import pandas as pd
 from cogs.AFD.utils.labels import (
     APPROVED_LABEL,
     CMT_LABEL,
-    IMGUR_LABEL,
+    IMAGE_LABEL,
     PKM_LABEL,
     USER_ID_LABEL,
     USERNAME_LABEL,
@@ -32,7 +32,7 @@ class Row:
     pokemon: Optional[str] = None
     username: Optional[discord.User] = None
     user_id: Optional[int] = None
-    imgur: Optional[str] = None
+    image: Optional[str] = None
     approved_by: Optional[int] = None
     comment: Optional[str] = None
 
@@ -54,10 +54,10 @@ class Row:
         )
 
         self.user_id = self.row[USER_ID_LABEL]
-        self.user_id = self.user_id if not pd.isna(self.user_id) else None
+        self.user_id = int(self.user_id) if not pd.isna(self.user_id) else None
 
-        self.imgur = self.row[IMGUR_LABEL]
-        self.imgur = self.imgur if not pd.isna(self.imgur) else None
+        self.image = self.row[IMAGE_LABEL]
+        self.image = self.image if not pd.isna(self.image) else None
 
         self.approved_by = self.row[APPROVED_LABEL]
         self.approved_by = self.approved_by if not pd.isna(self.approved_by) else None
@@ -67,7 +67,7 @@ class Row:
 
         self.claimed = not pd.isna(self.user_id)
         self.unreviewed = all(
-            (not pd.isna(self.imgur), not self.approved_by, not self.comment)
+            (not pd.isna(self.image), not self.approved_by, not self.comment)
         )
 
     @property

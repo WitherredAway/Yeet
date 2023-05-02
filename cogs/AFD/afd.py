@@ -21,7 +21,6 @@ from ..utils.utils import UrlView, make_progress_bar
 from .utils.afd_view import AfdView
 from .utils.utils import AFDRoleMenu, EmbedColours, Row
 from .utils.urls import AFD_CREDITS_GIST_URL, AFD_GIST_URL, SHEET_URL
-from .utils.imgur import IMGUR_CLIENT_ID, Imgur
 from .utils.sheet import AfdSheet, Claimed
 from .utils.constants import (
     AFD_ADMIN_ROLE_ID,
@@ -46,7 +45,7 @@ from .utils.labels import (
     APPROVED_LABEL,
     CMT_LABEL,
     DEX_LABEL,
-    IMGUR_LABEL,
+    IMAGE_LABEL,
     PKM_LABEL,
     USER_ID_LABEL,
     USERNAME_LABEL,
@@ -57,6 +56,9 @@ if TYPE_CHECKING:
 
 
 log = logging.getLogger(__name__)
+
+
+SUBMISSION_URL = "https://example.com"
 
 
 class PokemonView(discord.ui.View):
@@ -108,10 +110,11 @@ class PokemonView(discord.ui.View):
         row = self.row
         self.clear_items()
         if row.claimed:
-            self.add_item(self.unclaim_btn)
             status = "Claimed by"
-            if row.imgur:
-                embed.set_image(url=row.imgur)
+            if row.user_id == self.ctx.author.id:
+                self.add_item(self.unclaim_btn)  # Add unclaim button if claimed by self
+            if row.image:
+                embed.set_image(url=row.image)
                 if row.approved_by:
                     status = "Complete and approved."
                 elif row.comment:
@@ -119,13 +122,15 @@ class PokemonView(discord.ui.View):
                     embed.add_field(
                         name=CMT_LABEL, value=str(row.comment), inline=False
                     )
-                    if self.afdcog.is_admin(self.ctx.author):
-                        self.add_item(self.remind_btn)
-                elif row.unreviewed:
-                    status = "Submitted, Awaiting review."
-            elif self.afdcog.is_admin(self.ctx.author):
+                    if self.afdcog.is_admin(self.ctx.author):  # -------
+                        self.add_item(self.remind_btn)                # |
+                elif row.unreviewed:                                  # |----- Add remind button only if there
+                    status = "Submitted, Awaiting review."            # |      is a comment or not submitted
+            elif self.afdcog.is_admin(self.ctx.author):  # -------------
                 self.add_item(self.remind_btn)
 
+            if row.user_id == self.ctx.author.id:  # Add submit button if claimed by self
+                self.add_item(discord.ui.Button(label="Submit" if not row.image else "Resubmit", url=SUBMISSION_URL))
             embed.set_footer(
                 text=f"{status}\n{row.username} ({row.user_id})",
                 icon_url=self.user.avatar.url,
@@ -133,13 +138,13 @@ class PokemonView(discord.ui.View):
         else:
             status = "Not claimed"
             embed.set_footer(text=status)
-            self.add_item(self.claim_btn)
+            self.add_item(self.claim_btn)  # Add claim button if not claimed
 
     async def update_msg(self):
         await self.sheet.update_df()
         self.row = self.sheet.get_pokemon_row(self.pokemon)
         self.user = (
-            (await self.afdcog.fetch_user(int(self.row.user_id)))
+            (await self.afdcog.fetch_user(self.row.user_id))
             if self.row.claimed
             else None
         )
@@ -201,8 +206,6 @@ class Afd(commands.Cog):
         start = time.time()
         await self.sheet.setup()
         log.info(f"AFD: Fetched spreadsheet in {round(time.time()-start, 2)}s")
-
-        self.imgur = Imgur(IMGUR_CLIENT_ID, session=self.bot.session)
 
         self.update_pokemon.start()
 
@@ -334,7 +337,7 @@ class Afd(commands.Cog):
             )
             if conf is False:
                 return
-        elif row.user_id == str(user.id):
+        elif row.user_id == user.id:
             return await ctx.reply(
                 embed=self.confirmation_embed(
                     f"**{pokemon}** is already claimed by **{user}**!",
@@ -346,7 +349,7 @@ class Afd(commands.Cog):
             conf, cmsg = await ctx.confirm(
                 embed=self.confirmation_embed(
                     f"**{pokemon}** is already claimed by **{row.username}**, override and claim it for **{user}**?\
-                        {' There is a drawing submitted already which will be removed.' if row.imgur else ''}",
+                        {' There is a drawing submitted already which will be removed.' if row.image else ''}",
                     pokemon=pokemon,
                 ),
                 confirm_label="Force Claim",
@@ -404,7 +407,7 @@ class Afd(commands.Cog):
         conf, cmsg = await ctx.confirm(
             embed=self.confirmation_embed(
                 f"**{pokemon}** is currently claimed by **{row.username}**, forcefully unclaim?\
-                        {' There is a drawing already submitted which will be removed.' if row.imgur else ''}",
+                        {' There is a drawing already submitted which will be removed.' if row.image else ''}",
                 pokemon=pokemon,
             ),
             confirm_label="Force Unclaim",
@@ -555,7 +558,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
             return
 
         row = self.sheet.get_pokemon_row(pokemon)
-        user = (await self.fetch_user(int(row.user_id))) if row.claimed else None
+        user = (await self.fetch_user(row.user_id)) if row.claimed else None
 
         view = PokemonView(ctx, row, afdcog=self, user=user)
         view.msg = await ctx.send(embed=view.embed, view=view)
@@ -651,11 +654,11 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
 
         conf = cmsg = None
         row = self.sheet.get_pokemon_row(pokemon)
-        if row.user_id == str(ctx.author.id):
+        if row.user_id == ctx.author.id:
             conf, cmsg = await ctx.confirm(
                 embed=self.confirmation_embed(
                     f"Are you sure you want to unclaim **{pokemon}**?\
-                        {' You have already submitted a drawing which will be removed.' if row.imgur else ''}",
+                        {' You have already submitted a drawing which will be removed.' if row.image else ''}",
                     pokemon=pokemon,
                 ),
                 confirm_label="Unclaim",
@@ -880,7 +883,7 @@ Credits: <{self.credits_gist.url}>"""
                 if str(df.loc[pkm_idx, CMT_LABEL]) != "nan"
                 else None
             )
-            link = df.loc[pkm_idx, IMGUR_LABEL]
+            link = df.loc[pkm_idx, IMAGE_LABEL]
             location = f"{SHEET_URL[:-24]}/edit#gid=0&range=E{pkm_idx}"
 
             comment_text = f""" (Marked for review)
@@ -913,7 +916,7 @@ Credits: <{self.credits_gist.url}>"""
     def validate_unreviewed(self) -> Tuple[List[str], int]:
         df = self.df.loc[
             (~self.df[USER_ID_LABEL].isna())
-            & (~self.df[IMGUR_LABEL].isna())
+            & (~self.df[IMAGE_LABEL].isna())
             & (self.df[APPROVED_LABEL].isna())
         ]
 
@@ -938,7 +941,7 @@ Credits: <{self.credits_gist.url}>"""
             pkm_list = []
             for pkm in pkms:
                 row = self.sheet.get_row(pkm)
-                if not row.claimed and not row.imgur:
+                if not row.claimed and not row.image:
                     continue
                 pkm_list.append(f"`{row.pokemon}`")
             msg = f'- **{row.username}** [{len(pkm_list)}] - {", ".join(pkm_list)}'
@@ -952,7 +955,7 @@ Credits: <{self.credits_gist.url}>"""
 
     def validate_missing_link(self) -> Tuple[List[str], List[str], int]:
         df = self.df
-        df = df.loc[(~df[USER_ID_LABEL].isna()) & (df[IMGUR_LABEL].isna())]
+        df = df.loc[(~df[USER_ID_LABEL].isna()) & (df[IMAGE_LABEL].isna())]
 
         df_grouped = df.groupby(USERNAME_LABEL)
 
@@ -1008,11 +1011,10 @@ Credits: <{self.credits_gist.url}>"""
             pkm_dex = self.sheet.get_pokemon_dex(pkm_name)
             link = "None"
             if row.approved_by:
-                user_id = int(row.user_id)
+                user_id = row.user_id
 
-                if row.imgur:
-                    imgur = await self.imgur.resolve_url(row.imgur)
-                    link = f"![art]({imgur})"
+                if row.image:
+                    link = f"![art]({row.image})"
 
                 user = row.username
             else:
