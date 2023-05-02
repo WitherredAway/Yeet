@@ -42,8 +42,8 @@ class Bot(commands.Bot):
     PREFIX = PREFIXES[0]
 
     COGS = {
-        "poketwo": "Poketwo.poketwo_main",
-        "p2": "Poketwo.poketwo_main",
+        "poketwo": "Poketwo.poketwo",
+        "p2": "Poketwo.poketwo",
         "docs": "RDanny.docs",
         "help": "RDanny.help",
         "admin": "admin",

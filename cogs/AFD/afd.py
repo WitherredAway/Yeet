@@ -19,10 +19,10 @@ from helpers.context import CustomContext
 
 from ..utils.utils import UrlView, make_progress_bar
 from .utils.afd_view import AfdView
-from .utils.utils import AFDRoleMenu, Claimed, EmbedColours, Row
+from .utils.utils import AFDRoleMenu, EmbedColours, Row
 from .utils.urls import AFD_CREDITS_GIST_URL, AFD_GIST_URL, SHEET_URL
 from .utils.imgur import IMGUR_CLIENT_ID, Imgur
-from .utils.sheet import AfdSheet
+from .utils.sheet import AfdSheet, Claimed
 from .utils.constants import (
     AFD_ADMIN_ROLE_ID,
     AFD_ROLE_ID,

@@ -3,7 +3,7 @@ from PIL import ImageFont
 import discord
 
 from helpers.constants import u200b
-from ...utils.utils import invert_dict
+from cogs.utils.utils import invert_dict
 
 
 def base_colour_options():
