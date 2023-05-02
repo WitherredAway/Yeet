@@ -4,7 +4,7 @@ import discord
 from PIL import Image
 from pilmoji import Pilmoji
 
-from .constants import FONT
+from .utils.constants import FONT
 
 
 ADD_EMOJIS_EMOJI = "<:emojismiley:1056857231125123152>"

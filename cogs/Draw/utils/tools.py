@@ -4,7 +4,6 @@ import typing
 from typing import Optional, Tuple
 
 import discord
-from discord.ext import commands
 import numpy as np
 
 from .constants import CURSOR
@@ -12,7 +11,7 @@ from .colour import Colour
 
 if typing.TYPE_CHECKING:
     from main import Bot
-    from .draw_main import Board, DrawView
+    from ..draw import Board, DrawView
 
 
 class Tool(discord.ui.Button):

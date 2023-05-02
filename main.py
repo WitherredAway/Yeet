@@ -18,9 +18,9 @@ from discord.ext import commands
 import pandas as pd
 
 from helpers.context import CustomContext
-from cogs.Draw.colour import Colour
-from cogs.Draw.draw_main import DrawView
-from cogs.Draw.emoji_cache import EmojiCache
+from cogs.Draw.utils.colour import Colour
+from cogs.Draw.draw import DrawView
+from cogs.Draw.utils.emoji_cache import EmojiCache
 from helpers.constants import LOG_BORDER, NL
 from helpers.keep_alive import keep_alive
 
@@ -50,7 +50,7 @@ class Bot(commands.Bot):
         "bot": "bot",
         "channel": "channel",
         "define": "define",
-        "draw": "Draw.draw_main",
+        "draw": "Draw.draw",
         "gist": "gist",
         "jishaku": "jishaku",
         "jsk": "jishaku",

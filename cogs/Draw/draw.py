@@ -11,10 +11,10 @@ from typing import Callable, Optional, Union, Literal, List, Dict, Tuple
 import emoji
 import numpy as np
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from helpers.constants import u200b, NL
-from .constants import (
+from .utils.constants import (
     ROW_ICONS_DICT,
     ROW_ICONS,
     COLUMN_ICONS_DICT,
@@ -30,7 +30,7 @@ from .constants import (
     MIN_HEIGHT_OR_WIDTH,
     MAX_HEIGHT_OR_WIDTH,
 )
-from .emoji import (
+from .utils.emoji import (
     ADD_EMOJIS_EMOJI,
     SET_CURSOR_EMOJI,
     ADD_COLOURS_EMOJI,
@@ -40,7 +40,7 @@ from .emoji import (
     SentEmoji,
     AddedEmoji,
 )
-from .tools import (
+from .utils.tools import (
     Tool,
     BrushTool,
     EraseTool,
@@ -50,17 +50,14 @@ from .tools import (
     DarkenTool,
     LightenTool,
 )
-
-from .regexes import (
+from .utils.regexes import (
     FLAG_EMOJI_REGEX,
     HEX_REGEX,
     RGB_A_REGEX,
     CUSTOM_EMOJI_REGEX,
 )
-
-from .errors import DrawError, InvalidDrawMessageError
-
-from .colour import Colour
+from .utils.errors import DrawError, InvalidDrawMessageError
+from .utils.colour import Colour
 
 if typing.TYPE_CHECKING:
     from main import Bot

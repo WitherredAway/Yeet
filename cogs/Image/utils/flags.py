@@ -3,7 +3,7 @@ from typing import Optional
 
 from discord.ext import commands
 
-from .constants import ASPECT_RATIO_ORIGINAL
+from .utils import ASPECT_RATIO_ORIGINAL
 
 
 class ResizeFlagDescriptions(Enum):

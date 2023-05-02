@@ -4,7 +4,7 @@ from typing import Tuple, Optional, Union
 
 from PIL import Image
 
-from cogs.Image.constants import ASPECT_RATIO_ORIGINAL
+from cogs.Image.utils.constants import ASPECT_RATIO_ORIGINAL
 
 
 def resize(

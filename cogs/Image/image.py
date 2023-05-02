@@ -8,11 +8,11 @@ from typing import Optional
 import discord
 from discord.ext import commands
 
-from .utils import center_resize, fit_image, resize
+from .utils.utils import center_resize, fit_image, resize
 from helpers.constants import NL
 from helpers.context import CustomContext
-from .constants import RESIZE_LIMIT, ASPECT_RATIO_ORIGINAL
-from .flags import ResizeFlagDescriptions, ResizeFlags
+from .utils.constants import RESIZE_LIMIT, ASPECT_RATIO_ORIGINAL
+from .utils.flags import ResizeFlagDescriptions, ResizeFlags
 
 if typing.TYPE_CHECKING:
     from main import Bot
