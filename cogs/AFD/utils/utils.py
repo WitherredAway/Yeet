@@ -60,16 +60,18 @@ class Row:
         self.image = self.image if not pd.isna(self.image) else None
 
         self.approved_by = self.row[APPROVED_LABEL]
-        self.approved_by = int(self.approved_by) if not pd.isna(self.approved_by) else None
+        self.approved_by = (
+            int(self.approved_by) if not pd.isna(self.approved_by) else None
+        )
 
         self.comment = self.row[CMT_LABEL]
         self.comment = self.comment if not pd.isna(self.comment) else None
 
         self.claimed = not pd.isna(self.user_id)
-        self.unreviewed = all(
-            (self.image, not self.approved_by, not self.comment)
-        )
-        self.completed = all((self.approved_by, not self.comment))  # If approved but no comment
+        self.unreviewed = all((self.image, not self.approved_by, not self.comment))
+        self.completed = all(
+            (self.approved_by, not self.comment)
+        )  # If approved but no comment
         self.correction_pending = all((self.comment, self.approved_by))
 
 
@@ -80,5 +82,3 @@ class AFDRoleMenu(RoleMenu):
             "AFD Admin": discord.ButtonStyle.red,
         }
         super().__init__(roles_dict)
-
-

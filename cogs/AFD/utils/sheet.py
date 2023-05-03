@@ -240,11 +240,15 @@ class AfdSheet:
         self.edit_row_where(
             PKM_LABEL, pokemon, set_column=APPROVED_LABEL, to_val=str(by)
         )
-        self.edit_row_where(PKM_LABEL, pokemon, set_column=CMT_LABEL, to_val=None)  # Clear any comment
+        self.edit_row_where(
+            PKM_LABEL, pokemon, set_column=CMT_LABEL, to_val=None
+        )  # Clear any comment
 
     def comment(self, pokemon: str, comment: str, *, by: int):
         self.edit_row_where(PKM_LABEL, pokemon, set_column=CMT_LABEL, to_val=comment)
-        self.edit_row_where(PKM_LABEL, pokemon, set_column=APPROVED_LABEL, to_val=str(by))  # Set approved col to whoever commented
+        self.edit_row_where(
+            PKM_LABEL, pokemon, set_column=APPROVED_LABEL, to_val=str(by)
+        )  # Set approved col to whoever commented
 
 
 COMPLETED_EMOJI = "✅"
