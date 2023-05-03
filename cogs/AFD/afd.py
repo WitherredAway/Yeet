@@ -150,7 +150,7 @@ class PokemonView(discord.ui.View):
         )
         await self.msg.edit(embed=self.embed, view=self)
 
-    @discord.ui.button(label="Claim", style=discord.ButtonStyle.blurple)
+    @discord.ui.button(label="Claim", style=discord.ButtonStyle.blurple, row=0)
     async def claim_btn(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
@@ -158,7 +158,7 @@ class PokemonView(discord.ui.View):
         await self.afdcog.claim(self.ctx, self.pokemon)
         await self.update_msg()
 
-    @discord.ui.button(label="Unclaim", style=discord.ButtonStyle.red)
+    @discord.ui.button(label="Unclaim", style=discord.ButtonStyle.red, row=0)
     async def unclaim_btn(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
@@ -166,7 +166,7 @@ class PokemonView(discord.ui.View):
         await self.afdcog.unclaim(self.ctx, self.pokemon)
         await self.update_msg()
 
-    @discord.ui.button(label="Remind", style=discord.ButtonStyle.blurple)
+    @discord.ui.button(label="Remind", style=discord.ButtonStyle.blurple, row=1)
     async def remind_btn(
         self, interaction: discord.Interaction, button: discord.Buttons
     ):
