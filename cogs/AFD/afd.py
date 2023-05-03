@@ -596,12 +596,12 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
                 return
 
         decide_msg = (
-            lambda row: f"**{pokemon}** is already claimed by **{'you' if row.user_id == str(ctx.author.id) else row.username}**!"
+            lambda row: f"**{pokemon}** is already claimed by **{'you' if row.user_id == ctx.author.id else row.username}**!"
         )
         check = lambda row: row.claimed
         decide_footer = (
             lambda row: "You can unclaim it using the `unclaim` command."
-            if row.user_id == str(ctx.author.id)
+            if row.user_id == ctx.author.id
             else None
         )
         claimed = await self.check_claim(
@@ -673,7 +673,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
             if conf is False:
                 return
 
-        check = lambda row: (not row.claimed) or row.user_id != str(ctx.author.id)
+        check = lambda row: (not row.claimed) or row.user_id != ctx.author.id
         decide_msg = (
             lambda row: f"**{pokemon}** is not claimed."
             if not row.claimed
