@@ -293,7 +293,6 @@ class Afd(commands.Cog):
     )
     async def afd(self, ctx: CustomContext):
         await ctx.typing()
-        await self.sheet.update_df()
         if ctx.invoked_subcommand is None:
             await ctx.invoke(self.info)
 
@@ -323,6 +322,7 @@ class Afd(commands.Cog):
         if not pokemon:
             return
 
+        await self.sheet.update_df()
         row = self.sheet.get_pokemon_row(pokemon)
         if not row.claimed:
             content = None
@@ -397,6 +397,7 @@ class Afd(commands.Cog):
         if not pokemon:
             return
 
+        await self.sheet.update_df()
         row = self.sheet.get_pokemon_row(pokemon)
         if not row.claimed:
             return await ctx.reply(
@@ -546,6 +547,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
         if user is None:
             user = ctx.author
 
+        await self.sheet.update_df()
         view = AfdView(self, ctx=ctx)
         view.msg = await ctx.reply(embed=self.embed, view=view)
 
@@ -559,6 +561,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
         if not pokemon:
             return
 
+        await self.sheet.update_df()
         row = self.sheet.get_pokemon_row(pokemon)
         user = (await self.fetch_user(row.user_id)) if row.claimed else None
 
@@ -571,6 +574,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
             return
 
         conf = cmsg = None
+        await self.sheet.update_df()
         row = self.sheet.get_pokemon_row(pokemon)
         if not row.claimed:
             if self.sheet.can_claim(ctx.author) is False and not self.is_admin(
@@ -655,6 +659,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
             return
 
         conf = cmsg = None
+        await self.sheet.update_df()
         row = self.sheet.get_pokemon_row(pokemon)
         if row.user_id == ctx.author.id:
             conf, cmsg = await ctx.confirm(
