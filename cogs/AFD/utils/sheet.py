@@ -73,6 +73,114 @@ class AfdSheet:
             lambda: creds
         ).authorize()
 
+    @classmethod
+    async def create_new(cls, *, pokemon_df: pd.DataFrame) -> AfdSheet:
+        self: AfdSheet = cls.__new__(cls)
+        await self.authorize()
+
+        sheet = await self.gc.create("AFD Sheet")
+        try:
+            self.spreadsheet = sheet
+            self.worksheet = await self.spreadsheet.get_worksheet(0)
+
+            url = f"https://docs.google.com/spreadsheets/d/{sheet.id}"
+            await self.gc.insert_permission(
+                sheet.id, None, perm_type="anyone", role="reader"
+            )
+            await self.gc.insert_permission(
+                sheet.id, EMAIL, perm_type="user", role="writer"
+            )
+
+            self.df = pd.DataFrame(
+                columns=[
+                    DEX_LABEL,
+                    PKM_LABEL,
+                    USERNAME_LABEL,
+                    USER_ID_LABEL,
+                    IMAGE_LABEL,
+                    APPROVED_LABEL,
+                    CMT_LABEL,
+                ]
+            )
+            for idx, row in pokemon_df.iterrows():
+                new_row = [
+                    row[DEX_LABEL_P],
+                    row[ENGLISH_NAME_LABEL_P],
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                ]
+                self.df.loc[len(self.df.index)] = new_row
+
+            await self.update_sheet()
+            await self.update_df()
+
+            self.__init__(url, pokemon_df=pokemon_df)
+        except Exception as e:
+            await self.gc.del_spreadsheet(sheet.id)
+            log.info(
+                "\033[31;1mAFD: Encountered error. Deleted created spreadsheet.\033[0m"
+            )
+            raise e
+        else:
+            return self
+
+    @property
+    def TOPIC(self):
+        return self.df.loc["1", TOPIC_LABEL]
+
+    @property
+    def RULES(self):
+        return self.df.loc["1", RULES_LABEL]
+
+    @property
+    def DEADLINE(self):
+        return self.df.loc["1", DEADLINE_LABEL]
+
+    @property
+    def DEADLINE_DT(self):
+        return datetime.datetime.strptime(self.DEADLINE, "%d/%m/%Y %H:%M")
+
+    @property
+    def DEADLINE_TS(self):
+        return discord.utils.format_dt(self.DEADLINE_DT, "f")
+
+    @property
+    def CLAIM_MAX(self):
+        return int(self.df.loc["1", CLAIM_MAX_LABEL])
+
+    @property
+    def UNAPP_MAX(self):
+        return int(self.df.loc["1", UNAPP_MAX_LABEL])
+
+    async def update_row(
+        self, dex: str, *, from_col: Optional[str] = "B", to_col: Optional[str] = "H"
+    ) -> None:
+        ABC = "ABCDEFGHIJKLMNOP"
+        row_vals = [
+            self.df.iloc[
+                int(dex) - COL_OFFSET, ABC.index(from_col) - 1 : ABC.index(to_col) - 1
+            ]
+            .fillna("")
+            .tolist()
+        ]
+        await self.worksheet.update(f"{from_col}{int(dex) + COL_OFFSET}", row_vals)
+
+    async def update_sheet(self) -> None:
+        self.df = self.df.fillna("").reset_index()
+        vals = [self.df.columns.tolist()] + self.df.values.tolist()
+        await self.worksheet.update("A1", vals)
+
+    async def update_df(self):
+        data = await self.worksheet.get_all_values()
+        self.df = (
+            pd.DataFrame(data[1:], columns=data[0], dtype="object")
+            .set_index("Dex")
+            .replace("", np.nan)
+        )
+
     def get_pokemon(self, name: str) -> str:
         return get_pokemon(name, pk=self.pk)
 
@@ -127,114 +235,6 @@ class AfdSheet:
     def unclaim(self, pokemon: str):
         for col in self.df.columns[1:]:  # For all columns after Pokemon
             self.edit_row_where(PKM_LABEL, pokemon, set_column=col, to_val=None)
-
-    async def update_row(
-        self, dex: str, *, from_col: Optional[str] = "B", to_col: Optional[str] = "H"
-    ) -> None:
-        ABC = "ABCDEFGHIJKLMNOP"
-        row_vals = [
-            self.df.iloc[
-                int(dex) - COL_OFFSET, ABC.index(from_col) - 1 : ABC.index(to_col) - 1
-            ]
-            .fillna("")
-            .tolist()
-        ]
-        await self.worksheet.update(f"{from_col}{int(dex) + COL_OFFSET}", row_vals)
-
-    async def update_sheet(self) -> None:
-        self.df = self.df.fillna("").reset_index()
-        vals = [self.df.columns.tolist()] + self.df.values.tolist()
-        await self.worksheet.update("A1", vals)
-
-    async def update_df(self):
-        data = await self.worksheet.get_all_values()
-        self.df = (
-            pd.DataFrame(data[1:], columns=data[0], dtype="object")
-            .set_index("Dex")
-            .replace("", np.nan)
-        )
-
-    @property
-    def TOPIC(self):
-        return self.df.loc["1", TOPIC_LABEL]
-
-    @property
-    def RULES(self):
-        return self.df.loc["1", RULES_LABEL]
-
-    @property
-    def DEADLINE(self):
-        return self.df.loc["1", DEADLINE_LABEL]
-
-    @property
-    def DEADLINE_DT(self):
-        return datetime.datetime.strptime(self.DEADLINE, "%d/%m/%Y %H:%M")
-
-    @property
-    def DEADLINE_TS(self):
-        return discord.utils.format_dt(self.DEADLINE_DT, "f")
-
-    @property
-    def CLAIM_MAX(self):
-        return int(self.df.loc["1", CLAIM_MAX_LABEL])
-
-    @property
-    def UNAPP_MAX(self):
-        return int(self.df.loc["1", UNAPP_MAX_LABEL])
-
-    @classmethod
-    async def create_new(cls, *, pokemon_df: pd.DataFrame) -> AfdSheet:
-        self: AfdSheet = cls.__new__(cls)
-        await self.authorize()
-
-        sheet = await self.gc.create("AFD Sheet")
-        try:
-            self.spreadsheet = sheet
-            self.worksheet = await self.spreadsheet.get_worksheet(0)
-
-            url = f"https://docs.google.com/spreadsheets/d/{sheet.id}"
-            await self.gc.insert_permission(
-                sheet.id, None, perm_type="anyone", role="reader"
-            )
-            await self.gc.insert_permission(
-                sheet.id, EMAIL, perm_type="user", role="writer"
-            )
-
-            self.df = pd.DataFrame(
-                columns=[
-                    DEX_LABEL,
-                    PKM_LABEL,
-                    USERNAME_LABEL,
-                    USER_ID_LABEL,
-                    IMAGE_LABEL,
-                    APPROVED_LABEL,
-                    CMT_LABEL,
-                ]
-            )
-            for idx, row in pokemon_df.iterrows():
-                new_row = [
-                    row[DEX_LABEL_P],
-                    row[ENGLISH_NAME_LABEL_P],
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                ]
-                self.df.loc[len(self.df.index)] = new_row
-
-            await self.update_sheet()
-            await self.update_df()
-
-            self.__init__(url, pokemon_df=pokemon_df)
-        except Exception as e:
-            await self.gc.del_spreadsheet(sheet.id)
-            log.info(
-                "\033[31;1mAFD: Encountered error. Deleted created spreadsheet.\033[0m"
-            )
-            raise e
-        else:
-            return self
 
 
 COMPLETED_EMOJI = "✅"
