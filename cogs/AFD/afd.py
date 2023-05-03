@@ -694,17 +694,6 @@ class Afd(AfdGist):
             row=row,
             colour=EmbedColours.COMPLETED,
             footer=f"by {ctx.author}",
-        )
-        user = await self.fetch_user(row.user_id)
-        view = UrlView({"Go to message": cmsg.jump_url})
-        await self.log_channel.send(embed=embed, view=view)
-        await self.send_notification(embed, user=user, ctx=ctx, view=view)
-
-    @commands.has_role(AFD_ADMIN_ROLE_ID)
-    @afd.command(
-        name="approve",
-        brief="Approve a drawing",
-        help="""Used to approve a drawing submission. Clears comment.""",
     )
     async def approve_cmd(self, ctx: CustomContext, *, pokemon: str):
         await self.approve(ctx, pokemon)
