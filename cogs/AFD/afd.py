@@ -145,7 +145,8 @@ class PokemonView(discord.ui.View):
                     color = EmbedColours.UNREVIEWED.value
 
             if (not row.image) or (row.correction_pending):
-                self.add_item(self.remind_btn)  # Add remind button if not submitted or correction pending
+                if self.afdcog.is_admin(self.ctx.author):
+                    self.add_item(self.remind_btn)  # Add remind button if not submitted or correction pending
 
             embed.set_footer(
                 text=f"{status}",
