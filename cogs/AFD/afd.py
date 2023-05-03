@@ -69,6 +69,7 @@ class PokemonView(discord.ui.View):
         *,
         afdcog: Afd,
         user: Optional[discord.User] = None,
+        approved_by: Optional[discord.User] = None
     ):
         super().__init__(timeout=180)
         self.ctx = ctx
@@ -77,6 +78,7 @@ class PokemonView(discord.ui.View):
         self.afdcog = afdcog
         self.sheet = self.afdcog.sheet
         self.user = user
+        self.approved_by = approved_by
 
         self.msg: discord.Message
 
@@ -110,7 +112,7 @@ class PokemonView(discord.ui.View):
         row = self.row
         self.clear_items()
         if row.claimed:
-            status = "Claimed by"
+            status = "Claimed."
             if row.user_id == self.ctx.author.id:
                 self.add_item(self.unclaim_btn)  # Add unclaim button if claimed by self
 
@@ -120,7 +122,7 @@ class PokemonView(discord.ui.View):
             if row.image:
                 embed.set_image(url=row.image)
                 if row.completed:
-                    status = "Complete and approved."
+                    status = f"Complete! Approved by {self.approved_by}."
                 else:
                     if self.afdcog.is_admin(self.ctx.author):
                         self.add_item(self.approve_btn)  # Add approve button if not completed
@@ -128,22 +130,20 @@ class PokemonView(discord.ui.View):
                 if row.correction_pending:
                     status = "Correction pending."
                     embed.add_field(
-                        name=CMT_LABEL, value=str(row.comment), inline=False
+                        name=f"{CMT_LABEL} by {self.approved_by}", value=str(row.comment), inline=False
                     )
-                    if self.afdcog.is_admin(self.ctx.author):
-                        self.add_item(self.remind_btn)  # Add remind button if there is a correction pending
                 elif row.unreviewed:
                     status = "Submitted, Awaiting review."
 
-            elif self.afdcog.is_admin(self.ctx.author):
-                self.add_item(self.remind_btn)  # Add remind button if not submitted
+            if (not row.image) or (row.correction_pending):
+                self.add_item(self.remind_btn)  # Add remind button if not submitted or correction pending
 
             embed.set_footer(
-                text=f"{status}\n{row.username} ({row.user_id})",
-                icon_url=self.user.avatar.url,
+                text=f"{status}",
             )
+            embed.set_author(name=f"{row.username} ({row.user_id})", icon_url=self.user.avatar.url)
         else:
-            status = "Not claimed"
+            status = "Not claimed."
             embed.set_footer(text=status)
             self.add_item(self.claim_btn)  # Add claim button if not claimed
 
@@ -193,7 +193,7 @@ class PokemonView(discord.ui.View):
         self, interaction: discord.Interaction, button: discord.Buttons
     ):
         await interaction.response.defer()
-        await self.afdcog.approve(self.ctx, pokemon=self.pokemon)
+        await self.afdcog.approve(self.ctx, self.pokemon)
         await self.update_msg()
 
 
@@ -300,6 +300,47 @@ class Afd(commands.Cog):
             return None
         return name
 
+    @property
+    def embed(self) -> Bot.Embed:
+        unc_list, unc_amount = self.validate_unclaimed()
+        claimed_amount = self.total_amount - unc_amount
+
+        unr_list, unr_amount = self.validate_unreviewed()
+
+        ml_list, ml_list_mention, ml_amount = self.validate_missing_link()
+        submitted_amount = claimed_amount - ml_amount
+        completed_amount = submitted_amount - unr_amount
+
+        description = f"""**Topic:** {self.sheet.TOPIC}
+
+**Deadline**: {self.sheet.DEADLINE_TS}
+**Max claimed (unfinished) pokemon**: {self.sheet.CLAIM_MAX}
+**Max unapproved pokemon**: {self.sheet.UNAPP_MAX}
+"""
+        embed = self.bot.Embed(
+            title="Welcome to the April Fools community project!",
+            description=description,
+        )
+        embed.add_field(
+            name="Rules",
+            value=self.sheet.RULES.format(
+                CLAIM_MAX=self.sheet.CLAIM_MAX, UNAPP_MAX=self.sheet.UNAPP_MAX
+            ),
+            inline=False,
+        )
+
+        embed.add_field(
+            name="Community Stats",
+            value=f"""**Completed**
+{make_progress_bar(completed_amount, self.total_amount)} {completed_amount}/{self.total_amount}
+**Submitted**
+{make_progress_bar(submitted_amount, self.total_amount)} {submitted_amount}/{self.total_amount}
+**Claimed**
+{make_progress_bar(claimed_amount, self.total_amount)} {claimed_amount}/{self.total_amount}""",
+            inline=False,
+        )
+        return embed
+
     @commands.check_any(commands.is_owner(), commands.has_role(AFD_ROLE_ID))
     @commands.group(
         name="afd",
@@ -311,6 +352,57 @@ class Afd(commands.Cog):
         if ctx.invoked_subcommand is None:
             await ctx.invoke(self.info)
 
+    # --- Owner only commands ---
+    @commands.is_owner()
+    @afd.command(
+        name="new_spreadsheet",
+        brief="Used to create a brand new spreadsheet.",
+        description="Sets up a new spreadsheet to use. Intended to be used only once.",
+    )
+    async def new(self, ctx: CustomContext):
+        if hasattr(self, "sheet"):
+            return await ctx.reply("A spreadsheet already exists.")
+
+        async with ctx.typing():
+            self.sheet: AfdSheet = await AfdSheet.create_new(pokemon_df=self.pk)
+
+        embed = self.bot.Embed(
+            title="New Spreadsheet created",
+            description=f"[Please set it permanently in the code.]({self.sheet.url})",
+        )
+        await ctx.reply(
+            embed=embed, view=UrlView({"Go To Spreadsheet": self.sheet.url})
+        )
+
+    @commands.is_owner()
+    @afd.command(
+        name="forceupdate",
+        brief="Forcefully update AFD gists.",
+        description="Used to forcefully update the AFD gist and Credits gist",
+    )
+    async def forceupdate(self, ctx: CustomContext):
+        for attr in DEL_ATTRS_TO_UPDATE:
+            try:
+                delattr(self, attr)
+            except AttributeError:
+                pass
+
+        await ctx.message.add_reaction("▶️")
+        self.update_pokemon.restart()
+        await ctx.message.add_reaction("✅")
+
+    @commands.is_owner()
+    @afd.command(name="rolemenu")
+    async def rolemenu(self, ctx: CustomContext):
+        role_menu = AFDRoleMenu()
+        await ctx.send(
+            f"""<@&{AFD_ROLE_ID}>: Role required to access `afd` commands
+<@&{AFD_ADMIN_ROLE_ID}>: Role required to access AFD Admin only `afd` commands.""",
+            view=role_menu,
+            allowed_mentions=discord.AllowedMentions(roles=False),
+        )
+
+    # --- AFD Admin only commands ---
     @commands.has_role(AFD_ADMIN_ROLE_ID)
     @afd.command(
         name="forceclaim",
@@ -452,96 +544,68 @@ class Afd(commands.Cog):
             view=UrlView({"Go to message": cmsg.jump_url}),
         )
 
-    @commands.is_owner()
-    @afd.command(
-        name="new_spreadsheet",
-        brief="Used to create a brand new spreadsheet.",
-        description="Sets up a new spreadsheet to use. Intended to be used only once.",
-    )
-    async def new(self, ctx: CustomContext):
-        if hasattr(self, "sheet"):
-            return await ctx.reply("A spreadsheet already exists.")
+    async def approve(self, ctx: CustomContext, pokemon: str):
+        pokemon = await self.get_pokemon(ctx, pokemon)
+        if not pokemon:
+            return
 
-        async with ctx.typing():
-            self.sheet: AfdSheet = await AfdSheet.create_new(pokemon_df=self.pk)
-
-        embed = self.bot.Embed(
-            title="New Spreadsheet created",
-            description=f"[Please set it permanently in the code.]({self.sheet.url})",
-        )
-        await ctx.reply(
-            embed=embed, view=UrlView({"Go To Spreadsheet": self.sheet.url})
-        )
-
-    @commands.is_owner()
-    @afd.command(
-        name="forceupdate",
-        brief="Forcefully update AFD gists.",
-        description="Used to forcefully update the AFD gist and Credits gist",
-    )
-    async def forceupdate(self, ctx: CustomContext):
-        for attr in DEL_ATTRS_TO_UPDATE:
-            try:
-                delattr(self, attr)
-            except AttributeError:
-                pass
-
-        await ctx.message.add_reaction("▶️")
-        self.update_pokemon.restart()
-        await ctx.message.add_reaction("✅")
-
-    @commands.is_owner()
-    @afd.command(name="rolemenu")
-    async def rolemenu(self, ctx: CustomContext):
-        role_menu = AFDRoleMenu()
-        await ctx.send(
-            f"""<@&{AFD_ROLE_ID}>: Role required to access `afd` commands
-<@&{AFD_ADMIN_ROLE_ID}>: Role required to access AFD Admin only `afd` commands.""",
-            view=role_menu,
-            allowed_mentions=discord.AllowedMentions(roles=False),
-        )
-
-    @property
-    def embed(self) -> Bot.Embed:
-        unc_list, unc_amount = self.validate_unclaimed()
-        claimed_amount = self.total_amount - unc_amount
-
-        unr_list, unr_amount = self.validate_unreviewed()
-
-        ml_list, ml_list_mention, ml_amount = self.validate_missing_link()
-        submitted_amount = claimed_amount - ml_amount
-        completed_amount = submitted_amount - unr_amount
-
-        description = f"""**Topic:** {self.sheet.TOPIC}
-
-**Deadline**: {self.sheet.DEADLINE_TS}
-**Max claimed (unfinished) pokemon**: {self.sheet.CLAIM_MAX}
-**Max unapproved pokemon**: {self.sheet.UNAPP_MAX}
-"""
-        embed = self.bot.Embed(
-            title="Welcome to the April Fools community project!",
-            description=description,
-        )
-        embed.add_field(
-            name="Rules",
-            value=self.sheet.RULES.format(
-                CLAIM_MAX=self.sheet.CLAIM_MAX, UNAPP_MAX=self.sheet.UNAPP_MAX
+        conf = cmsg = None
+        await self.sheet.update_df()
+        row = self.sheet.get_pokemon_row(pokemon)
+        approved_by = await self.fetch_user(row.approved_by) if row.approved_by else None
+        if any((not row.claimed, not row.image)):
+            return await ctx.reply(
+                embed=self.confirmation_embed(
+                    f"**{pokemon}** {'is not claimed' if not row.claimed else 'has not been submitted'}.",
+                    colour=EmbedColours.INVALID,
+                )
+            )
+        elif row.completed:
+            return await ctx.reply(
+                embed=self.confirmation_embed(
+                    f"**{pokemon}** has already been approved by **{approved_by}**!",
+                    colour=EmbedColours.APPROVED,
+                )
+            )
+        conf, cmsg = await ctx.confirm(
+            embed=self.confirmation_embed(
+                f"""{f'There is a correction pending with comment "{row.comment}" by **{approved_by}**. ' if row.correction_pending else ''}\nAre you sure you want to approve **{pokemon}**?""", row=row
             ),
-            inline=False,
+            confirm_label="Approve"
+        )
+        if conf is False:
+            return
+
+        self.sheet.approve(pokemon, by=ctx.author.id)
+        await self.sheet.update_row(row.dex)
+        await cmsg.edit(
+            embed=self.confirmation_embed(
+                f"**{pokemon}** has been approved! 🎉",
+                row=row,
+                colour=EmbedColours.APPROVED,
+                footer=f"You can undo this using the `unapprove` command.",
+            )
+        )
+        await self.log_channel.send(
+            embed=self.confirmation_embed(
+                f"**{pokemon}** has been approved! 🎉",
+                row=row,
+                colour=EmbedColours.APPROVED,
+                footer=f"by {ctx.author}"
+            ),
+            view=UrlView({"Go to message": cmsg.jump_url}),
         )
 
-        embed.add_field(
-            name="Community Stats",
-            value=f"""**Completed**
-{make_progress_bar(completed_amount, self.total_amount)} {completed_amount}/{self.total_amount}
-**Submitted**
-{make_progress_bar(submitted_amount, self.total_amount)} {submitted_amount}/{self.total_amount}
-**Claimed**
-{make_progress_bar(claimed_amount, self.total_amount)} {claimed_amount}/{self.total_amount}""",
-            inline=False,
-        )
-        return embed
+    @commands.has_role(AFD_ADMIN_ROLE_ID)
+    @afd.command(
+        name="approve",
+        brief="Approve a drawing",
+        help="""Used to approve a drawing submission.""",
+    )
+    async def approve_cmd(self, ctx: CustomContext, *, pokemon: str):
+        await self.approve(ctx, pokemon)
 
+    # --- Public commands ---
     @afd.command(
         name="info",
         aliases=("information", "progress"),
@@ -579,8 +643,9 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
         await self.sheet.update_df()
         row = self.sheet.get_pokemon_row(pokemon)
         user = (await self.fetch_user(row.user_id)) if row.claimed else None
+        approved_by = (await self.fetch_user(row.approved_by)) if row.approved_by else None
 
-        view = PokemonView(ctx, row, afdcog=self, user=user)
+        view = PokemonView(ctx, row, afdcog=self, user=user, approved_by=approved_by)
         view.msg = await ctx.send(embed=view.embed, view=view)
 
     async def claim(self, ctx: CustomContext, pokemon: str):
@@ -749,58 +814,6 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
     )
     async def unclaim_cmd(self, ctx: CustomContext, *, pokemon: str):
         await self.unclaim(ctx, pokemon)
-
-    async def approve(self, ctx: CustomContext, *, pokemon: str):
-        pokemon = await self.get_pokemon(ctx, pokemon)
-        if not pokemon:
-            return
-
-        conf = cmsg = None
-        await self.sheet.update_df()
-        row = self.sheet.get_pokemon_row(pokemon)
-        approved_by = await self.fetch_user(row.approved_by)
-        if not row.claimed:
-            return await ctx.reply(
-                embed=self.confirmation_embed(
-                    f"**{pokemon}** is not claimed.",
-                    colour=EmbedColours.APPROVED,
-                )
-            )
-        elif row.completed:
-            return await ctx.reply(
-                embed=self.confirmation_embed(
-                    f"**{pokemon}** is already approved by **{approved_by}**!",
-                    colour=EmbedColours.APPROVED,
-                )
-            )
-        conf, cmsg = await ctx.confirm(
-            embed=self.confirmation_embed(
-                f"""{f'There is a correction pending with comment "{row.comment}" by **{approved_by}**. '}Are you sure you want to approve **{pokemon}**?""", row=row
-            ),
-            confirm_label="Approve"
-        )
-        if conf is False:
-            return
-
-        self.sheet.approve(pokemon, by=ctx.author.id)
-        await self.sheet.update_row(row.dex)
-        await cmsg.edit(
-            embed=self.confirmation_embed(
-                f"**{pokemon}** has been approved! 🎉",
-                row=row,
-                colour=EmbedColours.APPROVED,
-                footer=f"You can undo this using the `unapprove` command.",
-            )
-        )
-        await self.log_channel.send(
-            embed=self.confirmation_embed(
-                f"**{pokemon}** has been approved! 🎉",
-                row=row,
-                colour=EmbedColours.APPROVED,
-                footer=f"by {approved_by}"
-            ),
-            view=UrlView({"Go to message": cmsg.jump_url}),
-        )
 
     async def check_claim(
         self,
