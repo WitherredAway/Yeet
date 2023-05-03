@@ -990,7 +990,7 @@ Credits: <{self.credits_gist.url}>"""
                 row = self.sheet.get_row(pkm)
                 if not row.approved_by:
                     continue
-                participants[row.user_id] = (
+                participants_dict[row.user_id] = (
                     len(pkms),
                     f"1. {row.username} (`{user_id}`){f' - {len(pkms)} Drawings' if count is True else ''}",
                 )
