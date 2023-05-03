@@ -473,6 +473,7 @@ class Afd(commands.Cog):
                 f"You have successfully force claimed **{pokemon}** for **{user}**.",
                 row=row,
                 colour=EmbedColours.CLAIMED,
+                footer=f"by {ctx.author}"
             )
         )
         await self.log_channel.send(
@@ -540,6 +541,7 @@ class Afd(commands.Cog):
                 f"**{pokemon}** has been forcefully unclaimed from **{row.username}**.",
                 row=row,
                 colour=EmbedColours.UNCLAIMED,
+                footer=f"by {ctx.author}"
             ),
             view=UrlView({"Go to message": cmsg.jump_url}),
         )
