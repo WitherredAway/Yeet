@@ -236,16 +236,18 @@ class Afd(commands.Cog):
         self,
         msg: str,
         *,
-        pokemon: Optional[str] = None,
+        row: Optional[Row] = None,
         colour: Optional[EmbedColours] = None,
         footer: Optional[str] = None,
     ) -> Bot.Embed:
         embed = self.bot.Embed(
             description=msg, colour=colour.value if colour else colour
         )
-        if pokemon is not None:
-            pokemon_image = self.sheet.get_pokemon_image(pokemon)
+        if row is not None:
+            pokemon_image = self.sheet.get_pokemon_image(row.pokemon)
             embed.set_thumbnail(url=pokemon_image)
+            if row.image:
+                embed.set_image(url=row.image)
         if footer:
             embed.set_footer(text=footer)
         return embed
@@ -331,7 +333,7 @@ class Afd(commands.Cog):
                 embed=self.confirmation_embed(
                     content
                     or f"Are you sure you want to forceclaim **{pokemon}** for **{user}**?",
-                    pokemon=pokemon,
+                    row=row,
                 ),
                 confirm_label="Force Claim",
             )
@@ -341,7 +343,7 @@ class Afd(commands.Cog):
             return await ctx.reply(
                 embed=self.confirmation_embed(
                     f"**{pokemon}** is already claimed by **{user}**!",
-                    pokemon=pokemon,
+                    row=row,
                     colour=EmbedColours.INVALID,
                 )
             )
@@ -350,7 +352,7 @@ class Afd(commands.Cog):
                 embed=self.confirmation_embed(
                     f"**{pokemon}** is already claimed by **{row.username}**, override and claim it for **{user}**?\
                         {' There is a drawing submitted already which will be removed.' if row.image else ''}",
-                    pokemon=pokemon,
+                    row=row,
                 ),
                 confirm_label="Force Claim",
             )
@@ -362,14 +364,14 @@ class Afd(commands.Cog):
         await cmsg.edit(
             embed=self.confirmation_embed(
                 f"You have successfully force claimed **{pokemon}** for **{user}**.",
-                pokemon=pokemon,
+                row=row,
                 colour=EmbedColours.CLAIMED,
             )
         )
         await self.log_channel.send(
             embed=self.confirmation_embed(
                 f"**{pokemon}** has been forcefully claimed for **{user}**.",
-                pokemon=pokemon,
+                row=row,
                 colour=EmbedColours.CLAIMED,
             ),
             view=UrlView({"Go to message": cmsg.jump_url}),
@@ -400,7 +402,7 @@ class Afd(commands.Cog):
             return await ctx.reply(
                 embed=self.confirmation_embed(
                     f"**{pokemon}** is not claimed.",
-                    pokemon=pokemon,
+                    row=row,
                     colour=EmbedColours.INVALID,
                 )
             )
@@ -408,7 +410,7 @@ class Afd(commands.Cog):
             embed=self.confirmation_embed(
                 f"**{pokemon}** is currently claimed by **{row.username}**, forcefully unclaim?\
                         {' There is a drawing already submitted which will be removed.' if row.image else ''}",
-                pokemon=pokemon,
+                row=row,
             ),
             confirm_label="Force Unclaim",
         )
@@ -421,14 +423,14 @@ class Afd(commands.Cog):
         await cmsg.edit(
             embed=self.confirmation_embed(
                 f"You have successfully force unclaimed **{pokemon}** from **{row.username}**.",
-                pokemon=pokemon,
+                row=row,
                 colour=EmbedColours.UNCLAIMED,
             )
         )
         await self.log_channel.send(
             embed=self.confirmation_embed(
                 f"**{pokemon}** has been forcefully unclaimed from **{row.username}**.",
-                pokemon=pokemon,
+                row=row,
                 colour=EmbedColours.UNCLAIMED,
             ),
             view=UrlView({"Go to message": cmsg.jump_url}),
@@ -583,7 +585,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
 
             conf, cmsg = await ctx.confirm(
                 embed=self.confirmation_embed(
-                    f"Are you sure you want to claim **{pokemon}**?", pokemon=pokemon
+                    f"Are you sure you want to claim **{pokemon}**?", row=row
                 ),
             )
             if conf is False:
@@ -615,7 +617,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
         await cmsg.edit(
             embed=self.confirmation_embed(
                 f"You have successfully claimed **{pokemon}**, have fun! :D",
-                pokemon=pokemon,
+                row=row,
                 colour=EmbedColours.CLAIMED,
                 footer=f"You can undo this using the `unclaim` command.",
             )
@@ -623,7 +625,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
         await self.log_channel.send(
             embed=self.confirmation_embed(
                 f"**{ctx.author}** has claimed **{pokemon}**.",
-                pokemon=pokemon,
+                row=row,
                 colour=EmbedColours.CLAIMED,
             ),
             view=UrlView({"Go to message": cmsg.jump_url}),
@@ -659,7 +661,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
                 embed=self.confirmation_embed(
                     f"Are you sure you want to unclaim **{pokemon}**?\
                         {' You have already submitted a drawing which will be removed.' if row.image else ''}",
-                    pokemon=pokemon,
+                    row=row,
                 ),
                 confirm_label="Unclaim",
             )
@@ -698,14 +700,14 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
         await cmsg.edit(
             embed=self.confirmation_embed(
                 f"You have successfully unclaimed **{pokemon}**.",
-                pokemon=pokemon,
+                row=row,
                 colour=EmbedColours.UNCLAIMED,
             )
         )
         await self.log_channel.send(
             embed=self.confirmation_embed(
                 f"**{ctx.author}** has unclaimed **{pokemon}**.",
-                pokemon=pokemon,
+                row=row,
                 colour=EmbedColours.UNCLAIMED,
             ),
             view=UrlView({"Go to message": cmsg.jump_url}),
@@ -747,7 +749,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
         if check(row):
             embed = self.confirmation_embed(
                 decide_msg(row),
-                pokemon=pokemon,
+                row=row,
                 colour=EmbedColours.INVALID,
                 footer=decide_footer(row) if decide_footer else decide_footer,
             )
