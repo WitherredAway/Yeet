@@ -113,24 +113,31 @@ class PokemonView(discord.ui.View):
             status = "Claimed by"
             if row.user_id == self.ctx.author.id:
                 self.add_item(self.unclaim_btn)  # Add unclaim button if claimed by self
+
+            if row.user_id == self.ctx.author.id:
+                self.add_item(discord.ui.Button(label="Submit" if not row.image else "Resubmit", url=SUBMISSION_URL))  # Add submit button if claimed by self
+
             if row.image:
                 embed.set_image(url=row.image)
-                if row.approved_by:
+                if row.completed:
                     status = "Complete and approved."
-                elif row.comment:
+                else:
+                    if self.afdcog.is_admin(self.ctx.author):
+                        self.add_item(self.approve_btn)  # Add approve button if not completed
+
+                if row.correction_pending:
                     status = "Correction pending."
                     embed.add_field(
                         name=CMT_LABEL, value=str(row.comment), inline=False
                     )
-                    if self.afdcog.is_admin(self.ctx.author):  # -------
-                        self.add_item(self.remind_btn)                # |
-                elif row.unreviewed:                                  # |----- Add remind button only if there
-                    status = "Submitted, Awaiting review."            # |      is a comment or not submitted
-            elif self.afdcog.is_admin(self.ctx.author):  # -------------
-                self.add_item(self.remind_btn)
+                    if self.afdcog.is_admin(self.ctx.author):
+                        self.add_item(self.remind_btn)  # Add remind button if there is a correction pending
+                elif row.unreviewed:
+                    status = "Submitted, Awaiting review."
 
-            if row.user_id == self.ctx.author.id:  # Add submit button if claimed by self
-                self.add_item(discord.ui.Button(label="Submit" if not row.image else "Resubmit", url=SUBMISSION_URL))
+            elif self.afdcog.is_admin(self.ctx.author):
+                self.add_item(self.remind_btn)  # Add remind button if not submitted
+
             embed.set_footer(
                 text=f"{status}\n{row.username} ({row.user_id})",
                 icon_url=self.user.avatar.url,
@@ -180,6 +187,14 @@ class PokemonView(discord.ui.View):
         await interaction.response.send_message(
             f"Successfully sent a reminder to **{self.user}**.", ephemeral=True
         )
+
+    @discord.ui.button(label="Approve", style=discord.ButtonStyle.green, row=1)
+    async def approve_btn(
+        self, interaction: discord.Interaction, button: discord.Buttons
+    ):
+        await interaction.response.defer()
+        await self.afdcog.approve(self.ctx, pokemon=self.pokemon)
+        await self.update_msg()
 
 
 class Afd(commands.Cog):
@@ -734,6 +749,58 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
     )
     async def unclaim_cmd(self, ctx: CustomContext, *, pokemon: str):
         await self.unclaim(ctx, pokemon)
+
+    async def approve(self, ctx: CustomContext, *, pokemon: str):
+        pokemon = await self.get_pokemon(ctx, pokemon)
+        if not pokemon:
+            return
+
+        conf = cmsg = None
+        await self.sheet.update_df()
+        row = self.sheet.get_pokemon_row(pokemon)
+        approved_by = await self.fetch_user(row.approved_by)
+        if not row.claimed:
+            return await ctx.reply(
+                embed=self.confirmation_embed(
+                    f"**{pokemon}** is not claimed.",
+                    colour=EmbedColours.APPROVED,
+                )
+            )
+        elif row.completed:
+            return await ctx.reply(
+                embed=self.confirmation_embed(
+                    f"**{pokemon}** is already approved by **{approved_by}**!",
+                    colour=EmbedColours.APPROVED,
+                )
+            )
+        conf, cmsg = await ctx.confirm(
+            embed=self.confirmation_embed(
+                f"""{f'There is a correction pending with comment "{row.comment}" by **{approved_by}**. '}Are you sure you want to approve **{pokemon}**?""", row=row
+            ),
+            confirm_label="Approve"
+        )
+        if conf is False:
+            return
+
+        self.sheet.approve(pokemon, by=ctx.author.id)
+        await self.sheet.update_row(row.dex)
+        await cmsg.edit(
+            embed=self.confirmation_embed(
+                f"**{pokemon}** has been approved! 🎉",
+                row=row,
+                colour=EmbedColours.APPROVED,
+                footer=f"You can undo this using the `unapprove` command.",
+            )
+        )
+        await self.log_channel.send(
+            embed=self.confirmation_embed(
+                f"**{pokemon}** has been approved! 🎉",
+                row=row,
+                colour=EmbedColours.APPROVED,
+                footer=f"by {approved_by}"
+            ),
+            view=UrlView({"Go to message": cmsg.jump_url}),
+        )
 
     async def check_claim(
         self,
