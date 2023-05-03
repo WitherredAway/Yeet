@@ -158,10 +158,10 @@ class Bot(commands.Bot):
         log.info(msg)
 
     class Embed(discord.Embed):
-        EMBED_COLOUR = 0x9BFFD6
+        COLOUR = 0x9BFFD6
 
         def __init__(self, **kwargs):
-            kwargs.setdefault("color", self.EMBED_COLOUR)
+            kwargs.setdefault("color", self.COLOUR)
             super().__init__(**kwargs)
 
     async def upload_emoji(

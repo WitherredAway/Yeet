@@ -103,16 +103,22 @@ class PokemonView(discord.ui.View):
         pokemon = self.pokemon
         base_image = self.sheet.get_pokemon_image(pokemon)
 
-        embed = ctx.bot.Embed(title=f"#{row.dex} - {pokemon}", colour=row.colour)
+        embed = ctx.bot.Embed(title=f"#{row.dex} - {pokemon}")
         embed.set_thumbnail(url=base_image)
-        self.update_buttons(embed)
+        self.update(embed)
         return embed
 
-    def update_buttons(self, embed: Bot.Embed):
-        row = self.row
+    def update(self, embed: Bot.Embed):
+        """Method responsible for setting things based on status such as Status footer, Embed colour, Fields and Buttons"""
         self.clear_items()
+
+        row = self.row
+        color = self.ctx.bot.Embed.COLOUR
         if row.claimed:
+            embed.set_author(name=f"{row.username} ({row.user_id})", icon_url=self.user.avatar.url)
+
             status = "Claimed."
+            color = EmbedColours.CLAIMED.value
             if row.user_id == self.ctx.author.id:
                 self.add_item(self.unclaim_btn)  # Add unclaim button if claimed by self
 
@@ -123,17 +129,20 @@ class PokemonView(discord.ui.View):
                 embed.set_image(url=row.image)
                 if row.completed:
                     status = f"Complete! Approved by {self.approved_by}."
+                    color = EmbedColours.COMPLETED.value
                 else:
                     if self.afdcog.is_admin(self.ctx.author):
                         self.add_item(self.approve_btn)  # Add approve button if not completed
 
                 if row.correction_pending:
                     status = "Correction pending."
+                    color = EmbedColours.CORRECTION.value
                     embed.add_field(
                         name=f"{CMT_LABEL} by {self.approved_by}", value=str(row.comment), inline=False
                     )
                 elif row.unreviewed:
                     status = "Submitted, Awaiting review."
+                    color = EmbedColours.UNREVIEWED.value
 
             if (not row.image) or (row.correction_pending):
                 self.add_item(self.remind_btn)  # Add remind button if not submitted or correction pending
@@ -141,11 +150,13 @@ class PokemonView(discord.ui.View):
             embed.set_footer(
                 text=f"{status}",
             )
-            embed.set_author(name=f"{row.username} ({row.user_id})", icon_url=self.user.avatar.url)
         else:
             status = "Not claimed."
+            color = EmbedColours.UNCLAIMED.value
             embed.set_footer(text=status)
             self.add_item(self.claim_btn)  # Add claim button if not claimed
+
+        embed.color = color
 
     async def update_msg(self):
         await self.sheet.update_df()
@@ -566,7 +577,7 @@ class Afd(commands.Cog):
             return await ctx.reply(
                 embed=self.confirmation_embed(
                     f"**{pokemon}** has already been approved by **{approved_by}**!",
-                    colour=EmbedColours.APPROVED,
+                    colour=EmbedColours.COMPLETED,
                 )
             )
         conf, cmsg = await ctx.confirm(
@@ -584,7 +595,7 @@ class Afd(commands.Cog):
             embed=self.confirmation_embed(
                 f"**{pokemon}** has been approved! 🎉",
                 row=row,
-                colour=EmbedColours.APPROVED,
+                colour=EmbedColours.COMPLETED,
                 footer=f"You can undo this using the `unapprove` command.",
             )
         )
@@ -592,7 +603,7 @@ class Afd(commands.Cog):
             embed=self.confirmation_embed(
                 f"**{pokemon}** has been approved! 🎉",
                 row=row,
-                colour=EmbedColours.APPROVED,
+                colour=EmbedColours.COMPLETED,
                 footer=f"by {ctx.author}"
             ),
             view=UrlView({"Go to message": cmsg.jump_url}),

@@ -20,8 +20,8 @@ class EmbedColours(Enum):
     UNCLAIMED: int = 0x6D6F77  # Not claimed, Grey
     CLAIMED: int = 0xE69537  # Claimed but not complete, Orange
     UNREVIEWED: int = 0x6BAAE8  # Link present awaiting review, Blue
-    COMMENT: int = 0xF5CD6B  # Has a comment, Yellow
-    APPROVED: int = 0x85AF63  # Link present and approved, Green
+    CORRECTION: int = 0xF5CD6B  # Has a comment, Yellow
+    COMPLETED: int = 0x85AF63  # Link present and approved, Green
 
 
 @dataclass
@@ -71,20 +71,6 @@ class Row:
         )
         self.completed = all((self.approved_by, not self.comment))  # If approved but no comment
         self.correction_pending = all((self.comment, self.approved_by))
-
-    @property
-    def colour(self) -> int:
-        if self.claimed:
-            if self.approved_by:
-                return EmbedColours.APPROVED.value
-            elif self.comment:
-                return EmbedColours.COMMENT.value
-            elif self.unreviewed:
-                return EmbedColours.UNREVIEWED.value
-            else:
-                return EmbedColours.CLAIMED.value
-        else:
-            return EmbedColours.UNCLAIMED.value
 
 
 class AFDRoleMenu(RoleMenu):
