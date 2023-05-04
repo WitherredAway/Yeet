@@ -244,6 +244,11 @@ class AfdSheet:
             PKM_LABEL, pokemon, set_column=CMT_LABEL, to_val=None
         )  # Clear any comment
 
+    def unapprove(self, pokemon: str):
+        self.edit_row_where(
+            PKM_LABEL, pokemon, set_column=APPROVED_LABEL, to_val=None
+        )
+
     def comment(self, pokemon: str, comment: str, *, by: int):
         self.edit_row_where(PKM_LABEL, pokemon, set_column=CMT_LABEL, to_val=comment)
         self.edit_row_where(

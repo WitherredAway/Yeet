@@ -137,6 +137,10 @@ class PokemonView(discord.ui.View):
                 if row.completed:
                     status = f"Complete! Approved by {self.approved_by}."
                     color = EmbedColours.COMPLETED.value
+                    if self.afdcog.is_admin(self.ctx.author):
+                        self.add_item(
+                            self.unapprove_btn
+                        )  # Add unapprove button if completed
                 else:
                     if self.afdcog.is_admin(self.ctx.author):
                         self.add_item(
@@ -219,6 +223,14 @@ class PokemonView(discord.ui.View):
     ):
         await interaction.response.defer()
         await self.afdcog.approve(self.ctx, self.pokemon)
+        await self.update_msg()
+
+    @discord.ui.button(label="Unapprove", style=discord.ButtonStyle.red, row=1)
+    async def unapprove_btn(
+        self, interaction: discord.Interaction, button: discord.Buttons
+    ):
+        await interaction.response.defer()
+        await self.afdcog.unapprove(self.ctx, self.pokemon)
         await self.update_msg()
 
 
@@ -630,10 +642,65 @@ class Afd(commands.Cog):
     @afd.command(
         name="approve",
         brief="Approve a drawing",
-        help="""Used to approve a drawing submission.""",
+        help="""Used to approve a drawing submission. Clears comment.""",
     )
     async def approve_cmd(self, ctx: CustomContext, *, pokemon: str):
         await self.approve(ctx, pokemon)
+
+    async def unapprove(self, ctx: CustomContext, pokemon: str):
+        pokemon = await self.get_pokemon(ctx, pokemon)
+        if not pokemon:
+            return
+
+        conf = cmsg = None
+        await self.sheet.update_df()
+        row = self.sheet.get_pokemon_row(pokemon)
+        if not row.completed:
+            return await ctx.reply(
+                embed=self.confirmation_embed(
+                    f"**{pokemon}** has not been approved.",
+                    colour=EmbedColours.INVALID,
+                )
+            )
+        approved_by = await self.fetch_user(row.approved_by)
+        conf, cmsg = await ctx.confirm(
+            embed=self.confirmation_embed(
+                f"Are you sure you want to unapprove **{pokemon}**?",
+                row=row,
+                footer=f"Approved by {approved_by}"
+            ),
+            confirm_label="Unapprove",
+        )
+        if conf is False:
+            return
+
+        self.sheet.unapprove(pokemon)
+        await self.sheet.update_row(row.dex)
+        await cmsg.edit(
+            embed=self.confirmation_embed(
+                f"**{pokemon}** has been unapproved.",
+                row=row,
+                colour=EmbedColours.UNREVIEWED,
+            )
+        )
+        await self.log_channel.send(
+            embed=self.confirmation_embed(
+                f"**{pokemon}** has been unapproved.",
+                row=row,
+                colour=EmbedColours.UNREVIEWED,
+                footer=f"by {ctx.author}",
+            ),
+            view=UrlView({"Go to message": cmsg.jump_url}),
+        )
+
+    @commands.has_role(AFD_ADMIN_ROLE_ID)
+    @afd.command(
+        name="unapprove",
+        brief="Unapprove an approved drawing",
+        help="""Used to unapprove an approved drawing submission.""",
+    )
+    async def unapprove_cmd(self, ctx: CustomContext, *, pokemon: str):
+        await self.unapprove(ctx, pokemon)
 
     # --- Public commands ---
     @afd.command(
