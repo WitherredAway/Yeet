@@ -308,13 +308,7 @@ class PokemonView(discord.ui.View):
     async def remind_btn(
         self, interaction: discord.Interaction, button: discord.Buttons
     ):
-        try:
-            await self.user.send(embed=self.afdcog.remind_embed(self.row))
-        except (discord.Forbidden, discord.HTTPException):
-            await self.ctx.send(
-                f"{self.user.mention} (Unable to DM)",
-                embed=self.afdcog.remind_embed(self.row),
-            )
+        await self.afdcog.send_notification(embed=self.afdcog.pkm_remind_embed(self.row), user=self.user, ctx=self.ctx)
         await interaction.response.send_message(
             f"Successfully sent a reminder to **{self.user}**.", ephemeral=True
         )
@@ -406,7 +400,7 @@ class Afd(commands.Cog):
             embed.set_footer(text=footer)
         return embed
 
-    def remind_embed(self, pkm_rows: Union[Row, List[Row]]) -> Bot.Embed:
+    def pkm_remind_embed(self, pkm_rows: Union[Row, List[Row]]) -> Bot.Embed:
         if not isinstance(pkm_rows, list):
             pkm_rows = [pkm_rows]
         embed = self.bot.Embed(
@@ -426,6 +420,22 @@ class Afd(commands.Cog):
             text="Please draw them or unclaim any you think you cannot finish. Thank you!"
         )
         return embed
+
+    async def send_notification(self, embed: Union[Bot.Embed, List[Bot.Embed]], *, user: discord.User, ctx: CustomContext, view: Optional[discord.ui.View] = None) -> bool:
+        if not isinstance(embed, list):
+            embed = [embed]
+
+        try:
+            await user.send(embeds=embed, view=view)
+        except (discord.Forbidden, discord.HTTPException):
+            await ctx.send(
+                f"{user.mention} (Unable to DM)",
+                embeds=embed,
+                view=view
+            )
+            return False
+        else:
+            return True
 
     async def get_pokemon(self, ctx: CustomContext, name: str) -> Union[str, None]:
         try:
@@ -642,17 +652,18 @@ class Afd(commands.Cog):
                 f"You have successfully force claimed **{pokemon}** for **{user}**.",
                 row=row,
                 colour=EmbedColours.CLAIMED,
-                footer=f"by {ctx.author}",
             )
         )
-        await self.log_channel.send(
-            embed=self.confirmation_embed(
-                f"**{pokemon}** has been forcefully claimed for **{user}**.",
-                row=row,
-                colour=EmbedColours.CLAIMED,
-            ),
-            view=UrlView({"Go to message": cmsg.jump_url}),
-        )
+        embed = self.confirmation_embed(
+                    f"**{pokemon}** has been forcefully claimed for **{user}**.",
+                    row=row,
+                    colour=EmbedColours.CLAIMED,
+                    footer=f"by {ctx.author}",
+                )
+        view = UrlView({"Go to message": cmsg.jump_url})
+        await self.log_channel.send(embed=embed, view=view)
+        embed.description = f"**{pokemon}** has been forcefully claimed for you."
+        await self.send_notification(embed, user=user, ctx=ctx, view=view)
 
     @commands.has_role(AFD_ADMIN_ROLE_ID)
     @afd.command(
@@ -705,15 +716,17 @@ class Afd(commands.Cog):
                 colour=EmbedColours.UNCLAIMED,
             )
         )
-        await self.log_channel.send(
-            embed=self.confirmation_embed(
+        embed = self.confirmation_embed(
                 f"**{pokemon}** has been forcefully unclaimed from **{row.username}**.",
                 row=row,
                 colour=EmbedColours.UNCLAIMED,
                 footer=f"by {ctx.author}",
-            ),
-            view=UrlView({"Go to message": cmsg.jump_url}),
-        )
+            )
+        user = await self.fetch_user(row.user_id)
+        view = UrlView({"Go to message": cmsg.jump_url})
+        await self.log_channel.send(embed=embed, view=view)
+        embed.description = f"**{pokemon}** has been forcefully unclaimed from you."
+        await self.send_notification(embed, user=user, ctx=ctx, view=view)
 
     async def approve(self, ctx: CustomContext, pokemon: str):
         pokemon = await self.get_pokemon(ctx, pokemon)
@@ -760,15 +773,16 @@ class Afd(commands.Cog):
                 footer=f"You can undo this using the `unapprove` command.",
             )
         )
-        await self.log_channel.send(
-            embed=self.confirmation_embed(
-                f"**{pokemon}** has been approved! 🎉",
-                row=row,
-                colour=EmbedColours.COMPLETED,
-                footer=f"by {ctx.author}",
-            ),
-            view=UrlView({"Go to message": cmsg.jump_url}),
-        )
+        embed = self.confirmation_embed(
+                    f"**{pokemon}** has been approved! 🎉",
+                    row=row,
+                    colour=EmbedColours.COMPLETED,
+                    footer=f"by {ctx.author}",
+                )
+        user = await self.fetch_user(row.user_id)
+        view = UrlView({"Go to message": cmsg.jump_url})
+        await self.log_channel.send(embed=embed, view=view)
+        await self.send_notification(embed, user=user, ctx=ctx, view=view)
 
     @commands.has_role(AFD_ADMIN_ROLE_ID)
     @afd.command(
@@ -815,15 +829,16 @@ class Afd(commands.Cog):
                 colour=EmbedColours.UNREVIEWED,
             )
         )
-        await self.log_channel.send(
-            embed=self.confirmation_embed(
-                f"**{pokemon}** has been unapproved.",
-                row=row,
-                colour=EmbedColours.UNREVIEWED,
-                footer=f"by {ctx.author}",
-            ),
-            view=UrlView({"Go to message": cmsg.jump_url}),
-        )
+        embed = self.confirmation_embed(
+                    f"**{pokemon}** has been unapproved.",
+                    row=row,
+                    colour=EmbedColours.UNREVIEWED,
+                    footer=f"by {ctx.author}",
+                )
+        user = await self.fetch_user(row.user_id)
+        view = UrlView({"Go to message": cmsg.jump_url})
+        await self.log_channel.send(embed=embed, view=view)
+        await self.send_notification(embed, user=user, ctx=ctx, view=view)
 
     @commands.has_role(AFD_ADMIN_ROLE_ID)
     @afd.command(
@@ -929,22 +944,25 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
 
         self.sheet.claim(ctx.author, pokemon)
         await self.sheet.update_row(row.dex)
-        await cmsg.edit(
-            embed=self.confirmation_embed(
-                f"You have successfully claimed **{pokemon}**, have fun! :D",
-                row=row,
-                colour=EmbedColours.CLAIMED,
-                footer=f"You can undo this using the `unclaim` command.",
-            )
-        )
+        embed = self.confirmation_embed(
+                    f"You have successfully claimed **{pokemon}**, have fun! :D",
+                    row=row,
+                    colour=EmbedColours.CLAIMED,
+                    footer=f"You can undo this using the `unclaim` command.",
+                )
+        await cmsg.edit(embed=embed)
+
+        view = UrlView({"Go to message": cmsg.jump_url})
         await self.log_channel.send(
             embed=self.confirmation_embed(
                 f"**{ctx.author}** has claimed **{pokemon}**.",
                 row=row,
                 colour=EmbedColours.CLAIMED,
             ),
-            view=UrlView({"Go to message": cmsg.jump_url}),
+            view=view,
         )
+
+        await self.send_notification(embed, user=ctx.author, ctx=ctx, view=view)
 
     @afd.command(
         name="claim",
@@ -1013,21 +1031,24 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
 
         self.sheet.unclaim(pokemon)
         await self.sheet.update_row(row.dex)
-        await cmsg.edit(
-            embed=self.confirmation_embed(
-                f"You have successfully unclaimed **{pokemon}**.",
-                row=row,
-                colour=EmbedColours.UNCLAIMED,
-            )
-        )
+        embed = self.confirmation_embed(
+                    f"You have successfully unclaimed **{pokemon}**.",
+                    row=row,
+                    colour=EmbedColours.UNCLAIMED,
+                )
+        await cmsg.edit(embed=embed)
+
+        view = UrlView({"Go to message": cmsg.jump_url})
         await self.log_channel.send(
             embed=self.confirmation_embed(
                 f"**{ctx.author}** has unclaimed **{pokemon}**.",
                 row=row,
                 colour=EmbedColours.UNCLAIMED,
             ),
-            view=UrlView({"Go to message": cmsg.jump_url}),
+            view=view,
         )
+
+        await self.send_notification(embed, user=ctx.author, ctx=ctx, view=view)
 
     @afd.command(
         name="unclaim",
@@ -1114,8 +1135,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
 
         self.sheet.submit(pokemon, image_url=image_url)
         await self.sheet.update_row(row.dex)
-        await cmsg.edit(
-            embeds=self.dual_image_embed(
+        embeds = self.dual_image_embed(
                 description=f"You have successfully {'re' if row.image else ''}submitted the following image for **{pokemon}**.\n\n{'Before / After' if row.image else ''}",
                 url1=row.image,
                 url2=image_url,
@@ -1123,7 +1143,9 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
                 color=EmbedColours.UNREVIEWED.value,
                 footer="You will be notified when it has been reviewed :)"
             )
-        )
+        await cmsg.edit(embeds=embeds)
+
+        view = UrlView({"Go to message": cmsg.jump_url})
         await self.log_channel.send(
             embeds=self.dual_image_embed(
                 description=f"{ctx.author} has {'re' if row.image else ''}submitted the following image for **{pokemon}**.\n\n{'Before / After' if row.image else ''}",
@@ -1132,8 +1154,10 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
                 thumbnail=base_image,
                 color=EmbedColours.UNREVIEWED.value
             ),
-            view=UrlView({"Go to message": cmsg.jump_url}),
+            view=view,
         )
+
+        await self.send_notification(embeds, user=ctx.author, ctx=ctx, view=view)
 
     @afd.command(
         name="submit",
@@ -1181,14 +1205,15 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
 
         self.sheet.submit(pokemon, image_url="")
         await self.sheet.update_row(row.dex)
-        await cmsg.edit(
-            embeds=self.dual_image_embed(
-                description=f"You have successfully unsubmitted the following image for **{pokemon}**",
-                url2=row.image,
-                thumbnail=base_image,
-                color=EmbedColours.CLAIMED.value
-            )
-        )
+        embeds = self.dual_image_embed(
+                    description=f"You have successfully unsubmitted the following image for **{pokemon}**",
+                    url2=row.image,
+                    thumbnail=base_image,
+                    color=EmbedColours.CLAIMED.value
+                )
+        await cmsg.edit(embeds=embeds)
+
+        view = UrlView({"Go to message": cmsg.jump_url})
         await self.log_channel.send(
             embeds=self.dual_image_embed(
                 description=f"{ctx.author} has unsubmitted the following image for **{pokemon}**.",
@@ -1196,8 +1221,10 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
                 thumbnail=base_image,
                 color=EmbedColours.CLAIMED.value
             ),
-            view=UrlView({"Go to message": cmsg.jump_url}),
+            view=view,
         )
+
+        await self.send_notification(embeds, user=ctx.author, ctx=ctx, view=view)
 
     @afd.command(
         name="unsubmit",
