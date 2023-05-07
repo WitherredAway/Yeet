@@ -38,6 +38,8 @@ class Row:
 
     claimed: Optional[bool] = None
     unreviewed: Optional[bool] = None
+    completed: Optional[bool] = None
+    correction_pending: Optional[bool] = None
 
     def __post_init__(self):
         self.dex = self.row.index.values[0]

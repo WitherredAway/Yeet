@@ -236,6 +236,18 @@ class AfdSheet:
         for col in self.df.columns[1:]:  # For all columns after Pokemon
             self.edit_row_where(PKM_LABEL, pokemon, set_column=col, to_val=None)
 
+    def submit(self, pokemon: str, *, image_url: str):
+        self.edit_row_where(
+            PKM_LABEL, pokemon, set_column=IMAGE_LABEL, to_val=image_url
+        )
+        self.edit_row_where(
+            PKM_LABEL, pokemon, set_column=APPROVED_LABEL, to_val=None
+        )  # Clear approved field
+        self.edit_row_where(
+            PKM_LABEL, pokemon, set_column=CMT_LABEL, to_val=None
+        )  # Clear any comment
+
+
     def approve(self, pokemon: str, *, by: int):
         self.edit_row_where(
             PKM_LABEL, pokemon, set_column=APPROVED_LABEL, to_val=str(by)

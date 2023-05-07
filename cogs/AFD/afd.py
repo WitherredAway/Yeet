@@ -6,7 +6,7 @@ import os
 import time
 from dataclasses import dataclass
 from functools import cached_property
-from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Tuple, Union
 
 import discord
 import gists
@@ -61,6 +61,94 @@ log = logging.getLogger(__name__)
 SUBMISSION_URL = "https://example.com"
 
 
+class SimpleModal(discord.ui.Modal):
+    def __init__(self, *, title: str, inputs: List[discord.TextInput]):
+        super().__init__(title=title)
+        if len(inputs) > 5:
+            raise ValueError("Too many TextInputs passed into SimpleModal")
+        for input in inputs:
+            self.add_item(input)
+
+    @property
+    def label_dict(self) -> Dict[str, discord.ui.TextInput]:
+        ch_dict = {child.label: child for child in self.children}
+        return ch_dict
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        self.stop()
+
+
+class SubmitView(discord.ui.View):
+    def __init__(self, afdcog: Afd, *, row: Row, ctx: CustomContext):
+        super().__init__(timeout=300)
+        self.afdcog = afdcog
+        self.row = row
+        self.ctx = ctx
+
+        self.update_buttons()
+
+    async def on_timeout(self):
+        await self.msg.edit(view=None)
+        self.stop()
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user != self.ctx.author:
+            await interaction.response.send_message(
+                f"This instance does not belong to you!",
+                ephemeral=True,
+            )
+            return False
+        return True
+
+    async def _stop(self):
+        await self.msg.delete()
+        self.stop()
+
+    def update_buttons(self):
+        self.clear_items()
+        self.add_item(
+            discord.ui.Button(
+                label="Upload",
+                url=SUBMISSION_URL,
+            )
+        )
+        self.submit_btn.label = self.submit_btn.label if not self.row.image else "Resubmit"
+        self.add_item(self.submit_btn)
+        if self.row.image:
+            self.add_item(self.unsubmit_btn)
+
+    @discord.ui.button(label="Submit", style=discord.ButtonStyle.green, row=1)
+    async def submit_btn(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        url_label = "Drawing URL"
+        modal = SimpleModal(
+            title=f"Submit drawing for {self.row.pokemon}",
+            inputs=[
+                discord.ui.TextInput(
+                    label=url_label,
+                    style=discord.TextStyle.short,
+                    placeholder=SUBMISSION_URL,
+                    required=True,
+                )
+            ]
+        )
+        await interaction.response.send_modal(modal)
+        await modal.wait()
+        await self.afdcog.submit(self.ctx, self.row.pokemon, image_url=modal.label_dict[url_label].value)
+        await self._stop()
+
+    @discord.ui.button(label="Unsubmit", style=discord.ButtonStyle.red, row=1)
+    async def unsubmit_btn(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        await interaction.response.defer()
+        await self.afdcog.unsubmit(self.ctx, self.row.pokemon)
+        await self._stop()
+
+
+SUBMIT_BTN_LABEL = "Submit"
 class PokemonView(discord.ui.View):
     def __init__(
         self,
@@ -125,12 +213,8 @@ class PokemonView(discord.ui.View):
                 self.add_item(self.unclaim_btn)  # Add unclaim button if claimed by self
 
             if row.user_id == self.ctx.author.id:
-                self.add_item(
-                    discord.ui.Button(
-                        label="Submit" if not row.image else "Resubmit",
-                        url=SUBMISSION_URL,
-                    )
-                )  # Add submit button if claimed by self
+                self.submit_btn.label = SUBMIT_BTN_LABEL if not row.image else "Edit submission"
+                self.add_item(self.submit_btn)  # Add submit button if claimed by self
 
             if row.image:
                 embed.set_image(url=row.image)
@@ -200,6 +284,24 @@ class PokemonView(discord.ui.View):
     ):
         await interaction.response.defer()
         await self.afdcog.unclaim(self.ctx, self.pokemon)
+        await self.update_msg()
+
+    @discord.ui.button(label=SUBMIT_BTN_LABEL, style=discord.ButtonStyle.blurple, row=0)
+    async def submit_btn(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        embed = self.ctx.bot.Embed(
+            title=f"Submit drawing for {self.pokemon}",
+            description=f"""**Steps to submit a drawing**:
+- Upload it to the website ({SUBMISSION_URL}) using the Upload button below. You will be given a URL to the uploaded image.
+- Use the green submit button below and paste in the URL to submit it!
+    - You can edit/delete a submission later!"""
+        )
+        embed.set_footer(text="The upload website is an official Pokétwo website made by Oliver!")
+        view = SubmitView(self.afdcog, row=self.row, ctx=self.ctx)
+        await interaction.response.send_message(embed=embed, view=view)
+        view.msg = await interaction.original_message()
+        await view.wait()
         await self.update_msg()
 
     @discord.ui.button(label="Remind", style=discord.ButtonStyle.blurple, row=1)
@@ -336,6 +438,36 @@ class Afd(commands.Cog):
             )
             return None
         return name
+
+    async def check_claim(
+        self,
+        ctx: CustomContext,
+        decide_msg: Callable[[Row], str],
+        pokemon: str,
+        *,
+        check: Callable[[Row], bool],
+        row: Optional[Row] = None,
+        decide_footer: Optional[Callable[[Row], str]] = None,
+        cmsg: Optional[bool] = None,
+    ) -> bool:
+        if not row:
+            # Check once again for any changes to the sheet
+            await self.sheet.update_df()
+            row = self.sheet.get_pokemon_row(pokemon)
+
+        if check(row):
+            embed = self.confirmation_embed(
+                decide_msg(row),
+                row=row,
+                colour=EmbedColours.INVALID,
+                footer=decide_footer(row) if decide_footer else decide_footer,
+            )
+            if cmsg:
+                await cmsg.edit(embed=embed)
+            else:
+                await ctx.reply(embed=embed)
+            return True
+        return False
 
     @property
     def embed(self) -> Bot.Embed:
@@ -914,35 +1046,150 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
     async def unclaim_cmd(self, ctx: CustomContext, *, pokemon: str):
         await self.unclaim(ctx, pokemon)
 
-    async def check_claim(
+    def dual_image_embed(
         self,
-        ctx: CustomContext,
-        decide_msg: Callable[[Row], str],
-        pokemon: str,
+        description: str,
         *,
-        check: Callable[[Row], bool],
-        row: Optional[Row] = None,
-        decide_footer: Optional[Callable[[Row], str]] = None,
-        cmsg: Optional[bool] = None,
-    ) -> bool:
-        if not row:
-            # Check once again for any changes to the sheet
-            await self.sheet.update_df()
-            row = self.sheet.get_pokemon_row(pokemon)
+        url1: Optional[Union[str, None]] = None,
+        url2: str, thumbnail: str,
+        color: Optional[int] = None,
+        footer: Optional[str] = None
+        ):
+        embeds = []
+        embed = self.bot.Embed(
+            description=description,
+            url=url1,
+            color=color
+        )
+        embed.set_thumbnail(url=thumbnail)
+        if footer:
+            embed.set_footer(text=footer)
+        if url1:
+            embed.set_image(url=url1)
+            embeds.append(embed)
 
-        if check(row):
-            embed = self.confirmation_embed(
-                decide_msg(row),
-                row=row,
-                colour=EmbedColours.INVALID,
-                footer=decide_footer(row) if decide_footer else decide_footer,
+        embed2 = embed.copy()
+        embed2.set_image(url=url2)
+        embeds.append(embed2)
+
+        return embeds
+
+    async def submit(self, ctx: CustomContext, pokemon: str, *, image_url: str):
+        pokemon = await self.get_pokemon(ctx, pokemon)
+        if not pokemon:
+            return
+        # TODO image_url CHECK
+
+        conf = cmsg = None
+        await self.sheet.update_df()
+        row = self.sheet.get_pokemon_row(pokemon)
+        base_image = self.sheet.get_pokemon_image(row.pokemon)
+        if not row.claimed:
+            return await ctx.reply(
+                embed=self.confirmation_embed(
+                    f"**{pokemon}** is not claimed.",
+                    colour=EmbedColours.INVALID,
+                )
             )
-            if cmsg:
-                await cmsg.edit(embed=embed)
-            else:
-                await ctx.reply(embed=embed)
-            return True
-        return False
+        if not (row.user_id == ctx.author.id):
+            return await ctx.reply(
+                embed=self.confirmation_embed(
+                    f"**{pokemon}** is not claimed by you!",
+                    colour=EmbedColours.INVALID,
+                )
+            )
+
+        embeds = self.dual_image_embed(
+            description=f"Are you sure you want to {'re' if row.image else ''}submit the following drawing for **{pokemon}**?\n\n{'Before / After' if row.image else ''}",
+            url1=row.image,
+            url2=image_url,
+            thumbnail=base_image
+        )
+        conf, cmsg = await ctx.confirm(
+            embed=embeds,
+            confirm_label="Submit",
+        )
+        if conf is False:
+            return
+
+        self.sheet.submit(pokemon, image_url=image_url)
+        await self.sheet.update_row(row.dex)
+        await cmsg.edit(
+            embeds=self.dual_image_embed(
+                description=f"You have successfully {'re' if row.image else ''}submitted the following image for **{pokemon}**.\n\n{'Before / After' if row.image else ''}",
+                url1=row.image,
+                url2=image_url,
+                thumbnail=base_image,
+                color=EmbedColours.UNREVIEWED.value,
+                footer="You will be notified when it has been reviewed :)"
+            )
+        )
+        await self.log_channel.send(
+            embeds=self.dual_image_embed(
+                description=f"{ctx.author} has {'re' if row.image else ''}submitted the following image for **{pokemon}**.\n\n{'Before / After' if row.image else ''}",
+                url1=row.image,
+                url2=image_url,
+                thumbnail=base_image,
+                color=EmbedColours.UNREVIEWED.value
+            ),
+            view=UrlView({"Go to message": cmsg.jump_url}),
+        )
+
+    async def unsubmit(self, ctx: CustomContext, pokemon: str):
+        pokemon = await self.get_pokemon(ctx, pokemon)
+        if not pokemon:
+            return
+
+        conf = cmsg = None
+        await self.sheet.update_df()
+        row = self.sheet.get_pokemon_row(pokemon)
+        base_image = self.sheet.get_pokemon_image(row.pokemon)
+        if not row.image:
+            return await ctx.reply(
+                embed=self.confirmation_embed(
+                    f"**{pokemon}** is not submitted.",
+                    colour=EmbedColours.INVALID,
+                )
+            )
+        if not (row.user_id == ctx.author.id):
+            return await ctx.reply(
+                embed=self.confirmation_embed(
+                    f"**{pokemon}** is not submitted by you!",
+                    colour=EmbedColours.INVALID,
+                )
+            )
+
+        embeds = self.dual_image_embed(
+            description=f"Are you sure you want to unsubmit the following drawing for **{pokemon}**?",
+            url2=row.image,
+            thumbnail=base_image
+        )
+        conf, cmsg = await ctx.confirm(
+            embed=embeds,
+            confirm_label="Unsubmit",
+        )
+        if conf is False:
+            return
+
+        self.sheet.submit(pokemon, image_url="")
+        await self.sheet.update_row(row.dex)
+        await cmsg.edit(
+            embeds=self.dual_image_embed(
+                description=f"You have successfully unsubmitted the following image for **{pokemon}**",
+                url2=row.image,
+                thumbnail=base_image,
+                color=EmbedColours.CLAIMED.value
+            )
+        )
+        await self.log_channel.send(
+            embeds=self.dual_image_embed(
+                description=f"{ctx.author} has unsubmitted the following image for **{pokemon}**.",
+                url2=row.image,
+                thumbnail=base_image,
+                color=EmbedColours.CLAIMED.value
+            ),
+            view=UrlView({"Go to message": cmsg.jump_url}),
+        )
 
     # The task that updates the unclaimed pokemon gist
     @tasks.loop(minutes=5)
