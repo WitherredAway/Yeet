@@ -14,3 +14,5 @@ RULES_LABEL = "Rules"
 DEADLINE_LABEL = "Deadline"
 CLAIM_MAX_LABEL = "Claim Max"
 UNAPP_MAX_LABEL = "Unapproved Max"
+
+SUBMIT_BTN_LABEL = "Submit"

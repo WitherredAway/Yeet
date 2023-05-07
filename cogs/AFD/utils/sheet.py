@@ -33,6 +33,7 @@ from .urls import IMAGE_URL
 from .utils import Row
 from cogs.Poketwo.utils import get_pokemon
 
+
 log = logging.getLogger("cogs.AFD.afd")
 
 

@@ -1,6 +1,6 @@
 import io
 import typing
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple
 import cProfile
 from typing import Dict, Optional
 import unicodedata
@@ -224,3 +224,22 @@ def center_resize(
     with io.BytesIO() as image_bytes:
         bg_image.save(image_bytes, "PNG")
         return image_bytes.getvalue(), bg_image.size
+
+
+class SimpleModal(discord.ui.Modal):
+    def __init__(self, *, title: str, inputs: List[discord.TextInput]):
+        super().__init__(title=title)
+        if len(inputs) > 5:
+            raise ValueError("Too many TextInputs passed into SimpleModal")
+        for input in inputs:
+            self.add_item(input)
+
+    @property
+    def label_dict(self) -> Dict[str, discord.ui.TextInput]:
+        ch_dict = {child.label: child for child in self.children}
+        return ch_dict
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        self.stop()
+

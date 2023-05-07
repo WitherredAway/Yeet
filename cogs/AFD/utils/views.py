@@ -5,11 +5,15 @@ import typing
 import pandas as pd
 
 import discord
+from cogs.AFD.afd import SUBMISSION_URL
+from cogs.AFD.utils.utils import Row
+from cogs.utils.utils import SimpleModal
 from helpers.constants import NL
 
 from helpers.context import CustomContext
 
 from .labels import (
+    SUBMIT_BTN_LABEL,
     TOPIC_LABEL,
     RULES_LABEL,
     DEADLINE_LABEL,
@@ -158,3 +162,72 @@ class AfdView(discord.ui.View):
         await modal.wait()
 
         await self.msg.edit(embed=self.afdcog.embed, view=self)
+
+
+class SubmitView(discord.ui.View):
+    def __init__(self, afdcog: Afd, *, row: Row, ctx: CustomContext):
+        super().__init__(timeout=300)
+        self.afdcog = afdcog
+        self.row = row
+        self.ctx = ctx
+
+        self.update_buttons()
+
+    async def on_timeout(self):
+        await self.msg.edit(view=None)
+        self.stop()
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user != self.ctx.author:
+            await interaction.response.send_message(
+                f"This instance does not belong to you!",
+                ephemeral=True,
+            )
+            return False
+        return True
+
+    async def _stop(self):
+        await self.msg.delete()
+        self.stop()
+
+    def update_buttons(self):
+        self.clear_items()
+        self.add_item(
+            discord.ui.Button(
+                label="Upload",
+                url=SUBMISSION_URL,
+            )
+        )
+        self.submit_btn.label = SUBMIT_BTN_LABEL if not self.row.image else "Resubmit"
+        self.add_item(self.submit_btn)
+        if self.row.image:
+            self.add_item(self.unsubmit_btn)
+
+    @discord.ui.button(label=SUBMIT_BTN_LABEL, style=discord.ButtonStyle.green, row=1)
+    async def submit_btn(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        url_label = "Drawing URL"
+        modal = SimpleModal(
+            title=f"Submit drawing for {self.row.pokemon}",
+            inputs=[
+                discord.ui.TextInput(
+                    label=url_label,
+                    style=discord.TextStyle.short,
+                    placeholder=SUBMISSION_URL,
+                    required=True,
+                )
+            ]
+        )
+        await interaction.response.send_modal(modal)
+        await modal.wait()
+        await self.afdcog.submit(self.ctx, self.row.pokemon, image_url=modal.label_dict[url_label].value)
+        await self._stop()
+
+    @discord.ui.button(label="Unsubmit", style=discord.ButtonStyle.red, row=1)
+    async def unsubmit_btn(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        await interaction.response.defer()
+        await self.afdcog.unsubmit(self.ctx, self.row.pokemon)
+        await self._stop()
