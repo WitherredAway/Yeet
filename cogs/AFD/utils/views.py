@@ -2,12 +2,11 @@ from __future__ import annotations
 import datetime
 
 import typing
-import pandas as pd
 
 import discord
-from cogs.AFD.afd import SUBMISSION_URL
-from cogs.AFD.utils.utils import Row
-from cogs.utils.utils import SimpleModal
+from .urls import SUBMISSION_URL
+from .utils import Row
+from ...utils.utils import SimpleModal
 from helpers.constants import NL
 
 from helpers.context import CustomContext
