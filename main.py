@@ -161,7 +161,8 @@ class Bot(commands.Bot):
         COLOUR = 0x9BFFD6
 
         def __init__(self, **kwargs):
-            kwargs.setdefault("color", self.COLOUR)
+            if kwargs.get("color", None) is None:
+                kwargs["color"] = self.COLOUR
             super().__init__(**kwargs)
 
     async def upload_emoji(
