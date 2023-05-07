@@ -242,4 +242,3 @@ class SimpleModal(discord.ui.Modal):
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer()
         self.stop()
-
