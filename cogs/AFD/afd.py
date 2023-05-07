@@ -274,14 +274,14 @@ class Afd(AfdGist):
 
     def confirmation_embed(
         self,
-        msg: str,
+        description: str,
         *,
         row: Optional[Row] = None,
         colour: Optional[EmbedColours] = None,
         footer: Optional[str] = None,
     ) -> Bot.Embed:
         embed = self.bot.Embed(
-            description=msg, colour=colour.value if colour else colour
+            description=description, colour=colour.value if colour else colour
         )
         if row is not None:
             pokemon_image = self.sheet.get_pokemon_image(row.pokemon)
@@ -350,7 +350,7 @@ class Afd(AfdGist):
         except IndexError:
             await ctx.reply(
                 embed=self.confirmation_embed(
-                    "Invalid pokemon provided!", colour=EmbedColours.INVALID
+                    f"`{name}` is not a valid Pokemon!", colour=EmbedColours.INVALID
                 )
             )
             return None
