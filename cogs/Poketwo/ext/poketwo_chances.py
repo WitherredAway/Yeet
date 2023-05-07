@@ -206,11 +206,13 @@ class PoketwoChances(commands.Cog):
         invoke_without_command=True,
     )
     async def chance(self, ctx, *, pokemon: str):
-        pkm_df = self.pk.loc[self.pk["name.en"] == get_pokemon(pokemon, pk=self.pk)]
+        try:
+            pkm_df = self.pk.loc[self.pk["name.en"] == get_pokemon(pokemon, pk=self.pk)]
+        except IndexError:
+            await ctx.send(f"`{pokemon}` is not a valid pokemon!")
+            return await ctx.send_help(ctx.command)
+        
         pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance"]]
-
-        if len(pkm_df) == 0:
-            return await ctx.send("Invalid pokémon provided.")
 
         async with ctx.channel.typing():
             result = await self.format_chances_message(
