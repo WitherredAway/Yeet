@@ -1135,6 +1135,14 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
             view=UrlView({"Go to message": cmsg.jump_url}),
         )
 
+    @afd.command(
+        name="submit",
+        bried="Submit a drawing.",
+        help="Submit a drawing for a pokemon. This also removes any approved or comment status. WIP, TODO: VALIDATE URL"
+    )
+    async def submit_cmd(self, ctx: CustomContext, pokemon: str, image_url: str):
+        await self.submit(ctx, pokemon, image_url=image_url)
+
     async def unsubmit(self, ctx: CustomContext, pokemon: str):
         pokemon = await self.get_pokemon(ctx, pokemon)
         if not pokemon:
@@ -1190,6 +1198,14 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
             ),
             view=UrlView({"Go to message": cmsg.jump_url}),
         )
+
+    @afd.command(
+        name="unsubmit",
+        bried="Clear submitted drawing of a pokemon.",
+        help="Clear submitted drawing of a pokemon. This also removes any approved or comment status."
+    )
+    async def unsubmit_cmd(self, ctx: CustomContext, pokemon: str):
+        await self.unsubmit(ctx, pokemon)
 
     # The task that updates the unclaimed pokemon gist
     @tasks.loop(minutes=5)
