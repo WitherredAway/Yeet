@@ -18,7 +18,7 @@ from helpers.context import CustomContext
 from ..utils.utils import UrlView, make_progress_bar
 from .utils.views import AfdView
 from .utils.utils import AFDRoleMenu, EmbedColours, Row
-from .utils.urls import AFD_CREDITS_GIST_URL, AFD_GIST_URL, SHEET_URL
+from .utils.urls import AFD_CREDITS_GIST_URL, AFD_GIST_URL, SHEET_URL, SUBMISSION_URL
 from .utils.sheet import AfdSheet
 from .utils.constants import (
     AFD_ADMIN_ROLE_ID,
@@ -39,9 +39,6 @@ if TYPE_CHECKING:
 
 
 log = logging.getLogger(__name__)
-
-
-SUBMISSION_URL = "https://example.com"
 
 
 class PokemonView(discord.ui.View):
