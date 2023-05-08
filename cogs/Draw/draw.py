@@ -196,7 +196,9 @@ class StartView(discord.ui.View):
         self.width = int(select.values[0])
         await self.update()
 
-    async def send_message(self, interaction: discord.Interaction, *, draw_view: DrawView) -> discord.WebhookMessage:
+    async def send_message(
+        self, interaction: discord.Interaction, *, draw_view: DrawView
+    ) -> discord.WebhookMessage:
         try:
             response: discord.Message = await interaction.followup.send(
                 embed=draw_view.embed, view=draw_view
@@ -207,7 +209,6 @@ class StartView(discord.ui.View):
                 "In components\.\d+\.components\.\d+\.options\.(?P<option>\d+)\.emoji\.id: Invalid emoji",
                 error.text,
             ):  # If the emoji of one of the options of the select menu is unavailable
-
                 removed_option = draw_view.colour_menu.options.pop(
                     int(match.group("option"))
                 )
@@ -312,7 +313,9 @@ class Board:
     ) -> None:
         self.height: int = height
         self.width: int = width
-        self.background: str = TRANSPARENT_EMOJI if background == TRANSPARENT_KEY else background
+        self.background: str = (
+            TRANSPARENT_EMOJI if background == TRANSPARENT_KEY else background
+        )
 
         self.initial_board: np.ndarray = np.full(
             (self.height, self.width), self.background, dtype="object"
@@ -365,9 +368,7 @@ class Board:
     def str(self) -> str:
         """Method that gives a formatted version of the board without row/col labels"""
 
-        return (
-            f"{NL.join([f'{u200b.join(row)}' for row in self.board])}"
-        )
+        return f"{NL.join([f'{u200b.join(row)}' for row in self.board])}"
 
     @property
     def board(self) -> np.ndarray:
@@ -573,8 +574,8 @@ class Board:
         line_spacing = -4
         node_spacing = -2
 
-        w = self.width*(EMOJI_SIZE + node_spacing*2) - node_spacing*2
-        h = self.height*(EMOJI_SIZE + line_spacing) - line_spacing
+        w = self.width * (EMOJI_SIZE + node_spacing * 2) - node_spacing * 2
+        h = self.height * (EMOJI_SIZE + line_spacing) - line_spacing
         with Image.new("RGBA", (w, h), (255, 255, 255, 0)) as image:
             with Pilmoji(image) as pilmoji:
                 pilmoji.text(
@@ -588,7 +589,9 @@ class Board:
             return image
 
     @classmethod
-    def from_board(cls, board: np.ndarray, *, background: Optional[str] = TRANSPARENT_EMOJI):
+    def from_board(
+        cls, board: np.ndarray, *, background: Optional[str] = TRANSPARENT_EMOJI
+    ):
         height = len(board)
         width = len(board[0])
 
@@ -1426,7 +1429,6 @@ class DrawView(discord.ui.View):
                 "In components\.\d+\.components\.\d+\.options\.(?P<option>\d+)\.emoji\.id: Invalid emoji",
                 error.text,
             ):  # If the emoji of one of the options of the select menu is unavailable
-
                 removed_option = self.colour_menu.options.pop(
                     int(match.group("option"))
                 )
@@ -1647,10 +1649,7 @@ class DrawView(discord.ui.View):
         col_move = 1
         await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
 
-    @discord.ui.button(
-        emoji=SAVE_EMOJI,
-        style=discord.ButtonStyle.green
-    )
+    @discord.ui.button(emoji=SAVE_EMOJI, style=discord.ButtonStyle.green)
     async def save_btn(self, interaction: discord.Interaction, button: discord.Button):
         await interaction.response.defer(thinking=True)
         image = await self.bot.loop.run_in_executor(None, self.board.save)
@@ -1660,6 +1659,7 @@ class DrawView(discord.ui.View):
         embed = self.bot.Embed(title=f"{interaction.user}'s masterpiece ✨")
         embed.set_image(url=f"attachment://{filename}.png")
         await interaction.followup.send(embed=embed, file=file)
+
 
 class Draw(commands.Cog):
     """Make pixel art on discord!"""
@@ -1684,7 +1684,9 @@ class Draw(commands.Cog):
         ctx: CustomContext,
         height: Optional[int] = 9,
         width: Optional[int] = 9,
-        background: Literal["🟥", "🟧", "🟨", "🟩", "🟦", "🟪", "🟫", "⬛", "⬜", "transparent"] = TRANSPARENT_KEY,
+        background: Literal[
+            "🟥", "🟧", "🟨", "🟩", "🟦", "🟪", "🟫", "⬛", "⬜", "transparent"
+        ] = TRANSPARENT_KEY,
     ) -> None:
         if MIN_HEIGHT_OR_WIDTH > height > MAX_HEIGHT_OR_WIDTH:
             return await ctx.send("Height must be atleast 5 and atmost 17")
@@ -1699,7 +1701,9 @@ class Draw(commands.Cog):
         start_view = StartView(ctx=ctx, board=board)
         await start_view.start()
 
-    async def board_from_message(self, ctx: CustomContext, *, message: discord.Message) -> Union[Tuple[Board, ToolMenu, ColourMenu], None]:
+    async def board_from_message(
+        self, ctx: CustomContext, *, message: discord.Message
+    ) -> Union[Tuple[Board, ToolMenu, ColourMenu], None]:
         if message.author.id not in (self.bot.TEST_BOT_ID, self.bot.MAIN_BOT_ID):
             raise InvalidDrawMessageError("Not a message from the bot.")
         if len(message.embeds) == 0:
@@ -1741,7 +1745,9 @@ class Draw(commands.Cog):
         elif message_link is None or not isinstance(message_link, discord.Message):
             return await ctx.send_help(ctx.command)
 
-        board, tool_options, colour_options = await self.board_from_message(ctx, message=message)
+        board, tool_options, colour_options = await self.board_from_message(
+            ctx, message=message
+        )
         if not isinstance(board, Board):
             return
 
@@ -1757,12 +1763,10 @@ class Draw(commands.Cog):
         name="save",
         aliases=("export",),
         brief="Quickly save/export a drawing",
-        help="Quickly save/export a drawing by replying to a drawing message or using message link."
+        help="Quickly save/export a drawing by replying to a drawing message or using message link.",
     )
     async def save(
-        self,
-        ctx: CustomContext,
-        message_link: Optional[discord.Message] = None
+        self, ctx: CustomContext, message_link: Optional[discord.Message] = None
     ):
         await ctx.typing()
         message = message_link
@@ -1779,7 +1783,9 @@ class Draw(commands.Cog):
         filename = "image"
         file = image_to_file(image, filename=filename)
 
-        embed = self.bot.Embed(title=message.embeds[0].title.replace("drawing board.", "masterpiece ✨"))
+        embed = self.bot.Embed(
+            title=message.embeds[0].title.replace("drawing board.", "masterpiece ✨")
+        )
         embed.set_image(url=f"attachment://{filename}.png")
         await ctx.reply(embed=embed, file=file)
 

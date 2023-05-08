@@ -26,7 +26,7 @@ def draw_emoji(emoji: str) -> Image:
                 font=FONT(1),
                 spacing=0,
                 emoji_scale_factor=130,
-                emoji_position_offset=(-1, -1)
+                emoji_position_offset=(-1, -1),
             )
         return image
 

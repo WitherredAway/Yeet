@@ -12,7 +12,9 @@ TRANSPARENT_CURSOR_EMOJI = "<:tc:1104939609240113162>"
 
 def base_colour_options():
     return [
-        discord.SelectOption(label="Transparent", emoji=TRANSPARENT_EMOJI, value=TRANSPARENT_EMOJI),
+        discord.SelectOption(
+            label="Transparent", emoji=TRANSPARENT_EMOJI, value=TRANSPARENT_EMOJI
+        ),
         discord.SelectOption(label="Red", emoji="🟥", value="🟥"),
         discord.SelectOption(label="Orange", emoji="🟧", value="🟧"),
         discord.SelectOption(label="Yellow", emoji="🟨", value="🟨"),

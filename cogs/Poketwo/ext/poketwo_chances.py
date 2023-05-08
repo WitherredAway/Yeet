@@ -211,7 +211,7 @@ class PoketwoChances(commands.Cog):
         except IndexError:
             await ctx.send(f"`{pokemon}` is not a valid pokemon!")
             return await ctx.send_help(ctx.command)
-        
+
         pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance"]]
 
         async with ctx.channel.typing():
