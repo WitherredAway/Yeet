@@ -4,6 +4,7 @@ import asyncio
 from contextlib import asynccontextmanager
 import copy
 from dataclasses import dataclass
+from functools import cached_property
 import re
 import typing
 from typing import Callable, Optional, Union, Literal, List, Dict, Tuple
@@ -84,6 +85,23 @@ class Coords:
         self.iy: int = self.y * -1
 
 
+def value_to_option_dict(
+    select_menu: discord.SelectMenu,
+) -> Dict[int, discord.SelectOption]:
+    return {option.value: option for option in select_menu.options}
+
+
+def emoji_to_option_dict(
+    select_menu: discord.SelectMenu,
+) -> Dict[discord.PartialEmoji, discord.SelectOption]:
+    return {
+        option.emoji.name
+        if option.emoji.is_unicode_emoji()
+        else option.emoji.id: option
+        for option in select_menu.options
+    }
+
+
 class StartView(discord.ui.View):
     def __init__(
         self,
@@ -107,6 +125,8 @@ class StartView(discord.ui.View):
 
         self.tool_options = tool_options
         self.colour_options = colour_options
+
+        self.update_buttons()
 
     @property
     def initial_message(self) -> str:
@@ -156,7 +176,20 @@ class StartView(discord.ui.View):
             view=self,
         )
 
+    def set_default(self, select_menu: discord.SelectMenu, default_option_value):
+        for option in select_menu.options:
+            if option.value == str(default_option_value):
+                option.default = True
+            else:
+                option.default = False
+
+    def update_buttons(self):
+        self.set_default(self.background_select, self.background)
+        self.set_default(self.height_select, self.height)
+        self.set_default(self.width_select, self.width)
+
     async def update(self):
+        self.update_buttons()
         await self.response.edit(
             content=self.initial_message,
             embed=self.bot.Embed(description=str(self.board)),
@@ -174,7 +207,7 @@ class StartView(discord.ui.View):
         self.background = select.values[0]
         await self.update()
 
-    @discord.ui.select(options=base_number_options(), placeholder="Height")
+    @discord.ui.select(options=base_number_options("height"), placeholder="Height")
     async def height_select(
         self, interaction: discord.Interaction, select: discord.ui.Select
     ):
@@ -185,7 +218,7 @@ class StartView(discord.ui.View):
         self.height = int(select.values[0])
         await self.update()
 
-    @discord.ui.select(options=base_number_options(), placeholder="Width")
+    @discord.ui.select(options=base_number_options("width"), placeholder="Width")
     async def width_select(
         self, interaction: discord.Interaction, select: discord.ui.Select
     ):
@@ -653,14 +686,10 @@ class ToolMenu(discord.ui.Select):
     def tools(self) -> Dict[str, Tool]:
         return {tool.name.lower(): tool for tool in self.tool_list}
 
-    @property
-    def value_to_option_dict(self) -> Dict[str, discord.SelectOption]:
-        return {option.value: option for option in self.options}
-
     def value_to_option(
         self, value: Union[str, int]
     ) -> Union[None, discord.SelectOption]:
-        return self.value_to_option_dict.get(value)
+        return value_to_option_dict(self).get(value)
 
     def set_default(self, def_option: discord.SelectOption):
         for option in self.options:
@@ -724,23 +753,10 @@ class ColourMenu(discord.ui.Select):
 
         self.view: DrawView
 
-    @property
-    def value_to_option_dict(self) -> Dict[str, discord.SelectOption]:
-        return {option.value: option for option in self.options}
-
-    @property
-    def emoji_to_option_dict(self) -> Dict[Union[str, int], discord.SelectOption]:
-        return {
-            option.emoji.name
-            if option.emoji.is_unicode_emoji()
-            else option.emoji.id: option
-            for option in self.options
-        }
-
     def value_to_option(
         self, value: Union[str, int]
     ) -> Union[None, discord.SelectOption]:
-        return self.value_to_option_dict.get(value)
+        return value_to_option_dict(self).get(value)
 
     def emoji_to_option(
         self, emoji: Union[discord.Emoji, discord.PartialEmoji]
@@ -750,7 +766,7 @@ class ColourMenu(discord.ui.Select):
         else:
             identifier = emoji.name if emoji.is_unicode_emoji() else emoji.id
 
-        return self.emoji_to_option_dict.get(identifier)
+        return emoji_to_option_dict(self).get(identifier)
 
     def append_option(
         self, option: discord.SelectOption
