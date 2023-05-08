@@ -32,10 +32,10 @@ class Colour:
     def base_emoji(self) -> Image:
         return draw_emoji("🟪")
 
-    async def to_bytes(self) -> io.BytesIO():
+    async def to_bytes(self) -> bytes:
         return await self.loop.run_in_executor(None, self._to_bytes)
 
-    def _to_bytes(self) -> io.BytesIO():
+    def _to_bytes(self) -> bytes:
         image = self._to_image()
         with io.BytesIO() as image_bytes:
             image.save(image_bytes, "PNG")
