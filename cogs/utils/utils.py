@@ -48,6 +48,14 @@ def async_profile(func):
     return decorator
 
 
+def image_to_file(image: Image, *, filename: Optional[str] = "image") -> discord.File:
+    with io.BytesIO() as image_binary:
+        image.save(image_binary, 'PNG')
+        image_binary.seek(0)
+
+        return discord.File(fp=image_binary, filename=f'{filename}.png')
+
+
 class UrlView(discord.ui.View):
     def __init__(self, url_dict: Dict[str, str]):
         super().__init__()

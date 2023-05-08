@@ -94,6 +94,19 @@ CURSOR = {
     "⬜": "⚪",
 }
 
+BG_EMOJIS_RGBA = {
+    TRANSPARENT_EMOJI: (0, 0, 0, 0),
+    "🟥": (205, 58, 69, 255),
+    "🟧": (231, 151, 53, 255),
+    "🟨": (245, 207, 106, 255),
+    "🟩": (134, 178, 98, 255),
+    "🟦": (107, 172, 234, 255),
+    "🟪": (168, 145, 211, 255),
+    "🟫": (183, 110, 83, 255),
+    "⬛": (42, 48, 55, 255),
+    "⬜": (231, 232, 232, 255),
+}
+
 
 inv_CURSOR = invert_dict(CURSOR)
 
@@ -123,6 +136,6 @@ ALPHABETS = tuple(LETTER_TO_NUMBER.keys())
 NUMBERS = tuple(LETTER_TO_NUMBER.values())
 
 
-FONT = ImageFont.truetype("helpers/fonts/arial.ttf", 1)
+FONT = lambda size: ImageFont.truetype("helpers/fonts/arial.ttf", size)
 
 PADDING = (" " + u200b) * 6

@@ -13,6 +13,7 @@ ADD_COLOURS_EMOJI = "🏳️‍🌈"
 MIX_COLOURS_EMOJI = "🔀"
 AUTO_DRAW_EMOJI = "<:auto_draw:1032565224903016449>"
 SELECT_EMOJI = "<:select_tool:1037847279169704028>"
+SAVE_EMOJI = "<:save:1105025339861766195>"
 
 
 def draw_emoji(emoji: str) -> Image:
@@ -20,11 +21,12 @@ def draw_emoji(emoji: str) -> Image:
         with Pilmoji(image) as pilmoji:
             pilmoji.text(
                 xy=(0, 0),
-                text=emoji.strip(),
+                text=emoji,
                 fill=(0, 0, 0),
-                font=FONT,
+                font=FONT(1),
+                spacing=0,
                 emoji_scale_factor=130,
-                emoji_position_offset=(-1, -1),
+                emoji_position_offset=(-1, -1)
             )
         return image
 

@@ -12,9 +12,14 @@ import emoji
 import numpy as np
 import discord
 from discord.ext import commands
+from PIL import Image
+from helpers.context import CustomContext
+from pilmoji import Pilmoji
 
+from ..utils.utils import image_to_file
 from helpers.constants import u200b, NL
 from .utils.constants import (
+    FONT,
     ROW_ICONS_DICT,
     ROW_ICONS,
     COLUMN_ICONS_DICT,
@@ -33,6 +38,7 @@ from .utils.constants import (
 )
 from .utils.emoji import (
     ADD_EMOJIS_EMOJI,
+    SAVE_EMOJI,
     SET_CURSOR_EMOJI,
     ADD_COLOURS_EMOJI,
     MIX_COLOURS_EMOJI,
@@ -57,7 +63,7 @@ from .utils.regexes import (
     RGB_A_REGEX,
     CUSTOM_EMOJI_REGEX,
 )
-from .utils.errors import DrawError, InvalidDrawMessageError
+from .utils.errors import InvalidDrawMessageError
 from .utils.colour import Colour
 
 if typing.TYPE_CHECKING:
@@ -190,6 +196,42 @@ class StartView(discord.ui.View):
         self.width = int(select.values[0])
         await self.update()
 
+    async def send_message(self, interaction: discord.Interaction, *, draw_view: DrawView) -> discord.WebhookMessage:
+        try:
+            response: discord.Message = await interaction.followup.send(
+                embed=draw_view.embed, view=draw_view
+            )
+            # print(f'[{datetime.datetime.strftime(datetime.datetime.utcnow() + datetime.timedelta(), "%H:%M:%S")}]: Edited')
+        except discord.HTTPException as error:
+            if match := re.search(
+                "In components\.\d+\.components\.\d+\.options\.(?P<option>\d+)\.emoji\.id: Invalid emoji",
+                error.text,
+            ):  # If the emoji of one of the options of the select menu is unavailable
+
+                removed_option = draw_view.colour_menu.options.pop(
+                    int(match.group("option"))
+                )
+                content = f"The {removed_option.emoji} emoji was not found for some reason, so the option was removed aswell. Please try again."
+
+                if interaction is None:
+                    await self.response.channel.send(
+                        content=content,
+                    )
+                else:
+                    await interaction.followup.send(
+                        content=content,
+                        ephemeral=True,
+                    )
+                await self.send_message(interaction, draw_view=draw_view)
+            else:
+                if interaction is None:
+                    await self.response.channel.send(error)
+                else:
+                    await interaction.followup.send(error)
+                raise error
+
+        return response
+
     @discord.ui.button(label="Create", style=discord.ButtonStyle.green)
     async def create(self, interaction: discord.Interaction, button: discord.Button):
         await interaction.response.defer()
@@ -200,9 +242,7 @@ class StartView(discord.ui.View):
             tool_options=self.tool_options,
             colour_options=self.colour_options,
         )
-        response: discord.Message = await interaction.followup.send(
-            embed=draw_view.embed, view=draw_view
-        )
+        response = await self.send_message(interaction, draw_view=draw_view)
         draw_view.response = response
         await response.edit(
             embed=draw_view.embed, view=draw_view
@@ -257,6 +297,8 @@ class Notification:
 
 
 TRANSPARENT_KEY = "transparent"
+EMOJI_SIZE = 128
+
 
 class Board:
     def __init__(
@@ -301,6 +343,8 @@ class Board:
         self.cursor_coords: List[Tuple[int, int]] = [(self.cursor_row, self.cursor_col)]
 
     def __str__(self) -> str:
+        """Method that gives a formatted version of the board with row/col labels"""
+
         cursor_rows = tuple(row for row, col in self.cursor_coords)
         cursor_cols = tuple(col for row, col in self.cursor_coords)
         row_labels = [
@@ -315,6 +359,14 @@ class Board:
         return (
             f"{self.cursor}{PADDING}{u200b.join(col_labels)}\n"
             f"\n{NL.join([f'{row_labels[idx]}{PADDING}{u200b.join(row)}' for idx, row in enumerate(self.board)])}"
+        )
+
+    @property
+    def str(self) -> str:
+        """Method that gives a formatted version of the board without row/col labels"""
+
+        return (
+            f"{NL.join([f'{u200b.join(row)}' for row in self.board])}"
         )
 
     @property
@@ -417,16 +469,6 @@ class Board:
 
         return self.un_cursor(self.board[row, col])
 
-    @classmethod
-    def from_board(cls, board: np.ndarray, *, background: Optional[str] = TRANSPARENT_EMOJI):
-        height = len(board)
-        width = len(board[0])
-
-        board_obj = cls(height=height, width=width, background=background)
-        board_obj.board_history = [board]
-
-        return board_obj
-
     def clear(self):
         self.draw(
             self.background, coords=np.array(np.where(self.board != self.background)).T
@@ -526,6 +568,44 @@ class Board:
         else:
             self.cursor_coords = [(self.cursor_row, self.cursor_col)]
             return
+
+    def save(self) -> Image.Image:
+        line_spacing = -4
+        node_spacing = -2
+
+        w = self.width*(EMOJI_SIZE + node_spacing*2) - node_spacing*2
+        h = self.height*(EMOJI_SIZE + line_spacing) - line_spacing
+        with Image.new("RGBA", (w, h), (255, 255, 255, 0)) as image:
+            with Pilmoji(image) as pilmoji:
+                pilmoji.text(
+                    xy=(0, 0),
+                    text=self.str,
+                    fill=(0, 0, 0),
+                    font=FONT(EMOJI_SIZE),
+                    spacing=line_spacing,
+                    node_spacing=node_spacing,
+                )
+            return image
+
+    @classmethod
+    def from_board(cls, board: np.ndarray, *, background: Optional[str] = TRANSPARENT_EMOJI):
+        height = len(board)
+        width = len(board[0])
+
+        board_obj = cls(height=height, width=width, background=background)
+        board_obj.board_history = [board]
+
+        return board_obj
+
+    @classmethod
+    def from_str(cls, string: str, *, background: Optional[str] = None) -> Board:
+        lines = string.split("\n")[2:]
+        board = []
+        for line in lines:
+            board.append(line.split(PADDING)[-1].split("\u200b"))
+        board = cls.from_board(np.array(board, dtype="object"), background=background)
+        board.clear_cursors()
+        return board
 
 
 class ToolMenu(discord.ui.Select):
@@ -1021,7 +1101,7 @@ class DrawView(discord.ui.View):
 
     @property
     def embed(self):
-        embed = discord.Embed(title=f"{self.ctx.author}'s drawing board.")
+        embed = self.bot.Embed(title=f"{self.ctx.author}'s drawing board.")
 
         # Render the cursors on a board copy
         board = copy.deepcopy(self.board)
@@ -1245,7 +1325,7 @@ class DrawView(discord.ui.View):
             self.add_item(self.down_left)
             self.add_item(self.down)
             self.add_item(self.down_right)
-            self.add_item(self.placeholder_button)
+            self.add_item(self.save_btn)
 
         elif self.secondary_page is True:
             self.add_item(self.stop_button)
@@ -1264,7 +1344,7 @@ class DrawView(discord.ui.View):
             self.add_item(self.down_left)
             self.add_item(self.down)
             self.add_item(self.down_right)
-            self.add_item(self.placeholder_button)
+            self.add_item(self.save_btn)
 
         self.update_buttons()
 
@@ -1346,11 +1426,11 @@ class DrawView(discord.ui.View):
                 "In components\.\d+\.components\.\d+\.options\.(?P<option>\d+)\.emoji\.id: Invalid emoji",
                 error.text,
             ):  # If the emoji of one of the options of the select menu is unavailable
-                content = f"The {removed_option.emoji} emoji was not found for some reason, so the option was removed aswell. Please try again."
 
                 removed_option = self.colour_menu.options.pop(
                     int(match.group("option"))
                 )
+                content = f"The {removed_option.emoji} emoji was not found for some reason, so the option was removed aswell. Please try again."
                 self.board.cursor = self.board.background
 
                 if interaction is None:
@@ -1473,47 +1553,6 @@ class DrawView(discord.ui.View):
         col_move = -1
         await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
 
-    @discord.ui.button(
-        emoji="<:right:1032565019352764438>", style=discord.ButtonStyle.blurple
-    )
-    async def right(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
-        row_move = 0
-        col_move = 1
-        await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
-
-    # 3rd / Last Row
-    @discord.ui.button(
-        emoji="<:down_left:1032565090223935518>", style=discord.ButtonStyle.blurple
-    )
-    async def down_left(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ):
-        await interaction.response.defer()
-        row_move = 1
-        col_move = -1
-        await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
-
-    @discord.ui.button(
-        emoji="<:down:1032565072981131324>", style=discord.ButtonStyle.blurple
-    )
-    async def down(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
-        row_move = 1
-        col_move = 0
-        await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
-
-    @discord.ui.button(
-        emoji="<:down_right:1032565043604230214>", style=discord.ButtonStyle.blurple
-    )
-    async def down_right(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ):
-        await interaction.response.defer()
-        row_move = 1
-        col_move = 1
-        await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
-
     @discord.ui.button(emoji=SET_CURSOR_EMOJI, style=discord.ButtonStyle.blurple)
     async def set_cursor(
         self, interaction: discord.Interaction, button: discord.ui.Button
@@ -1567,6 +1606,60 @@ class DrawView(discord.ui.View):
         )
         await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
 
+    @discord.ui.button(
+        emoji="<:right:1032565019352764438>", style=discord.ButtonStyle.blurple
+    )
+    async def right(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        row_move = 0
+        col_move = 1
+        await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
+
+    # 3rd / Last Row
+    @discord.ui.button(
+        emoji="<:down_left:1032565090223935518>", style=discord.ButtonStyle.blurple
+    )
+    async def down_left(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        await interaction.response.defer()
+        row_move = 1
+        col_move = -1
+        await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
+
+    @discord.ui.button(
+        emoji="<:down:1032565072981131324>", style=discord.ButtonStyle.blurple
+    )
+    async def down(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        row_move = 1
+        col_move = 0
+        await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
+
+    @discord.ui.button(
+        emoji="<:down_right:1032565043604230214>", style=discord.ButtonStyle.blurple
+    )
+    async def down_right(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        await interaction.response.defer()
+        row_move = 1
+        col_move = 1
+        await self.move_cursor(interaction, row_move=row_move, col_move=col_move)
+
+    @discord.ui.button(
+        emoji=SAVE_EMOJI,
+        style=discord.ButtonStyle.green
+    )
+    async def save_btn(self, interaction: discord.Interaction, button: discord.Button):
+        await interaction.response.defer(thinking=True)
+        image = await self.bot.loop.run_in_executor(None, self.board.save)
+        filename = "image"
+        file = image_to_file(image, filename=filename)
+
+        embed = self.bot.Embed(title=f"{interaction.user}'s masterpiece ✨")
+        embed.set_image(url=f"attachment://{filename}.png")
+        await interaction.followup.send(embed=embed, file=file)
 
 class Draw(commands.Cog):
     """Make pixel art on discord!"""
@@ -1588,7 +1681,7 @@ class Draw(commands.Cog):
     )
     async def draw(
         self,
-        ctx: commands.Context,
+        ctx: CustomContext,
         height: Optional[int] = 9,
         width: Optional[int] = 9,
         background: Literal["🟥", "🟧", "🟨", "🟩", "🟦", "🟪", "🟫", "⬛", "⬜", "transparent"] = TRANSPARENT_KEY,
@@ -1606,23 +1699,7 @@ class Draw(commands.Cog):
         start_view = StartView(ctx=ctx, board=board)
         await start_view.start()
 
-    @draw.command(
-        name="copy",
-        brief="Copy a drawing.",
-        help="Copy a drawing from an embed by replying to the message or using message link.",
-        description="Allows you to copy a drawing that was done with the `draw` command. This will also copy the palette! You can copy by replying to such a message or by providing the message link (or ID).",
-    )
-    async def copy(
-        self,
-        ctx: commands.Context,
-        message_link: Optional[discord.Message] = None,
-    ):
-        message = message_link
-        if ref := ctx.message.reference:
-            message = ref.resolved
-        elif message_link is None or not isinstance(message_link, discord.Message):
-            return await ctx.send_help(ctx.command)
-
+    async def board_from_message(self, ctx: CustomContext, *, message: discord.Message) -> Union[Tuple[Board, ToolMenu, ColourMenu], None]:
         if message.author.id not in (self.bot.TEST_BOT_ID, self.bot.MAIN_BOT_ID):
             raise InvalidDrawMessageError("Not a message from the bot.")
         if len(message.embeds) == 0:
@@ -1631,14 +1708,9 @@ class Draw(commands.Cog):
             raise InvalidDrawMessageError("Not a drawing embed.")
 
         description = message.embeds[0].description
-        lines = description.split("\n")[2:]
-        board = []
-        for line in lines:
-            board.append(line.split(PADDING)[-1].split("\u200b"))
-        board = np.array(board, dtype="object")
 
         old_view = discord.ui.View.from_message(message, timeout=0)
-        if len(old_view.children) > 1:
+        if len(old_view.children) > 2:
             tool_options = old_view.children[0].options
             colour_options = old_view.children[1].options
         else:
@@ -1649,16 +1721,67 @@ class Draw(commands.Cog):
             if option.label.endswith(" (bg)"):
                 background = str(option.emoji)
 
-        board_obj = Board.from_board(board=board, background=background)
-        board_obj.clear_cursors()
+        board = Board.from_str(description, background=background)
+        return board, tool_options, colour_options
+
+    @draw.command(
+        name="copy",
+        brief="Copy a drawing.",
+        help="Copy a drawing from an embed by replying to the message or using message link.",
+        description="Allows you to copy a drawing that was done with the `draw` command. This will also copy the palette! You can copy by replying to such a message or by providing the message link (or ID).",
+    )
+    async def copy(
+        self,
+        ctx: CustomContext,
+        message_link: Optional[discord.Message] = None,
+    ):
+        message = message_link
+        if ref := ctx.message.reference:
+            message = ref.resolved
+        elif message_link is None or not isinstance(message_link, discord.Message):
+            return await ctx.send_help(ctx.command)
+
+        board, tool_options, colour_options = await self.board_from_message(ctx, message=message)
+        if not isinstance(board, Board):
+            return
 
         start_view = StartView(
             ctx=ctx,
-            board=board_obj,
+            board=board,
             tool_options=tool_options,
             colour_options=colour_options,
         )
         await start_view.start()
+
+    @draw.command(
+        name="save",
+        aliases=("export",),
+        brief="Quickly save/export a drawing",
+        help="Quickly save/export a drawing by replying to a drawing message or using message link."
+    )
+    async def save(
+        self,
+        ctx: CustomContext,
+        message_link: Optional[discord.Message] = None
+    ):
+        await ctx.typing()
+        message = message_link
+        if ref := ctx.message.reference:
+            message = ref.resolved
+        elif message_link is None or not isinstance(message_link, discord.Message):
+            return await ctx.send_help(ctx.command)
+
+        board, _, _ = await self.board_from_message(ctx, message=message)
+        if not isinstance(board, Board):
+            return
+
+        image = await self.bot.loop.run_in_executor(None, board.save)
+        filename = "image"
+        file = image_to_file(image, filename=filename)
+
+        embed = self.bot.Embed(title=message.embeds[0].title.replace("drawing board.", "masterpiece ✨"))
+        embed.set_image(url=f"attachment://{filename}.png")
+        await ctx.reply(embed=embed, file=file)
 
 
 async def setup(bot):
