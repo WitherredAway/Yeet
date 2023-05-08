@@ -6,8 +6,13 @@ from helpers.constants import u200b
 from cogs.utils.utils import invert_dict
 
 
+TRANSPARENT_EMOJI = "<:e:1104930506698653706>"
+TRANSPARENT_CURSOR_EMOJI = "<:tc:1104939609240113162>"
+
+
 def base_colour_options():
     return [
+        discord.SelectOption(label="Transparent", emoji=TRANSPARENT_EMOJI, value=TRANSPARENT_EMOJI),
         discord.SelectOption(label="Red", emoji="🟥", value="🟥"),
         discord.SelectOption(label="Orange", emoji="🟧", value="🟧"),
         discord.SelectOption(label="Yellow", emoji="🟨", value="🟨"),
@@ -77,6 +82,7 @@ COLUMN_ICONS = tuple(COLUMN_ICONS_DICT.keys())
 
 
 CURSOR = {
+    TRANSPARENT_EMOJI: TRANSPARENT_CURSOR_EMOJI,
     "🟥": "🔴",
     "🟧": "🟠",
     "🟨": "🟡",

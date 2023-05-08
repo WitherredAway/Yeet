@@ -20,6 +20,7 @@ from .utils.constants import (
     COLUMN_ICONS_DICT,
     COLUMN_ICONS,
     CURSOR,
+    TRANSPARENT_EMOJI,
     inv_CURSOR,
     LETTER_TO_NUMBER,
     ALPHABETS,
@@ -103,7 +104,7 @@ class StartView(discord.ui.View):
 
     @property
     def initial_message(self) -> str:
-        return f"Create new draw board with `height = {self.height}`, `width = {self.width}` and `background = {self.background}`?"
+        return f"Create new draw board with `height = {self.height}`, `width = {self.width}` and `background = {TRANSPARENT_KEY if self.background == TRANSPARENT_EMOJI else self.background}`?"
 
     @property
     def board(self) -> Board:
@@ -255,6 +256,8 @@ class Notification:
         return trunc + (" ..." if len(self.content) > len(trunc) else "")
 
 
+TRANSPARENT_KEY = "transparent"
+
 class Board:
     def __init__(
         self,
@@ -262,12 +265,12 @@ class Board:
         height: Optional[int] = 9,
         width: Optional[int] = 9,
         background: Optional[
-            Literal["🟥", "🟧", "🟨", "🟩", "🟦", "🟪", "🟫", "⬛", "⬜"]
-        ] = "⬜",
+            Literal["🟥", "🟧", "🟨", "🟩", "🟦", "🟪", "🟫", "⬛", "⬜", "transparent"]
+        ] = TRANSPARENT_KEY,
     ) -> None:
         self.height: int = height
         self.width: int = width
-        self.background: str = background
+        self.background: str = TRANSPARENT_EMOJI if background == TRANSPARENT_KEY else background
 
         self.initial_board: np.ndarray = np.full(
             (self.height, self.width), self.background, dtype="object"
@@ -415,7 +418,7 @@ class Board:
         return self.un_cursor(self.board[row, col])
 
     @classmethod
-    def from_board(cls, board: np.ndarray, *, background: Optional[str] = "⬜"):
+    def from_board(cls, board: np.ndarray, *, background: Optional[str] = TRANSPARENT_EMOJI):
         height = len(board)
         width = len(board[0])
 
@@ -1588,7 +1591,7 @@ class Draw(commands.Cog):
         ctx: commands.Context,
         height: Optional[int] = 9,
         width: Optional[int] = 9,
-        background: Literal["🟥", "🟧", "🟨", "🟩", "🟦", "🟪", "🟫", "⬛", "⬜"] = "⬜",
+        background: Literal["🟥", "🟧", "🟨", "🟩", "🟦", "🟪", "🟫", "⬛", "⬜", "transparent"] = TRANSPARENT_KEY,
     ) -> None:
         if MIN_HEIGHT_OR_WIDTH > height > MAX_HEIGHT_OR_WIDTH:
             return await ctx.send("Height must be atleast 5 and atmost 17")
@@ -1596,6 +1599,8 @@ class Draw(commands.Cog):
         if MIN_HEIGHT_OR_WIDTH > width > MAX_HEIGHT_OR_WIDTH:
             return await ctx.send("Width must be atleast 5 and atmost 17")
 
+        if background == TRANSPARENT_KEY:
+            background = TRANSPARENT_EMOJI
         board = (height, width, background)
 
         start_view = StartView(ctx=ctx, board=board)
