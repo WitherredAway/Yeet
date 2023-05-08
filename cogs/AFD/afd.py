@@ -694,7 +694,8 @@ class Afd(AfdGist):
             row=row,
             colour=EmbedColours.COMPLETED,
             footer=f"by {ctx.author}",
-    )
+        )
+
     async def approve_cmd(self, ctx: CustomContext, *, pokemon: str):
         await self.approve(ctx, pokemon)
 
