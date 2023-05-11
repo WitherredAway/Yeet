@@ -695,6 +695,10 @@ class Afd(AfdGist):
             colour=EmbedColours.COMPLETED,
             footer=f"by {ctx.author}",
         )
+        user = await self.fetch_user(row.user_id)
+        view = UrlView({"Go to message": cmsg.jump_url})
+        await self.log_channel.send(embed=embed, view=view)
+        await self.send_notification(embed, user=user, ctx=ctx, view=view)
 
     @commands.has_role(AFD_ADMIN_ROLE_ID)
     @afd.command(
