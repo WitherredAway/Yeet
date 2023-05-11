@@ -696,6 +696,12 @@ class Afd(AfdGist):
             footer=f"by {ctx.author}",
         )
 
+    @commands.has_role(AFD_ADMIN_ROLE_ID)
+    @afd.command(
+        name="approve",
+        brief="Approve a drawing",
+        help="""Used to approve a drawing submission. Clears comment.""",
+    )
     async def approve_cmd(self, ctx: CustomContext, *, pokemon: str):
         await self.approve(ctx, pokemon)
 
