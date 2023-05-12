@@ -259,10 +259,10 @@ class AfdSheet:
     def unapprove(self, pokemon: str):
         self.edit_row_where(PKM_LABEL, pokemon, set_column=APPROVED_LABEL, to_val=None)
 
-    def comment(self, pokemon: str, comment: str, *, by: int):
-        self.edit_row_where(PKM_LABEL, pokemon, set_column=CMT_LABEL, to_val=comment)
+    def comment(self, pokemon: str, comment: Union[str, None], *, by: Union[int, None]):
+        self.edit_row_where(PKM_LABEL, pokemon, set_column=CMT_LABEL, to_val=str(comment) if comment else comment)
         self.edit_row_where(
-            PKM_LABEL, pokemon, set_column=APPROVED_LABEL, to_val=str(by)
+            PKM_LABEL, pokemon, set_column=APPROVED_LABEL, to_val=str(by) if by else by
         )  # Set approved col to whoever commented
 
 

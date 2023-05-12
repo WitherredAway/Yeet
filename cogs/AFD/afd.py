@@ -15,7 +15,7 @@ from discord.ext import commands
 from helpers.constants import INDENT, NL
 from helpers.context import CustomContext
 
-from ..utils.utils import UrlView, make_progress_bar
+from ..utils.utils import SimpleModal, UrlView, make_progress_bar
 from .utils.views import AfdView
 from .utils.utils import AFDRoleMenu, EmbedColours, Row
 from .utils.urls import AFD_CREDITS_GIST_URL, AFD_GIST_URL, SHEET_URL, SUBMISSION_URL
@@ -30,6 +30,7 @@ from .utils.constants import (
 )
 from .utils.labels import (
     CMT_LABEL,
+    COMMENT_BTN_LABEL,
     SUBMIT_BTN_LABEL,
 )
 from .ext.afd_gist import AfdGist
@@ -124,6 +125,10 @@ class PokemonView(discord.ui.View):
                         self.add_item(
                             self.approve_btn
                         )  # Add approve button if not completed
+                self.comment_btn.label = (
+                    COMMENT_BTN_LABEL if not row.correction_pending else "Edit comment"
+                )
+                self.add_item(self.comment_btn)  # Add comment button if image exists
 
                 if row.correction_pending:
                     status = "Correction pending."
@@ -226,6 +231,31 @@ class PokemonView(discord.ui.View):
     ):
         await interaction.response.defer()
         if (await self.afdcog.unapprove(self.ctx, self.pokemon)) is True:
+            await self.update_msg()
+
+    @discord.ui.button(label="Comment", style=discord.ButtonStyle.blurple, row=1)
+    async def comment_btn(
+        self, interaction: discord.Interaction, button: discord.Buttons
+    ):
+        input_label = "Comment"
+        modal = SimpleModal(
+            title=f"Comment on {self.pokemon}",
+            inputs=[
+                discord.ui.TextInput(
+                    label=input_label,
+                    style=discord.TextStyle.short,
+                    required=False,
+                    max_length=2000,
+                    placeholder="Leave empty to clear any comment",
+                    default=self.row.comment,
+                )
+            ],
+        )
+        await interaction.response.send_modal(modal)
+        await modal.wait()
+
+        comment = modal.label_dict[input_label].value
+        if (await self.afdcog.comment(self.ctx, self.pokemon, comment)) is True:
             await self.update_msg()
 
 
@@ -768,6 +798,142 @@ class Afd(AfdGist):
     )
     async def unapprove_cmd(self, ctx: CustomContext, *, pokemon: str):
         await self.unapprove(ctx, pokemon)
+
+    async def comment(self, ctx: CustomContext, pokemon: str, comment: Optional[str] = None):
+        if not comment:
+            return await self.uncomment(ctx, pokemon)
+
+        pokemon = await self.get_pokemon(ctx, pokemon)
+        if not pokemon:
+            return
+
+        conf = cmsg = None
+        await self.sheet.update_df()
+        row = self.sheet.get_pokemon_row(pokemon)
+        approved_by = (
+            await self.fetch_user(row.approved_by) if row.approved_by else None
+        )
+        if any((not row.claimed, not row.image)):
+            return await ctx.reply(
+                embed=self.confirmation_embed(
+                    f"**{pokemon}** {'is not claimed' if not row.claimed else 'has not been submitted'}.",
+                    colour=EmbedColours.INVALID,
+                )
+            )
+
+        if comment == row.comment:
+            return await ctx.reply(
+                embed=self.confirmation_embed(
+                    f"No changes found in the comment.",
+                    colour=EmbedColours.INVALID,
+                )
+            )
+
+        if row.correction_pending:
+            desc = f"""Are you sure you want to modify the existing comment on **{pokemon}**?:
+**From** (by **{approved_by}**)
+> {row.comment}
+**To**
+> {comment}"""
+            conf_desc = f"""Comment has been modified on **{pokemon}**:
+**From** (by **{approved_by}**)
+> {row.comment}
+**To** (by **%s**)
+> {comment}"""
+        elif row.completed:
+            desc = f"""**{pokemon}** has already been approved (by **{approved_by}**)! Are you sure you want to unapprove and comment the following?
+> {comment}"""
+        else:
+            desc = f"""Are you sure you want to comment the following on **{pokemon}**?
+> {comment}"""
+            conf_desc = f"""**%s** %s commented the following on **{pokemon}**:
+> {comment}"""
+
+        conf, cmsg = await ctx.confirm(
+            embed=self.confirmation_embed(
+                desc,
+                row=row,
+            ),
+            confirm_label="Comment",
+        )
+        if conf is False:
+            return
+
+        self.sheet.comment(pokemon, comment, by=ctx.author.id)
+        await self.sheet.update_row(row.dex)
+
+        await cmsg.edit(
+            embed=self.confirmation_embed(
+                conf_desc % ('You' if row.correction_pending else ('You', 'have')),
+                row=row,
+                colour=EmbedColours.CORRECTION,
+            )
+        )
+        embed = self.confirmation_embed(
+            conf_desc % (ctx.author if row.correction_pending else (ctx.author, 'has')),
+            row=row,
+            colour=EmbedColours.CORRECTION,
+        )
+        user = await self.fetch_user(row.user_id)
+        view = UrlView({"Go to message": cmsg.jump_url})
+        await self.log_channel.send(embed=embed, view=view)
+
+        embed.set_footer(text="To resolve this, simply apply the requested correction(s) and resubmit!")
+        await self.send_notification(embed, user=user, ctx=ctx, view=view)
+        return True
+
+    async def uncomment(self, ctx: CustomContext, pokemon: str):
+        pokemon = await self.get_pokemon(ctx, pokemon)
+        if not pokemon:
+            return
+
+        conf = cmsg = None
+        await self.sheet.update_df()
+        row = self.sheet.get_pokemon_row(pokemon)
+        approved_by = (
+            await self.fetch_user(row.approved_by) if row.approved_by else None
+        )
+        if not row.correction_pending:
+            return await ctx.reply(
+                embed=self.confirmation_embed(
+                    f"There is no comment to clear.",
+                    colour=EmbedColours.INVALID,
+                )
+            )
+
+        conf, cmsg = await ctx.confirm(
+            embed=self.confirmation_embed(
+                f"""Are you sure you want to *clear* the following comment (by **{approved_by}**) on **{pokemon}**?
+> {row.comment}""",
+                row=row,
+            ),
+            confirm_label="Clear comment",
+        )
+        if conf is False:
+            return
+
+        self.sheet.comment(pokemon, None, by=None)
+        await self.sheet.update_row(row.dex)
+        conf_desc = f"""The following comment (by **{approved_by}**) on **{pokemon}** has been cleared:
+> {row.comment}"""
+        await cmsg.edit(
+            embed=self.confirmation_embed(
+                conf_desc,
+                row=row,
+                colour=EmbedColours.UNREVIEWED,
+            )
+        )
+        embed = self.confirmation_embed(
+            conf_desc,
+            row=row,
+            colour=EmbedColours.UNREVIEWED,
+        )
+        user = await self.fetch_user(row.user_id)
+        view = UrlView({"Go to message": cmsg.jump_url})
+        await self.log_channel.send(embed=embed, view=view)
+
+        await self.send_notification(embed, user=user, ctx=ctx, view=view)
+        return True
 
     # --- Public commands ---
     @afd.command(
