@@ -311,7 +311,7 @@ class Afd(AfdGist):
             for row in pkm_rows
         ]
         embed.add_field(
-            name="Your following claimed Pokémon have not been completed yet",
+            name="Your following claimed Pokémon have not been completed/corrected yet",
             value=NL.join(pkms),
             inline=False,
         )
