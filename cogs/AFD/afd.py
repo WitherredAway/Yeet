@@ -286,6 +286,7 @@ class Afd(AfdGist):
         row: Optional[Row] = None,
         colour: Optional[EmbedColours] = None,
         footer: Optional[str] = None,
+        show_image: Optional[bool] = True
     ) -> Bot.Embed:
         embed = self.bot.Embed(
             description=description, colour=colour.value if colour else colour
@@ -293,7 +294,7 @@ class Afd(AfdGist):
         if row is not None:
             pokemon_image = self.sheet.get_pokemon_image(row.pokemon)
             embed.set_thumbnail(url=pokemon_image)
-            if row.image:
+            if row.image and show_image:
                 embed.set_image(url=row.image)
         if footer:
             embed.set_footer(text=footer)
