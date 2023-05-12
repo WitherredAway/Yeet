@@ -239,7 +239,7 @@ class AfdSheet:
 
     def submit(self, pokemon: str, *, image_url: str):
         self.edit_row_where(
-            PKM_LABEL, pokemon, set_column=IMAGE_LABEL, to_val=image_url
+            PKM_LABEL, pokemon, set_column=IMAGE_LABEL, to_val=str(image_url)
         )
         self.edit_row_where(
             PKM_LABEL, pokemon, set_column=APPROVED_LABEL, to_val=None
