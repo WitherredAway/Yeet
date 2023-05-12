@@ -34,7 +34,9 @@ MAX_HEIGHT_OR_WIDTH = 17
 
 def base_number_options(prefix: Optional[str] = ""):
     return [
-        discord.SelectOption(label=f"{f'{prefix} = ' if prefix else prefix}{n}", value=str(n))
+        discord.SelectOption(
+            label=f"{f'{prefix} = ' if prefix else prefix}{n}", value=str(n)
+        )
         for n in range(MIN_HEIGHT_OR_WIDTH, MAX_HEIGHT_OR_WIDTH + 1)
     ]
 

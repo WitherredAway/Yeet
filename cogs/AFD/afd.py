@@ -316,7 +316,7 @@ class Afd(AfdGist):
         row: Optional[Row] = None,
         colour: Optional[EmbedColours] = None,
         footer: Optional[str] = None,
-        show_image: Optional[bool] = True
+        show_image: Optional[bool] = True,
     ) -> Bot.Embed:
         embed = self.bot.Embed(
             description=description, colour=colour.value if colour else colour
@@ -799,7 +799,9 @@ class Afd(AfdGist):
     async def unapprove_cmd(self, ctx: CustomContext, *, pokemon: str):
         await self.unapprove(ctx, pokemon)
 
-    async def comment(self, ctx: CustomContext, pokemon: str, comment: Optional[str] = None):
+    async def comment(
+        self, ctx: CustomContext, pokemon: str, comment: Optional[str] = None
+    ):
         if not comment:
             return await self.uncomment(ctx, pokemon)
 
@@ -864,13 +866,13 @@ class Afd(AfdGist):
 
         await cmsg.edit(
             embed=self.confirmation_embed(
-                conf_desc % ('You' if row.correction_pending else ('You', 'have')),
+                conf_desc % ("You" if row.correction_pending else ("You", "have")),
                 row=row,
                 colour=EmbedColours.CORRECTION,
             )
         )
         embed = self.confirmation_embed(
-            conf_desc % (ctx.author if row.correction_pending else (ctx.author, 'has')),
+            conf_desc % (ctx.author if row.correction_pending else (ctx.author, "has")),
             row=row,
             colour=EmbedColours.CORRECTION,
         )
@@ -878,7 +880,9 @@ class Afd(AfdGist):
         view = UrlView({"Go to message": cmsg.jump_url})
         await self.log_channel.send(embed=embed, view=view)
 
-        embed.set_footer(text="To resolve this, simply apply the requested correction(s) and resubmit!")
+        embed.set_footer(
+            text="To resolve this, simply apply the requested correction(s) and resubmit!"
+        )
         await self.send_notification(embed, user=user, ctx=ctx, view=view)
         return True
 
