@@ -169,16 +169,16 @@ class PokemonView(discord.ui.View):
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
-        await self.afdcog.claim(self.ctx, self.pokemon)
-        await self.update_msg()
+        if (await self.afdcog.claim(self.ctx, self.pokemon)) is True:
+            await self.update_msg()
 
     @discord.ui.button(label="Unclaim", style=discord.ButtonStyle.red, row=0)
     async def unclaim_btn(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
-        await self.afdcog.unclaim(self.ctx, self.pokemon)
-        await self.update_msg()
+        if (await self.afdcog.unclaim(self.ctx, self.pokemon)) is True:
+            await self.update_msg()
 
     @discord.ui.button(label=SUBMIT_BTN_LABEL, style=discord.ButtonStyle.blurple, row=0)
     async def submit_btn(
@@ -197,8 +197,9 @@ class PokemonView(discord.ui.View):
         view = SubmitView(self.afdcog, row=self.row, ctx=self.ctx)
         await interaction.response.send_message(embed=embed, view=view)
         view.msg = await interaction.original_message()
-        await view.wait()
-        await self.update_msg()
+        _t = await view.wait()
+        if _t is not True:
+            await self.update_msg()
 
     @discord.ui.button(label="Remind", style=discord.ButtonStyle.blurple, row=1)
     async def remind_btn(
@@ -216,16 +217,16 @@ class PokemonView(discord.ui.View):
         self, interaction: discord.Interaction, button: discord.Buttons
     ):
         await interaction.response.defer()
-        await self.afdcog.approve(self.ctx, self.pokemon)
-        await self.update_msg()
+        if (await self.afdcog.approve(self.ctx, self.pokemon)) is True:
+            await self.update_msg()
 
     @discord.ui.button(label="Unapprove", style=discord.ButtonStyle.red, row=1)
     async def unapprove_btn(
         self, interaction: discord.Interaction, button: discord.Buttons
     ):
         await interaction.response.defer()
-        await self.afdcog.unapprove(self.ctx, self.pokemon)
-        await self.update_msg()
+        if (await self.afdcog.unapprove(self.ctx, self.pokemon)) is True:
+            await self.update_msg()
 
 
 class Afd(AfdGist):
@@ -699,6 +700,7 @@ class Afd(AfdGist):
         view = UrlView({"Go to message": cmsg.jump_url})
         await self.log_channel.send(embed=embed, view=view)
         await self.send_notification(embed, user=user, ctx=ctx, view=view)
+        return True
 
     @commands.has_role(AFD_ADMIN_ROLE_ID)
     @afd.command(
@@ -755,6 +757,7 @@ class Afd(AfdGist):
         view = UrlView({"Go to message": cmsg.jump_url})
         await self.log_channel.send(embed=embed, view=view)
         await self.send_notification(embed, user=user, ctx=ctx, view=view)
+        return True
 
     @commands.has_role(AFD_ADMIN_ROLE_ID)
     @afd.command(
@@ -879,6 +882,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
         )
 
         await self.send_notification(embed, user=ctx.author, ctx=ctx, view=view)
+        return True
 
     @afd.command(
         name="claim",
@@ -965,6 +969,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
         )
 
         await self.send_notification(embed, user=ctx.author, ctx=ctx, view=view)
+        return True
 
     @afd.command(
         name="unclaim",
@@ -1071,6 +1076,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
         )
 
         await self.send_notification(embeds, user=ctx.author, ctx=ctx, view=view)
+        return True
 
     @afd.command(
         name="submit",
@@ -1138,6 +1144,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
         )
 
         await self.send_notification(embeds, user=ctx.author, ctx=ctx, view=view)
+        return True
 
     @afd.command(
         name="unsubmit",

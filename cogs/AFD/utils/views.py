@@ -219,11 +219,12 @@ class SubmitView(discord.ui.View):
             ],
         )
         await interaction.response.send_modal(modal)
-        await modal.wait()
-        await self.afdcog.submit(
-            self.ctx, self.row.pokemon, image_url=modal.label_dict[url_label].value
-        )
-        await self._stop()
+        _t = await modal.wait()
+        if _t is not True:
+            await self.afdcog.submit(
+                self.ctx, self.row.pokemon, image_url=modal.label_dict[url_label].value
+            )
+            await self._stop()
 
     @discord.ui.button(label="Unsubmit", style=discord.ButtonStyle.red, row=1)
     async def unsubmit_btn(
