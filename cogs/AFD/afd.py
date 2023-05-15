@@ -745,6 +745,19 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
         name="view",
         aliases=("pokemon", "pkm", "d", "dex"),
         brief="See info of a pokemon from the sheet",
+        help="""Shows you all the information about a pokemon such as:
+    - Claim status
+    - User who claimed
+    - Status
+    - Any comment
+    - Submitted drawing if any, etc
+
+and lets you directly perform actions such as:
+    - Claiming/Unclaiming
+    - Submitting/Editing submission
+    - Sending reminder
+    - Approving/Unapproving
+    - Commenting"""
     )
     async def view(self, ctx: CustomContext, *, pokemon: str):
         pokemon = await self.get_pokemon(ctx, pokemon)
