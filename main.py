@@ -7,7 +7,7 @@ import os
 import sys
 import time
 from functools import cached_property
-from typing import Union
+from typing import Any, Self, Union
 
 import aiohttp
 import discord
@@ -164,6 +164,35 @@ class Bot(commands.Bot):
             if kwargs.get("color", None) is None:
                 kwargs["color"] = self.COLOUR
             super().__init__(**kwargs)
+
+        def add_field(self, *, name: Any, value: Any, inline: bool = False) -> Self:
+            """Adds a field to the embed object.
+
+            This function returns the class instance to allow for fluent-style
+            chaining. Can only be up to 25 fields.
+
+            Parameters
+            -----------
+            name: :class:`str`
+                The name of the field. Can only be up to 256 characters.
+            value: :class:`str`
+                The value of the field. Can only be up to 1024 characters.
+            inline: :class:`bool`
+                Whether the field should be displayed inline.
+            """
+
+            field = {
+                'inline': inline,
+                'name': str(name),
+                'value': str(value),
+            }
+
+            try:
+                self._fields.append(field)
+            except AttributeError:
+                self._fields = [field]
+
+            return self
 
     async def upload_emoji(
         self, colour: Colour, *, draw_view: DrawView, interaction: discord.Interaction
