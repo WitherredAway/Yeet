@@ -5,16 +5,17 @@ import logging
 import os
 import time
 from functools import cached_property
-from typing import TYPE_CHECKING, Callable, List, Optional, Union
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Union
 
 import discord
-from helpers.field_paginator import Field, FieldPaginationView
+from cogs.RDanny.utils.paginator import FIRST_PAGE_SYMBOL, LAST_PAGE_SYMBOL, NEXT_PAGE_SYMBOL, PREVIOUS_PAGE_SYMBOL, BotPages
 import gists
 import pandas as pd
 from discord.ext import commands, menus
 
 from helpers.constants import INDENT, NL
 from helpers.context import CustomContext
+from helpers.field_paginator import PER_PAGE
 
 from ..utils.utils import UrlView, enumerate_list, make_progress_bar
 from .utils.views import AfdView, PokemonView
@@ -38,6 +39,130 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 
+@dataclass
+class Category:
+    name: str
+    pokemon: List[str]
+
+
+class StatsPages(BotPages):
+    def __init__(self, categories: List[Category], *, ctx: CustomContext, original_embed: Bot.Embed):
+        self.categories = categories
+        self.original_embed = original_embed
+        initial_source = StatsPageSource(categories[0], original_embed=original_embed)
+        super().__init__(initial_source, ctx=ctx)
+        self.add_select()
+
+    def add_select(self):
+        self.clear_items()
+        self.add_item(StatsSelectMenu(self.categories))
+        self.fill_items()
+
+    def _update_labels(self, page_number: int) -> None:
+        if not self.source.is_paginating():
+            for item in self.pagination_buttons:
+                self.remove_item(item)
+            return
+        else:
+            for item in self.pagination_buttons:
+                if item not in self.children:
+                    self.add_item(item)
+        max_pages = self.source.get_max_pages()
+        self.go_to_first_page.disabled = page_number == 0
+
+        self.go_to_previous_page.label = f"{page_number} {PREVIOUS_PAGE_SYMBOL}"
+        self.go_to_current_page.label = f"{page_number + 1}/{max_pages}"
+        self.go_to_next_page.label = f"{NEXT_PAGE_SYMBOL} {page_number + 2}"
+
+        self.go_to_next_page.disabled = False
+        self.go_to_previous_page.disabled = False
+        # self.go_to_first_page.disabled = False
+
+        if max_pages is not None:
+            self.go_to_last_page.disabled = (page_number + 1) >= max_pages
+            self.go_to_last_page.label = f"{LAST_PAGE_SYMBOL} {max_pages}"
+            if (page_number + 1) >= max_pages:
+                self.go_to_next_page.disabled = True
+                self.go_to_next_page.label = NEXT_PAGE_SYMBOL
+            if page_number == 0:
+                self.go_to_previous_page.disabled = True
+                self.go_to_previous_page.label = PREVIOUS_PAGE_SYMBOL
+
+    def fill_items(self) -> None:
+        if self.source.is_paginating():
+            max_pages = self.source.get_max_pages()
+            use_last_and_first = max_pages is not None and max_pages >= 2
+            self.add_item(self.go_to_first_page)  # type: ignore
+            self.go_to_first_page.label = f"1 {FIRST_PAGE_SYMBOL}"
+            self.add_item(self.go_to_previous_page)  # type: ignore
+            # self.add_item(self.stop_pages)   type: ignore
+            self.add_item(self.go_to_current_page)  # type: ignore
+            self.add_item(self.go_to_next_page)  # type: ignore
+            self.add_item(self.go_to_last_page)  # type: ignore
+            self.go_to_last_page.label = f"{LAST_PAGE_SYMBOL} {max_pages}"
+            if not use_last_and_first:
+                self.go_to_first_page.disabled = True
+                self.go_to_last_page.disabled = True
+
+    async def rebind(
+        self, source: menus.PageSource, interaction: discord.Interaction
+    ) -> None:
+        self.source = source
+        self.current_page = 0
+
+        await self.source._prepare_once()
+        page = await self.source.get_page(0)
+        kwargs = await self._get_kwargs_from_page(page)
+        self._update_labels(0)
+        await interaction.response.edit_message(**kwargs, view=self)
+
+class StatsPageSource(menus.ListPageSource):
+    def __init__(
+        self,
+        category: Category,
+        *,
+        original_embed: Bot.Embed,
+        per_page: Optional[int] = PER_PAGE,
+    ):
+        super().__init__(entries=category.pokemon, per_page=per_page)
+        self.category = category
+        self.original_embed = original_embed
+        self.per_page = per_page
+
+    async def format_page(self, menu: StatsPages, entries: List[str]):
+        embed = self.original_embed.copy()
+        embed.add_field(name=self.category.name, value=NL.join(entries))
+        return embed
+
+
+class StatsSelectMenu(discord.ui.Select):
+    def __init__(self, categories: List[Category]):
+        self.categories = categories
+        super().__init__(placeholder="Change category", row=0)
+        self.__fill_options()
+        self.set_default(self.options[0])
+        self.view: StatsPages
+
+    def __fill_options(self):
+        for idx, category in enumerate(self.categories):
+            name = category.name.split(" ")
+            self.add_option(
+                label=name[0],
+                value=idx,
+                description=category.name,
+            )
+
+    def set_default(self, option: discord.SelectOption):
+        for o in self.options:
+            o.default = False
+        option.default = True
+
+    async def callback(self, interaction: discord.Interaction):
+        i = int(self.values[0])
+        source = StatsPageSource(self.categories[i], original_embed=self.view.original_embed)
+        self.set_default(self.options[i])
+        self.view.initial_source = source
+        await self.view.rebind(source, interaction)
 
 
 class Afd(AfdGist):
@@ -806,26 +931,26 @@ and lets you directly perform actions such as:
             text="Use the `afd view <pokemon>` command to see more info on an entry"
         )
 
-        fields = [
-            Field(
+        categories = [
+            Category(
                 name=f"Correction pending [{claimed.correction_pending_amount}]",
-                values=enumerate_list(claimed.correction_pending),
+                pokemon=enumerate_list(claimed.correction_pending),
             ),
-            Field(
+            Category(
                 name=f"Claimed (incomplete) [{claimed.claimed_amount}]",
-                values=enumerate_list(claimed.claimed),
+                pokemon=enumerate_list(claimed.claimed),
             ),
-            Field(
+            Category(
                 name=f"Submitted (awaiting review) [{claimed.unreviewed_amount}]",
-                values=enumerate_list(claimed.unreviewed),
+                pokemon=enumerate_list(claimed.unreviewed),
             ),
-            Field(
+            Category(
                 name=f"Completed 🎉 [{claimed.completed_amount}/{total_amount}]",
-                values=enumerate_list(claimed.completed),
+                pokemon=enumerate_list(claimed.completed),
             ),
         ]
-        view = FieldPaginationView(ctx, embed, fields=fields)
-        view.msg = await ctx.send(view=view, embed=view.embed)
+        menu = StatsPages(categories, ctx=ctx, original_embed=embed)
+        await menu.start()
 
     async def claim(self, ctx: CustomContext, pokemon: str):
         pokemon = await self.get_pokemon(ctx, pokemon)

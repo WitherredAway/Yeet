@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
 import discord
 import pandas as pd
 from cogs.AFD.utils.labels import (
@@ -11,10 +13,11 @@ from cogs.AFD.utils.labels import (
     USER_ID_LABEL,
     USERNAME_LABEL,
 )
-from cogs.AFD.utils.sheet import AfdSheet
 
 from cogs.utils.utils import RoleMenu
 
+if TYPE_CHECKING:
+    from cogs.AFD.utils.sheet import AfdSheet
 
 class EmbedColours(Enum):
     INVALID: int = 0xCB3F49  # Invalid, Red
