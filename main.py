@@ -7,12 +7,11 @@ import os
 import sys
 import time
 from functools import cached_property
-from typing import Any, Self, Union
+from typing import Any, Union
 
 import aiohttp
 import discord
 from cogs.AFD.afd import AFDRoleMenu
-from cogs.utils.utils import RoleMenu
 import gists
 from discord.ext import commands
 import pandas as pd
@@ -165,7 +164,7 @@ class Bot(commands.Bot):
                 kwargs["color"] = self.COLOUR
             super().__init__(**kwargs)
 
-        def add_field(self, *, name: Any, value: Any, inline: bool = False) -> Self:
+        def add_field(self, *, name: Any, value: Any, inline: bool = False):
             """Adds a field to the embed object.
 
             This function returns the class instance to allow for fluent-style
