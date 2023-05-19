@@ -8,6 +8,7 @@ from functools import cached_property
 from typing import TYPE_CHECKING, Callable, List, Optional, Union
 
 import discord
+from cogs.AFD.utils.field_paginator import Field, FieldPaginationView
 import gists
 import pandas as pd
 from discord.ext import commands
@@ -15,7 +16,7 @@ from discord.ext import commands
 from helpers.constants import INDENT, NL
 from helpers.context import CustomContext
 
-from ..utils.utils import UrlView, make_progress_bar
+from ..utils.utils import UrlView, enumerate_list, make_progress_bar
 from .utils.views import AfdView, PokemonView
 from .utils.utils import AFDRoleMenu, EmbedColours, Row
 from .utils.urls import AFD_CREDITS_GIST_URL, AFD_GIST_URL, SHEET_URL
@@ -40,11 +41,6 @@ log = logging.getLogger(__name__)
 COMPLETED_EMOJI = "✅"
 UNREVIEWED_EMOJI = "☑️"
 REVIEW_EMOJI = "❗"
-
-
-def fmt_list(list: List) -> str:
-    ret = [f"{idx + 1}. {pkm}" for idx, pkm in enumerate(list)]
-    return "\n".join(ret) if len(ret) > 0 else "None"
 
 
 @dataclass
@@ -831,22 +827,24 @@ and lets you directly perform actions such as:
         invoke_without_command=True
     )
     async def _list(self, ctx: CustomContext, *, user: Optional[Union[discord.User, discord.Member]]):
+        await self.sheet.update_df()
         user = user or ctx.author
         claimed = self.validate_claimed(user)
         total_amount = claimed.total_amount if claimed is not None else 0
 
         description = f"**Total pokemon**: {total_amount}"
         embed = self.bot.Embed(description=description)
-        if claimed is not None:
-            embed.add_field(name=f"Correction pending [{claimed.correction_pending_amount}]", value=fmt_list(claimed.correction_pending))
-            embed.add_field(name=f"Claimed (incomplete) [{claimed.claimed_amount}]", value=fmt_list(claimed.claimed))
-            embed.add_field(name=f"Submitted (awaiting review) [{claimed.unreviewed_amount}]", value=fmt_list(claimed.unreviewed))
-            embed.add_field(name=f"Completed 🎉 [{claimed.completed_amount}/{total_amount}]", value=fmt_list(claimed.completed))
-
         embed.set_author(name=f"{user}'s stats", icon_url=user.avatar.url)
         embed.set_footer(text="Use the `afd view <pokemon>` command to see more info on an entry")
 
-        await ctx.send(embed=embed)
+        fields = [
+            Field(name=f"Correction pending [{claimed.correction_pending_amount}]", values=enumerate_list(claimed.correction_pending)),
+            Field(name=f"Claimed (incomplete) [{claimed.claimed_amount}]", values=enumerate_list(claimed.claimed)),
+            Field(name=f"Submitted (awaiting review) [{claimed.unreviewed_amount}]", values=enumerate_list(claimed.unreviewed)),
+            Field(name=f"Completed 🎉 [{claimed.completed_amount}/{total_amount}]", values=enumerate_list(claimed.completed)),
+        ]
+        view = FieldPaginationView(ctx, embed, fields=fields)
+        await ctx.send(view=view, embed=view.embed)
 
     async def claim(self, ctx: CustomContext, pokemon: str):
         pokemon = await self.get_pokemon(ctx, pokemon)

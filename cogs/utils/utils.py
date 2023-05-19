@@ -250,3 +250,8 @@ class SimpleModal(discord.ui.Modal):
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer()
         self.stop()
+
+
+def enumerate_list(_list: List) -> List[str]:
+    ret = [f"{idx + 1}. {element}" for idx, element in enumerate(_list)]
+    return ret if len(ret) > 0 else ["None"]

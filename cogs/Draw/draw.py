@@ -18,7 +18,7 @@ from helpers.context import CustomContext
 from pilmoji import Pilmoji
 
 from ..utils.utils import image_to_file
-from helpers.constants import u200b, NL
+from helpers.constants import EMBED_FIELD_CHAR_LIMIT, u200b, NL
 from .utils.constants import (
     FONT,
     ROW_ICONS_DICT,
@@ -69,10 +69,6 @@ from .utils.colour import Colour
 
 if typing.TYPE_CHECKING:
     from main import Bot
-
-
-EMBED_DESC_CHAR_LIMIT = 4096
-EMBED_FIELD_CHAR_LIMIT = 1024
 
 
 @dataclass
