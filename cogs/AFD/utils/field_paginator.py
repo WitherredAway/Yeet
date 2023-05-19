@@ -25,7 +25,7 @@ PER_PAGE = 20
 class Field:
     name: str
     values: List[str]
-    per_page: Optional[int] = 20
+    per_page: Optional[int] = PER_PAGE
 
     def __post_init__(self):
         self.page_number: int = 0

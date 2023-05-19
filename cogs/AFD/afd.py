@@ -862,7 +862,7 @@ and lets you directly perform actions such as:
             ),
         ]
         view = FieldPaginationView(ctx, embed, fields=fields)
-        await ctx.send(view=view, embed=view.embed)
+        view.msg = await ctx.send(view=view, embed=view.embed)
 
     async def claim(self, ctx: CustomContext, pokemon: str):
         pokemon = await self.get_pokemon(ctx, pokemon)
