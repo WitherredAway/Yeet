@@ -27,7 +27,6 @@ from cogs.AFD.utils.labels import (
     USER_ID_LABEL,
     USERNAME_LABEL,
 )
-from cogs.AFD.utils.sheet import Claimed
 from cogs.AFD.utils.urls import AFD_CREDITS_GIST_URL, SHEET_URL
 from cogs.AFD.utils.utils import Row
 import gists
@@ -123,13 +122,6 @@ Credits: <{self.credits_gist.url}>"""
     @property
     def user_grouped(self) -> GroupBy:
         return self.df.groupby(USERNAME_LABEL)
-
-    def validate_claimed(self, user: discord.User) -> Claimed:
-        try:
-            c_df: pd.DataFrame = self.user_grouped.get_group(str(user))
-        except KeyError:
-            return False
-        return Claimed(c_df, self.sheet)
 
     def validate_unclaimed(self) -> Tuple[List[str], int]:
         unc_df = self.df[self.df[USERNAME_LABEL].isna()].sort_values(by=DEX_LABEL)

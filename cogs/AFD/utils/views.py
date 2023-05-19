@@ -260,8 +260,7 @@ class PokemonView(discord.ui.View):
         self.msg: discord.Message
 
     async def on_timeout(self):
-        self.clear_items()
-        await self.msg.edit(embed=self.embed, view=self)
+        await self.msg.edit(embed=self.embed, view=None)
         self.stop()
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:

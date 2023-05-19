@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 import logging
 import os
 import time
@@ -34,6 +35,48 @@ if TYPE_CHECKING:
 
 
 log = logging.getLogger(__name__)
+
+
+COMPLETED_EMOJI = "✅"
+UNREVIEWED_EMOJI = "☑️"
+REVIEW_EMOJI = "❗"
+
+
+def fmt_list(list: List) -> str:
+    ret = [f"{idx + 1}. {pkm}" for idx, pkm in enumerate(list)]
+    return "\n".join(ret) if len(ret) > 0 else "None"
+
+
+@dataclass
+class Claimed:
+    claimed_df: pd.DataFrame
+    sheet: AfdSheet
+
+    def __post_init__(self):
+        self.correction_pending = []
+        self.claimed = []
+        self.unreviewed = []
+        self.completed = []
+        for idx in self.claimed_df.index:
+            row = self.sheet.get_row(idx)
+            pkm = row.pokemon
+
+            if row.completed:
+                self.completed.append(pkm)
+            elif row.unreviewed:
+                self.unreviewed.append(pkm)
+            elif row.correction_pending:
+                self.correction_pending.append(pkm)
+            else:
+                self.claimed.append(pkm)
+
+        self.total = self.correction_pending + self.claimed + self.unreviewed + self.completed
+
+        self.total_amount = len(self.total)
+        self.correction_pending_amount = len(self.correction_pending)
+        self.claimed_amount = len(self.claimed)
+        self.unreviewed_amount = len(self.unreviewed)
+        self.completed_amount = len(self.completed)
 
 
 class Afd(AfdGist):
@@ -773,6 +816,37 @@ and lets you directly perform actions such as:
 
         view = PokemonView(ctx, row, afdcog=self, user=user, approved_by=approved_by)
         view.msg = await ctx.send(embed=view.embed, view=view)
+
+    def validate_claimed(self, user: discord.User):
+        try:
+            c_df: pd.DataFrame = self.user_grouped.get_group(str(user))
+        except KeyError:
+            return None
+        return Claimed(c_df, self.sheet)
+
+    @afd.group(
+        name="list",
+        brief="Show a user's stats",
+        help="Used to see a user's stats. To see your own, leave the user argument empty.",
+        invoke_without_command=True
+    )
+    async def _list(self, ctx: CustomContext, *, user: Optional[Union[discord.User, discord.Member]]):
+        user = user or ctx.author
+        claimed = self.validate_claimed(user)
+        total_amount = claimed.total_amount if claimed is not None else 0
+
+        description = f"**Total pokemon**: {total_amount}"
+        embed = self.bot.Embed(description=description)
+        if claimed is not None:
+            embed.add_field(name=f"Correction pending [{claimed.correction_pending_amount}]", value=fmt_list(claimed.correction_pending))
+            embed.add_field(name=f"Claimed (incomplete) [{claimed.claimed_amount}]", value=fmt_list(claimed.claimed))
+            embed.add_field(name=f"Submitted (awaiting review) [{claimed.unreviewed_amount}]", value=fmt_list(claimed.unreviewed))
+            embed.add_field(name=f"Completed 🎉 [{claimed.completed_amount}/{total_amount}]", value=fmt_list(claimed.completed))
+
+        embed.set_author(name=f"{user}'s stats", icon_url=user.avatar.url)
+        embed.set_footer(text="Use the `afd view <pokemon>` command to see more info on an entry")
+
+        await ctx.send(embed=embed)
 
     async def claim(self, ctx: CustomContext, pokemon: str):
         pokemon = await self.get_pokemon(ctx, pokemon)
