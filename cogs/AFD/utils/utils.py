@@ -11,6 +11,7 @@ from cogs.AFD.utils.labels import (
     USER_ID_LABEL,
     USERNAME_LABEL,
 )
+from cogs.AFD.utils.sheet import AfdSheet
 
 from cogs.utils.utils import RoleMenu
 
@@ -84,3 +85,43 @@ class AFDRoleMenu(RoleMenu):
             "AFD Admin": discord.ButtonStyle.red,
         }
         super().__init__(roles_dict)
+
+
+COMPLETED_EMOJI = "✅"
+UNREVIEWED_EMOJI = "☑️"
+REVIEW_EMOJI = "❗"
+
+
+@dataclass
+class Claimed:
+    claimed_df: pd.DataFrame
+    sheet: AfdSheet
+
+    def __post_init__(self):
+        self.correction_pending = []
+        self.claimed = []
+        self.unreviewed = []
+        self.completed = []
+        for idx in self.claimed_df.index:
+            row = self.sheet.get_row(idx)
+            pkm = row.pokemon
+
+            if row.completed:
+                self.completed.append(pkm)
+            elif row.unreviewed:
+                self.unreviewed.append(pkm)
+            elif row.correction_pending:
+                self.correction_pending.append(pkm)
+            else:
+                self.claimed.append(pkm)
+
+        self.total = (
+            self.correction_pending + self.claimed + self.unreviewed + self.completed
+        )
+
+        self.total_amount = len(self.total)
+        self.correction_pending_amount = len(self.correction_pending)
+        self.claimed_amount = len(self.claimed)
+        self.unreviewed_amount = len(self.unreviewed)
+        self.completed_amount = len(self.completed)
+

@@ -8,17 +8,17 @@ from functools import cached_property
 from typing import TYPE_CHECKING, Callable, List, Optional, Union
 
 import discord
-from cogs.AFD.utils.field_paginator import Field, FieldPaginationView
+from helpers.field_paginator import Field, FieldPaginationView
 import gists
 import pandas as pd
-from discord.ext import commands
+from discord.ext import commands, menus
 
 from helpers.constants import INDENT, NL
 from helpers.context import CustomContext
 
 from ..utils.utils import UrlView, enumerate_list, make_progress_bar
 from .utils.views import AfdView, PokemonView
-from .utils.utils import AFDRoleMenu, EmbedColours, Row
+from .utils.utils import AFDRoleMenu, Claimed, EmbedColours, Row
 from .utils.urls import AFD_CREDITS_GIST_URL, AFD_GIST_URL, SHEET_URL
 from .utils.sheet import AfdSheet
 from .utils.constants import (
@@ -38,43 +38,6 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 
-COMPLETED_EMOJI = "✅"
-UNREVIEWED_EMOJI = "☑️"
-REVIEW_EMOJI = "❗"
-
-
-@dataclass
-class Claimed:
-    claimed_df: pd.DataFrame
-    sheet: AfdSheet
-
-    def __post_init__(self):
-        self.correction_pending = []
-        self.claimed = []
-        self.unreviewed = []
-        self.completed = []
-        for idx in self.claimed_df.index:
-            row = self.sheet.get_row(idx)
-            pkm = row.pokemon
-
-            if row.completed:
-                self.completed.append(pkm)
-            elif row.unreviewed:
-                self.unreviewed.append(pkm)
-            elif row.correction_pending:
-                self.correction_pending.append(pkm)
-            else:
-                self.claimed.append(pkm)
-
-        self.total = (
-            self.correction_pending + self.claimed + self.unreviewed + self.completed
-        )
-
-        self.total_amount = len(self.total)
-        self.correction_pending_amount = len(self.correction_pending)
-        self.claimed_amount = len(self.claimed)
-        self.unreviewed_amount = len(self.unreviewed)
-        self.completed_amount = len(self.completed)
 
 
 class Afd(AfdGist):
