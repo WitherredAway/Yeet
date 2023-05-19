@@ -857,19 +857,22 @@ and lets you directly perform actions such as:
         await self.sheet.update_df()
         row = self.sheet.get_pokemon_row(pokemon)
         if not row.claimed:
-            if self.sheet.can_claim(ctx.author) is False and not self.is_admin(
-                ctx.author
-            ):
-                return await ctx.reply(
-                    embed=self.confirmation_embed(
-                        f"You already have the max number ({CLAIM_LIMIT}) of pokemon claimed!",
-                        colour=EmbedColours.INVALID,
+            p = ""
+            if self.sheet.can_claim(ctx.author) is False:
+                p = f'You already have the max number ({CLAIM_LIMIT}) of pokemon claimed'
+                if not self.is_admin(ctx.author):
+                    return await ctx.reply(
+                        embed=self.confirmation_embed(
+                            f"{p}!",
+                            colour=EmbedColours.INVALID,
+                        )
                     )
-                )
+                else:
+                    p += ", "
 
             conf, cmsg = await ctx.confirm(
                 embed=self.confirmation_embed(
-                    f"Are you sure you want to claim **{pokemon}**?", row=row
+                    f"{p}Are you sure you want to claim **{pokemon}**?", row=row
                 ),
             )
             if conf is False:
