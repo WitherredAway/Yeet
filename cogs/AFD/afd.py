@@ -66,7 +66,9 @@ class Claimed:
             else:
                 self.claimed.append(pkm)
 
-        self.total = self.correction_pending + self.claimed + self.unreviewed + self.completed
+        self.total = (
+            self.correction_pending + self.claimed + self.unreviewed + self.completed
+        )
 
         self.total_amount = len(self.total)
         self.correction_pending_amount = len(self.correction_pending)
@@ -796,7 +798,7 @@ and lets you directly perform actions such as:
     - Submitting/Editing submission
     - Sending reminder
     - Approving/Unapproving
-    - Commenting"""
+    - Commenting""",
     )
     async def view(self, ctx: CustomContext, *, pokemon: str):
         pokemon = await self.get_pokemon(ctx, pokemon)
@@ -824,9 +826,11 @@ and lets you directly perform actions such as:
         name="list",
         brief="Show a user's stats",
         help="Used to see a user's stats. To see your own, leave the user argument empty.",
-        invoke_without_command=True
+        invoke_without_command=True,
     )
-    async def _list(self, ctx: CustomContext, *, user: Optional[Union[discord.User, discord.Member]]):
+    async def _list(
+        self, ctx: CustomContext, *, user: Optional[Union[discord.User, discord.Member]]
+    ):
         await self.sheet.update_df()
         user = user or ctx.author
         claimed = self.validate_claimed(user)
@@ -835,13 +839,27 @@ and lets you directly perform actions such as:
         description = f"**Total pokemon**: {total_amount}"
         embed = self.bot.Embed(description=description)
         embed.set_author(name=f"{user}'s stats", icon_url=user.avatar.url)
-        embed.set_footer(text="Use the `afd view <pokemon>` command to see more info on an entry")
+        embed.set_footer(
+            text="Use the `afd view <pokemon>` command to see more info on an entry"
+        )
 
         fields = [
-            Field(name=f"Correction pending [{claimed.correction_pending_amount}]", values=enumerate_list(claimed.correction_pending)),
-            Field(name=f"Claimed (incomplete) [{claimed.claimed_amount}]", values=enumerate_list(claimed.claimed)),
-            Field(name=f"Submitted (awaiting review) [{claimed.unreviewed_amount}]", values=enumerate_list(claimed.unreviewed)),
-            Field(name=f"Completed 🎉 [{claimed.completed_amount}/{total_amount}]", values=enumerate_list(claimed.completed)),
+            Field(
+                name=f"Correction pending [{claimed.correction_pending_amount}]",
+                values=enumerate_list(claimed.correction_pending),
+            ),
+            Field(
+                name=f"Claimed (incomplete) [{claimed.claimed_amount}]",
+                values=enumerate_list(claimed.claimed),
+            ),
+            Field(
+                name=f"Submitted (awaiting review) [{claimed.unreviewed_amount}]",
+                values=enumerate_list(claimed.unreviewed),
+            ),
+            Field(
+                name=f"Completed 🎉 [{claimed.completed_amount}/{total_amount}]",
+                values=enumerate_list(claimed.completed),
+            ),
         ]
         view = FieldPaginationView(ctx, embed, fields=fields)
         await ctx.send(view=view, embed=view.embed)
@@ -857,7 +875,7 @@ and lets you directly perform actions such as:
         if not row.claimed:
             p = ""
             if self.sheet.can_claim(ctx.author) is False:
-                p = f'You already have the max number ({CLAIM_LIMIT}) of pokemon claimed'
+                p = f"You already have the max number ({CLAIM_LIMIT}) of pokemon claimed"
                 if not self.is_admin(ctx.author):
                     return await ctx.reply(
                         embed=self.confirmation_embed(

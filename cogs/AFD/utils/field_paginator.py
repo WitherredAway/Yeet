@@ -4,7 +4,12 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, List, Optional
 
 import discord
-from cogs.RDanny.utils.paginator import FIRST_PAGE_SYMBOL, LAST_PAGE_SYMBOL, NEXT_PAGE_SYMBOL, PREVIOUS_PAGE_SYMBOL
+from cogs.RDanny.utils.paginator import (
+    FIRST_PAGE_SYMBOL,
+    LAST_PAGE_SYMBOL,
+    NEXT_PAGE_SYMBOL,
+    PREVIOUS_PAGE_SYMBOL,
+)
 
 from helpers.constants import NL
 from helpers.context import CustomContext
@@ -43,7 +48,7 @@ class Field:
     @property
     def value(self) -> str:
         _from = self.per_page * self.page_number
-        return NL.join(self.values[_from:_from+self.per_page])
+        return NL.join(self.values[_from : _from + self.per_page])
 
     def add_items(self, view: FieldPaginationView):
         view.add_item(self.first_page_button)
@@ -71,7 +76,6 @@ class Field:
         if self.page_number == 0:
             self.previous_page_button.disabled = True
             self.previous_page_button.label = PREVIOUS_PAGE_SYMBOL
-
 
 
 class FieldNavButton(discord.ui.Button):
@@ -105,7 +109,9 @@ class PreviousPageButton(FieldNavButton):
 
 class FieldNameButton(FieldNavButton):
     def __init__(self, field: Field):
-        super().__init__(label=field.name, style=discord.ButtonStyle.blurple, disabled=True)
+        super().__init__(
+            label=field.name, style=discord.ButtonStyle.blurple, disabled=True
+        )
         self.field = field
 
     def use(self):
@@ -133,7 +139,9 @@ class LastPageButton(FieldNavButton):
 
 
 class FieldPaginationView(discord.ui.View):
-    def __init__(self, ctx: CustomContext, original_embed: Bot.Embed, *, fields: List[Field]):
+    def __init__(
+        self, ctx: CustomContext, original_embed: Bot.Embed, *, fields: List[Field]
+    ):
         super().__init__(timeout=300)
         self.ctx = ctx
         self.bot = ctx.bot

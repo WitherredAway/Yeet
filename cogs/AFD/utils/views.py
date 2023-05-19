@@ -452,4 +452,3 @@ class PokemonView(discord.ui.View):
         comment = modal.label_dict[input_label].value
         if (await self.afdcog.comment(self.ctx, self.pokemon, comment)) is True:
             await self.update_msg()
-

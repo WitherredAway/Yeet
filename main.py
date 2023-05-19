@@ -182,9 +182,9 @@ class Bot(commands.Bot):
             """
 
             field = {
-                'inline': inline,
-                'name': str(name),
-                'value': str(value),
+                "inline": inline,
+                "name": str(name),
+                "value": str(value),
             }
 
             try:
