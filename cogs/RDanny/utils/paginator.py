@@ -35,6 +35,7 @@ class BotPages(discord.ui.View):
         self.input_lock = asyncio.Lock()
         self.clear_items()
         self.fill_items()
+        self.pagination_buttons = self.children.copy()
 
     def fill_items(self) -> None:
         if self.source.is_paginating():
@@ -81,6 +82,14 @@ class BotPages(discord.ui.View):
                 await interaction.response.edit_message(**kwargs, view=self)
 
     def _update_labels(self, page_number: int) -> None:
+        if not self.source.is_paginating():
+            for item in self.pagination_buttons:
+                self.remove_item(item)
+            return
+        else:
+            for item in self.pagination_buttons:
+                if item not in self.children:
+                    self.add_item(item)
         self.go_to_first_page.disabled = page_number == 0
         if self.compact:
             max_pages = self.source.get_max_pages()
@@ -142,7 +151,7 @@ class BotPages(discord.ui.View):
             await self.message.edit(view=None)
 
     async def on_error(
-        self, error: Exception, item: discord.ui.Item, interaction: discord.Interaction
+        self, error: Exception, interaction: discord.Interaction, item: discord.ui.Item
     ) -> None:
         if interaction.response.is_done():
             await interaction.followup.send(error)

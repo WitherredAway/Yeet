@@ -30,9 +30,6 @@ class FrontPageSource(menus.ListPageSource):
         self.prefix: str = bot.PREFIX
         super().__init__(self.cogs_and_commands, per_page=per_page)
 
-    def is_paginating(self) -> bool:
-        return True
-
     async def format_page(
         self, menu: HelpMenu, entries: List[Tuple[commands.Cog, List[commands.Command]]]
     ):
@@ -79,9 +76,6 @@ class GroupHelpPageSource(menus.ListPageSource):
         self.bot = self.ctx.bot
         self.group = group
         self.prefix = self.ctx.clean_prefix
-
-    def is_paginating(self) -> bool:
-        return True
 
     async def format_page(self, menu, entries):
         embed = self.bot.Embed()
