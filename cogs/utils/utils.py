@@ -255,3 +255,20 @@ class SimpleModal(discord.ui.Modal):
 def enumerate_list(_list: List) -> List[str]:
     ret = [f"{idx + 1}. {element}" for idx, element in enumerate(_list)]
     return ret if len(ret) > 0 else ["None"]
+
+
+def value_to_option_dict(
+    select_menu: discord.SelectMenu,
+) -> Dict[int, discord.SelectOption]:
+    return {option.value: option for option in select_menu.options}
+
+
+def emoji_to_option_dict(
+    select_menu: discord.SelectMenu,
+) -> Dict[discord.PartialEmoji, discord.SelectOption]:
+    return {
+        option.emoji.name
+        if option.emoji.is_unicode_emoji()
+        else option.emoji.id: option
+        for option in select_menu.options
+    }

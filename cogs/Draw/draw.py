@@ -17,7 +17,7 @@ from PIL import Image
 from helpers.context import CustomContext
 from pilmoji import Pilmoji
 
-from ..utils.utils import image_to_file
+from ..utils.utils import emoji_to_option_dict, image_to_file, value_to_option_dict
 from helpers.constants import EMBED_FIELD_CHAR_LIMIT, u200b, NL
 from .utils.constants import (
     FONT,
@@ -79,23 +79,6 @@ class Coords:
     def __post_init__(self):
         self.ix: int = self.x * -1
         self.iy: int = self.y * -1
-
-
-def value_to_option_dict(
-    select_menu: discord.SelectMenu,
-) -> Dict[int, discord.SelectOption]:
-    return {option.value: option for option in select_menu.options}
-
-
-def emoji_to_option_dict(
-    select_menu: discord.SelectMenu,
-) -> Dict[discord.PartialEmoji, discord.SelectOption]:
-    return {
-        option.emoji.name
-        if option.emoji.is_unicode_emoji()
-        else option.emoji.id: option
-        for option in select_menu.options
-    }
 
 
 class StartView(discord.ui.View):
