@@ -2,7 +2,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import datetime
+import json
 import logging
+import os
 from typing import Optional, Union
 
 import discord
@@ -66,9 +68,7 @@ class AfdSheet:
             "https://www.googleapis.com/auth/spreadsheets",
         ]
 
-        creds = service_account.Credentials.from_service_account_file(
-            SERVICE_ACCOUNT_FILE
-        ).with_scopes(SCOPES)
+        creds = service_account.Credentials.from_service_account_info(json.loads(os.environ["GS_ACCOUNT_INFO"])).with_scopes(SCOPES)
 
         self.gc = await gspread_asyncio.AsyncioGspreadClientManager(
             lambda: creds
