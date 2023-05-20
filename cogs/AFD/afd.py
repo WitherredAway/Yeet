@@ -8,6 +8,7 @@ from functools import cached_property
 from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Union
 
 import discord
+from cogs.Draw.draw import value_to_option_dict
 from cogs.RDanny.utils.paginator import FIRST_PAGE_SYMBOL, LAST_PAGE_SYMBOL, NEXT_PAGE_SYMBOL, PREVIOUS_PAGE_SYMBOL, BotPages
 import gists
 import pandas as pd
@@ -15,7 +16,7 @@ from discord.ext import commands, menus
 
 from helpers.constants import INDENT, NL
 from helpers.context import CustomContext
-from helpers.field_paginator import PER_PAGE
+from helpers.field_paginator import Field, FieldPaginationView
 
 from ..utils.utils import UrlView, enumerate_list, make_progress_bar
 from .utils.views import AfdView, PokemonView
@@ -45,7 +46,7 @@ class Category:
     pokemon: List[str]
 
 
-class StatsPages(BotPages):
+class StatsPageMenu(BotPages):
     def __init__(self, categories: List[Category], *, ctx: CustomContext, original_embed: Bot.Embed):
         self.categories = categories
         self.original_embed = original_embed
@@ -55,7 +56,7 @@ class StatsPages(BotPages):
 
     def add_select(self):
         self.clear_items()
-        self.add_item(StatsSelectMenu(self.categories))
+        self.add_item(StatsSelectMenu(self.categories, menu=self))
         self.fill_items()
 
     def _update_labels(self, page_number: int) -> None:
@@ -116,6 +117,7 @@ class StatsPages(BotPages):
         self._update_labels(0)
         await interaction.response.edit_message(**kwargs, view=self)
 
+PER_PAGE = 20
 class StatsPageSource(menus.ListPageSource):
     def __init__(
         self,
@@ -129,28 +131,35 @@ class StatsPageSource(menus.ListPageSource):
         self.original_embed = original_embed
         self.per_page = per_page
 
-    async def format_page(self, menu: StatsPages, entries: List[str]):
+    async def format_page(self, menu: StatsPageMenu, entries: List[str]):
         embed = self.original_embed.copy()
         embed.add_field(name=self.category.name, value=NL.join(entries))
         return embed
 
 
+ALL_OPT_VALUE = "all"
 class StatsSelectMenu(discord.ui.Select):
-    def __init__(self, categories: List[Category]):
+    def __init__(self, categories: List[Category], *, menu: StatsPageMenu):
         self.categories = categories
+        self.menu = menu
+        self.ctx = menu.ctx
         super().__init__(placeholder="Change category", row=0)
         self.__fill_options()
         self.set_default(self.options[0])
-        self.view: StatsPages
 
     def __fill_options(self):
         for idx, category in enumerate(self.categories):
             name = category.name.split(" ")
             self.add_option(
                 label=name[0],
-                value=idx,
+                value=str(idx),
                 description=category.name,
             )
+        self.add_option(
+            label="All",
+            value=ALL_OPT_VALUE,
+            description="All categories with individual pagination"
+        )
 
     def set_default(self, option: discord.SelectOption):
         for o in self.options:
@@ -158,11 +167,25 @@ class StatsSelectMenu(discord.ui.Select):
         option.default = True
 
     async def callback(self, interaction: discord.Interaction):
-        i = int(self.values[0])
-        source = StatsPageSource(self.categories[i], original_embed=self.view.original_embed)
-        self.set_default(self.options[i])
-        self.view.initial_source = source
-        await self.view.rebind(source, interaction)
+        value = self.values[0]
+        option = value_to_option_dict(self)[value]
+        if option.default is True:
+            return  # Return if user selected the same option
+
+        self.set_default(option)
+        if value == ALL_OPT_VALUE:
+            fields = [Field(name=c.name, values=c.pokemon) for c in self.categories]
+            view = FieldPaginationView(self.ctx, self.menu.original_embed, fields=fields)
+            view.clear_items()
+            view.add_item(self)
+            view.fill_items()
+
+            await interaction.response.edit_message(view=view, embed=view.embed)
+            view.msg = self.ctx.message
+        else:
+            source = StatsPageSource(self.categories[self.options.index(option)], original_embed=self.menu.original_embed)
+            self.menu.initial_source = source
+            await self.menu.rebind(source, interaction)
 
 
 class Afd(AfdGist):
@@ -382,8 +405,10 @@ class Afd(AfdGist):
     )
     async def afd(self, ctx: CustomContext):
         await ctx.typing()
-        if ctx.invoked_subcommand is None:
+        if ctx.subcommand_passed is None:
             await ctx.invoke(self.info)
+        elif ctx.invoked_subcommand is None:
+            await ctx.send_help(ctx.command)
 
     # --- Owner only commands ---
     @commands.is_owner()
@@ -949,7 +974,7 @@ and lets you directly perform actions such as:
                 pokemon=enumerate_list(claimed.completed),
             ),
         ]
-        menu = StatsPages(categories, ctx=ctx, original_embed=embed)
+        menu = StatsPageMenu(categories, ctx=ctx, original_embed=embed)
         await menu.start()
 
     async def claim(self, ctx: CustomContext, pokemon: str):

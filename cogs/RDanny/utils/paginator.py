@@ -151,7 +151,7 @@ class BotPages(discord.ui.View):
             await self.message.edit(view=None)
 
     async def on_error(
-        self, error: Exception, interaction: discord.Interaction, item: discord.ui.Item
+        self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item
     ) -> None:
         if interaction.response.is_done():
             await interaction.followup.send(error)

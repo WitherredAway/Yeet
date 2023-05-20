@@ -18,14 +18,14 @@ if TYPE_CHECKING:
     from main import Bot
 
 
-PER_PAGE = 20
+FIELD_PER_PAGE = 10
 
 
 @dataclass
 class Field:
     name: str
     values: List[str]
-    per_page: Optional[int] = PER_PAGE
+    per_page: Optional[int] = FIELD_PER_PAGE
 
     def __post_init__(self):
         self.page_number: int = 0
@@ -151,6 +151,7 @@ class FieldPaginationView(discord.ui.View):
         if len([f for f in fields if f.is_paginating()]) > 5:
             raise ValueError("Too many paginating fields")
 
+        self.clear_items()
         self.fill_items()
 
     async def update_msg(self, interaction: discord.Interaction):
@@ -158,14 +159,12 @@ class FieldPaginationView(discord.ui.View):
             field.update_buttons()
         await interaction.response.edit_message(view=self, embed=self.embed)
 
-    def fill_items(self):
-        self.clear_items()
-        row = 0
+    def fill_items(self, view: Optional[discord.ui.View] = None):
+        view = view or self
         for field in self.fields:
             if field.is_paginating():
                 field.update_buttons()
-                field.add_items(self)
-                row += 1
+                field.add_items(view)
 
     @property
     def embed(self):
