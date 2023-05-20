@@ -341,7 +341,7 @@ In alphabetical order. Thank you everyone who participated!
         start = time.time()
         files = [contents_file, top_participants_file, credits_file, participants_file]
         await self.credits_gist.edit(
-            description=f"THANKS TO ALL {len(participants)} PARTICIPANTS WITHOUT WHOM THIS WOULDN'T HAVE BEEN POSSIBLE!",
+            description=f"THANKS TO ALL {len(participants.split(NL))} PARTICIPANTS WITHOUT WHOM THIS WOULDN'T HAVE BEEN POSSIBLE!",
             files=files,
         )
         log.info(f"AFD Credits: Updated credits in {round(time.time()-og_start, 2)}s")
