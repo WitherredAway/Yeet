@@ -133,4 +133,4 @@ class Claimed:
 @dataclass
 class Category:
     name: str
-    pokemon: List[str]
+    entries: List[str]

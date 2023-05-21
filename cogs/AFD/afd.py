@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
 
 import discord
 from cogs.AFD.utils.labels import DEX_LABEL, PKM_LABEL, USERNAME_LABEL
-from cogs.AFD.utils.list_paginator import StatsPageMenu, StatsSelectMenu
+from cogs.AFD.utils.list_paginator import ListPageMenu, StatsPageMenu, StatsSelectMenu
 import gists
 import pandas as pd
 from discord.ext import commands
@@ -809,23 +809,22 @@ and lets you directly perform actions such as:
         categories = [
             Category(
                 name=f"Correction pending [{claimed.correction_pending_amount}]",
-                pokemon=enumerate_list(claimed.correction_pending),
+                entries=enumerate_list(claimed.correction_pending),
             ),
             Category(
                 name=f"Claimed (incomplete) [{claimed.claimed_amount}]",
-                pokemon=enumerate_list(claimed.claimed),
+                entries=enumerate_list(claimed.claimed),
             ),
             Category(
                 name=f"Submitted (awaiting review) [{claimed.unreviewed_amount}]",
-                pokemon=enumerate_list(claimed.unreviewed),
+                entries=enumerate_list(claimed.unreviewed),
             ),
             Category(
                 name=f"Completed 🎉 [{claimed.completed_amount}/{total_amount}]",
-                pokemon=enumerate_list(claimed.completed),
+                entries=enumerate_list(claimed.completed),
             ),
         ]
         menu = StatsPageMenu(categories, ctx=ctx, original_embed=embed)
-        menu.add_select(StatsSelectMenu(self.categories, menu=self))
         await menu.start()
 
     def validate_unclaimed(self) -> Tuple[List[str], int]:
@@ -855,8 +854,8 @@ and lets you directly perform actions such as:
         await self.sheet.update_df()
 
         unc_list, unc_amount = self.validate_unclaimed()
-        categories = [Category(name=f"Unclaimed [{unc_amount}/{self.total_amount}]", pokemon=unc_list)]
-        menu = StatsPageMenu(categories, ctx=ctx, original_embed=self.bot.Embed())
+        category = Category(name=f"Unclaimed [{unc_amount}/{self.total_amount}]", entries=unc_list)
+        menu = ListPageMenu(category, ctx=ctx)
         await menu.start()
 
     async def claim(self, ctx: CustomContext, pokemon: str):
