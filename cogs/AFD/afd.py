@@ -8,7 +8,12 @@ from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
 
 import discord
 from cogs.AFD.utils.labels import DEX_LABEL, PKM_LABEL, USERNAME_LABEL
-from cogs.AFD.utils.list_paginator import ListPageMenu, StatsPageMenu, StatsSelectMenu, get_initial
+from cogs.AFD.utils.list_paginator import (
+    ListPageMenu,
+    StatsPageMenu,
+    StatsSelectMenu,
+    get_initial,
+)
 from cogs.Draw.utils.constants import ALPHABET_EMOJIS
 import gists
 import pandas as pd
@@ -848,13 +853,15 @@ and lets you directly perform actions such as:
         name="unclaimed",
         aliases=("available", "unc"),
         brief="View unclaimed pokemon",
-        help="View a list of pokemon that are available to claim."
+        help="View a list of pokemon that are available to claim.",
     )
     async def list_unclaimed(self, ctx: CustomContext):
         await self.sheet.update_df()
 
         unc_list, unc_amount = self.validate_unclaimed()
-        category = Category(name=f"Unclaimed [{unc_amount}/{self.total_amount}]", entries=unc_list)
+        category = Category(
+            name=f"Unclaimed [{unc_amount}/{self.total_amount}]", entries=unc_list
+        )
         menu = ListPageMenu(category, ctx=ctx)
         await menu.start()
 

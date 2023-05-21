@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 
 STATS_PER_PAGE = 20
 
+
 class StatsPageMenu(BotPages):
     def __init__(
         self,
@@ -128,6 +129,7 @@ class StatsPageSource(menus.ListPageSource):
 
 ALL_OPT_VALUE = "all"
 
+
 class StatsSelectMenu(discord.ui.Select):
     def __init__(self, menu: StatsPageMenu):
         self.menu = menu
@@ -185,7 +187,10 @@ class StatsSelectMenu(discord.ui.Select):
 
 LIST_PER_PAGE = 20
 
-def get_initial(name: str, *, bold: Optional[bool] = False) -> Union[str, Optional[str]]:
+
+def get_initial(
+    name: str, *, bold: Optional[bool] = False
+) -> Union[str, Optional[str]]:
     initial = name[0]
     bolded_name = [c for c in name]
     for idx, letter in enumerate(name):
@@ -196,6 +201,7 @@ def get_initial(name: str, *, bold: Optional[bool] = False) -> Union[str, Option
         else:
             continue
     return (initial, "".join(bolded_name)) if bold else initial
+
 
 class ListPageMenu(BotPages):
     def __init__(
@@ -278,6 +284,7 @@ class ListPageMenu(BotPages):
         self._update_labels(0)
         await interaction.response.edit_message(**kwargs, view=self)
 
+
 class ListPageSource(menus.ListPageSource):
     def __init__(
         self,
@@ -336,7 +343,9 @@ class ListSelectMenu(discord.ui.Select):
             value_or_option = int(value_or_option)
             vals = [int(o.value) for o in self.options]
             if value_or_option not in vals:
-                value_or_option = vals[list(sorted(vals + [value_or_option])).index(value_or_option) - 1]  # get the one before it if it doesnt exist
+                value_or_option = vals[
+                    list(sorted(vals + [value_or_option])).index(value_or_option) - 1
+                ]  # get the one before it if it doesnt exist
             option = value_to_option_dict(self)[str(value_or_option)]
 
         for o in self.options:

@@ -274,6 +274,7 @@ def emoji_to_option_dict(
         for option in select_menu.options
     }
 
+
 def round_up(num: Union[int, float]) -> int:
     if num >= 0:
         return math.floor(num + 0.5)

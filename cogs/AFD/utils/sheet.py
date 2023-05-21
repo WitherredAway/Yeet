@@ -68,7 +68,9 @@ class AfdSheet:
             "https://www.googleapis.com/auth/spreadsheets",
         ]
 
-        creds = service_account.Credentials.from_service_account_info(json.loads(os.environ["GS_ACCOUNT_INFO"])).with_scopes(SCOPES)
+        creds = service_account.Credentials.from_service_account_info(
+            json.loads(os.environ["GS_ACCOUNT_INFO"])
+        ).with_scopes(SCOPES)
 
         self.gc = await gspread_asyncio.AsyncioGspreadClientManager(
             lambda: creds
