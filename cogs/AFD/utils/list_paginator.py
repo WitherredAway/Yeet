@@ -215,7 +215,8 @@ class ListPageMenu(BotPages):
         self.bot = ctx.bot
         source = ListPageSource(category)
         super().__init__(source, ctx=ctx)
-        self.select: ListSelectMenu = self.add_select(ListSelectMenu(self))
+        if self.source.is_paginating():
+            self.select: ListSelectMenu = self.add_select(ListSelectMenu(self))
 
     def add_select(self, select: discord.SelectMenu) -> discord.SelectMenu:
         self.clear_items()
