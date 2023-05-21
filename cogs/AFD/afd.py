@@ -4,10 +4,11 @@ import logging
 import os
 import time
 from functools import cached_property
-from typing import TYPE_CHECKING, Callable, List, Optional, Union
+from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
 
 import discord
-from cogs.AFD.utils.list_paginator import StatsPageMenu
+from cogs.AFD.utils.labels import DEX_LABEL, PKM_LABEL, USERNAME_LABEL
+from cogs.AFD.utils.list_paginator import StatsPageMenu, StatsSelectMenu
 import gists
 import pandas as pd
 from discord.ext import commands
@@ -824,6 +825,38 @@ and lets you directly perform actions such as:
             ),
         ]
         menu = StatsPageMenu(categories, ctx=ctx, original_embed=embed)
+        menu.add_select(StatsSelectMenu(self.categories, menu=self))
+        await menu.start()
+
+    def validate_unclaimed(self) -> Tuple[List[str], int]:
+        unc_df = self.df[self.df[USERNAME_LABEL].isna()].sort_values(by=DEX_LABEL)
+        unc_list = []
+        for idx, row in unc_df.iterrows():
+            pkm = row[PKM_LABEL]
+            unc_list.append(pkm)
+        unc_list.sort()
+        unc_list = enumerate_list(unc_list)
+
+        unc_amount = len(unc_list)
+        if hasattr(self, "unc_amount"):
+            if self.unc_amount == unc_amount:
+                self.unc = False
+        self.unc_amount = unc_amount
+
+        return unc_list, unc_amount
+
+    @_list.command(
+        name="unclaimed",
+        aliases=("available",),
+        brief="View unclaimed pokemon",
+        help="View a list of pokemon that are available to claim."
+    )
+    async def list_unclaimed(self, ctx: CustomContext):
+        await self.sheet.update_df()
+
+        unc_list, unc_amount = self.validate_unclaimed()
+        categories = [Category(name=f"Unclaimed [{unc_amount}/{self.total_amount}]", pokemon=unc_list)]
+        menu = StatsPageMenu(categories, ctx=ctx, original_embed=self.bot.Embed())
         await menu.start()
 
     async def claim(self, ctx: CustomContext, pokemon: str):

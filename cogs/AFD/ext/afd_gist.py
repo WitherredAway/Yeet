@@ -29,6 +29,7 @@ from cogs.AFD.utils.labels import (
 )
 from cogs.AFD.utils.urls import AFD_CREDITS_GIST_URL, SHEET_URL
 from cogs.AFD.utils.utils import Row
+from cogs.utils.utils import enumerate_list
 import gists
 
 from helpers.constants import LOG_BORDER, NL
@@ -122,21 +123,6 @@ Credits: <{self.credits_gist.url}>"""
     @property
     def user_grouped(self) -> GroupBy:
         return self.df.groupby(USERNAME_LABEL)
-
-    def validate_unclaimed(self) -> Tuple[List[str], int]:
-        unc_df = self.df[self.df[USERNAME_LABEL].isna()].sort_values(by=DEX_LABEL)
-        unc_list = []
-        for idx, row in unc_df.iterrows():
-            pkm = row[PKM_LABEL]
-            unc_list.append(f"1. {pkm}")
-
-        unc_amount = len(unc_list)
-        if hasattr(self, "unc_amount"):
-            if self.unc_amount == unc_amount:
-                self.unc = False
-        self.unc_amount = unc_amount
-
-        return unc_list, unc_amount
 
     def format_unreviewed(self, df: pd.DataFrame, row: Row, pkm_indexes: list) -> str:
         pkm_list = []

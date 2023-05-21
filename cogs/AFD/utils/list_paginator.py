@@ -34,11 +34,10 @@ class StatsPageMenu(BotPages):
         self.original_embed = original_embed
         initial_source = StatsPageSource(categories[0], original_embed=original_embed)
         super().__init__(initial_source, ctx=ctx)
-        self.add_select()
 
-    def add_select(self):
+    def add_select(self, select: discord.SelectMenu):
         self.clear_items()
-        self.add_item(StatsSelectMenu(self.categories, menu=self))
+        self.add_item(select)
         self.fill_items()
 
     def _update_labels(self, page_number: int) -> None:
