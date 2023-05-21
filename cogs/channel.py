@@ -326,7 +326,7 @@ class Channel(commands.Cog):
         brief="Removes current or mentioned channel's name after `separator`.",
         help="""Strips the name of the channel and keeps the part before `separator`.
 
-For example if the channel's name is `general-temporary`, `strip #general-temporary -` command will rename it to #general
+For example if the channel's name is `bot-commands-temporary`, `strip #bot-commands-temporary -` command will rename it to #bot-commands
 [RENAMES MAY TAKE LONGER THAN USUAL DUE TO RATE-LIMITS]""",
         invoke_without_command=True,
         case_insensitive=True,
@@ -358,7 +358,7 @@ For example if the channel's name is `general-temporary`, `strip #general-tempor
         #     return await ctx.send("Aborted.")
 
         current_name = channel.name
-        new_name = channel.name.split(separator)[0]
+        new_name = separator.join(channel.name.split(separator)[:-1])
         await channel.edit(name=new_name)
         await ctx.send(
             f"Stripped the name of {channel.mention} from **{current_name}** to **{channel.name}**."
