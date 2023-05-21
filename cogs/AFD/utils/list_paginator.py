@@ -1,6 +1,9 @@
 from __future__ import annotations
+from collections import defaultdict
+import itertools
+import math
 
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List, Optional, Union
 
 import discord
 from discord.ext import menus
@@ -8,7 +11,7 @@ from discord.ext import menus
 from cogs.Draw.utils.constants import ALPHABET_EMOJIS
 
 from .utils import Category
-from cogs.utils.utils import value_to_option_dict
+from cogs.utils.utils import enumerate_list, round_up, value_to_option_dict
 from cogs.RDanny.utils.paginator import (
     FIRST_PAGE_SYMBOL,
     LAST_PAGE_SYMBOL,
@@ -180,7 +183,19 @@ class StatsSelectMenu(discord.ui.Select):
             await self.menu.rebind(source, interaction)
 
 
-LIST_PER_PAGE = 40
+LIST_PER_PAGE = 20
+
+def get_initial(name: str, *, bold: Optional[bool] = False) -> Union[str, Optional[str]]:
+    initial = name[0]
+    bolded_name = [c for c in name]
+    for idx, letter in enumerate(name):
+        if letter.upper() in ALPHABET_EMOJIS.keys():
+            initial = letter
+            bolded_name[idx] = f"**{initial}**"
+            break
+        else:
+            continue
+    return (initial, "".join(bolded_name)) if bold else initial
 
 class ListPageMenu(BotPages):
     def __init__(
@@ -194,12 +209,13 @@ class ListPageMenu(BotPages):
         self.bot = ctx.bot
         source = ListPageSource(category)
         super().__init__(source, ctx=ctx)
-        self.add_select(ListSelectMenu(self))
+        self.select: ListSelectMenu = self.add_select(ListSelectMenu(self))
 
-    def add_select(self, select: discord.SelectMenu):
+    def add_select(self, select: discord.SelectMenu) -> discord.SelectMenu:
         self.clear_items()
         self.add_item(select)
         self.fill_items()
+        return select
 
     def _update_labels(self, page_number: int) -> None:
         if not self.source.is_paginating():
@@ -210,6 +226,9 @@ class ListPageMenu(BotPages):
             for item in self.pagination_buttons:
                 if item not in self.children:
                     self.add_item(item)
+
+        self.select.set_default(str(self.current_page))
+
         max_pages = self.source.get_max_pages()
         self.go_to_first_page.disabled = page_number == 0
 
@@ -264,8 +283,18 @@ class ListPageSource(menus.ListPageSource):
         self,
         category: Category,
     ):
-        super().__init__(entries=category.entries, per_page=LIST_PER_PAGE)
         self.category = category
+        entries = []
+        initials = []
+        for idx, entry in enumerate(category.entries):
+            i, bolded = get_initial(entry, bold=True)
+            if i not in initials:
+                entries.append(f"{idx + 1}. {bolded}")
+                initials.append(i)
+            else:
+                entries.append(f"{idx + 1}. {entry}")
+
+        super().__init__(entries=entries, per_page=LIST_PER_PAGE)
 
     async def format_page(self, menu: ListPageMenu, entries: List[str]):
         embed = menu.bot.Embed(title=self.category.name, description=NL.join(entries))
@@ -281,28 +310,35 @@ class ListSelectMenu(discord.ui.Select):
         self.set_default(self.options[0])
 
     def __fill_options(self):
-        for idx, chunk in enumerate(discord.utils.as_chunks(self.category.entries, LIST_PER_PAGE)):
-            # Form a range like [A, Z] based on first and last pokemon names' initials
-            initials = [chunk[0].split(" ")[1][0], chunk[-1].split(" ")[1][0]]
-            if initials[0] == initials[-1]:
-                initials = [initials[0]]
+        initials = defaultdict(list)
+        for idx, pkm in enumerate(self.category.entries):
+            initial = get_initial(pkm)
+            if initial not in list(itertools.chain(*list(initials.values()))):
+                initials[math.floor(idx / LIST_PER_PAGE)].append(initial)
 
+        for page, initials in initials.items():
             self.add_option(
-                label="-".join(initials),
-                value=str(idx),
-                emoji=ALPHABET_EMOJIS.get(initials[0], "#️⃣")
+                label=", ".join(initials),
+                value=str(page),
+                # emoji=ALPHABET_EMOJIS.get(initials[0], "#️⃣"),
             )
 
     async def callback(self, interaction: discord.Interaction):
-        value = self.values[0]
-        option = value_to_option_dict(self)[value]
-        if option.default is True:
-            return  # Return if user selected the same option
-        self.set_default(option)
-        
-        await self.view.show_checked_page(interaction, int(value))
+        page = self.values[0]
+        self.set_default(page)
 
-    def set_default(self, option: discord.SelectOption):
+        await self.menu.show_checked_page(interaction, int(page))
+
+    def set_default(self, value_or_option: Union[str, discord.SelectOption]):
+        if isinstance(value_or_option, discord.SelectOption):
+            option = value_or_option
+        else:
+            value_or_option = int(value_or_option)
+            vals = [int(o.value) for o in self.options]
+            if value_or_option not in vals:
+                value_or_option = vals[list(sorted(vals + [value_or_option])).index(value_or_option) - 1]  # get the one before it if it doesnt exist
+            option = value_to_option_dict(self)[str(value_or_option)]
+
         for o in self.options:
             o.default = False
         option.default = True

@@ -1,6 +1,7 @@
 import io
+import math
 import typing
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 import cProfile
 from typing import Dict, Optional
 import unicodedata
@@ -272,3 +273,9 @@ def emoji_to_option_dict(
         else option.emoji.id: option
         for option in select_menu.options
     }
+
+def round_up(num: Union[int, float]) -> int:
+    if num >= 0:
+        return math.floor(num + 0.5)
+    else:
+        return math.ceil(num - 0.5)

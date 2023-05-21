@@ -8,7 +8,8 @@ from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
 
 import discord
 from cogs.AFD.utils.labels import DEX_LABEL, PKM_LABEL, USERNAME_LABEL
-from cogs.AFD.utils.list_paginator import ListPageMenu, StatsPageMenu, StatsSelectMenu
+from cogs.AFD.utils.list_paginator import ListPageMenu, StatsPageMenu, StatsSelectMenu, get_initial
+from cogs.Draw.utils.constants import ALPHABET_EMOJIS
 import gists
 import pandas as pd
 from discord.ext import commands
@@ -833,8 +834,7 @@ and lets you directly perform actions such as:
         for idx, row in unc_df.iterrows():
             pkm = row[PKM_LABEL]
             unc_list.append(pkm)
-        unc_list.sort()
-        unc_list = enumerate_list(unc_list)
+        unc_list.sort(key=get_initial)
 
         unc_amount = len(unc_list)
         if hasattr(self, "unc_amount"):
@@ -846,7 +846,7 @@ and lets you directly perform actions such as:
 
     @_list.command(
         name="unclaimed",
-        aliases=("available",),
+        aliases=("available", "unc"),
         brief="View unclaimed pokemon",
         help="View a list of pokemon that are available to claim."
     )
