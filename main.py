@@ -56,7 +56,7 @@ class Bot(commands.Bot):
         "math": "math",
         "image": "Image.image",
         "afd": "AFD.afd",
-        # "test": "test",
+        "test": "test",
     }
 
     def __init__(self, **kwargs):
