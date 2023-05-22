@@ -221,7 +221,7 @@ class Afd(AfdGist):
 
         ml_list, ml_list_mention, ml_amount = self.validate_missing_link()
         submitted_amount = claimed_amount - ml_amount
-        completed_amount = submitted_amount - unr_amount
+        approved_amount = submitted_amount - unr_amount
 
         description = f"""**Topic:** {self.sheet.TOPIC}
 
@@ -243,8 +243,8 @@ class Afd(AfdGist):
 
         embed.add_field(
             name="Community Stats",
-            value=f"""**Completed**
-{make_progress_bar(completed_amount, self.total_amount)} {completed_amount}/{self.total_amount}
+            value=f"""**Approved**
+{make_progress_bar(approved_amount, self.total_amount)} {approved_amount}/{self.total_amount}
 **Submitted**
 {make_progress_bar(submitted_amount, self.total_amount)} {submitted_amount}/{self.total_amount}
 **Claimed**
@@ -481,11 +481,11 @@ class Afd(AfdGist):
                     colour=EmbedColours.INVALID,
                 )
             )
-        elif row.completed:
+        elif row.approved:
             return await ctx.reply(
                 embed=self.confirmation_embed(
                     f"**{pokemon}** has already been approved by **{approved_by}**!",
-                    colour=EmbedColours.COMPLETED,
+                    colour=EmbedColours.APPROVED,
                 )
             )
         conf, cmsg = await ctx.confirm(
@@ -504,14 +504,14 @@ class Afd(AfdGist):
             embed=self.confirmation_embed(
                 f"**{pokemon}** has been approved! 🎉",
                 row=row,
-                colour=EmbedColours.COMPLETED,
+                colour=EmbedColours.APPROVED,
                 footer=f"You can undo this using the `unapprove` command.",
             )
         )
         embed = self.confirmation_embed(
             f"**{pokemon}** has been approved! 🎉",
             row=row,
-            colour=EmbedColours.COMPLETED,
+            colour=EmbedColours.APPROVED,
             footer=f"by {ctx.author}",
         )
         user = await self.fetch_user(row.user_id)
@@ -537,7 +537,7 @@ class Afd(AfdGist):
         conf = cmsg = None
         await self.sheet.update_df()
         row = self.sheet.get_pokemon_row(pokemon)
-        if not row.completed:
+        if not row.approved:
             return await ctx.reply(
                 embed=self.confirmation_embed(
                     f"**{pokemon}** has not been approved.",
@@ -629,7 +629,7 @@ class Afd(AfdGist):
 > {row.comment}
 **To** (by **%s**)
 > {comment}"""
-        elif row.completed:
+        elif row.approved:
             desc = f"""**{pokemon}** has already been approved (by **{approved_by}**)! Are you sure you want to unapprove and comment the following?
 > {comment}"""
         else:

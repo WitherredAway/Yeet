@@ -308,9 +308,9 @@ class PokemonView(discord.ui.View):
 
             if row.image:
                 embed.set_image(url=row.image)
-                if row.completed:
+                if row.approved:
                     status = f"Complete! Approved by {self.approved_by}."
-                    color = EmbedColours.COMPLETED.value
+                    color = EmbedColours.APPROVED.value
                     if self.afdcog.is_admin(self.ctx.author):
                         self.add_item(
                             self.unapprove_btn

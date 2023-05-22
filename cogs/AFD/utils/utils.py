@@ -26,7 +26,7 @@ class EmbedColours(Enum):
     CLAIMED: int = 0xE69537  # Claimed but not complete, Orange
     UNREVIEWED: int = 0x6BAAE8  # Link present awaiting review, Blue
     CORRECTION: int = 0xF5CD6B  # Has a comment, Yellow
-    COMPLETED: int = 0x85AF63  # Link present and approved, Green
+    APPROVED: int = 0x85AF63  # Link present and approved, Green
 
 
 @dataclass
@@ -43,7 +43,7 @@ class Row:
 
     claimed: Optional[bool] = None
     unreviewed: Optional[bool] = None
-    completed: Optional[bool] = None
+    approved: Optional[bool] = None
     correction_pending: Optional[bool] = None
 
     def __post_init__(self):
@@ -76,7 +76,7 @@ class Row:
 
         self.claimed = not pd.isna(self.user_id)
         self.unreviewed = all((self.image, not self.approved_by, not self.comment))
-        self.completed = all(
+        self.approved = all(
             (self.approved_by, not self.comment)
         )  # If approved but no comment
         self.correction_pending = all((self.comment, self.approved_by))
@@ -105,13 +105,13 @@ class Claimed:
         self.correction_pending = []
         self.claimed = []
         self.unreviewed = []
-        self.completed = []
+        self.approved = []
         for idx in self.claimed_df.index:
             row = self.sheet.get_row(idx)
             pkm = row.pokemon
 
-            if row.completed:
-                self.completed.append(pkm)
+            if row.approved:
+                self.approved.append(pkm)
             elif row.unreviewed:
                 self.unreviewed.append(pkm)
             elif row.correction_pending:
@@ -120,14 +120,15 @@ class Claimed:
                 self.claimed.append(pkm)
 
         self.total = (
-            self.correction_pending + self.claimed + self.unreviewed + self.completed
+            self.correction_pending + self.claimed + self.unreviewed + self.approved
         )
 
         self.total_amount = len(self.total)
         self.correction_pending_amount = len(self.correction_pending)
         self.claimed_amount = len(self.claimed)
         self.unreviewed_amount = len(self.unreviewed)
-        self.completed_amount = len(self.completed)
+        self.approved_amount = len(self.approved)
+
 
 
 @dataclass
