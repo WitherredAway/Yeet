@@ -119,7 +119,7 @@ Credits: <{self.credits_gist.url}>"""
 
     @property
     def user_grouped(self) -> GroupBy:
-        return self.df.groupby(USERNAME_LABEL)
+        return self.df.groupby(USER_ID_LABEL)
 
     async def format_unreviewed(self, df: pd.DataFrame, row: Row, pkm_indexes: list) -> str:
         pkm_list = []
@@ -150,9 +150,9 @@ Credits: <{self.credits_gist.url}>"""
 
     async def get_unreviewed(self, df, df_grouped) -> List[str]:
         df_list = []
-        for username, pkm_indexes in df_grouped.groups.items():
+        for user_id, pkm_indexes in df_grouped.groups.items():
             row_0 = self.sheet.get_row(pkm_indexes[0])
-            if pd.isna(username):
+            if pd.isna(user_id):
                 continue
             msg = await self.format_unreviewed(df, row_0, pkm_indexes)
 
@@ -167,7 +167,7 @@ Credits: <{self.credits_gist.url}>"""
             & (self.df[APPROVED_LABEL].isna())
         ]
 
-        df_grouped = df.groupby(USERNAME_LABEL)
+        df_grouped = df.groupby(USER_ID_LABEL)
 
         unr_amount = len(
             [pkm_id for pkm_idx in df_grouped.groups.values() for pkm_id in pkm_idx]
@@ -204,7 +204,7 @@ Credits: <{self.credits_gist.url}>"""
         df = self.df
         df = df.loc[(~df[USER_ID_LABEL].isna()) & (df[IMAGE_LABEL].isna())]
 
-        df_grouped = df.groupby(USERNAME_LABEL)
+        df_grouped = df.groupby(USER_ID_LABEL)
 
         ml_amount = len(
             [pkm_id for pkm_idx in df_grouped.groups.values() for pkm_id in pkm_idx]
