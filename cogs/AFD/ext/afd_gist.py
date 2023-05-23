@@ -6,7 +6,6 @@ import pandas as pd
 from pandas.core.groupby.generic import GroupBy
 from typing import TYPE_CHECKING, Callable, List, Optional, Tuple
 
-import discord
 from discord.ext import commands, tasks
 from cogs.AFD.utils.constants import HEADERS_FMT, TOP_N
 from cogs.AFD.utils.filenames import (
@@ -124,7 +123,7 @@ Credits: <{self.credits_gist.url}>"""
     def user_grouped(self) -> GroupBy:
         return self.df.groupby(USERNAME_LABEL)
 
-    def format_unreviewed(self, df: pd.DataFrame, row: Row, pkm_indexes: list) -> str:
+    async def format_unreviewed(self, df: pd.DataFrame, row: Row, pkm_indexes: list) -> str:
         pkm_list = []
         for idx, pkm_idx in enumerate(pkm_indexes):
             pokename = df.loc[pkm_idx, PKM_LABEL]
@@ -146,24 +145,24 @@ Credits: <{self.credits_gist.url}>"""
             pkm_list.append(text)
         format_list = "\n".join(pkm_list)
         return_text = f"""<details>
-<summary>{row.username} ({row.user_id}) - {len(pkm_list)}</summary>
+<summary>{await self.fetch_user(row.user_id)} ({row.user_id}) - {len(pkm_list)}</summary>
 {format_list}
 </details>"""
         return return_text
 
-    def get_unreviewed(self, df, df_grouped) -> List[str]:
+    async def get_unreviewed(self, df, df_grouped) -> List[str]:
         df_list = []
         for username, pkm_indexes in df_grouped.groups.items():
             row_0 = self.sheet.get_row(pkm_indexes[0])
             if pd.isna(username):
                 continue
-            msg = self.format_unreviewed(df, row_0, pkm_indexes)
+            msg = await self.format_unreviewed(df, row_0, pkm_indexes)
 
             df_list.append(msg)
 
         return df_list
 
-    def validate_unreviewed(self) -> Tuple[List[str], int]:
+    async def validate_unreviewed(self) -> Tuple[List[str], int]:
         df = self.df.loc[
             (~self.df[USER_ID_LABEL].isna())
             & (~self.df[IMAGE_LABEL].isna())
@@ -179,7 +178,7 @@ Credits: <{self.credits_gist.url}>"""
         if hasattr(self, "unr_amount"):
             if self.unr_amount == unr_amount:
                 self.unr = False
-        unr_list = self.get_unreviewed(df, df_grouped)
+        unr_list = await self.get_unreviewed(df, df_grouped)
         self.unr_amount = unr_amount
 
         return unr_list, unr_amount

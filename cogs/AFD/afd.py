@@ -389,7 +389,7 @@ class Afd(AfdGist):
         else:
             conf, cmsg = await ctx.confirm(
                 embed=self.confirmation_embed(
-                    f"**{pokemon}** is already claimed by **{row.username}**, override and claim it for **{user}**?\
+                    f"**{pokemon}** is already claimed by **{await self.fetch_user(row.user_id)} ({row.user_id})**, override and claim it for **{user}**?\
                         {' There is a drawing submitted already which will be removed.' if row.image else ''}",
                     row=row,
                 ),
@@ -450,7 +450,7 @@ class Afd(AfdGist):
             )
         conf, cmsg = await ctx.confirm(
             embed=self.confirmation_embed(
-                f"**{pokemon}** is currently claimed by **{row.username}**, forcefully unclaim?\
+                f"**{pokemon}** is currently claimed by **{await self.fetch_user(row.user_id)} ({row.user_id})**, forcefully unclaim?\
                         {' There is a drawing already submitted which will be removed.' if row.image else ''}",
                 row=row,
             ),
@@ -464,13 +464,13 @@ class Afd(AfdGist):
         )
         await cmsg.edit(
             embed=self.confirmation_embed(
-                f"You have successfully force unclaimed **{pokemon}** from **{row.username}**.",
+                f"You have successfully force unclaimed **{pokemon}** from **{await self.fetch_user(row.user_id)} ({row.user_id})**.",
                 row=row,
                 colour=EmbedColours.UNCLAIMED,
             )
         )
         embed = self.confirmation_embed(
-            f"**{pokemon}** has been forcefully unclaimed from **{row.username}**.",
+            f"**{pokemon}** has been forcefully unclaimed from **{await self.fetch_user(row.user_id)} ({row.user_id})**.",
             row=row,
             colour=EmbedColours.UNCLAIMED,
             footer=f"by {ctx.author}",
