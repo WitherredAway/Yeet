@@ -324,7 +324,7 @@ class PokemonView(discord.ui.View):
             )
 
             status = "Claimed."
-            color = EmbedColours.CLAIMED.value
+            color = EmbedColours.INCOMPLETE.value
             if row.user_id == self.ctx.author.id:
                 self.add_item(self.unclaim_btn)  # Add unclaim button if claimed by self
 

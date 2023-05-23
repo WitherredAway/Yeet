@@ -404,13 +404,13 @@ class Afd(AfdGist):
             embed=self.confirmation_embed(
                 f"You have successfully force claimed **{pokemon}** for **{user}**.",
                 row=row,
-                colour=EmbedColours.CLAIMED,
+                colour=EmbedColours.INCOMPLETE,
             )
         )
         embed = self.confirmation_embed(
             f"**{pokemon}** has been forcefully claimed for **{user}**.",
             row=row,
-            colour=EmbedColours.CLAIMED,
+            colour=EmbedColours.INCOMPLETE,
             footer=f"by {ctx.author}",
         )
         view = UrlView({"Go to message": cmsg.jump_url})
@@ -939,7 +939,7 @@ and lets you directly perform actions such as:
         embed = self.confirmation_embed(
             f"You have successfully claimed **{pokemon}**, have fun! :D",
             row=row,
-            colour=EmbedColours.CLAIMED,
+            colour=EmbedColours.INCOMPLETE,
             footer=f"You can undo this using the `unclaim` command.",
         )
         await cmsg.edit(embed=embed)
@@ -949,7 +949,7 @@ and lets you directly perform actions such as:
             embed=self.confirmation_embed(
                 f"**{ctx.author}** has claimed **{pokemon}**.",
                 row=row,
-                colour=EmbedColours.CLAIMED,
+                colour=EmbedColours.INCOMPLETE,
             ),
             view=view,
         )
@@ -1201,7 +1201,7 @@ and lets you directly perform actions such as:
             description=f"You have successfully unsubmitted the following image for **{pokemon}**",
             url2=row.image,
             thumbnail=base_image,
-            color=EmbedColours.CLAIMED.value,
+            color=EmbedColours.INCOMPLETE.value,
         )
         await cmsg.edit(embeds=embeds)
 
@@ -1211,7 +1211,7 @@ and lets you directly perform actions such as:
                 description=f"{ctx.author} has unsubmitted the following image for **{pokemon}**.",
                 url2=row.image,
                 thumbnail=base_image,
-                color=EmbedColours.CLAIMED.value,
+                color=EmbedColours.INCOMPLETE.value,
             ),
             view=view,
         )

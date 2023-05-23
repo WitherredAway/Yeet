@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 class EmbedColours(Enum):
     INVALID: int = 0xCB3F49  # Invalid, Red
     UNCLAIMED: int = 0x6D6F77  # Not claimed, Grey
-    CLAIMED: int = 0xE69537  # Claimed but not complete, Orange
+    INCOMPLETE: int = 0xE69537  # Claimed but not complete, Orange
     UNREVIEWED: int = 0x6BAAE8  # Link present awaiting review, Blue
     CORRECTION: int = 0xF5CD6B  # Has a comment, Yellow
     APPROVED: int = 0x85AF63  # Link present and approved, Green
