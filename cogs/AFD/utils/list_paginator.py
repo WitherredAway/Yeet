@@ -175,7 +175,7 @@ class StatsSelectMenu(discord.ui.Select):
             view.fill_items()
 
             await interaction.response.edit_message(view=view, embed=view.embed)
-            view.msg = self.ctx.message
+            view.msg = await interaction.original_message()
         else:
             source = StatsPageSource(
                 self.categories[self.options.index(option)],
@@ -209,13 +209,14 @@ class ListPageMenu(BotPages):
         category: Category,
         *,
         ctx: CustomContext,
+        select: Optional[bool] = False
     ):
         self.category = category
         self.ctx = ctx
         self.bot = ctx.bot
         source = ListPageSource(category)
         super().__init__(source, ctx=ctx)
-        if self.source.is_paginating():
+        if select is True and self.source.is_paginating():
             self.select: ListSelectMenu = self.add_select(ListSelectMenu(self))
 
     def add_select(self, select: discord.SelectMenu) -> discord.SelectMenu:
@@ -233,8 +234,7 @@ class ListPageMenu(BotPages):
             for item in self.pagination_buttons:
                 if item not in self.children:
                     self.add_item(item)
-
-        self.select.set_default(str(self.current_page))
+            self.select.set_default(str(self.current_page))
 
         max_pages = self.source.get_max_pages()
         self.go_to_first_page.disabled = page_number == 0
