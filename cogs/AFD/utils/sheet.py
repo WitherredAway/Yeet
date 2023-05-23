@@ -18,7 +18,7 @@ from .filenames import SERVICE_ACCOUNT_FILE
 from .labels import (
     APPROVED_LABEL,
     CLAIM_MAX_LABEL,
-    CMT_LABEL,
+    COMMENT_LABEL,
     DEADLINE_LABEL,
     DEX_LABEL,
     DEX_LABEL_P,
@@ -102,7 +102,7 @@ class AfdSheet:
                     USER_ID_LABEL,
                     IMAGE_LABEL,
                     APPROVED_LABEL,
-                    CMT_LABEL,
+                    COMMENT_LABEL,
                 ]
             )
             for idx, row in pokemon_df.iterrows():

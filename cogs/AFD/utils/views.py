@@ -12,7 +12,7 @@ from ...utils.utils import SimpleModal
 from helpers.constants import NL
 from helpers.context import CustomContext
 from .labels import (
-    CMT_LABEL,
+    COMMENT_LABEL,
     COMMENT_BTN_LABEL,
     SUBMIT_BTN_LABEL,
     TOPIC_LABEL,
@@ -329,7 +329,7 @@ class PokemonView(discord.ui.View):
                     status = "Correction pending."
                     color = EmbedColours.CORRECTION.value
                     embed.add_field(
-                        name=f"{CMT_LABEL} by {self.approved_by}",
+                        name=f"{COMMENT_LABEL} by {self.approved_by}",
                         value=str(row.comment),
                         inline=False,
                     )

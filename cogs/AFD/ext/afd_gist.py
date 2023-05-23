@@ -19,12 +19,10 @@ from cogs.AFD.utils.filenames import (
 )
 from cogs.AFD.utils.labels import (
     APPROVED_LABEL,
-    CMT_LABEL,
-    DEX_LABEL,
+    COMMENT_LABEL,
     IMAGE_LABEL,
     PKM_LABEL,
     USER_ID_LABEL,
-    USERNAME_LABEL,
 )
 from cogs.AFD.utils.urls import AFD_CREDITS_GIST_URL, SHEET_URL
 from cogs.AFD.utils.utils import Row
@@ -128,8 +126,8 @@ Credits: <{self.credits_gist.url}>"""
         for idx, pkm_idx in enumerate(pkm_indexes):
             pokename = df.loc[pkm_idx, PKM_LABEL]
             comment = (
-                df.loc[pkm_idx, CMT_LABEL]
-                if str(df.loc[pkm_idx, CMT_LABEL]) != "nan"
+                df.loc[pkm_idx, COMMENT_LABEL]
+                if str(df.loc[pkm_idx, COMMENT_LABEL]) != "nan"
                 else None
             )
             link = df.loc[pkm_idx, IMAGE_LABEL]

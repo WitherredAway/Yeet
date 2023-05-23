@@ -3,6 +3,8 @@ import asyncio
 import discord
 from discord.ext import commands
 
+from helpers.context import CustomContext
+
 
 class RepeatView(discord.ui.View):
     def __init__(self, ctx: commands.Context):

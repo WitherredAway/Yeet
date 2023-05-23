@@ -7,7 +7,7 @@ import discord
 import pandas as pd
 from cogs.AFD.utils.labels import (
     APPROVED_LABEL,
-    CMT_LABEL,
+    COMMENT_LABEL,
     IMAGE_LABEL,
     PKM_LABEL,
     USER_ID_LABEL,
@@ -71,7 +71,7 @@ class Row:
             int(self.approved_by) if not pd.isna(self.approved_by) else None
         )
 
-        self.comment = self.row[CMT_LABEL]
+        self.comment = self.row[COMMENT_LABEL]
         self.comment = self.comment if not pd.isna(self.comment) else None
 
         self.claimed = not pd.isna(self.user_id)
