@@ -1,5 +1,4 @@
 from __future__ import annotations
-from dataclasses import dataclass
 
 import datetime
 import json
@@ -13,8 +12,9 @@ import numpy as np
 import pandas as pd
 from google.oauth2 import service_account
 
-from .constants import CLAIM_LIMIT, COL_OFFSET, EMAIL, EXPORT_SUFFIX
-from .filenames import SERVICE_ACCOUNT_FILE
+from cogs.Draw.utils.constants import ALPHABETS
+
+from .constants import CLAIM_LIMIT, COL_OFFSET, EMAIL, EXPORT_SUFFIX, FIRST_ROW_IDX
 from .labels import (
     APPROVED_LABEL,
     CLAIM_MAX_LABEL,
@@ -132,15 +132,15 @@ class AfdSheet:
 
     @property
     def TOPIC(self):
-        return self.df.loc["1", TOPIC_LABEL]
+        return self.df.loc[FIRST_ROW_IDX, TOPIC_LABEL]
 
     @property
     def RULES(self):
-        return self.df.loc["1", RULES_LABEL]
+        return self.df.loc[FIRST_ROW_IDX, RULES_LABEL]
 
     @property
     def DEADLINE(self):
-        return self.df.loc["1", DEADLINE_LABEL]
+        return self.df.loc[FIRST_ROW_IDX, DEADLINE_LABEL]
 
     @property
     def DEADLINE_DT(self):
@@ -152,24 +152,21 @@ class AfdSheet:
 
     @property
     def CLAIM_MAX(self):
-        return int(self.df.loc["1", CLAIM_MAX_LABEL])
+        return int(self.df.loc[FIRST_ROW_IDX, CLAIM_MAX_LABEL])
 
     @property
     def UNAPP_MAX(self):
-        return int(self.df.loc["1", UNAPP_MAX_LABEL])
+        return int(self.df.loc[FIRST_ROW_IDX, UNAPP_MAX_LABEL])
 
     async def update_row(
-        self, dex: str, *, from_col: Optional[str] = "B", to_col: Optional[str] = "H"
+        self, dex: str, *, from_col: Optional[str] = DEX_LABEL, to_col: Optional[str] = COMMENT_LABEL
     ) -> None:
-        ABC = "ABCDEFGHIJKLMNOP"
+        from_col_idx = self.df.columns.get_loc(from_col)
+        to_col_idx = self.df.columns.get_loc(to_col) + 1
         row_vals = [
-            self.df.iloc[
-                int(dex) - COL_OFFSET, ABC.index(from_col) - 1 : ABC.index(to_col) - 1
-            ]
-            .fillna("")
-            .tolist()
+            self.df.iloc[int(dex), from_col_idx: to_col_idx].fillna("").tolist()
         ]
-        await self.worksheet.update(f"{from_col}{int(dex) + COL_OFFSET}", row_vals)
+        await self.worksheet.update(f"{ALPHABETS[from_col_idx]}{int(dex) + COL_OFFSET}", row_vals)
 
     async def update_sheet(self) -> None:
         self.df = self.df.fillna("").reset_index()
@@ -180,7 +177,6 @@ class AfdSheet:
         data = await self.worksheet.get_all_values()
         self.df = (
             pd.DataFrame(data[1:], columns=data[0], dtype="object")
-            .set_index("Dex")
             .replace("", np.nan)
         )
 
@@ -195,7 +191,7 @@ class AfdSheet:
             raise e
 
     def get_row(self, dex_num: str) -> Row:
-        return Row(self.df.iloc[int(dex_num) - COL_OFFSET])
+        return Row(self.df.iloc[int(dex_num)])
 
     def get_pokemon_row(self, pokemon: str) -> Row:
         return Row(self.df.loc[self.df[PKM_LABEL] == pokemon])
@@ -232,11 +228,11 @@ class AfdSheet:
         self.edit_row_where(
             PKM_LABEL, pokemon, set_column=USER_ID_LABEL, to_val=str(user.id)
         )
-        for col in self.df.columns[3:]:  # For all columns after Discord ID
+        for col in self.df.columns[self.df.columns.get_loc(IMAGE_LABEL):]:  # For all columns after Discord ID
             self.edit_row_where(PKM_LABEL, pokemon, set_column=col, to_val=None)
 
     def unclaim(self, pokemon: str):
-        for col in self.df.columns[1:]:  # For all columns after Pokemon
+        for col in self.df.columns[self.df.columns.get_loc(USERNAME_LABEL):]:  # For all columns after Pokemon
             self.edit_row_where(PKM_LABEL, pokemon, set_column=col, to_val=None)
 
     def submit(self, pokemon: str, *, image_url: str):
@@ -247,7 +243,7 @@ class AfdSheet:
             PKM_LABEL, pokemon, set_column=APPROVED_LABEL, to_val=None
         )  # Clear approved field
         self.edit_row_where(
-            PKM_LABEL, pokemon, set_column=CMT_LABEL, to_val=None
+            PKM_LABEL, pokemon, set_column=COMMENT_LABEL, to_val=None
         )  # Clear any comment
 
     def approve(self, pokemon: str, *, by: int):
@@ -255,7 +251,7 @@ class AfdSheet:
             PKM_LABEL, pokemon, set_column=APPROVED_LABEL, to_val=str(by)
         )
         self.edit_row_where(
-            PKM_LABEL, pokemon, set_column=CMT_LABEL, to_val=None
+            PKM_LABEL, pokemon, set_column=COMMENT_LABEL, to_val=None
         )  # Clear any comment
 
     def unapprove(self, pokemon: str):
@@ -265,7 +261,7 @@ class AfdSheet:
         self.edit_row_where(
             PKM_LABEL,
             pokemon,
-            set_column=CMT_LABEL,
+            set_column=COMMENT_LABEL,
             to_val=str(comment) if comment else comment,
         )
         self.edit_row_where(
