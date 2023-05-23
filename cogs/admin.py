@@ -124,23 +124,23 @@ class Developer(commands.Cog):
         brief="Reloads a cog",
         help="Reloads a cog with the name, dev only command.",
     )
-    async def _reload(self, ctx: commands.Context, cog):
-        async with ctx.typing():
-            if cog == "all":
-                cogs = []
-                for cog_ext in list(self.bot.extensions):
-                    await self.bot.reload_extension(cog_ext)
-                    cog_name = cog_ext[5:] if cog_ext.startswith("cogs.") else cog_ext
-                    cogs.append(f"\n🔁 Reloaded cog `{cog_name}`")
-                message = ", ".join(cogs)
+    async def _reload(self, ctx: CustomContext, *, ext: str):
+        await ctx.typing()
+        if ext == "all":
+            cogs = []
+            for cog_ext in list(self.bot.extensions):
+                await self.bot.reload_extension(cog_ext)
+                cog_name = cog_ext[5:] if cog_ext.startswith("cogs.") else cog_ext
+                cogs.append(f"\n🔁 Reloaded cog `{cog_name}`")
+            message = ", ".join(cogs)
+        else:
+            try:
+                ext = self.bot.COGS.get(ext, ext)
+                await self.bot.reload_extension(f"cogs.{ext}")
+            except (KeyError, commands.ExtensionNotLoaded):
+                message = f":x: Cog `{ext}` not found."
             else:
-                try:
-                    cog = self.bot.COGS.get(cog, cog)
-                    await self.bot.reload_extension(f"cogs.{cog}")
-                except (KeyError, commands.ExtensionNotLoaded):
-                    message = f":x: Cog `{cog}` not found."
-                else:
-                    message = f":repeat: Reloaded cog `{cog}`"
+                message = f":repeat: Reloaded cog `{ext}`"
 
         view = RepeatView(ctx)
         view.message = await ctx.send(message, view=view)

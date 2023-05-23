@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import importlib
 import logging
 import os
+import sys
 import time
 from functools import cached_property
 from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
@@ -41,7 +43,7 @@ if TYPE_CHECKING:
     from main import Bot
 
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class Afd(AfdGist):
@@ -67,13 +69,29 @@ class Afd(AfdGist):
 
         start = time.time()
         await self.sheet.setup()
-        log.info(f"AFD: Fetched spreadsheet in {round(time.time()-start, 2)}s")
+        logger.info(f"AFD: Fetched spreadsheet in {round(time.time()-start, 2)}s")
 
-        self.update_pokemon.start()
+        # self.update_pokemon.start()
 
+    def reload_modules(self, directory: str):
+        """Recursively reload all modules in a directory"""
+        for file in os.listdir(directory):
+            file_path = os.path.join(directory, file)
+            if os.path.isdir(file_path):
+                self.reload_modules(file_path)
+            elif file.endswith('.py'):
+                file_path = file_path.replace("/", ".").replace(".py", "")
+                if file_path == __name__:
+                    continue
+                module = sys.modules.get(file_path) or importlib.import_module(file_path)
+                importlib.reload(module)
+
+    @force_log_errors
     async def cog_unload(self):
         if self.update_pokemon.is_running():
             self.update_pokemon.cancel()
+
+        self.reload_modules("cogs/AFD")
 
     @property
     def pk(self) -> pd.DataFrame:

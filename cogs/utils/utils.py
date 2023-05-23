@@ -1,5 +1,7 @@
 import io
+import logging
 import math
+import traceback
 import typing
 from typing import Dict, List, Tuple, Union
 import cProfile
@@ -9,6 +11,9 @@ from PIL import Image
 
 import discord
 import numpy as np
+
+
+logger = logging.getLogger(__name__)
 
 
 def isfloat(input):
@@ -47,6 +52,17 @@ def async_profile(func):
         return result
 
     return decorator
+
+
+def force_log_errors(func):
+    async def wrapper(*args, **kwargs):
+        try:
+            result = await discord.utils.maybe_coroutine(func, *args, **kwargs)
+        except Exception as e:
+            logger.error(traceback.format_exc())
+        else:
+            return result
+    return wrapper
 
 
 def image_to_file(image: Image, *, filename: Optional[str] = "image") -> discord.File:
@@ -146,93 +162,6 @@ def normalize(text: str) -> str:
     norm = unicodedata.normalize("NFD", text)
     result = "".join(ch for ch in norm if unicodedata.category(ch) != "Mn")
     return unicodedata.normalize("NFKC", result)
-
-
-def resize(
-    file: io.BytesIO,
-    *,
-    height: int,
-    width: int,
-    crop: Optional[bool] = False,
-    fit: Optional[bool] = False,
-) -> Tuple[bytes, Tuple[int]]:
-    att_image = Image.open(file)
-    if fit is True:
-        bbox = att_image.getbbox()
-        if (width, height) == att_image.size:
-            # if h and w are the same as the original file, set it to the new bbox so it doesn't resize the image
-            width, height = (bbox[2] - bbox[0], bbox[3] - bbox[1])
-        att_image = att_image.crop(bbox)
-    else:
-        bbox = (0, 0, *att_image.size)
-
-    if crop is True:
-        image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-
-        offset = (
-            (image.size[0] - bbox[2] + bbox[0]) // 2,
-            (image.size[1] - bbox[3] + bbox[1]) // 2,
-        )
-
-        image.paste(att_image, offset)
-    else:
-        image = att_image.resize((width, height))
-
-    with io.BytesIO() as image_bytes:
-        image.save(image_bytes, "PNG")
-        return image_bytes.getvalue(), image.size
-
-
-def center_resize(
-    file: io.BytesIO,
-    *,
-    height: int,
-    width: int,
-    crop: Optional[bool] = None,
-    fit: Optional[bool] = False,
-) -> Tuple[bytes, Tuple[int]]:
-    att_image = Image.open(file)
-    if crop is not True:
-        h_issmall = height <= att_image.size[1]
-        w_issmall = width <= att_image.size[0]
-        if h_issmall and w_issmall:
-            with io.BytesIO() as file:
-                att_image.save(file, "PNG")
-                return resize(file=file, height=height, width=width, crop=crop, fit=fit)
-        elif h_issmall:
-            att_image = Image.open(
-                io.BytesIO(
-                    resize(file, height=height, width=att_image.size[0], fit=fit)
-                )
-            )
-        elif w_issmall:
-            att_image = Image.open(
-                io.BytesIO(resize(file, height=att_image.size[1], width=width, fit=fit))
-            )
-    else:
-        if fit is True:
-            bbox = att_image.getbbox()
-            att_image = att_image.crop(bbox)
-        else:
-            bbox = (0, 0, *att_image.size)
-
-    bg_image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-
-    offset = (
-        (bg_image.size[0] - bbox[2] + bbox[0]) // 2,
-        (bg_image.size[1] - bbox[3] + bbox[1]) // 2,
-    )
-
-    region_image = Image.new(
-        "RGBA", (bbox[2] - bbox[0], bbox[3] - bbox[1]), (0, 0, 0, 0)
-    )
-    region_image.paste(att_image, (0, 0))
-
-    bg_image.paste(att_image, offset)
-
-    with io.BytesIO() as image_bytes:
-        bg_image.save(image_bytes, "PNG")
-        return image_bytes.getvalue(), bg_image.size
 
 
 class SimpleModal(discord.ui.Modal):
