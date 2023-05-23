@@ -6,6 +6,8 @@ from typing import Optional
 
 import discord
 
+from cogs.AFD.utils.constants import FIRST_ROW_IDX
+
 from .urls import SUBMISSION_URL
 from .utils import EmbedColours, Row
 from ...utils.utils import SimpleModal
@@ -28,9 +30,10 @@ if typing.TYPE_CHECKING:
 
 
 class EditModal(discord.ui.Modal):
-    def __init__(self, sheet: AfdSheet) -> None:
+    def __init__(self, afdcog: Afd) -> None:
         super().__init__(title="Edit AFD information", timeout=180)
-        self.sheet = sheet
+        self.afdcog = afdcog
+        self.sheet = afdcog.sheet
         self.df = self.sheet.df
 
         self.add_item(
@@ -45,6 +48,7 @@ class EditModal(discord.ui.Modal):
             discord.ui.TextInput(
                 label=RULES_LABEL,
                 default=self.sheet.RULES,
+                placeholder="The names within curly braces are variables",
                 style=discord.TextStyle.long,
                 custom_id="rules",
             )
@@ -79,43 +83,67 @@ class EditModal(discord.ui.Modal):
         ch_dict = {child.custom_id: child for child in self.children}
         return ch_dict
 
+    async def on_error(self, interaction: discord.Interaction, error: Exception):
+        await interaction.followup.send(error)
+        raise error
+
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer()
         children = self.children_dict()
 
-        topic = children["topic"].value
-        rules = children["rules"].value
+        topic = children["topic"]
+        rules = children["rules"]
         deadline = children["deadline"]
         claim_max = children["claim_max"]
         unapp_max = children["unapp_max"]
 
-        self.df.loc["1", TOPIC_LABEL] = topic
-        self.df.loc["1", RULES_LABEL] = rules
-        resp = []
+        resp = {}
+
+        if topic.value != topic.default:
+            self.df.loc[FIRST_ROW_IDX, TOPIC_LABEL] = topic.value
+            resp[TOPIC_LABEL] = f"Updated from `{topic.default}` to `{topic.value}`"
+
+        if rules.value != rules.default:
+            try:
+                rules_fmt = rules.value.format(CLAIM_MAX=claim_max.value, UNAPP_MAX=unapp_max.value)
+            except KeyError as e:
+                resp[RULES_LABEL] = f"{e}\nPlease make sure you did not modify any of the variables."
+            else:
+                self.df.loc[FIRST_ROW_IDX, RULES_LABEL] = rules.value
+                resp[RULES_LABEL] = f"Updated to:\n```\n{rules_fmt}\n```"
+
         try:
             datetime.datetime.strptime(deadline.value, "%d/%m/%Y %H:%M")
         except ValueError:
-            resp.append(
-                "- Invalid deadline format. Expected format: `dd/MM/YYYY HH:mm`"
-            )
+            resp[DEADLINE_LABEL] = f"{deadline.value} is not a valid format. Expected format: `dd/MM/YYYY HH:mm`"
         else:
-            self.df.loc["1", DEADLINE_LABEL] = deadline.value
+            if deadline.value != deadline.default:
+                from_ts = self.sheet.DEADLINE_TS
+                self.df.loc[FIRST_ROW_IDX, DEADLINE_LABEL] = deadline.value
+                resp[DEADLINE_LABEL] = f"Updated from `{from_ts}` to {self.sheet.DEADLINE_TS}"
 
         if claim_max.value.isdigit():
-            self.df.loc["1", CLAIM_MAX_LABEL] = claim_max.value
+            if claim_max.value != claim_max.default:
+                self.df.loc[FIRST_ROW_IDX, CLAIM_MAX_LABEL] = claim_max.value
+                resp[CLAIM_MAX_LABEL] = f"Updated from `{claim_max.default}` to `{claim_max.value}`"
         else:
-            resp.append("- Invalid claim max: Expected a number")
+            resp[CLAIM_MAX_LABEL] = f"{claim_max.value} is not a valid number"
 
         if unapp_max.value.isdigit():
-            self.df.loc["1", UNAPP_MAX_LABEL] = unapp_max.value
+            if unapp_max.value != unapp_max.default:
+                self.df.loc[FIRST_ROW_IDX, UNAPP_MAX_LABEL] = unapp_max.value
+                resp[UNAPP_MAX_LABEL] = f"Updated from `{unapp_max.default}` to `{unapp_max.value}`"
         else:
-            resp.append("- Invalid unapproved max: Expected a number")
+            resp[UNAPP_MAX_LABEL] = f"{unapp_max.value} is not a valid number"
 
-        await self.sheet.update_row(1, from_col="I", to_col="N")
-        await interaction.followup.send(
-            f"Successfully updated information{(' except:' + NL + NL.join(resp)) if resp else '!'}",
-            ephemeral=True,
-        )
+        await self.sheet.update_row(FIRST_ROW_IDX, from_col=TOPIC_LABEL, to_col=UNAPP_MAX_LABEL)
+
+        embed = self.afdcog.bot.Embed(title="The following AFD information field(s) have been updated!")
+        for label, msg in resp.items():
+            embed.add_field(name=label, value=msg)
+
+        await interaction.followup.send(embed=embed)
+        await self.afdcog.log_channel.send(embed=embed)  # TODO ping AFD role
 
 
 class AfdView(discord.ui.View):
@@ -159,7 +187,7 @@ class AfdView(discord.ui.View):
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await self.sheet.update_df()
-        modal = EditModal(self.sheet)
+        modal = EditModal(self.afdcog)
         await interaction.response.send_modal(modal)
         await modal.wait()
 
