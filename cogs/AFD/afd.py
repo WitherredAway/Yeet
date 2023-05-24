@@ -21,7 +21,7 @@ from cogs.AFD.utils.list_paginator import (
     ListPageMenu,
     StatsPageMenu,
 )
-from ..utils.utils import UrlView, force_log_errors, make_progress_bar
+from ..utils.utils import UrlView, force_log_errors, make_progress_bar, reload_modules
 from .utils.views import AfdView, PokemonView
 from .utils.utils import AFDRoleMenu, Stats, EmbedColours, Row
 from .utils.urls import AFD_CREDITS_GIST_URL, AFD_GIST_URL, SHEET_URL
@@ -69,27 +69,9 @@ class Afd(AfdGist):
         await self.sheet.setup()
         logger.info(f"AFD: Fetched spreadsheet in {round(time.time()-start, 2)}s")
 
-        # self.update_pokemon.start()
-
-    def reload_modules(self, directory: str):
-        """Recursively reload all modules in a directory"""
-        for file in os.listdir(directory):
-            file_path = os.path.join(directory, file)
-            if os.path.isdir(file_path):
-                self.reload_modules(file_path)
-            elif file.endswith('.py'):
-                file_path = file_path.replace("/", ".").replace(".py", "")
-                if file_path == __name__:
-                    continue
-                module = sys.modules.get(file_path) or importlib.import_module(file_path)
-                importlib.reload(module)
-
     @force_log_errors
     async def cog_unload(self):
-        if self.update_pokemon.is_running():
-            self.update_pokemon.cancel()
-
-        self.reload_modules("cogs/AFD")
+        reload_modules("cogs/AFD", skip=__name__)
 
     @property
     def pk(self) -> pd.DataFrame:
