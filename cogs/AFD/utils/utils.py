@@ -16,7 +16,7 @@ from cogs.AFD.utils.labels import (
     USERNAME_LABEL,
 )
 
-from cogs.utils.utils import RoleMenu, make_progress_bar
+from cogs.utils.utils import RoleMenu, enumerate_list, make_progress_bar
 
 if TYPE_CHECKING:
     from cogs.AFD.afd import Afd
@@ -120,6 +120,10 @@ class Category:
     def __post_init__(self):
         self.name = self.category.value
         self.amount = len(self.entries)
+
+    @property
+    def enumerated_entries(self) -> List[str]:
+        return enumerate_list(self.entries)
 
     def progress(self, total_amount: Optional[int] = None) -> str:
         return f"{self.amount}/{total_amount if total_amount is not None else self.total_amount}"

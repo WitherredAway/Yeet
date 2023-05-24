@@ -120,7 +120,7 @@ class StatsPageSource(menus.ListPageSource):
         per_page: Optional[int] = STATS_PER_PAGE,
     ):
         self.entries = category.entries
-        super().__init__(entries=self.entries, per_page=per_page)
+        super().__init__(entries=category.enumerated_entries, per_page=per_page)
         self.category = category
         self.original_embed = original_embed
         self.per_page = per_page
@@ -170,7 +170,7 @@ class StatsSelectMenu(discord.ui.Select):
         self.set_default(option)
 
         if value == ALL_OPT_VALUE:
-            fields = [Field(name=f"{c.name} {c.progress()}\n{c.progress_bar()}", values=c.entries) for c in self.categories]
+            fields = [Field(name=f"{c.name} {c.progress()}\n{c.progress_bar()}", values=c.enumerated_entries) for c in self.categories]
             view = FieldPaginationView(
                 self.ctx, self.menu.original_embed, fields=fields
             )
