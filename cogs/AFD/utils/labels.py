@@ -18,3 +18,4 @@ UNAPP_MAX_LABEL = "Unapproved Max"
 
 SUBMIT_BTN_LABEL = "Submit"
 COMMENT_BTN_LABEL = "Add comment"
+

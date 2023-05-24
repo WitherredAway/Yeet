@@ -7,11 +7,12 @@ from typing import TYPE_CHECKING, List, Optional, Union
 
 import discord
 from discord.ext import menus
+from cogs.AFD.utils.constants import PROGRESS_BAR_LENGTH
 
 from cogs.Draw.utils.constants import ALPHABET_EMOJIS
 
 from .utils import Category
-from cogs.utils.utils import enumerate_list, round_up, value_to_option_dict
+from cogs.utils.utils import enumerate_list, make_progress_bar, round_up, value_to_option_dict
 from cogs.RDanny.utils.paginator import (
     FIRST_PAGE_SYMBOL,
     LAST_PAGE_SYMBOL,
@@ -37,9 +38,11 @@ class StatsPageMenu(BotPages):
         *,
         ctx: CustomContext,
         original_embed: Bot.Embed,
+        total_amount: int
     ):
         self.categories = categories
         self.original_embed = original_embed
+        self.total_amount = total_amount
         initial_source = StatsPageSource(categories[0], original_embed=original_embed)
         super().__init__(initial_source, ctx=ctx)
         self.add_select(StatsSelectMenu(self))
@@ -116,14 +119,15 @@ class StatsPageSource(menus.ListPageSource):
         original_embed: Bot.Embed,
         per_page: Optional[int] = STATS_PER_PAGE,
     ):
-        super().__init__(entries=category.entries, per_page=per_page)
+        self.entries = category.entries
+        super().__init__(entries=self.entries, per_page=per_page)
         self.category = category
         self.original_embed = original_embed
         self.per_page = per_page
 
     async def format_page(self, menu: StatsPageMenu, entries: List[str]):
         embed = self.original_embed.copy()
-        embed.add_field(name=self.category.name, value=NL.join(entries))
+        embed.add_field(name=f"{self.category.name} {self.category.progress()}\n{self.category.progress_bar()}", value=NL.join(entries))
         return embed
 
 
@@ -166,7 +170,7 @@ class StatsSelectMenu(discord.ui.Select):
         self.set_default(option)
 
         if value == ALL_OPT_VALUE:
-            fields = [Field(name=c.name, values=c.entries) for c in self.categories]
+            fields = [Field(name=f"{c.name} {c.progress()}\n{c.progress_bar()}", values=c.entries) for c in self.categories]
             view = FieldPaginationView(
                 self.ctx, self.menu.original_embed, fields=fields
             )
@@ -305,7 +309,7 @@ class ListPageSource(menus.ListPageSource):
         super().__init__(entries=entries, per_page=LIST_PER_PAGE)
 
     async def format_page(self, menu: ListPageMenu, entries: List[str]):
-        embed = menu.bot.Embed(title=self.category.name, description=NL.join(entries))
+        embed = menu.bot.Embed(title=f"{self.category.name} {self.category.progress()}\n{self.category.progress_bar()}", description=NL.join(entries))
         return embed
 
 

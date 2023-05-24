@@ -26,7 +26,6 @@ from cogs.AFD.utils.labels import (
 )
 from cogs.AFD.utils.urls import AFD_CREDITS_GIST_URL, SHEET_URL
 from cogs.AFD.utils.utils import Row
-from cogs.utils.utils import enumerate_list
 import gists
 
 from helpers.constants import LOG_BORDER, NL

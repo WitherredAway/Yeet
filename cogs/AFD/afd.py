@@ -6,7 +6,8 @@ import os
 import sys
 import time
 from functools import cached_property
-from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Callable, List, Optional, Union
+import pandas as pd
 
 import discord
 import gists
@@ -22,7 +23,7 @@ from cogs.AFD.utils.list_paginator import (
 )
 from ..utils.utils import UrlView, force_log_errors, make_progress_bar
 from .utils.views import AfdView, PokemonView
-from .utils.utils import AFDRoleMenu, Category, Claimed, EmbedColours, Row
+from .utils.utils import AFDRoleMenu, Stats, EmbedColours, Row
 from .utils.urls import AFD_CREDITS_GIST_URL, AFD_GIST_URL, SHEET_URL
 from .utils.sheet import AfdSheet
 from .utils.constants import (
@@ -229,14 +230,7 @@ class Afd(AfdGist):
 
     @property
     def embed(self) -> Bot.Embed:
-        unc_list, unc_amount = self.validate_unclaimed()
-        claimed_amount = self.total_amount - unc_amount
-
-        unr_list, unr_amount = self.validate_unreviewed()
-
-        ml_list, ml_list_mention, ml_amount = self.validate_missing_link()
-        submitted_amount = claimed_amount - ml_amount
-        approved_amount = submitted_amount - unr_amount
+        stats = self.get_stats()
 
         description = f"""**Topic:** {self.sheet.TOPIC}
 
@@ -256,14 +250,17 @@ class Afd(AfdGist):
             inline=False,
         )
 
+        stats.correction_pending.total_amount = stats.submitted.amount
+        stats.approved.total_amount = self.total_amount
         embed.add_field(
             name="Community Stats",
-            value=f"""**Approved**
-{make_progress_bar(approved_amount, self.total_amount)} {approved_amount}/{self.total_amount}
-**Submitted**
-{make_progress_bar(submitted_amount, self.total_amount)} {submitted_amount}/{self.total_amount}
-**Claimed**
-{make_progress_bar(claimed_amount, self.total_amount)} {claimed_amount}/{self.total_amount}""",
+            value=NL.join(
+                [
+                    f"**{category.name}**\n{category.progress_bar()} {category.progress()}"
+                    for category
+                    in (stats.correction_pending, stats.submitted, stats.unreviewed, stats.claimed, stats.approved)
+                ]
+            ),
             inline=False,
         )
         return embed
@@ -799,12 +796,15 @@ and lets you directly perform actions such as:
         view = PokemonView(ctx, row, afdcog=self, user=user, approved_by=approved_by)
         view.msg = await ctx.send(embed=view.embed, view=view)
 
-    def validate_claimed(self, user: discord.User):
-        try:
-            c_df: pd.DataFrame = self.user_grouped.get_group(str(user))
-        except KeyError:
-            return None
-        return Claimed(c_df, self.sheet)
+    def get_stats(self, user: Optional[discord.User] = None) -> Union[Stats, None]:
+        if user is not None:
+            try:
+                df: pd.DataFrame = self.user_grouped.get_group(str(user.id))
+            except KeyError:
+                return None
+        else:
+            df: pd.DataFrame = self.df.sort_values(by=PKM_LABEL)
+        return Stats(df, self)
 
     @afd.group(
         name="list",
@@ -817,52 +817,24 @@ and lets you directly perform actions such as:
     ):
         await self.sheet.update_df()
         user = user or ctx.author
-        claimed = self.validate_claimed(user)
-        total_amount = claimed.total_amount if claimed is not None else 0
+        stats = self.get_stats(user)
+        total_amount = stats.claimed.amount if stats is not None else 0
 
         description = f"**Total pokemon**: {total_amount}"
         embed = self.bot.Embed(description=description)
         embed.set_author(name=f"{user}'s stats", icon_url=user.avatar.url)
+
+        if stats is None:
+            return await ctx.send(embed=embed)
+        else:
+            embed.description += f"\n**Total submitted pokemon**: {stats.submitted.amount}"
+
         embed.set_footer(
             text="Use the `afd view <pokemon>` command to see more info on an entry"
         )
-
-        categories = [
-            Category(
-                name=f"Correction pending [{claimed.correction_pending_amount}]",
-                entries=enumerate_list(claimed.correction_pending),
-            ),
-            Category(
-                name=f"Claimed (incomplete) [{claimed.claimed_amount}]",
-                entries=enumerate_list(claimed.claimed),
-            ),
-            Category(
-                name=f"Submitted (awaiting review) [{claimed.unreviewed_amount}]",
-                entries=enumerate_list(claimed.unreviewed),
-            ),
-            Category(
-                name=f"Completed 🎉 [{claimed.completed_amount}/{total_amount}]",
-                entries=enumerate_list(claimed.completed),
-            ),
-        ]
-        menu = StatsPageMenu(categories, ctx=ctx, original_embed=embed)
+        categories = [stats.correction_pending, stats.incomplete, stats.unreviewed, stats.approved]
+        menu = StatsPageMenu(categories, ctx=ctx, original_embed=embed, total_amount=total_amount)
         await menu.start()
-
-    def validate_unclaimed(self) -> Tuple[List[str], int]:
-        unc_df = self.df[self.df[USERNAME_LABEL].isna()].sort_values(by=DEX_LABEL)
-        unc_list = []
-        for idx, row in unc_df.iterrows():
-            pkm = row[PKM_LABEL]
-            unc_list.append(pkm)
-        unc_list.sort(key=get_initial)
-
-        unc_amount = len(unc_list)
-        if hasattr(self, "unc_amount"):
-            if self.unc_amount == unc_amount:
-                self.unc = False
-        self.unc_amount = unc_amount
-
-        return unc_list, unc_amount
 
     @_list.command(
         name="unclaimed",
@@ -873,11 +845,8 @@ and lets you directly perform actions such as:
     async def list_unclaimed(self, ctx: CustomContext):
         await self.sheet.update_df()
 
-        unc_list, unc_amount = self.validate_unclaimed()
-        category = Category(
-            name=f"Unclaimed [{unc_amount}/{self.total_amount}]", entries=unc_list
-        )
-        menu = ListPageMenu(category, ctx=ctx)
+        stats = self.get_stats()
+        menu = ListPageMenu(stats.unclaimed, ctx=ctx, select=True)
         await menu.start()
 
     async def claim(self, ctx: CustomContext, pokemon: str):

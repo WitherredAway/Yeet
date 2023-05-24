@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from functools import cached_property
 from typing import TYPE_CHECKING, List, Optional, Union
 import discord
 import pandas as pd
+from cogs.AFD.utils.constants import PROGRESS_BAR_LENGTH
 from cogs.AFD.utils.labels import (
     APPROVED_LABEL,
     COMMENT_LABEL,
@@ -14,7 +16,7 @@ from cogs.AFD.utils.labels import (
     USERNAME_LABEL,
 )
 
-from cogs.utils.utils import RoleMenu
+from cogs.utils.utils import RoleMenu, make_progress_bar
 
 if TYPE_CHECKING:
     from cogs.AFD.afd import Afd
@@ -96,42 +98,73 @@ UNREVIEWED_EMOJI = "☑️"
 REVIEW_EMOJI = "❗"
 
 
-@dataclass
-class Claimed:
-    claimed_df: pd.DataFrame
-    sheet: AfdSheet
-
-    def __post_init__(self):
-        self.correction_pending = []
-        self.claimed = []
-        self.unreviewed = []
-        self.approved = []
-        for idx in self.claimed_df.index:
-            row = self.sheet.get_row(idx)
-            pkm = row.pokemon
-
-            if row.approved:
-                self.approved.append(pkm)
-            elif row.unreviewed:
-                self.unreviewed.append(pkm)
-            elif row.correction_pending:
-                self.correction_pending.append(pkm)
-            else:
-                self.claimed.append(pkm)
-
-        self.total = (
-            self.correction_pending + self.claimed + self.unreviewed + self.approved
-        )
-
-        self.total_amount = len(self.total)
-        self.correction_pending_amount = len(self.correction_pending)
-        self.claimed_amount = len(self.claimed)
-        self.unreviewed_amount = len(self.unreviewed)
-        self.approved_amount = len(self.approved)
-
+class Categories(Enum):
+    CLAIMED: str = "Claimed"
+    UNCLAIMED: str = "Unclaimed"
+    SUBMITTED: str = "Submitted"
+    INCOMPLETE: str = "Claimed (Incomplete)"
+    UNREVIEWED: str = "Submitted (Awaiting review)"
+    CORRECTION: str = "Correction Pending"
+    APPROVED:  str = "Approved 🎉"
 
 
 @dataclass
 class Category:
-    name: str
+    category: Categories
     entries: List[str]
+    total_amount: int
+    negative_pb: Optional[bool] = False
+
+    amount: Optional[int] = None
+
+    def __post_init__(self):
+        self.name = self.category.value
+        self.amount = len(self.entries)
+
+    def progress(self, total_amount: Optional[int] = None) -> str:
+        return f"{self.amount}/{total_amount if total_amount is not None else self.total_amount}"
+
+    def progress_bar(self, total_amount: Optional[int] = None) -> str:
+        return make_progress_bar(self.amount, total_amount if total_amount is not None else self.total_amount, negative=self.negative_pb, length=PROGRESS_BAR_LENGTH)
+
+
+@dataclass
+class Stats:
+    df: pd.DataFrame
+    afdcog: Afd
+
+    def __post_init__(self):
+        unclaimed_list = []
+        incomplete_list = []
+        correction_pending_list = []
+        unreviewed_list = []
+        approved_list = []
+        for idx in self.df.index:
+            row = self.afdcog.sheet.get_row(idx)
+            pkm = row.pokemon
+
+            if row.claimed:
+                if row.approved:
+                    approved_list.append(pkm)
+                elif row.unreviewed:
+                    unreviewed_list.append(pkm)
+                elif row.correction_pending:
+                    correction_pending_list.append(pkm)
+                else:
+                    incomplete_list.append(pkm)
+            else:
+                unclaimed_list.append(pkm)
+
+        claimed_list = (correction_pending_list + incomplete_list + unreviewed_list + approved_list)
+        self.claimed = Category(Categories.CLAIMED, claimed_list, total_amount=self.afdcog.total_amount)
+
+        self.unclaimed = Category(Categories.UNCLAIMED, unclaimed_list, total_amount=self.claimed.amount)
+        self.incomplete = Category(Categories.INCOMPLETE, incomplete_list, total_amount=self.claimed.amount)
+
+        submitted_list = (correction_pending_list + unreviewed_list)
+        self.submitted = Category(Categories.SUBMITTED, submitted_list, total_amount=self.claimed.amount)
+        self.correction_pending = Category(Categories.CORRECTION, correction_pending_list, total_amount=self.submitted.amount, negative_pb=True)
+        self.unreviewed = Category(Categories.UNREVIEWED, unreviewed_list, total_amount=self.submitted.amount)
+        self.approved = Category(Categories.APPROVED, approved_list, total_amount=self.submitted.amount)
+
+
