@@ -20,6 +20,7 @@ from helpers.context import CustomContext
 from cogs.AFD.utils.labels import PKM_LABEL
 from cogs.AFD.utils.list_paginator import (
     ListPageMenu,
+    ListPageSource,
     StatsPageMenu,
     get_initial,
 )
@@ -845,7 +846,8 @@ and lets you directly perform actions such as:
         unclaimed = stats.unclaimed
 
         entries = self.bold_initials_fmt(unclaimed.rows)
-        menu = ListPageMenu(unclaimed, ctx=ctx, entries=entries, select=True)
+        src = ListPageSource(unclaimed, entries=entries)
+        menu = ListPageMenu(src, ctx=ctx, select=True)
         await menu.start()
 
     async def per_user_fmt(self, rows: List[Row]) -> List[str]:
@@ -874,7 +876,8 @@ and lets you directly perform actions such as:
         approved = stats.approved
 
         entries = await self.per_user_fmt(approved.rows)
-        menu = ListPageMenu(stats.approved, ctx=ctx, entries=entries)
+        src = ListPageSource(approved, entries=entries)
+        menu = ListPageMenu(src, ctx=ctx)
         await menu.start()
 
     async def claim(self, ctx: CustomContext, pokemon: str):

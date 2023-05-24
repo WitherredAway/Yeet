@@ -3,7 +3,7 @@ from collections import defaultdict
 import itertools
 import math
 
-from typing import TYPE_CHECKING, Callable, List, Optional, Union
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Tuple, Union
 
 import discord
 from discord.ext import menus
@@ -28,7 +28,6 @@ if TYPE_CHECKING:
 
 
 STATS_PER_PAGE = 20
-
 
 class StatsPageMenu(BotPages):
     def __init__(
@@ -79,7 +78,6 @@ class StatsPageMenu(BotPages):
         self._update_labels(0)
         await interaction.response.edit_message(**kwargs, view=self)
 
-
 class StatsPageSource(menus.ListPageSource):
     def __init__(
         self,
@@ -99,9 +97,7 @@ class StatsPageSource(menus.ListPageSource):
         embed.add_field(name=f"{self.category.name} {self.category.progress()}\n{self.category.progress_bar()}", value=NL.join(entries))
         return embed
 
-
 ALL_OPT_VALUE = "all"
-
 
 class StatsSelectMenu(discord.ui.Select):
     def __init__(self, menu: StatsPageMenu):
@@ -160,7 +156,6 @@ class StatsSelectMenu(discord.ui.Select):
 
 LIST_PER_PAGE = 20
 
-
 def get_initial(
     name: str, *, bold: Optional[bool] = False
 ) -> Union[str, Optional[str]]:
@@ -175,21 +170,17 @@ def get_initial(
             continue
     return (initial, "".join(bolded_name)) if bold else initial
 
-
 class ListPageMenu(BotPages):
     def __init__(
         self,
-        category: Category,
+        source: menus.ListPageSource,
         *,
         ctx: CustomContext,
-        entries: List[str],
         select: Optional[bool] = False
     ):
-        self.category = category
         self.ctx = ctx
         self.bot = ctx.bot
-        self.entries = entries
-        source = ListPageSource(category, entries=entries)
+        self.do_select = select
         super().__init__(source, ctx=ctx)
         if select is True and self.source.is_paginating():
             self.select: ListSelectMenu = self.add_select(ListSelectMenu(self))
@@ -209,7 +200,8 @@ class ListPageMenu(BotPages):
             for item in self.pagination_buttons:
                 if item not in self.children:
                     self.add_item(item)
-            self.select.set_default(str(self.current_page))
+            if self.do_select is True:
+                self.select.set_default(str(self.current_page))
 
         max_pages = self.source.get_max_pages()
         self.go_to_first_page.disabled = page_number == 0
@@ -260,7 +252,6 @@ class ListPageMenu(BotPages):
         self._update_labels(0)
         await interaction.response.edit_message(**kwargs, view=self)
 
-
 class ListPageSource(menus.ListPageSource):
     def __init__(
         self,
@@ -275,12 +266,11 @@ class ListPageSource(menus.ListPageSource):
         embed = menu.bot.Embed(title=f"{self.category.name} {self.category.progress()}\n{self.category.progress_bar()}", description=NL.join(entries))
         return embed
 
-
 class ListSelectMenu(discord.ui.Select):
     def __init__(self, menu: ListPageMenu):
         super().__init__(placeholder="Jump to page", row=0)
         self.menu = menu
-        self.category = menu.category
+        self.category = menu.source.category
         self.__fill_options()
         self.set_default(self.options[0])
 
@@ -298,12 +288,6 @@ class ListSelectMenu(discord.ui.Select):
                 # emoji=ALPHABET_EMOJIS.get(initials[0], "#️⃣"),
             )
 
-    async def callback(self, interaction: discord.Interaction):
-        page = self.values[0]
-        self.set_default(page)
-
-        await self.menu.show_checked_page(interaction, int(page))
-
     def set_default(self, value_or_option: Union[str, discord.SelectOption]):
         if isinstance(value_or_option, discord.SelectOption):
             option = value_or_option
@@ -319,3 +303,28 @@ class ListSelectMenu(discord.ui.Select):
         for o in self.options:
             o.default = False
         option.default = True
+
+    async def callback(self, interaction: discord.Interaction):
+        page = self.values[0]
+        self.set_default(page)
+
+        await self.menu.show_checked_page(interaction, int(page))
+
+
+FIELDS_PER_PAGE = 3
+
+class FieldPageSource(menus.ListPageSource):
+    def __init__(
+        self,
+        category: Category,
+        *,
+        entries: List[Tuple[str, str]]
+    ):
+        self.category = category
+        super().__init__(entries=entries, per_page=FIELDS_PER_PAGE)
+
+    async def format_page(self, menu: ListPageMenu, entries: List[Tuple[str, str]]):
+        embed = menu.bot.Embed(title=f"{self.category.name} {self.category.progress()}\n{self.category.progress_bar()}")
+        for name, value in entries:
+            embed.add_field(name=name, value=value)
+        return embed
