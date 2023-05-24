@@ -3,16 +3,15 @@ from collections import defaultdict
 import itertools
 import math
 
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING, Callable, List, Optional, Union
 
 import discord
 from discord.ext import menus
-from cogs.AFD.utils.constants import PROGRESS_BAR_LENGTH
 
 from cogs.Draw.utils.constants import ALPHABET_EMOJIS
 
-from .utils import Category
-from cogs.utils.utils import enumerate_list, make_progress_bar, round_up, value_to_option_dict
+from .utils import Category, Row
+from cogs.utils.utils import value_to_option_dict
 from cogs.RDanny.utils.paginator import (
     FIRST_PAGE_SYMBOL,
     LAST_PAGE_SYMBOL,
@@ -183,12 +182,14 @@ class ListPageMenu(BotPages):
         category: Category,
         *,
         ctx: CustomContext,
+        entries: List[str],
         select: Optional[bool] = False
     ):
         self.category = category
         self.ctx = ctx
         self.bot = ctx.bot
-        source = ListPageSource(category)
+        self.entries = entries
+        source = ListPageSource(category, entries=entries)
         super().__init__(source, ctx=ctx)
         if select is True and self.source.is_paginating():
             self.select: ListSelectMenu = self.add_select(ListSelectMenu(self))
@@ -264,18 +265,10 @@ class ListPageSource(menus.ListPageSource):
     def __init__(
         self,
         category: Category,
+        *,
+        entries: List[str]
     ):
         self.category = category
-        entries = []
-        initials = []
-        for idx, entry in enumerate(category.pokemon):
-            i, bolded = get_initial(entry, bold=True)
-            if i not in initials:
-                entries.append(f"{idx + 1}. {bolded}")
-                initials.append(i)
-            else:
-                entries.append(f"{idx + 1}. {entry}")
-
         super().__init__(entries=entries, per_page=LIST_PER_PAGE)
 
     async def format_page(self, menu: ListPageMenu, entries: List[str]):

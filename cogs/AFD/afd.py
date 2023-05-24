@@ -1,4 +1,5 @@
 from __future__ import annotations
+from collections import defaultdict
 
 import importlib
 import logging
@@ -6,7 +7,7 @@ import os
 import sys
 import time
 from functools import cached_property
-from typing import TYPE_CHECKING, Callable, List, Optional, Union
+from typing import TYPE_CHECKING, Callable, DefaultDict, List, Optional, Union
 import pandas as pd
 
 import discord
@@ -20,6 +21,7 @@ from cogs.AFD.utils.labels import PKM_LABEL
 from cogs.AFD.utils.list_paginator import (
     ListPageMenu,
     StatsPageMenu,
+    get_initial,
 )
 from ..utils.utils import UrlView, force_log_errors, make_progress_bar, reload_modules
 from .utils.views import AfdView, PokemonView
@@ -816,6 +818,20 @@ and lets you directly perform actions such as:
         menu = StatsPageMenu(categories, ctx=ctx, original_embed=embed, total_amount=total_amount)
         await menu.start()
 
+    @staticmethod
+    def bold_initials_fmt(rows: List[Row]) -> List[str]:
+        entries = []
+        initials = []
+        for idx, row in enumerate(rows):
+            pokemon = row.pokemon
+            i, bolded = get_initial(pokemon, bold=True)
+            if i not in initials:
+                entries.append(f"{idx + 1}. {bolded}")
+                initials.append(i)
+            else:
+                entries.append(f"{idx + 1}. {pokemon}")
+        return entries
+
     @_list.command(
         name="unclaimed",
         aliases=("available", "unc"),
@@ -826,8 +842,25 @@ and lets you directly perform actions such as:
         await self.sheet.update_df()
 
         stats = self.get_stats()
-        menu = ListPageMenu(stats.unclaimed, ctx=ctx, select=True)
+        unclaimed = stats.unclaimed
+
+        entries = self.bold_initials_fmt(unclaimed.rows)
+        menu = ListPageMenu(unclaimed, ctx=ctx, entries=entries, select=True)
         await menu.start()
+
+    async def per_user_fmt(self, rows: List[Row]) -> List[str]:
+        users: DefaultDict[discord.User, List[str]] = defaultdict(list)
+        for idx, row in enumerate(rows):
+            users[await self.fetch_user(row.user_id)].append(f"{idx + 1}\u200b. `{row.pokemon}`")
+
+        entries = []
+        for user, pokemon in users.items():
+            pkm = "\n    ".join(pokemon)
+            entry = f"""- {str(user)} ({user.id}) - {len(pokemon)}
+    {pkm}"""
+            entries.append(entry)
+
+        return entries
 
     @_list.command(
         name="approved",
@@ -838,7 +871,10 @@ and lets you directly perform actions such as:
         await self.sheet.update_df()
 
         stats = self.get_stats()
-        menu = ListPageMenu(stats.approved, ctx=ctx, select=False)
+        approved = stats.approved
+
+        entries = await self.per_user_fmt(approved.rows)
+        menu = ListPageMenu(stats.approved, ctx=ctx, entries=entries)
         await menu.start()
 
     async def claim(self, ctx: CustomContext, pokemon: str):

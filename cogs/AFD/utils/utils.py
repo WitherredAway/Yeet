@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from functools import cached_property
 from typing import TYPE_CHECKING, List, Optional, Union
 import discord
 import pandas as pd
