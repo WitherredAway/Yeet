@@ -62,20 +62,28 @@ class Field:
         name = self.name.split(" ")
         self.name_button.label = f'{name if len(name) == 1 else f"{name[0]}..."} [{self.page_number + 1}/{self.max_pages}]'
         self.next_page_button.label = f"{NEXT_PAGE_SYMBOL} {self.page_number + 2}"
-        self.last_page_button.label = f"{LAST_PAGE_SYMBOL} {self.max_pages}"
 
-        self.first_page_button.disabled = self.page_number == 0
         self.next_page_button.disabled = False
         self.previous_page_button.disabled = False
-        self.last_page_button.disabled = (self.page_number + 1) >= self.max_pages
 
         if (self.page_number + 1) >= self.max_pages:
             self.next_page_button.disabled = True
             self.next_page_button.label = NEXT_PAGE_SYMBOL
+            self.last_page_button.disabled = True
+            self.last_page_button.label = LAST_PAGE_SYMBOL
+        else:
+            self.last_page_button.disabled = False
+            self.last_page_button.label = f"{LAST_PAGE_SYMBOL} {self.max_pages}"
 
         if self.page_number == 0:
             self.previous_page_button.disabled = True
             self.previous_page_button.label = PREVIOUS_PAGE_SYMBOL
+            self.first_page_button.disabled = True
+            self.first_page_button.label = FIRST_PAGE_SYMBOL
+        else:
+            self.first_page_button.disabled = False
+            self.first_page_button.label = f"1 {FIRST_PAGE_SYMBOL}"
+
 
 
 class FieldNavButton(discord.ui.Button):
