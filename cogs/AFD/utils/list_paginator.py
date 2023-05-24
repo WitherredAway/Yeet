@@ -3,14 +3,14 @@ from collections import defaultdict
 import itertools
 import math
 
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, List, Optional, Tuple, Union
 
 import discord
 from discord.ext import menus
 
 from cogs.Draw.utils.constants import ALPHABET_EMOJIS
 
-from .utils import Category, Row
+from .utils import Category
 from cogs.utils.utils import value_to_option_dict
 from cogs.RDanny.utils.paginator import (
     FIRST_PAGE_SYMBOL,
@@ -257,14 +257,16 @@ class ListPageSource(menus.ListPageSource):
         self,
         category: Category,
         *,
-        entries: List[str]
+        entries: List[str],
+        per_page: Optional[int] = LIST_PER_PAGE
     ):
         self.category = category
-        super().__init__(entries=entries, per_page=LIST_PER_PAGE)
+        super().__init__(entries=entries, per_page=per_page)
 
     async def format_page(self, menu: ListPageMenu, entries: List[str]):
         embed = menu.bot.Embed(title=f"{self.category.name} {self.category.progress()}\n{self.category.progress_bar()}", description=NL.join(entries))
         return embed
+
 
 class ListSelectMenu(discord.ui.Select):
     def __init__(self, menu: ListPageMenu):

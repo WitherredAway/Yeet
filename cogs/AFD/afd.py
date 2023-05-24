@@ -1,10 +1,8 @@
 from __future__ import annotations
 from collections import defaultdict
 
-import importlib
 import logging
 import os
-import sys
 import time
 from functools import cached_property
 from typing import TYPE_CHECKING, Callable, DefaultDict, List, Optional, Union
@@ -24,10 +22,10 @@ from cogs.AFD.utils.list_paginator import (
     StatsPageMenu,
     get_initial,
 )
-from ..utils.utils import UrlView, force_log_errors, make_progress_bar, reload_modules
+from ..utils.utils import UrlView, enumerate_list, force_log_errors, reload_modules
 from .utils.views import AfdView, PokemonView
 from .utils.utils import AFDRoleMenu, Stats, EmbedColours, Row
-from .utils.urls import AFD_CREDITS_GIST_URL, AFD_GIST_URL, SHEET_URL
+from .utils.urls import AFD_CREDITS_GIST_URL, SHEET_URL
 from .utils.sheet import AfdSheet
 from .utils.constants import (
     AFD_ADMIN_ROLE_ID,
@@ -35,7 +33,6 @@ from .utils.constants import (
     CLAIM_LIMIT,
     DEL_ATTRS_TO_UPDATE,
     LOG_CHANNEL_ID,
-    PROGRESS_BAR_LENGTH,
     UPDATE_CHANNEL_ID,
 )
 from .ext.afd_gist import AfdGist
@@ -852,15 +849,16 @@ and lets you directly perform actions such as:
 
     async def per_user_fmt(self, rows: List[Row]) -> List[str]:
         users: DefaultDict[discord.User, List[str]] = defaultdict(list)
-        for idx, row in enumerate(rows):
-            users[await self.fetch_user(row.user_id)].append(f"{idx + 1}\u200b. `{row.pokemon}`")
+        for row in rows:
+            users[await self.fetch_user(row.user_id)].append(f"`{row.pokemon}`")
 
         entries = []
         for user, pokemon in users.items():
-            pkm = "\n    ".join(pokemon)
+            pkm = "\n    ".join(enumerate_list(pokemon))
             entry = f"""- {str(user)} ({user.id}) - {len(pokemon)}
     {pkm}"""
             entries.append(entry)
+        entries.sort()
 
         return entries
 
@@ -876,7 +874,8 @@ and lets you directly perform actions such as:
         approved = stats.approved
 
         entries = await self.per_user_fmt(approved.rows)
-        src = ListPageSource(approved, entries=entries)
+
+        src = ListPageSource(approved, entries=entries, per_page=2)
         menu = ListPageMenu(src, ctx=ctx)
         await menu.start()
 

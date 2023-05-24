@@ -202,7 +202,7 @@ class SimpleModal(discord.ui.Modal):
 
 
 def enumerate_list(_list: List) -> List[str]:
-    ret = [f"{idx + 1}. {element}" for idx, element in enumerate(_list)]
+    ret = [f"{idx + 1}\u200b. {element}" for idx, element in enumerate(_list)]
     return ret if len(ret) > 0 else ["None"]
 
 
