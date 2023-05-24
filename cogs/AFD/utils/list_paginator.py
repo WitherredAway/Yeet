@@ -281,7 +281,7 @@ class ListSelectMenu(discord.ui.Select):
         for idx, pkm in enumerate(self.category.pokemon):
             initial = get_initial(pkm)
             if initial not in list(itertools.chain(*list(initials.values()))):
-                initials[math.floor(idx / LIST_PER_PAGE)].append(initial)
+                initials[math.floor(idx / self.menu.source.per_page)].append(initial)
 
         for page, initials in initials.items():
             self.add_option(
