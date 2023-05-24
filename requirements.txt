@@ -20,7 +20,7 @@ docopt==0.6.2
 emoji==2.1.0
 Flask==2.2.2
 frozenlist==1.3.1
--e git+https://github.com/WitherredAway/gists.py@0d765d53aba6d77a98333a5fe6b7f88a92874715#egg=gists.py
+-e git+https://github.com/WitherredAway/gists.py
 google-api-core==2.11.0
 google-auth-httplib2==0.1.0
 google-auth-oauthlib==1.0.0
