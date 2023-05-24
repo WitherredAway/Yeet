@@ -148,7 +148,7 @@ class RoleMenu(discord.ui.View):
 
 
 PB_BARS = {0.0: "⬜", 0.3: "🟧", 0.7: "🟨", 1.0: "🟩"}
-NEGATIVE_PB_BARS = {0.0: "⬜", 0.3: "🟨", 0.7: "🟧", 1.0: "🟥"}
+NEGATIVE_PB_BARS = {0.0: "⬜", 0.3: "🟩", 0.7: "🟨", 1.0: "🟧"}
 
 def make_progress_bar(val: int, max_val: int, *, negative: Optional[bool] = False, length: Optional[int] = 10) -> str:
     bars = PB_BARS if negative is False else NEGATIVE_PB_BARS

@@ -166,13 +166,13 @@ class Stats:
         claimed_list = (correction_pending_rows + incomplete_rows + unreviewed_rows + approved_rows)
         self.claimed = Category(Categories.CLAIMED, claimed_list, total_amount=self.afdcog.total_amount)
 
-        self.unclaimed = Category(Categories.UNCLAIMED, unclaimed_rows, total_amount=self.claimed.amount)
-        self.incomplete = Category(Categories.INCOMPLETE, incomplete_rows, total_amount=self.claimed.amount)
+        self.unclaimed = Category(Categories.UNCLAIMED, unclaimed_rows, total_amount=self.afdcog.total_amount, negative_pb=True)
+        self.incomplete = Category(Categories.INCOMPLETE, incomplete_rows, total_amount=self.claimed.amount, negative_pb=True)
 
         submitted_list = (correction_pending_rows + unreviewed_rows)
         self.submitted = Category(Categories.SUBMITTED, submitted_list, total_amount=self.claimed.amount)
         self.correction_pending = Category(Categories.CORRECTION, correction_pending_rows, total_amount=self.submitted.amount, negative_pb=True)
-        self.unreviewed = Category(Categories.UNREVIEWED, unreviewed_rows, total_amount=self.submitted.amount)
+        self.unreviewed = Category(Categories.UNREVIEWED, unreviewed_rows, total_amount=self.submitted.amount, negative_pb=True)
         self.approved = Category(Categories.APPROVED, approved_rows, total_amount=self.total_amount)
 
 
