@@ -157,7 +157,6 @@ class AfdView(discord.ui.View):
         self.msg: discord.Message
 
         url_dict = {
-            "AFD Gist": (afdcog.afd_gist.url, 0),
             "AFD Credits": (afdcog.credits_gist.url, 0),
             "Spreadsheet": (afdcog.sheet.url, 0),
         }
