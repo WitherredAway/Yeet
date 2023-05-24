@@ -849,6 +849,18 @@ and lets you directly perform actions such as:
         menu = ListPageMenu(stats.unclaimed, ctx=ctx, select=True)
         await menu.start()
 
+    @_list.command(
+        name="approved",
+        brief="View approved pokemon",
+        help="View a list of pokemon that are that have been submitted and approved.",
+    )
+    async def list_approved(self, ctx: CustomContext):
+        await self.sheet.update_df()
+
+        stats = self.get_stats()
+        menu = ListPageMenu(stats.approved, ctx=ctx, select=False)
+        await menu.start()
+
     async def claim(self, ctx: CustomContext, pokemon: str):
         pokemon = await self.get_pokemon(ctx, pokemon)
         if not pokemon:
