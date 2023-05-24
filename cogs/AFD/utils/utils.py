@@ -17,7 +17,7 @@ from cogs.AFD.utils.labels import (
 from cogs.utils.utils import RoleMenu
 
 if TYPE_CHECKING:
-    from cogs.AFD.utils.sheet import AfdSheet
+    from cogs.AFD.afd import Afd
 
 
 class EmbedColours(Enum):

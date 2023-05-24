@@ -131,10 +131,12 @@ class RoleMenu(discord.ui.View):
 
 
 PB_BARS = {0.0: "⬜", 0.3: "🟧", 0.7: "🟨", 1.0: "🟩"}
+NEGATIVE_PB_BARS = {0.0: "⬜", 0.3: "🟨", 0.7: "🟧", 1.0: "🟥"}
 
+def make_progress_bar(val: int, max_val: int, *, negative: Optional[bool] = False, length: Optional[int] = 10) -> str:
+    bars = PB_BARS if negative is False else NEGATIVE_PB_BARS
 
-def make_progress_bar(val: int, max_val: int, *, length: Optional[int] = 10) -> str:
-    full_bar = np.full(length, PB_BARS[0.0])
+    full_bar = np.full(length, bars[0.0])
 
     if not (val == max_val == 0):
         to_val = round((length / max_val) * val)
@@ -142,7 +144,7 @@ def make_progress_bar(val: int, max_val: int, *, length: Optional[int] = 10) -> 
         to_val = 0
     percent = to_val / length
     cell = ""
-    for per, bar in PB_BARS.items():
+    for per, bar in bars.items():
         if per < percent:
             continue
         else:

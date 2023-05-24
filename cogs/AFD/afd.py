@@ -9,22 +9,18 @@ from functools import cached_property
 from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
 
 import discord
-from cogs.AFD.utils.labels import DEX_LABEL, PKM_LABEL, USERNAME_LABEL
-from cogs.AFD.utils.list_paginator import (
-    ListPageMenu,
-    StatsPageMenu,
-    StatsSelectMenu,
-    get_initial,
-)
-from cogs.Draw.utils.constants import ALPHABET_EMOJIS
 import gists
-import pandas as pd
 from discord.ext import commands
 
 from helpers.constants import INDENT, NL
 from helpers.context import CustomContext
 
-from ..utils.utils import UrlView, enumerate_list, make_progress_bar
+from cogs.AFD.utils.labels import PKM_LABEL
+from cogs.AFD.utils.list_paginator import (
+    ListPageMenu,
+    StatsPageMenu,
+)
+from ..utils.utils import UrlView, force_log_errors, make_progress_bar
 from .utils.views import AfdView, PokemonView
 from .utils.utils import AFDRoleMenu, Category, Claimed, EmbedColours, Row
 from .utils.urls import AFD_CREDITS_GIST_URL, AFD_GIST_URL, SHEET_URL
@@ -35,6 +31,7 @@ from .utils.constants import (
     CLAIM_LIMIT,
     DEL_ATTRS_TO_UPDATE,
     LOG_CHANNEL_ID,
+    PROGRESS_BAR_LENGTH,
     UPDATE_CHANNEL_ID,
 )
 from .ext.afd_gist import AfdGist
