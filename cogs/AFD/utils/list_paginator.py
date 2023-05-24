@@ -89,8 +89,8 @@ class StatsPageSource(menus.ListPageSource):
         original_embed: Bot.Embed,
         per_page: Optional[int] = STATS_PER_PAGE,
     ):
-        self.entries = category.entries
-        super().__init__(entries=category.enumerated_entries, per_page=per_page)
+        self.entries = category.pokemon
+        super().__init__(entries=category.enumerated_pokemon, per_page=per_page)
         self.category = category
         self.original_embed = original_embed
         self.per_page = per_page
@@ -140,7 +140,7 @@ class StatsSelectMenu(discord.ui.Select):
         self.set_default(option)
 
         if value == ALL_OPT_VALUE:
-            fields = [Field(name=f"{c.name} {c.progress()}\n{c.progress_bar()}", values=c.enumerated_entries) for c in self.categories]
+            fields = [Field(name=f"{c.name} {c.progress()}\n{c.progress_bar()}", values=c.enumerated_pokemon) for c in self.categories]
             view = FieldPaginationView(
                 self.ctx, self.menu.original_embed, fields=fields
             )
@@ -268,7 +268,7 @@ class ListPageSource(menus.ListPageSource):
         self.category = category
         entries = []
         initials = []
-        for idx, entry in enumerate(category.entries):
+        for idx, entry in enumerate(category.pokemon):
             i, bolded = get_initial(entry, bold=True)
             if i not in initials:
                 entries.append(f"{idx + 1}. {bolded}")
@@ -293,7 +293,7 @@ class ListSelectMenu(discord.ui.Select):
 
     def __fill_options(self):
         initials = defaultdict(list)
-        for idx, pkm in enumerate(self.category.entries):
+        for idx, pkm in enumerate(self.category.pokemon):
             initial = get_initial(pkm)
             if initial not in list(itertools.chain(*list(initials.values()))):
                 initials[math.floor(idx / LIST_PER_PAGE)].append(initial)

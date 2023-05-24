@@ -111,7 +111,7 @@ class Categories(Enum):
 @dataclass
 class Category:
     category: Categories
-    entries: List[str]
+    rows: List[Row]
     total_amount: int
     negative_pb: Optional[bool] = False
 
@@ -119,11 +119,15 @@ class Category:
 
     def __post_init__(self):
         self.name = self.category.value
-        self.amount = len(self.entries)
+        self.amount = len(self.pokemon)
 
     @property
-    def enumerated_entries(self) -> List[str]:
-        return enumerate_list(self.entries)
+    def pokemon(self) -> List[str]:
+        return [row.pokemon for row in self.rows]
+
+    @property
+    def enumerated_pokemon(self) -> List[str]:
+        return enumerate_list(self.pokemon)
 
     def progress(self, total_amount: Optional[int] = None) -> str:
         return f"{self.amount}/{total_amount if total_amount is not None else self.total_amount}"
@@ -138,37 +142,36 @@ class Stats:
     afdcog: Afd
 
     def __post_init__(self):
-        unclaimed_list = []
-        incomplete_list = []
-        correction_pending_list = []
-        unreviewed_list = []
-        approved_list = []
+        unclaimed_rows = []
+        incomplete_rows = []
+        correction_pending_rows = []
+        unreviewed_rows = []
+        approved_rows = []
         for idx in self.df.index:
             row = self.afdcog.sheet.get_row(idx)
-            pkm = row.pokemon
 
             if row.claimed:
                 if row.approved:
-                    approved_list.append(pkm)
+                    approved_rows.append(row)
                 elif row.unreviewed:
-                    unreviewed_list.append(pkm)
+                    unreviewed_rows.append(row)
                 elif row.correction_pending:
-                    correction_pending_list.append(pkm)
+                    correction_pending_rows.append(row)
                 else:
-                    incomplete_list.append(pkm)
+                    incomplete_rows.append(row)
             else:
-                unclaimed_list.append(pkm)
+                unclaimed_rows.append(row)
 
-        claimed_list = (correction_pending_list + incomplete_list + unreviewed_list + approved_list)
+        claimed_list = (correction_pending_rows + incomplete_rows + unreviewed_rows + approved_rows)
         self.claimed = Category(Categories.CLAIMED, claimed_list, total_amount=self.afdcog.total_amount)
 
-        self.unclaimed = Category(Categories.UNCLAIMED, unclaimed_list, total_amount=self.claimed.amount)
-        self.incomplete = Category(Categories.INCOMPLETE, incomplete_list, total_amount=self.claimed.amount)
+        self.unclaimed = Category(Categories.UNCLAIMED, unclaimed_rows, total_amount=self.claimed.amount)
+        self.incomplete = Category(Categories.INCOMPLETE, incomplete_rows, total_amount=self.claimed.amount)
 
-        submitted_list = (correction_pending_list + unreviewed_list)
+        submitted_list = (correction_pending_rows + unreviewed_rows)
         self.submitted = Category(Categories.SUBMITTED, submitted_list, total_amount=self.claimed.amount)
-        self.correction_pending = Category(Categories.CORRECTION, correction_pending_list, total_amount=self.submitted.amount, negative_pb=True)
-        self.unreviewed = Category(Categories.UNREVIEWED, unreviewed_list, total_amount=self.submitted.amount)
-        self.approved = Category(Categories.APPROVED, approved_list, total_amount=self.submitted.amount)
+        self.correction_pending = Category(Categories.CORRECTION, correction_pending_rows, total_amount=self.submitted.amount, negative_pb=True)
+        self.unreviewed = Category(Categories.UNREVIEWED, unreviewed_rows, total_amount=self.submitted.amount)
+        self.approved = Category(Categories.APPROVED, approved_rows, total_amount=self.submitted.amount)
 
 
