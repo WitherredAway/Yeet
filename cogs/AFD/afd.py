@@ -233,7 +233,6 @@ class Afd(AfdGist):
         )
 
         stats.correction_pending.total_amount = stats.submitted.amount
-        stats.approved.total_amount = self.total_amount
         embed.add_field(
             name="Community Stats",
             value=NL.join(

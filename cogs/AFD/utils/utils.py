@@ -142,6 +142,8 @@ class Stats:
     afdcog: Afd
 
     def __post_init__(self):
+        self.total_amount = len(self.df)
+
         unclaimed_rows = []
         incomplete_rows = []
         correction_pending_rows = []
@@ -172,6 +174,6 @@ class Stats:
         self.submitted = Category(Categories.SUBMITTED, submitted_list, total_amount=self.claimed.amount)
         self.correction_pending = Category(Categories.CORRECTION, correction_pending_rows, total_amount=self.submitted.amount, negative_pb=True)
         self.unreviewed = Category(Categories.UNREVIEWED, unreviewed_rows, total_amount=self.submitted.amount)
-        self.approved = Category(Categories.APPROVED, approved_rows, total_amount=self.submitted.amount)
+        self.approved = Category(Categories.APPROVED, approved_rows, total_amount=self.total_amount)
 
 
