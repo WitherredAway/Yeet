@@ -65,7 +65,7 @@ class EditModal(discord.ui.Modal):
         self.add_item(
             discord.ui.TextInput(
                 label=CLAIM_MAX_LABEL,
-                default=self.sheet.CLAIM_MAX,
+                default=str(self.sheet.CLAIM_MAX),
                 style=discord.TextStyle.short,
                 custom_id="claim_max",
             )
@@ -73,7 +73,7 @@ class EditModal(discord.ui.Modal):
         self.add_item(
             discord.ui.TextInput(
                 label=UNAPP_MAX_LABEL,
-                default=self.sheet.UNAPP_MAX,
+                default=str(self.sheet.UNAPP_MAX),
                 style=discord.TextStyle.short,
                 custom_id="unapp_max",
             )
@@ -138,12 +138,17 @@ class EditModal(discord.ui.Modal):
 
         await self.sheet.update_row(FIRST_ROW_IDX, from_col=TOPIC_LABEL, to_col=UNAPP_MAX_LABEL)
 
-        embed = self.afdcog.bot.Embed(title="The following AFD information field(s) have been updated!")
-        for label, msg in resp.items():
-            embed.add_field(name=label, value=msg)
+        if len(resp) != 0:
+            embed = self.afdcog.bot.Embed(title="The following AFD information field(s) have been updated!")
+            for label, msg in resp.items():
+                embed.add_field(name=label, value=msg)
 
-        await interaction.followup.send(embed=embed)
-        await self.afdcog.log_channel.send(embed=embed)  # TODO ping AFD role
+            await interaction.followup.send(embed=embed)
+            await self.afdcog.log_channel.send(embed=embed)  # TODO ping AFD role
+            self.edited = True
+        else:
+            await interaction.followup.send("No changes.")
+            self.edited = False
 
 
 class AfdView(discord.ui.View):
@@ -190,7 +195,8 @@ class AfdView(discord.ui.View):
         await interaction.response.send_modal(modal)
         await modal.wait()
 
-        await self.msg.edit(embed=self.afdcog.embed, view=self)
+        if modal.edited:
+            await self.msg.edit(embed=self.afdcog.embed, view=self)
 
 
 class SubmitView(discord.ui.View):

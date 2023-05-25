@@ -77,6 +77,10 @@ class Afd(AfdGist):
         return self.bot.afd_update_channel
 
     @property
+    def credits_gist(self) -> gists.Gist:
+        return self.bot.afd_credits_gist
+
+    @property
     def sheet(self) -> AfdSheet:
         return self.bot.afd_sheet
 
