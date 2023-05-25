@@ -14,7 +14,7 @@ from google.oauth2 import service_account
 
 from cogs.Draw.utils.constants import ALPHABETS
 
-from .constants import CLAIM_LIMIT, COL_OFFSET, EMAIL, EXPORT_SUFFIX, FIRST_ROW_IDX
+from .constants import DEFAULT_CLAIM_MAX, COL_OFFSET, DEFAULT_UNAPP_MAX, EMAIL, EXPORT_SUFFIX, FIRST_ROW_IDX
 from .labels import (
     APPROVED_LABEL,
     CLAIM_MAX_LABEL,
@@ -26,9 +26,15 @@ from .labels import (
     IMAGE_LABEL,
     PKM_LABEL,
     RULES_LABEL,
+    SEPARATOR_LABEL,
     TOPIC_LABEL,
     UNAPP_MAX_LABEL,
     USER_ID_LABEL,
+    TOPIC_LABEL,
+    RULES_LABEL,
+    DEADLINE_LABEL,
+    CLAIM_MAX_LABEL,
+    UNAPP_MAX_LABEL
 )
 from .urls import IMAGE_URL
 from .utils import Row
@@ -93,16 +99,7 @@ class AfdSheet:
                 sheet.id, EMAIL, perm_type="user", role="writer"
             )
 
-            self.df = pd.DataFrame(
-                columns=[
-                    DEX_LABEL,
-                    PKM_LABEL,
-                    USER_ID_LABEL,
-                    IMAGE_LABEL,
-                    APPROVED_LABEL,
-                    COMMENT_LABEL,
-                ]
-            )
+            data = []
             for idx, row in pokemon_df.iterrows():
                 new_row = [
                     row[DEX_LABEL_P],
@@ -112,8 +109,32 @@ class AfdSheet:
                     None,
                     None,
                     None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None
                 ]
-                self.df.loc[len(self.df.index)] = new_row
+                data.append(new_row)
+            self.df = pd.DataFrame(
+                data,
+                columns=[
+                    DEX_LABEL,
+                    PKM_LABEL,
+                    USER_ID_LABEL,
+                    IMAGE_LABEL,
+                    APPROVED_LABEL,
+                    COMMENT_LABEL,
+                    SEPARATOR_LABEL,
+                    TOPIC_LABEL,
+                    RULES_LABEL,
+                    DEADLINE_LABEL,
+                    CLAIM_MAX_LABEL,
+                    UNAPP_MAX_LABEL
+                ]
+            )
+            self.df.loc[FIRST_ROW_IDX, CLAIM_MAX_LABEL] = DEFAULT_CLAIM_MAX
+            self.df.loc[FIRST_ROW_IDX, UNAPP_MAX_LABEL] = DEFAULT_UNAPP_MAX
 
             await self.update_sheet()
             await self.update_df()
@@ -167,7 +188,8 @@ class AfdSheet:
         await self.worksheet.update(f"{ALPHABETS[from_col_idx]}{dex + COL_OFFSET}", row_vals)
 
     async def update_sheet(self) -> None:
-        self.df = self.df.fillna("").reset_index()
+        """Drops index column"""
+        self.df = self.df.fillna("").reset_index(drop=True)
         vals = [self.df.columns.tolist()] + self.df.values.tolist()
         await self.worksheet.update("A1", vals)
 
@@ -214,7 +236,7 @@ class AfdSheet:
                     )
                 ]
             )
-            >= CLAIM_LIMIT
+            >= self.CLAIM_MAX
         ):
             return False
         return True

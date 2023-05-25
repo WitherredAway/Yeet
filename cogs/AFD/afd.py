@@ -30,7 +30,6 @@ from .utils.sheet import AfdSheet
 from .utils.constants import (
     AFD_ADMIN_ROLE_ID,
     AFD_ROLE_ID,
-    CLAIM_LIMIT,
     AFD_LOG_CHANNEL_ID,
     AFD_UPDATE_CHANNEL_ID,
 )
@@ -293,6 +292,7 @@ class Afd(AfdGist):
     )
     async def forceupdate(self, ctx: CustomContext):
         await ctx.message.add_reaction("▶️")
+        self.bot.afd_sheet = AfdSheet(SHEET_URL, pokemon_df=self.pk)
         await self.sheet.setup()
         await self.update_credits()
         await ctx.message.add_reaction("✅")
@@ -319,7 +319,7 @@ class Afd(AfdGist):
 1. A pokemon, with the normalized and deaccented version of the provided name *including alt names*, will be searched for. If not found, it will return invalid.
 2. That pokemon's availability on the sheet will be checked:
 {INDENT}**i. If it's *not* claimed yet:**
-{INDENT}{INDENT}- If the user already has max claims ({CLAIM_LIMIT}), it will still give you the option to proceed.
+{INDENT}{INDENT}- If the user already has max claims, it will still give you the option to proceed.
 {INDENT}{INDENT}- Otherwise, you will be prompted to confirm that you want to forceclaim the pokemon for the user.
 {INDENT}**ii. If it's already claimed by *the same user*, you will be informed of such.**
 {INDENT}**iii. If it's already claimed by *another user*, you will be prompted to confirm if you want to override. Will warn you \
@@ -340,7 +340,7 @@ class Afd(AfdGist):
         if not row.claimed:
             content = None
             if self.sheet.can_claim(user) is False:
-                content = f"**{user}** already has the max number ({CLAIM_LIMIT}) of pokemon claimed, still continue?"
+                content = f"**{user}** already has the max number ({self.sheet.CLAIM_MAX}) of pokemon claimed, still continue?"
 
             conf, cmsg = await ctx.confirm(
                 embed=self.confirmation_embed(
@@ -910,7 +910,7 @@ and lets you directly perform actions such as:
         if not row.claimed:
             p = ""
             if self.sheet.can_claim(ctx.author) is False:
-                p = f"You already have the max number ({CLAIM_LIMIT}) of pokemon claimed"
+                p = f"You already have the max number ({self.sheet.CLAIM_MAX}) of pokemon claimed"
                 if not self.is_admin(ctx.author):
                     return await ctx.reply(
                         embed=self.confirmation_embed(
@@ -976,12 +976,12 @@ and lets you directly perform actions such as:
     @afd.command(
         name="claim",
         brief="Claim a pokemon to draw",
-        description=f"Claim a pokemon to draw. Can have upto {CLAIM_LIMIT} claimed pokemon at a time. Pokemon alt names are supported!",
+        description=f"Claim a pokemon to draw. Use the `afd` to know the claim limit at a time. Pokemon alt names are supported!",
         help=f"""When this command is ran, first the sheet data will be fetched. Then:
 1. A pokemon, with the normalized and deaccented version of the provided name *including alt names*, will be searched for. If not found, it will return invalid.
 2. That pokemon's availability on the sheet will be checked:
 {INDENT}**i. If it's *not* claimed yet:**
-{INDENT}{INDENT}- If you already have max claims ({CLAIM_LIMIT}), it will not let you claim. Does not apply to admins.
+{INDENT}{INDENT}- If you already have max claims, it will not let you claim. Does not apply to admins.
 {INDENT}{INDENT}- Otherwise, you will be prompted to confirm that you want to claim the pokemon.
 {INDENT}{INDENT}- The sheet data will be fetched again to check for any changes since.
 {INDENT}{INDENT}{INDENT}- If the pokemon has since been claimed, you will be informed of such.
