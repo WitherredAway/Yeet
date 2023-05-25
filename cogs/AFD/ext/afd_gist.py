@@ -24,6 +24,7 @@ from cogs.AFD.utils.labels import (
     PKM_LABEL,
     USER_ID_LABEL,
 )
+from cogs.AFD.utils.sheet import AfdSheet
 from cogs.AFD.utils.urls import AFD_CREDITS_GIST_URL, SHEET_URL
 from cogs.AFD.utils.utils import Row
 import gists
@@ -40,6 +41,7 @@ log = logging.getLogger("cogs.AFD.afd")
 class AfdGist(commands.Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
+        self.sheet: AfdSheet
 
     @property
     def user_grouped(self) -> GroupBy:
@@ -142,7 +144,7 @@ class AfdGist(commands.Cog):
 
         return ml_list, ml_list_mention, ml_amount
 
-    def get_participants(
+    async def get_participants(
         self,
         *,
         n: Optional[int] = None,
@@ -161,7 +163,7 @@ class AfdGist(commands.Cog):
                     continue
                 participants_dict[row.user_id] = (
                     len(pkms),
-                    f"1. {row.username} (`{user_id}`){f' - {len(pkms)} Drawings' if count is True else ''}",
+                    f"1. {await self.fetch_user(row.user_id)} (`{user_id}`){f' - {len(pkms)} Drawings' if count is True else ''}",
                 )
         participants = list(
             sorted(list(participants_dict.values()), key=sort_key, reverse=reverse)
@@ -183,11 +185,10 @@ class AfdGist(commands.Cog):
             link = "None"
             if row.approved_by:
                 user_id = row.user_id
-
                 if row.image:
                     link = f"![art]({row.image})"
 
-                user = row.username
+                user = str(await self.fetch_user(row.user_id))
             else:
                 user = user_id = "None"
             credits_rows.append(HEADERS_FMT % (pkm_dex, pkm_name, link, user, user_id))
@@ -220,7 +221,7 @@ class AfdGist(commands.Cog):
             content=f"""# Top {TOP_N} Participants
 Thank you to EVERYONE who participated, but here are the top few that deserve extra recognition!
 
-{NL.join([p for l, p in (self.get_participants(n=TOP_N, count=True, sort_key=lambda s: s[0], reverse=True))])}""".replace(
+{NL.join([p for l, p in (await self.get_participants(n=TOP_N, count=True, sort_key=lambda s: s[0], reverse=True))])}""".replace(
                 "\r", ""
             ),
         )
@@ -234,7 +235,7 @@ Thank you to EVERYONE who participated, but here are the top few that deserve ex
             f"AFD Credits: Credits file completed in {round(time.time()-start, 2)}s"
         )
 
-        participants = NL.join([p for l, p in self.get_participants()])
+        participants = NL.join([p for l, p in await self.get_participants()])
         participants_file = gists.File(
             name=PARTICIPANTS_FILENAME,
             content=f"""# List of participants
