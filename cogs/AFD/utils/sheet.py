@@ -29,7 +29,6 @@ from .labels import (
     TOPIC_LABEL,
     UNAPP_MAX_LABEL,
     USER_ID_LABEL,
-    USERNAME_LABEL,
 )
 from .urls import IMAGE_URL
 from .utils import Row
@@ -98,7 +97,6 @@ class AfdSheet:
                 columns=[
                     DEX_LABEL,
                     PKM_LABEL,
-                    USERNAME_LABEL,
                     USER_ID_LABEL,
                     IMAGE_LABEL,
                     APPROVED_LABEL,
@@ -223,16 +221,13 @@ class AfdSheet:
 
     def claim(self, user: Union[discord.User, discord.Member], pokemon: str):
         self.edit_row_where(
-            PKM_LABEL, pokemon, set_column=USERNAME_LABEL, to_val=str(user)
-        )
-        self.edit_row_where(
             PKM_LABEL, pokemon, set_column=USER_ID_LABEL, to_val=str(user.id)
         )
         for col in self.df.columns[self.df.columns.get_loc(IMAGE_LABEL):]:  # For all columns after Discord ID
             self.edit_row_where(PKM_LABEL, pokemon, set_column=col, to_val=None)
 
     def unclaim(self, pokemon: str):
-        for col in self.df.columns[self.df.columns.get_loc(USERNAME_LABEL):]:  # For all columns after Pokemon
+        for col in self.df.columns[self.df.columns.get_loc(USER_ID_LABEL):]:  # For all columns after Pokemon
             self.edit_row_where(PKM_LABEL, pokemon, set_column=col, to_val=None)
 
     def submit(self, pokemon: str, *, image_url: str):

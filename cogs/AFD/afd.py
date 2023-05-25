@@ -5,7 +5,7 @@ import logging
 import os
 import time
 from functools import cached_property
-from typing import TYPE_CHECKING, Callable, DefaultDict, List, Optional, Union
+from typing import TYPE_CHECKING, Callable, Coroutine, DefaultDict, List, Optional, Union
 import pandas as pd
 
 import discord
@@ -188,7 +188,7 @@ class Afd(AfdGist):
     async def check_claim(
         self,
         ctx: CustomContext,
-        decide_msg: Callable[[Row], str],
+        decide_msg: Coroutine[Row, str],
         pokemon: str,
         *,
         check: Callable[[Row], bool],
@@ -203,7 +203,7 @@ class Afd(AfdGist):
 
         if check(row):
             embed = self.confirmation_embed(
-                decide_msg(row),
+                await decide_msg(row),
                 row=row,
                 colour=EmbedColours.INVALID,
                 footer=decide_footer(row) if decide_footer else decide_footer,
@@ -935,9 +935,9 @@ and lets you directly perform actions such as:
             if conf is False:
                 return
 
-        decide_msg = (
-            lambda row: f"**{pokemon}** is already claimed by **{'you' if row.user_id == ctx.author.id else row.username}**!"
-        )
+        async def decide_msg(row: Row):
+            return f"**{pokemon}** is already claimed by **{'you' if row.user_id == ctx.author.id else await self.fetch_user(row.user_id)}**!"
+
         check = lambda row: row.claimed
         decide_footer = (
             lambda row: "You can unclaim it using the `unclaim` command."
@@ -1018,11 +1018,12 @@ and lets you directly perform actions such as:
                 return
 
         check = lambda row: (not row.claimed) or row.user_id != ctx.author.id
-        decide_msg = (
-            lambda row: f"**{pokemon}** is not claimed."
-            if not row.claimed
-            else f"**{pokemon}** is claimed by **{row.username}**!"
-        )
+        async def decide_msg(row):
+            return (
+                f"**{pokemon}** is not claimed."
+                if not row.claimed
+                else f"**{pokemon}** is claimed by **{await self.fetch_user(row.user_id)}**!"
+            )
         decide_footer = (
             lambda row: None
             if not row.claimed

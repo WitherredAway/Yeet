@@ -12,7 +12,6 @@ from cogs.AFD.utils.labels import (
     IMAGE_LABEL,
     PKM_LABEL,
     USER_ID_LABEL,
-    USERNAME_LABEL,
 )
 
 from cogs.utils.utils import RoleMenu, enumerate_list, make_progress_bar
@@ -36,7 +35,6 @@ class Row:
 
     dex: Optional[int] = None
     pokemon: Optional[str] = None
-    username: Optional[discord.User] = None
     user_id: Optional[int] = None
     image: Optional[str] = None
     approved_by: Optional[int] = None
@@ -53,13 +51,6 @@ class Row:
             self.row = self.row.loc[self.dex, :]
 
         self.pokemon = self.row[PKM_LABEL]
-
-        self.username = self.row[USERNAME_LABEL]
-        self.username = (
-            discord.utils.escape_markdown(self.username)
-            if not pd.isna(self.username)
-            else None
-        )
 
         self.user_id = self.row[USER_ID_LABEL]
         self.user_id = int(self.user_id) if not pd.isna(self.user_id) else None
