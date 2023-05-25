@@ -133,6 +133,8 @@ class Bot(commands.Bot):
 
         self.gists_client = gists.Client()
         await self.gists_client.authorize(os.getenv("githubTOKEN"))
+        self.bot.wgists_client = gists.Client()
+        await self.bot.wgists_client.authorize(os.getenv("WgithubTOKEN"))
 
         self.add_view(AFDRoleMenu())
 

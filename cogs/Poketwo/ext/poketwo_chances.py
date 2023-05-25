@@ -93,9 +93,9 @@ class PoketwoChances(commands.Cog):
 
     display_emoji = "🔣"
 
-    async def cog_load(self):
-        self.gists_client = gists.Client()
-        await self.gists_client.authorize(os.getenv("WgithubTOKEN"))
+    @property
+    def gists_client(self) -> gists.Client:
+        return self.bot.wgists_client
 
     @cached_property
     def pk(self):

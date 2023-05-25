@@ -62,7 +62,7 @@ class Afd(AfdGist):
 
         self.log_channel = await self.bot.fetch_channel(LOG_CHANNEL_ID)
         self.update_channel = await self.bot.fetch_channel(UPDATE_CHANNEL_ID)
-        self.credits_gist = await self.gists_client.get_gist(AFD_CREDITS_GIST_URL)
+        self.credits_gist = await self.bot.wgists_client.get_gist(AFD_CREDITS_GIST_URL)
 
         start = time.time()
         await self.sheet.setup()
