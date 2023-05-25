@@ -32,8 +32,8 @@ from .utils.constants import (
     AFD_ROLE_ID,
     CLAIM_LIMIT,
     DEL_ATTRS_TO_UPDATE,
-    LOG_CHANNEL_ID,
-    UPDATE_CHANNEL_ID,
+    AFD_LOG_CHANNEL_ID,
+    AFD_UPDATE_CHANNEL_ID,
 )
 from .ext.afd_gist import AfdGist
 
@@ -56,21 +56,31 @@ class Afd(AfdGist):
 
     display_emoji = "🗓️"
 
-    async def cog_load(self):
-        self.gists_client = gists.Client()
-        await self.gists_client.authorize(os.getenv("WgithubTOKEN"))
-
-        self.log_channel = await self.bot.fetch_channel(LOG_CHANNEL_ID)
-        self.update_channel = await self.bot.fetch_channel(UPDATE_CHANNEL_ID)
-        self.credits_gist = await self.bot.wgists_client.get_gist(AFD_CREDITS_GIST_URL)
+    async def setup(self):
+        self.bot.afd_log_channel = await self.bot.fetch_channel(AFD_LOG_CHANNEL_ID)
+        self.bot.afd_update_channel = await self.bot.fetch_channel(AFD_UPDATE_CHANNEL_ID)
+        self.bot.afd_credits_gist = await self.bot.wgists_client.get_gist(AFD_CREDITS_GIST_URL)
 
         start = time.time()
+        self.bot.afd_sheet = AfdSheet(SHEET_URL, pokemon_df=self.pk)
         await self.sheet.setup()
         logger.info(f"AFD: Fetched spreadsheet in {round(time.time()-start, 2)}s")
 
     @force_log_errors
     async def cog_unload(self):
         reload_modules("cogs/AFD", skip=__name__)
+
+    @property
+    def log_channel(self) -> discord.TextChannel:
+        return self.bot.afd_log_channel
+
+    @property
+    def update_channel(self) -> discord.TextChannel:
+        return self.bot.afd_update_channel
+
+    @property
+    def sheet(self) -> AfdSheet:
+        return self.bot.afd_sheet
 
     @property
     def pk(self) -> pd.DataFrame:
@@ -83,10 +93,6 @@ class Afd(AfdGist):
     @property
     def total_amount(self) -> int:
         return len(self.df)
-
-    @cached_property
-    def sheet(self) -> AfdSheet:
-        return AfdSheet(SHEET_URL, pokemon_df=self.pk)
 
     def is_admin(self, user: discord.Member) -> bool:
         return AFD_ADMIN_ROLE_ID in [r.id for r in user.roles]

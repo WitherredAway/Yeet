@@ -152,6 +152,8 @@ class Bot(commands.Bot):
             + LOG_BORDER
         )
 
+        await self.get_cog("Afd").setup()
+
         total_s: int = (datetime.datetime.utcnow() - self.uptime).seconds
         m, s = divmod(total_s, 60)
         msg = f"\033[32;1m{self.user}\033[0;32m connected in \033[33;1m{m}m{s}s\033[0;32m.\033[0m"
