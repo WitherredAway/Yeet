@@ -306,7 +306,7 @@ class PokemonView(discord.ui.View):
         pokemon = self.pokemon
         base_image = self.sheet.get_pokemon_image(pokemon)
 
-        embed = ctx.bot.Embed(title=f"#{row.dex} - {pokemon}")
+        embed = ctx.bot.Embed(title=f"#{row.dex + 1} - {pokemon}")
         embed.set_thumbnail(url=base_image)
         self.update(embed)
         return embed

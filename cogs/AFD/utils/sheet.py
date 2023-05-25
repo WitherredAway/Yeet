@@ -157,14 +157,14 @@ class AfdSheet:
         return int(self.df.loc[FIRST_ROW_IDX, UNAPP_MAX_LABEL])
 
     async def update_row(
-        self, dex: str, *, from_col: Optional[str] = DEX_LABEL, to_col: Optional[str] = COMMENT_LABEL
+        self, dex: int, *, from_col: Optional[str] = DEX_LABEL, to_col: Optional[str] = COMMENT_LABEL
     ) -> None:
         from_col_idx = self.df.columns.get_loc(from_col)
         to_col_idx = self.df.columns.get_loc(to_col) + 1
         row_vals = [
-            self.df.iloc[int(dex), from_col_idx: to_col_idx].fillna("").tolist()
+            self.df.iloc[dex, from_col_idx: to_col_idx].fillna("").tolist()
         ]
-        await self.worksheet.update(f"{ALPHABETS[from_col_idx]}{int(dex) + COL_OFFSET}", row_vals)
+        await self.worksheet.update(f"{ALPHABETS[from_col_idx]}{dex + COL_OFFSET}", row_vals)
 
     async def update_sheet(self) -> None:
         self.df = self.df.fillna("").reset_index()
