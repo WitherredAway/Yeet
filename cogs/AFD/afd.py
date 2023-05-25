@@ -12,7 +12,7 @@ import discord
 import gists
 from discord.ext import commands
 
-from helpers.constants import INDENT, NL
+from helpers.constants import EMBED_DESC_CHAR_LIMIT, INDENT, NL
 from helpers.context import CustomContext
 
 from cogs.AFD.utils.labels import PKM_LABEL
@@ -876,7 +876,7 @@ and lets you directly perform actions such as:
 
         entries = await self.per_user_fmt(approved.rows)
 
-        src = ListPageSource(approved, entries=entries, per_page=2)
+        src = ListPageSource(approved, entries=entries, dynamic_pages=True, max_per_page=3)
         menu = ListPageMenu(src, ctx=ctx)
         await menu.start()
 

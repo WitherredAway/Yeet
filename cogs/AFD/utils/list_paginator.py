@@ -19,7 +19,7 @@ from cogs.RDanny.utils.paginator import (
     PREVIOUS_PAGE_SYMBOL,
     BotPages,
 )
-from helpers.constants import NL
+from helpers.constants import EMBED_DESC_CHAR_LIMIT, NL
 from helpers.context import CustomContext
 from helpers.field_paginator import Field, FieldPaginationView
 
@@ -258,13 +258,32 @@ class ListPageSource(menus.ListPageSource):
         category: Category,
         *,
         entries: List[str],
-        per_page: Optional[int] = LIST_PER_PAGE
+        dynamic_pages: Optional[bool] = False,
+        max_per_page: Optional[int] = LIST_PER_PAGE
     ):
+        self.joiner = NL
+        # If dynamic_pages is true, each page should have as many entries as possible.
+        if dynamic_pages is True:
+            pages = []
+            for entry in entries:
+                if len(pages) == 0:
+                    pages.append([])
+
+                p = pages[-1] + [entry]
+                if (len(self.joiner.join(p)) >= EMBED_DESC_CHAR_LIMIT) or (len(p) > max_per_page):
+                    pages.append([])
+                pages[-1].append(entry)
+
+            per_page = 1
+        else:
+            pages = entries
+            per_page = max_per_page
+
         self.category = category
-        super().__init__(entries=entries, per_page=per_page)
+        super().__init__(entries=pages, per_page=per_page)
 
     async def format_page(self, menu: ListPageMenu, entries: List[str]):
-        embed = menu.bot.Embed(title=f"{self.category.name} {self.category.progress()}\n{self.category.progress_bar()}", description=NL.join(entries))
+        embed = menu.bot.Embed(title=f"{self.category.name} {self.category.progress()}\n{self.category.progress_bar()}", description=self.joiner.join(entries))
         return embed
 
 
