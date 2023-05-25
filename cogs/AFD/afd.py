@@ -289,18 +289,13 @@ class Afd(AfdGist):
     @commands.is_owner()
     @afd.command(
         name="forceupdate",
-        brief="Forcefully update AFD gists.",
-        description="Used to forcefully update the AFD gist and Credits gist",
+        brief="Forcefully update AFD sheet.",
+        description="Used to forcefully update the AFD sheet and AFD credits gist",
     )
     async def forceupdate(self, ctx: CustomContext):
-        for attr in DEL_ATTRS_TO_UPDATE:
-            try:
-                delattr(self, attr)
-            except AttributeError:
-                pass
-
         await ctx.message.add_reaction("▶️")
-        self.update_pokemon.restart()
+        await self.sheet.update()
+        await self.update_credits()
         await ctx.message.add_reaction("✅")
 
     @commands.is_owner()

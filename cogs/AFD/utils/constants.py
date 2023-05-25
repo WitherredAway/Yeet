@@ -6,7 +6,6 @@ EXPORT_SUFFIX = "export?format=csv"
 
 AFD_UPDATE_CHANNEL_ID = os.getenv("AFD_UPDATE_CHANNEL_ID")
 ROW_INDEX_OFFSET = 8  # The number of rows after which the pokemon indexes begin
-DEL_ATTRS_TO_UPDATE = ["unc_amount", "unr_amount", "ml_amount"]
 
 APPROVED_TXT = "Approved"
 
