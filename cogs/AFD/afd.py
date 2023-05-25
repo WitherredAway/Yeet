@@ -832,7 +832,7 @@ and lets you directly perform actions such as:
 
     @_list.command(
         name="unclaimed",
-        aliases=("available", "unc"),
+        aliases=("unc", "available"),
         brief="View unclaimed pokemon",
         help="View a list of pokemon that are available to claim.",
     )
