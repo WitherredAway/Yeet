@@ -376,17 +376,17 @@ class Afd(AfdGist):
             if conf is False:
                 return
 
-        self.sheet.claim(user, pokemon)
+        row = self.sheet.claim(user, pokemon)
         await self.sheet.update_row(row.dex)
         await cmsg.edit(
             embed=self.confirmation_embed(
-                f"You have successfully force claimed **{pokemon}** for **{user}**.",
+                f"You have successfully force claimed **{pokemon}** for **{user} ({user.id})**.",
                 row=row,
                 colour=EmbedColours.INCOMPLETE,
             )
         )
         embed = self.confirmation_embed(
-            f"**{pokemon}** has been forcefully claimed for **{user}**.",
+            f"**{pokemon}** has been forcefully claimed for **{user} ({user.id})**.",
             row=row,
             colour=EmbedColours.INCOMPLETE,
             footer=f"by {ctx.author}",
@@ -426,9 +426,10 @@ class Afd(AfdGist):
                     colour=EmbedColours.INVALID,
                 )
             )
+        user = await self.fetch_user(row.user_id)
         conf, cmsg = await ctx.confirm(
             embed=self.confirmation_embed(
-                f"**{pokemon}** is currently claimed by **{await self.fetch_user(row.user_id)} ({row.user_id})**, forcefully unclaim?\
+                f"**{pokemon}** is currently claimed by **{user} ({user.id})**, forcefully unclaim?\
                         {' There is a drawing already submitted which will be removed.' if row.image else ''}",
                 row=row,
             ),
@@ -437,23 +438,22 @@ class Afd(AfdGist):
         if conf is False:
             return
 
-        self.sheet.unclaim(
+        row = self.sheet.unclaim(
             pokemon,
         )
         await cmsg.edit(
             embed=self.confirmation_embed(
-                f"You have successfully force unclaimed **{pokemon}** from **{await self.fetch_user(row.user_id)} ({row.user_id})**.",
+                f"You have successfully force unclaimed **{pokemon}** from **{user} ({user.id})**.",
                 row=row,
                 colour=EmbedColours.UNCLAIMED,
             )
         )
         embed = self.confirmation_embed(
-            f"**{pokemon}** has been forcefully unclaimed from **{await self.fetch_user(row.user_id)} ({row.user_id})**.",
+            f"**{pokemon}** has been forcefully unclaimed from **{user} ({user.id})**.",
             row=row,
             colour=EmbedColours.UNCLAIMED,
             footer=f"by {ctx.author}",
         )
-        user = await self.fetch_user(row.user_id)
         view = UrlView({"Go to message": cmsg.jump_url})
         await self.log_channel.send(embed=embed, view=view)
         embed.description = f"**{pokemon}** has been forcefully unclaimed from you."
@@ -494,7 +494,8 @@ class Afd(AfdGist):
         if conf is False:
             return
 
-        self.sheet.approve(pokemon, by=ctx.author.id)
+        user = await self.fetch_user(row.user_id)
+        row = self.sheet.approve(pokemon, by=ctx.author.id)
         await self.sheet.update_row(row.dex)
         await cmsg.edit(
             embed=self.confirmation_embed(
@@ -510,7 +511,6 @@ class Afd(AfdGist):
             colour=EmbedColours.APPROVED,
             footer=f"by {ctx.author}",
         )
-        user = await self.fetch_user(row.user_id)
         view = UrlView({"Go to message": cmsg.jump_url})
         await self.log_channel.send(embed=embed, view=view)
         await self.send_notification(embed, user=user, ctx=ctx, view=view)
@@ -552,7 +552,8 @@ class Afd(AfdGist):
         if conf is False:
             return
 
-        self.sheet.unapprove(pokemon)
+        user = await self.fetch_user(row.user_id)
+        row = self.sheet.unapprove(pokemon)
         await self.sheet.update_row(row.dex)
         await cmsg.edit(
             embed=self.confirmation_embed(
@@ -567,7 +568,6 @@ class Afd(AfdGist):
             colour=EmbedColours.UNREVIEWED,
             footer=f"by {ctx.author}",
         )
-        user = await self.fetch_user(row.user_id)
         view = UrlView({"Go to message": cmsg.jump_url})
         await self.log_channel.send(embed=embed, view=view)
         await self.send_notification(embed, user=user, ctx=ctx, view=view)
@@ -644,7 +644,8 @@ class Afd(AfdGist):
         if conf is False:
             return
 
-        self.sheet.comment(pokemon, comment, by=ctx.author.id)
+        user = await self.fetch_user(row.user_id)
+        row = self.sheet.comment(pokemon, comment, by=ctx.author.id)
         await self.sheet.update_row(row.dex)
 
         await cmsg.edit(
@@ -659,7 +660,6 @@ class Afd(AfdGist):
             row=row,
             colour=EmbedColours.CORRECTION,
         )
-        user = await self.fetch_user(row.user_id)
         view = UrlView({"Go to message": cmsg.jump_url})
         await self.log_channel.send(embed=embed, view=view)
 
@@ -699,7 +699,8 @@ class Afd(AfdGist):
         if conf is False:
             return
 
-        self.sheet.comment(pokemon, None, by=None)
+        user = await self.fetch_user(row.user_id)
+        row = self.sheet.comment(pokemon, None, by=None)
         await self.sheet.update_row(row.dex)
         conf_desc = f"""The following comment (by **{approved_by}**) on **{pokemon}** has been cleared:
 > {row.comment}"""
@@ -715,7 +716,6 @@ class Afd(AfdGist):
             row=row,
             colour=EmbedColours.UNREVIEWED,
         )
-        user = await self.fetch_user(row.user_id)
         view = UrlView({"Go to message": cmsg.jump_url})
         await self.log_channel.send(embed=embed, view=view)
 
@@ -954,7 +954,7 @@ and lets you directly perform actions such as:
         if claimed is True:
             return
 
-        self.sheet.claim(ctx.author, pokemon)
+        row = self.sheet.claim(ctx.author, pokemon)
         await self.sheet.update_row(row.dex)
         embed = self.confirmation_embed(
             f"You have successfully claimed **{pokemon}**, have fun! :D",
@@ -1043,7 +1043,7 @@ and lets you directly perform actions such as:
         if not_claimed is True:
             return
 
-        self.sheet.unclaim(pokemon)
+        row = self.sheet.unclaim(pokemon)
         await self.sheet.update_row(row.dex)
         embed = self.confirmation_embed(
             f"You have successfully unclaimed **{pokemon}**.",

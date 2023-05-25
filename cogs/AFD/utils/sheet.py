@@ -241,18 +241,20 @@ class AfdSheet:
             return False
         return True
 
-    def claim(self, user: Union[discord.User, discord.Member], pokemon: str):
+    def claim(self, user: Union[discord.User, discord.Member], pokemon: str) -> Row:
         self.edit_row_where(
             PKM_LABEL, pokemon, set_column=USER_ID_LABEL, to_val=str(user.id)
         )
         for col in self.df.columns[self.df.columns.get_loc(IMAGE_LABEL):]:  # For all columns after Discord ID
             self.edit_row_where(PKM_LABEL, pokemon, set_column=col, to_val=None)
+        return self.get_pokemon_row(pokemon)
 
-    def unclaim(self, pokemon: str):
+    def unclaim(self, pokemon: str) -> Row:
         for col in self.df.columns[self.df.columns.get_loc(USER_ID_LABEL):]:  # For all columns after Pokemon
             self.edit_row_where(PKM_LABEL, pokemon, set_column=col, to_val=None)
+        return self.get_pokemon_row(pokemon)
 
-    def submit(self, pokemon: str, *, image_url: str):
+    def submit(self, pokemon: str, *, image_url: str) -> Row:
         self.edit_row_where(
             PKM_LABEL, pokemon, set_column=IMAGE_LABEL, to_val=str(image_url)
         )
@@ -262,19 +264,22 @@ class AfdSheet:
         self.edit_row_where(
             PKM_LABEL, pokemon, set_column=COMMENT_LABEL, to_val=None
         )  # Clear any comment
+        return self.get_pokemon_row(pokemon)
 
-    def approve(self, pokemon: str, *, by: int):
+    def approve(self, pokemon: str, *, by: int) -> Row:
         self.edit_row_where(
             PKM_LABEL, pokemon, set_column=APPROVED_LABEL, to_val=str(by)
         )
         self.edit_row_where(
             PKM_LABEL, pokemon, set_column=COMMENT_LABEL, to_val=None
         )  # Clear any comment
+        return self.get_pokemon_row(pokemon)
 
-    def unapprove(self, pokemon: str):
+    def unapprove(self, pokemon: str) -> Row:
         self.edit_row_where(PKM_LABEL, pokemon, set_column=APPROVED_LABEL, to_val=None)
+        return self.get_pokemon_row(pokemon)
 
-    def comment(self, pokemon: str, comment: Union[str, None], *, by: Union[int, None]):
+    def comment(self, pokemon: str, comment: Union[str, None], *, by: Union[int, None]) -> Row:
         self.edit_row_where(
             PKM_LABEL,
             pokemon,
@@ -284,3 +289,4 @@ class AfdSheet:
         self.edit_row_where(
             PKM_LABEL, pokemon, set_column=APPROVED_LABEL, to_val=str(by) if by else by
         )  # Set approved col to whoever commented
+        return self.get_pokemon_row(pokemon)
