@@ -865,7 +865,7 @@ and lets you directly perform actions such as:
     @_list.command(
         name="approved",
         brief="View approved pokemon",
-        help="View a list of pokemon that are that have been submitted and approved.",
+        help="View a list of pokemon that have been submitted and approved.",
     )
     async def list_approved(self, ctx: CustomContext):
         await self.sheet.update_df()
