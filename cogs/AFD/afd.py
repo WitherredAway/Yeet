@@ -59,10 +59,15 @@ class Afd(AfdGist):
         self.bot.afd_update_channel = await self.bot.fetch_channel(AFD_UPDATE_CHANNEL_ID)
         self.bot.afd_credits_gist = await self.bot.wgists_client.get_gist(AFD_CREDITS_GIST_URL)
 
+
+    async def reload_sheet(self):
+        self.sheet = AfdSheet(SHEET_URL, pokemon_df=self.pk)
         start = time.time()
-        self.bot.afd_sheet = AfdSheet(SHEET_URL, pokemon_df=self.pk)
         await self.sheet.setup()
         logger.info(f"AFD: Fetched spreadsheet in {round(time.time()-start, 2)}s")
+
+    async def cog_load(self):
+        await self.reload_sheet()
 
     @force_log_errors
     async def cog_unload(self):
@@ -79,10 +84,6 @@ class Afd(AfdGist):
     @property
     def credits_gist(self) -> gists.Gist:
         return self.bot.afd_credits_gist
-
-    @property
-    def sheet(self) -> AfdSheet:
-        return self.bot.afd_sheet
 
     @property
     def pk(self) -> pd.DataFrame:
@@ -296,8 +297,7 @@ class Afd(AfdGist):
     )
     async def forceupdate(self, ctx: CustomContext):
         await ctx.message.add_reaction("▶️")
-        self.bot.afd_sheet = AfdSheet(SHEET_URL, pokemon_df=self.pk)
-        await self.sheet.setup()
+        await self.reload_sheet()
         await self.update_credits()
         await ctx.message.add_reaction("✅")
 
