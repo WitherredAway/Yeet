@@ -31,7 +31,6 @@ from .utils.constants import (
     AFD_ADMIN_ROLE_ID,
     AFD_ROLE_ID,
     CLAIM_LIMIT,
-    DEL_ATTRS_TO_UPDATE,
     AFD_LOG_CHANNEL_ID,
     AFD_UPDATE_CHANNEL_ID,
 )
@@ -294,7 +293,7 @@ class Afd(AfdGist):
     )
     async def forceupdate(self, ctx: CustomContext):
         await ctx.message.add_reaction("▶️")
-        await self.sheet.update()
+        await self.sheet.setup()
         await self.update_credits()
         await ctx.message.add_reaction("✅")
 
