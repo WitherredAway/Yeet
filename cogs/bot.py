@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import datetime
+import sys
+import traceback
 import typing
 
 import discord
@@ -74,7 +76,8 @@ class BotCog(commands.Cog):
 
         else:
             await ctx.send(str(error)[:2000])
-            raise error
+            print(f'Ignoring exception in command {ctx.command}:', file=sys.stderr)
+            traceback.print_exception(type(error), error, error.__traceback__, file=sys.stderr)
 
     # logs
     @commands.Cog.listener(name="on_command")
