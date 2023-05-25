@@ -11,7 +11,6 @@ from cogs.AFD.utils.constants import FIRST_ROW_IDX
 from .urls import SUBMISSION_URL
 from .utils import EmbedColours, Row
 from ...utils.utils import SimpleModal
-from helpers.constants import NL
 from helpers.context import CustomContext
 from .labels import (
     COMMENT_LABEL,
@@ -384,6 +383,15 @@ class PokemonView(discord.ui.View):
             color = EmbedColours.UNCLAIMED.value
             embed.set_footer(text=status)
             self.add_item(self.claim_btn)  # Add claim button if not claimed
+
+        if self.afdcog.is_admin(self.ctx.author):
+            self.add_item(
+                discord.ui.Button(
+                    label="Jump To Spreadsheet",
+                    url=self.sheet.get_pokemon_loc(row.dex),
+                    row=2
+                )
+            )  # Add jump to spreadsheet button if admin
 
         embed.color = color
 

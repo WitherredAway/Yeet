@@ -203,6 +203,9 @@ class AfdSheet:
     def get_pokemon(self, name: str) -> str:
         return get_pokemon(name, pk=self.pk)
 
+    def get_pokemon_loc(self, dex: int) -> str:
+        return f"{self.url}/edit#gid=0&range=B{dex + COL_OFFSET}"
+
     def get_pokemon_dex(self, pokemon: str) -> int:
         try:
             return int(self.pk[self.pk[ENGLISH_NAME_LABEL_P] == pokemon][DEX_LABEL_P])
