@@ -847,16 +847,17 @@ and lets you directly perform actions such as:
         menu = ListPageMenu(src, ctx=ctx, select=True)
         await menu.start()
 
-    async def per_user_fmt(self, rows: List[Row]) -> List[str]:
+    async def per_user_fmt(self, rows: List[Row], *, joiner: Optional[str] = "\n>    ", enumerate: Optional[bool] = False) -> List[str]:
         users: DefaultDict[discord.User, List[str]] = defaultdict(list)
         for row in rows:
             users[await self.fetch_user(row.user_id)].append(f"`{row.pokemon}`")
 
         entries = []
         for user, pokemon in users.items():
-            pkm = "\n    ".join(enumerate_list(pokemon))
-            entry = f"""- **{str(user)}** ({user.id}) - {len(pokemon)}
-    {pkm}"""
+            pokemon = enumerate_list(pokemon) if enumerate else pokemon
+            pkm = joiner.join(pokemon)
+            entry = f"""- **{str(user)}** ({user.id}) [`{len(pokemon)}`]
+>    {pkm}"""
             entries.append(entry)
         entries.sort()
 
@@ -874,9 +875,27 @@ and lets you directly perform actions such as:
         stats = self.get_stats()
         approved = stats.approved
 
-        entries = await self.per_user_fmt(approved.rows)
+        entries = await self.per_user_fmt(approved.rows, enumerate=True)
 
         src = ListPageSource(approved, entries=entries, dynamic_pages=True, max_per_page=3)
+        menu = ListPageMenu(src, ctx=ctx)
+        await menu.start()
+
+    @_list.command(
+        name="unreviewed",
+        aliases=("unr", "submitted"),
+        brief="View submitted pokemon awaiting review",
+        help="View a list of pokemon that have been submitted but no review (comment/approval) yet.",
+    )
+    async def list_unreviewed(self, ctx: CustomContext):
+        await self.sheet.update_df()
+
+        stats = self.get_stats()
+        unreviewed = stats.unreviewed
+
+        entries = await self.per_user_fmt(unreviewed.rows)
+
+        src = ListPageSource(unreviewed, entries=entries, dynamic_pages=True, max_per_page=5)
         menu = ListPageMenu(src, ctx=ctx)
         await menu.start()
 
