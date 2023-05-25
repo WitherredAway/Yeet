@@ -855,7 +855,7 @@ and lets you directly perform actions such as:
         entries = []
         for user, pokemon in users.items():
             pkm = "\n    ".join(enumerate_list(pokemon))
-            entry = f"""- {str(user)} ({user.id}) - {len(pokemon)}
+            entry = f"""- **{str(user)}** ({user.id}) - {len(pokemon)}
     {pkm}"""
             entries.append(entry)
         entries.sort()
