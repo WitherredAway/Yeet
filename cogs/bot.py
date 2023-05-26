@@ -23,6 +23,8 @@ class BotCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message_edit(self, before: discord.Message, after: discord.Message):
+        if after.pinned is not before.pinned:
+            return
         await self.bot.process_commands(after)
 
     @commands.Cog.listener()
