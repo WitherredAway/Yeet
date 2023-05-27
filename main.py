@@ -152,9 +152,11 @@ class Bot(commands.Bot):
             + LOG_BORDER
         )
 
-        for cog in self.cogs:
-            if hasattr("cog", "setup"):
+        for name, cog in self.cogs.items():
+            try:
                 await cog.setup()
+            except AttributeError:
+                continue
 
         total_s: int = (datetime.datetime.utcnow() - self.uptime).seconds
         m, s = divmod(total_s, 60)
