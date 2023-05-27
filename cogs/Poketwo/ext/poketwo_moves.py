@@ -1,13 +1,15 @@
 import typing
-from typing import Optional, TypeVar
+from typing import List, Optional, TypeVar
 from dataclasses import dataclass
 from functools import cached_property
+from cogs.RDanny.utils.paginator import BotPages
+from cogs.utils.utils import enumerate_list, make_progress_bar
 import gists
 
-from discord.ext import commands
+from discord.ext import commands, menus
 import pandas as pd
 
-from helpers.constants import CODE_BLOCK_FMT
+from helpers.constants import CODE_BLOCK_FMT, EMBED_DESC_CHAR_LIMIT
 
 if typing.TYPE_CHECKING:
     from main import Bot
@@ -218,6 +220,36 @@ class Data:
         return pokemon
 
 
+PER_PAGE = 30
+
+class PokemonPageSource(menus.ListPageSource):
+    def __init__(self, move: Move, per_page=PER_PAGE):
+        self.move = move
+        entries = enumerate_list(move.pokemon)
+        super().__init__(entries, per_page=per_page)
+
+    async def format_page(self, menu: BotPages, entries):
+        move = self.move
+        embed = menu.ctx.bot.Embed(title=move.name)
+        joined = "\n".join(entries) if len(entries) > 0 else "None"
+        joined = CODE_BLOCK_FMT % joined
+
+        last_entry = int(entries[-1].split('\u200b')[0])  #!IMPORTANT this depends on enumeration of entries
+        format = (
+            f"**Type:** {move.type}\n"
+            f"**Class:** {move.damage_class}\n\n"
+            f"**Leveling learnset in *Gen 8 (Galar)*** [`{last_entry}/{len(self.entries)}`]\n"
+            f"{make_progress_bar(last_entry, len(self.entries), length=15)}\n"
+            f"%s"
+        )
+
+        final = format % joined
+
+        embed.description = final
+        embed.set_footer(text=f"Use the `@Pokétwo#8236 moveset <pokemon>` command to see how each pokemon obtains the move.")
+        return embed
+
+
 class PoketwoMoves(commands.Cog):
     """The cog for poketwo move related commands"""
 
@@ -231,45 +263,6 @@ class PoketwoMoves(commands.Cog):
             self.bot.p2_data = Data(self.bot)
             await self.bot.p2_data.init()
         return self.bot.p2_data
-
-    async def format_movesets_message(self, move: Move):
-        pokemon = move.pokemon
-        joined = ", ".join(pokemon) if len(pokemon) > 0 else "None"
-        joined = CODE_BLOCK_FMT % joined
-
-        format = (
-            f"__**{move.name}**__\n"
-            f"**Type:** {move.type}\n"
-            f"**Class:** {move.damage_class}\n\n"
-            f"**Leveling learnset, in *Gen 8 (Galar)*** [`{len(pokemon)}`]\n"
-            f"%s"
-        )
-
-        final = format % joined
-        if len(final) > 2000:  # Character limit
-
-            pokemon = sorted(
-                [[pkm.name, pkm.level] for pkm in move.pokemon_objs],
-                key=lambda p: p[1],
-            )
-            gen_8_df = pd.DataFrame(
-                pokemon,
-                columns=["Pokemon (Gen 8)", "Required level"],
-            )
-
-            files = [
-                gists.File(
-                    name="gen_8_table.csv", content=gen_8_df.to_csv(index=False)
-                ),
-            ]
-            description = f"Pokemon that learn the move {move.name} by leveling."
-            gist = await self.bot.gists_client.create_gist(
-                files=files, description=description, public=False
-            )
-
-            final = format % f"<{gist.url}#file-gen_8_table-csv>"  # Header of the gen 8 file
-
-        return final
 
     @commands.group(
         name="moveinfo",
@@ -285,7 +278,10 @@ class PoketwoMoves(commands.Cog):
                 move = data.move_by_name(move_name)
             except IndexError:
                 return await ctx.send(f"No move named `{move_name}` exists!")
-        await ctx.send(await self.format_movesets_message(move))
+
+        source = PokemonPageSource(move)
+        menu = BotPages(source, ctx=ctx, check_embeds=True, compact=True)
+        await menu.start()
 
     @moveinfo.command(
         name="resync",

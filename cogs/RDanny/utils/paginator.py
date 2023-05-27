@@ -96,6 +96,8 @@ class BotPages(discord.ui.View):
 
         self.go_to_last_page.disabled = (page_number + 1) >= max_pages
         self.go_to_last_page.label = LAST_PAGE_SYMBOL if (page_number + 1) >= max_pages else f"{LAST_PAGE_SYMBOL} {max_pages}"
+
+        self.go_to_current_page.label = f"{page_number + 1}/{max_pages}"
         if self.compact:
             max_pages = self.source.get_max_pages()
             self.go_to_last_page.disabled = (
@@ -108,7 +110,6 @@ class BotPages(discord.ui.View):
             return
 
         self.go_to_previous_page.label = f"{page_number} {PREVIOUS_PAGE_SYMBOL}"
-        self.go_to_current_page.label = f"{page_number + 1}/{max_pages}"
         self.go_to_next_page.label = f"{NEXT_PAGE_SYMBOL} {page_number + 2}"
 
         self.go_to_next_page.disabled = False
