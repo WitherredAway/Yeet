@@ -152,7 +152,9 @@ class Bot(commands.Bot):
             + LOG_BORDER
         )
 
-        await self.get_cog("Afd").setup()
+        for cog in self.cogs:
+            if hasattr("cog", "setup"):
+                await cog.setup()
 
         total_s: int = (datetime.datetime.utcnow() - self.uptime).seconds
         m, s = divmod(total_s, 60)
