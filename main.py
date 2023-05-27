@@ -1,17 +1,18 @@
 from __future__ import annotations
 
+import time
+start_time = time.time()
+
 import asyncio
 import datetime
 import logging
 import os
 import sys
-import time
 from functools import cached_property
 from typing import Any, Union
 
 import aiohttp
 import discord
-from cogs.AFD.afd import AFDRoleMenu
 import gists
 from discord.ext import commands
 import pandas as pd
@@ -61,6 +62,7 @@ class Bot(commands.Bot):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.start_time: float
 
         self.uptime = datetime.datetime.utcnow()
         self.activity = discord.Game(f"{self.PREFIXES[0]}help")
@@ -158,9 +160,9 @@ class Bot(commands.Bot):
             except AttributeError:
                 continue
 
-        total_s: int = (datetime.datetime.utcnow() - self.uptime).seconds
-        m, s = divmod(total_s, 60)
-        msg = f"\033[32;1m{self.user}\033[0;32m connected in \033[33;1m{m}m{s}s\033[0;32m.\033[0m"
+        time_taken = time.time() - self.start_time
+        m, s = divmod(time_taken, 60)
+        msg = f"\033[32;1m{self.user}\033[0;32m connected in \033[33;1m{round(m)}m{round(s, 2)}s\033[0;32m.\033[0m"
         await self.status_channel.send(f"```ansi\n{msg}\n```")
         log.info(msg)
 
@@ -260,4 +262,5 @@ if __name__ == "__main__":
                 print("\033[0;31mRate-limit detected, restarting process.\033[0m")
                 os.system(f"kill 1 && python3 {sys.argv[0]}")
     else:
+        bot.start_time = start_time
         bot.run(TOKEN)
