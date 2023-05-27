@@ -138,8 +138,6 @@ class Bot(commands.Bot):
         self.wgists_client = gists.Client()
         await self.wgists_client.authorize(os.getenv("WgithubTOKEN"))
 
-        self.add_view(AFDRoleMenu())
-
         ext_start = time.time()
         log.info("Started loading extensions" + NL + LOG_BORDER)
         for filename in set(self.COGS.values()):
@@ -162,7 +160,7 @@ class Bot(commands.Bot):
 
         time_taken = time.time() - self.start_time
         m, s = divmod(time_taken, 60)
-        msg = f"\033[32;1m{self.user}\033[0;32m connected in \033[33;1m{round(m)}m{round(s, 2)}s\033[0;32m.\033[0m"
+        msg = f"\033[32;1m{self.user}\033[0;32m connected in \033[33;1m{round(m)}m{round(s)}s\033[0;32m.\033[0m"
         await self.status_channel.send(f"```ansi\n{msg}\n```")
         log.info(msg)
 

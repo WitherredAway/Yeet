@@ -59,6 +59,7 @@ class Afd(AfdGist):
         self.bot.afd_update_channel = await self.bot.fetch_channel(AFD_UPDATE_CHANNEL_ID)
         self.bot.afd_credits_gist = await self.bot.wgists_client.get_gist(AFD_CREDITS_GIST_URL)
 
+        self.bot.add_view(AFDRoleMenu())
 
     async def reload_sheet(self):
         self.sheet = AfdSheet(SHEET_URL, pokemon_df=self.pk)
