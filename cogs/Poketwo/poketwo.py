@@ -3,6 +3,8 @@ from typing import Optional
 import discord
 from discord.ext import commands
 
+from cogs.utils.utils import force_log_errors, reload_modules
+
 from .ext.poketwo_chances import PoketwoChances
 from .ext.poketwo_moves import PoketwoMoves
 
@@ -13,6 +15,10 @@ class Poketwo(PoketwoChances, PoketwoMoves):
     pattern = re.compile(r"^`?\s*(\d+)`?\b", re.MULTILINE)
 
     display_emoji = "🫒"
+
+    @force_log_errors
+    async def cog_unload(self):
+        reload_modules("cogs/Poketwo", skip=__name__)
 
     @commands.command(
         name="extract_ids",

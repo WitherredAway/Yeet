@@ -23,8 +23,6 @@ class BotCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message_edit(self, before: discord.Message, after: discord.Message):
-        if after.pinned is not before.pinned:
-            return
         await self.bot.process_commands(after)
 
     @commands.Cog.listener()
@@ -125,9 +123,7 @@ class BotCog(commands.Cog):
     async def ping(self, ctx: commands.Context):
         message = await ctx.send("Pong!")
         ms = int((message.created_at - ctx.message.created_at).total_seconds() * 1000)
-        await message.edit(content=f"Pong! {ms} ms")
-
-    # uptime
+        await ctx.send(f"Pong! {round(self.bot.latency * 1000)}ms")
     @commands.command(
         name="uptime",
         brief="How long the bot has been up.",
