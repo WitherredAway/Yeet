@@ -89,7 +89,7 @@ class Move:
 class Data:
     def __init__(self, bot):
         self.bot: Bot = bot
-        self.pk = self.bot.original_pk
+        self.pk = self.bot.original_pk.set_index("id")
 
     async def init(self):
         await self.bot.loop.run_in_executor(None, self.fetch_data)
@@ -126,13 +126,6 @@ class Data:
         )
 
         self.pkm_grouped = self.pkm_moves_data.groupby("move_id")
-
-        # pokemon_species_names.csv
-        self.pkm_names_data = pd.read_csv(
-            POKEMON_NAMES,
-            index_col=0,
-            usecols=["id", "name.en"],
-        )
 
     @cached_property
     def moves(self) -> typing.Dict[int, Move]:
@@ -198,14 +191,14 @@ class Data:
         grouped = self.pkm_grouped
 
         pokemon = []
-        pkm_names = self.pkm_names_data
+        pkm_names = self.pk
 
         move_group = (
             grouped.get_group(move_id) if move_id in grouped.groups else None
         )
         if move_group is not None:
             for pkm_id, row in move_group.iterrows():
-                if (self.pk.loc[self.pk["id"] == pkm_id, "enabled"].values[0] > 0) is False:
+                if not (pkm_names.loc[pkm_id, "enabled"] > 0):
                     continue
                 pkm_name = pkm_names.loc[pkm_id, "name.en"]
 
