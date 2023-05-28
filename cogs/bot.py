@@ -125,7 +125,9 @@ class BotCog(commands.Cog):
     async def ping(self, ctx: commands.Context):
         message = await ctx.send("Pong!")
         ms = int((message.created_at - ctx.message.created_at).total_seconds() * 1000)
-        await ctx.send(f"Pong! {round(self.bot.latency * 1000)}ms")
+        await message.edit(content=f"Pong! {ms} ms")
+
+    # uptime
     @commands.command(
         name="uptime",
         brief="How long the bot has been up.",
