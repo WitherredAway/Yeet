@@ -1,7 +1,9 @@
 import asyncio
+import time
 
 import discord
 from discord.ext import commands
+from cogs.utils.utils import enumerate_list
 
 from helpers.context import CustomContext
 
@@ -28,6 +30,9 @@ class RepeatView(discord.ui.View):
     async def repeat(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         await self.ctx.bot.process_commands(self.ctx.message)
+
+
+NOT_FOUND_MSG = "❌ Extension not found"
 
 
 class Developer(commands.Cog):
@@ -64,7 +69,7 @@ class Developer(commands.Cog):
     @commands.is_owner()
     @commands.group(
         name="cog",
-        aliases=("c",),
+        aliases=("c", "ext", "extension"),
         invoke_without_command=True,
         case_insensitive=True,
         brief="Cog related commands.",
@@ -78,74 +83,95 @@ class Developer(commands.Cog):
     @cog.command(
         name="load",
         aliases=("l",),
-        brief="Load a cog",
-        help="Loads a cog with the name, dev only command.",
+        brief="Load an extension",
+        help="Loads an extension by name. Dev only command.",
     )
-    async def _load(self, ctx: commands.Context, cog: str):
-        try:
-            cog = self.bot.COGS.get(cog, cog)
-            await self.bot.load_extension(f"cogs.{cog}")
-        except (KeyError, commands.ExtensionNotFound):
-            message = f":x: Cog `{cog}` not found."
-        except commands.ExtensionAlreadyLoaded:
-            message = f"Cog `{cog}` is already loaded."
-        else:
-            message = f":inbox_tray: Loaded cog `{cog}`"
+    async def _load(self, ctx: commands.Context, ext: str):
+        async with ctx.typing():
+            start = time.time()
+            try:
+                ext = self.bot.COGS[ext]
+                ext = f"cogs.{ext}"
+                await self.bot.load_extension(ext)
+            except (KeyError, commands.ExtensionNotFound):
+                title = NOT_FOUND_MSG
+            except commands.ExtensionAlreadyLoaded:
+                title = f"Extension already loaded"
+            else:
+                title = f"📥 Loaded extension"
 
-        view = RepeatView(ctx)
-        view.message = await ctx.send(message, view=view)
+            desc = f"`{ext}`"
+
+            view = RepeatView(ctx)
+            embed = self.bot.Embed(title=title, description=desc)
+            embed.set_footer(text=f"Completed in {round(time.time() - start, 2)}s")
+            view.message = await ctx.send(embed=embed, view=view)
 
     # Cog unload command for unloading cogs
     @commands.is_owner()
     @cog.command(
         name="unload",
         aliases=("u",),
-        brief="Unloads a cog",
-        help="Unloads a cog with the name, dev only command.",
+        brief="Unloads an extension",
+        help="Unloads an extension by name. Dev only command.",
     )
-    async def _unload(self, ctx: commands.Context, cog: str):
-        try:
-            cog = self.bot.COGS.get(cog, cog)
-            if cog.lower() == "admin":
-                message = ":x: Cannot unload this cog"
+    async def _unload(self, ctx: commands.Context, ext: str):
+        async with ctx.typing():
+            start = time.time()
+            try:
+                ext = self.bot.COGS[ext]
+                ext = f"cogs.{ext}"
+                if ext == __name__:
+                    title = "❌ Cannot unload extension"
+                else:
+                    await self.bot.unload_extension(ext)
+            except (KeyError, commands.ExtensionNotFound):
+                title = NOT_FOUND_MSG
             else:
-                await self.bot.unload_extension(f"cogs.{cog}")
-        except (KeyError, commands.ExtensionNotFound):
-            message = f":x: Cog `{cog}` not found."
-        else:
-            message = f":outbox_tray: Unloaded cog `{cog}`"
+                title = f"📤 Unloaded extension"
 
-        view = RepeatView(ctx)
-        view.message = await ctx.send(message, view=view)
+            desc = f"`{ext}`"
+
+            view = RepeatView(ctx)
+            embed = self.bot.Embed(title=title, description=desc)
+            embed.set_footer(text=f"Completed in {round(time.time() - start, 2)}s")
+            view.message = await ctx.send(embed=embed, view=view)
 
     # Cog reload command for reloading cogs
     @commands.is_owner()
     @cog.command(
         name="reload",
         aliases=("r",),
-        brief="Reloads a cog",
-        help="Reloads a cog with the name, dev only command.",
+        brief="Reloads one or `all` extensions",
+        help="Reloads an extension by name. Pass `all` to reload all extensions. Dev only command.",
     )
     async def _reload(self, ctx: CustomContext, *, ext: str):
-        await ctx.typing()
-        if ext == "all":
-            cogs = []
-            for cog_ext in list(self.bot.extensions):
-                await self.bot.reload_extension(cog_ext)
-                cog_name = cog_ext[5:] if cog_ext.startswith("cogs.") else cog_ext
-                cogs.append(f"\n🔁 Reloaded cog `{cog_name}`")
-            message = ", ".join(cogs)
-        else:
-            try:
-                ext = self.bot.COGS.get(ext, ext)
-                await self.bot.reload_extension(f"cogs.{ext}")
-            except (KeyError, commands.ExtensionNotLoaded):
-                message = f":x: Cog `{ext}` not found."
+        async with ctx.typing():
+            start = time.time()
+            title = desc = None
+            if ext == "all":
+                exts = []
+                for ext in list(self.bot.extensions):
+                    await self.bot.reload_extension(ext)
+                    exts.append(f"`{ext}`")
+                title = f"🔁 Reloaded {len(exts)} extensions"
+                desc = "\n".join(enumerate_list(exts))
             else:
-                message = f":repeat: Reloaded cog `{ext}`"
+                try:
+                    ext = self.bot.COGS[ext]
+                    ext = f"cogs.{ext}"
+                    await self.bot.reload_extension(ext)
+                except (KeyError, commands.ExtensionNotLoaded):
+                    title = NOT_FOUND_MSG
+                else:
+                    title = f"🔁 Reloaded extension"
 
-        view = RepeatView(ctx)
-        view.message = await ctx.send(message, view=view)
+                desc = f"`{ext}`"
+
+            view = RepeatView(ctx)
+            embed = self.bot.Embed(title=title, description=desc)
+            embed.set_footer(text=f"Completed in {round(time.time() - start, 2)}s")
+            view.message = await ctx.send(embed=embed, view=view)
 
     # cog all
     @commands.is_owner()
@@ -157,16 +183,13 @@ class Developer(commands.Cog):
         help="Lists all cogs, dev only command.",
     )
     async def _all(self, ctx):
-        extlist = self.bot.Embed(title="Cogs", description="List of all enabled cogs")
-
+        exts = []
         for ext in self.bot.extensions:
-            extn = (
-                ext.split(".")[1].capitalize()
-                if ext.startswith("cogs")
-                else ext.capitalize()
-            )
-            extlist.add_field(name=extn, value=str(ext), inline=False)
-        await ctx.send(embed=extlist)
+            extn = ext.split(".")[-1].capitalize()
+            exts.append(f"**{extn}** - `{str(ext)}`")
+
+        embed = self.bot.Embed(title=f"All loaded extensions ({len(exts)})", description="\n".join(enumerate_list(exts)))
+        await ctx.send(embed=embed)
 
 
 async def setup(bot: commands.Bot):
