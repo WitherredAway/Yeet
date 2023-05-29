@@ -814,8 +814,8 @@ and lets you directly perform actions such as:
 
     @afd.group(
         name="list",
-        brief="Show a user's stats",
-        help="Used to see a user's stats. To see your own, leave the user argument empty.",
+        brief="View a user's stats, categorized",
+        help="View lists of every category of pokemon of a specific user. To see your own, leave the user argument empty.",
         invoke_without_command=True,
     )
     async def _list(
@@ -832,7 +832,7 @@ and lets you directly perform actions such as:
 
     @_list.command(
         name="all",
-        brief="View all pokemon, categorized",
+        brief="View all stats, categorized",
         help="View lists of every category of pokemon."
     )
     async def list_all(self, ctx: CustomContext):
