@@ -805,8 +805,9 @@ and lets you directly perform actions such as:
             embed.description += f"\n**Total submitted pokemon**: {stats.submitted.amount}"
 
         embed.set_footer(
-            text="Use the `afd view <pokemon>` command to see more info on an entry"
+            text=f"Use the `{ctx.clean_prefix}afd view <pokemon>` command to see more info on and interact with an entry"
         )
+
         categories = [stats.correction_pending, stats.incomplete, stats.unreviewed, stats.approved]
         menu = StatsPageMenu(categories, ctx=ctx, original_embed=embed, total_amount=total_amount)
         await menu.start()
@@ -847,14 +848,14 @@ and lets you directly perform actions such as:
     def bold_initials_fmt(rows: List[Row]) -> List[str]:
         entries = []
         initials = []
-        for idx, row in enumerate(rows):
+        for row in rows:
             pokemon = row.pokemon
             i, bolded = get_initial(pokemon, bold=True)
             if i not in initials:
-                entries.append(f"{idx + 1}. {bolded}")
+                entries.append(bolded)
                 initials.append(i)
             else:
-                entries.append(f"{idx + 1}. {pokemon}")
+                entries.append(pokemon)
         return entries
 
     @_list.command(
@@ -867,7 +868,7 @@ and lets you directly perform actions such as:
         await self.sheet.update_df()
         stats = self.get_stats()
         category = stats.unclaimed
-        entries = self.bold_initials_fmt(category.rows)
+        entries = enumerate_list(self.bold_initials_fmt(category.rows))
 
         src = ListPageSource(category, entries=entries)
         menu = ListPageMenu(src, ctx=ctx, select=True)

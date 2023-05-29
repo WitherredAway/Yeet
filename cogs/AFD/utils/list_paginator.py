@@ -284,6 +284,9 @@ class ListPageSource(menus.ListPageSource):
 
     async def format_page(self, menu: ListPageMenu, entries: List[str]):
         embed = menu.bot.Embed(title=f"{self.category.name} {self.category.progress()}\n{self.category.progress_bar()}", description=self.joiner.join(entries))
+        embed.set_footer(
+            text=f"Use the `{menu.ctx.clean_prefix}afd view <pokemon>` command to see more info on and interact with an entry"
+        )
         return embed
 
 
