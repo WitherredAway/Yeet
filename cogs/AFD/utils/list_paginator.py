@@ -9,7 +9,7 @@ import discord
 from discord.ext import menus
 
 
-from .utils import Category
+from .utils import Category, get_initial
 from cogs.utils.utils import value_to_option_dict
 from cogs.RDanny.utils.paginator import (
     FIRST_PAGE_SYMBOL,
@@ -154,20 +154,6 @@ class StatsSelectMenu(discord.ui.Select):
 
 
 LIST_PER_PAGE = 20
-
-def get_initial(
-    name: str, *, bold: Optional[bool] = False
-) -> Union[str, Optional[str]]:
-    initial = name[0]
-    bolded_name = [c for c in name]
-    for idx, letter in enumerate(name):
-        if letter.upper() in ALPHABET_EMOJIS.keys():
-            initial = letter
-            bolded_name[idx] = f"**{initial}**"
-            break
-        else:
-            continue
-    return (initial, "".join(bolded_name)) if bold else initial
 
 class ListPageMenu(BotPages):
     def __init__(

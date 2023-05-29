@@ -20,11 +20,10 @@ from cogs.AFD.utils.list_paginator import (
     ListPageSource,
     ListSelectMenu,
     StatsPageMenu,
-    get_initial,
 )
 from ..utils.utils import UrlView, enumerate_list, force_log_errors, reload_modules
 from .utils.views import AfdView, PokemonView
-from .utils.utils import AFDRoleMenu, Stats, EmbedColours, Row
+from .utils.utils import AFDRoleMenu, Stats, EmbedColours, Row, get_initial
 from .utils.urls import AFD_CREDITS_GIST_URL, SHEET_URL
 from .utils.sheet import AfdSheet
 from .utils.constants import (

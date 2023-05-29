@@ -21,6 +21,21 @@ if TYPE_CHECKING:
     from cogs.AFD.afd import Afd
 
 
+def get_initial(
+    name: str, *, bold: Optional[bool] = False
+) -> Union[str, Optional[str]]:
+    initial = name[0]
+    bolded_name = [c for c in name]
+    for idx, letter in enumerate(name):
+        if letter.upper() in ALPHABET_EMOJIS.keys():
+            initial = letter
+            bolded_name[idx] = f"**{initial}**"
+            break
+        else:
+            continue
+    return (initial, "".join(bolded_name)) if bold else initial
+
+
 class EmbedColours(Enum):
     INVALID: int = 0xCB3F49  # Invalid, Red
     UNCLAIMED: int = 0x6D6F77  # Not claimed, Grey
@@ -154,13 +169,22 @@ class Stats:
                     incomplete_rows.append(row)
             else:
                 unclaimed_rows.append(row)
-
         claimed_list = (correction_pending_rows + incomplete_rows + unreviewed_rows + approved_rows)
+        submitted_list = (correction_pending_rows + unreviewed_rows)
+
+        sort = lambda row: get_initial(row.pokemon)[0]
+        unclaimed_rows.sort(key=sort)
+        incomplete_rows.sort(key=sort)
+        correction_pending_rows.sort(key=sort)
+        unreviewed_rows.sort(key=sort)
+        approved_rows.sort(key=sort)
+        claimed_list.sort(key=sort)
+        submitted_list.sort(key=sort)
+
         self.claimed = Category(Categories.CLAIMED, claimed_list, total_amount=self.afdcog.total_amount)
         self.unclaimed = Category(Categories.UNCLAIMED, unclaimed_rows, total_amount=self.afdcog.total_amount, negative_pb=True)
 
         self.incomplete = Category(Categories.INCOMPLETE, incomplete_rows, total_amount=self.claimed.amount, negative_pb=True)
-        submitted_list = (correction_pending_rows + unreviewed_rows)
         self.submitted = Category(Categories.SUBMITTED, submitted_list, total_amount=self.claimed.amount)
         self.correction_pending = Category(Categories.CORRECTION, correction_pending_rows, total_amount=self.submitted.amount, negative_pb=True)
         self.unreviewed = Category(Categories.UNREVIEWED, unreviewed_rows, total_amount=self.submitted.amount, negative_pb=True)
