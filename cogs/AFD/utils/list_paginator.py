@@ -3,12 +3,11 @@ from collections import defaultdict
 import itertools
 import math
 
-from typing import TYPE_CHECKING, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Coroutine, List, Optional, Tuple, Union
 
 import discord
 from discord.ext import menus
 
-from cogs.Draw.utils.constants import ALPHABET_EMOJIS
 
 from .utils import Category
 from cogs.utils.utils import value_to_option_dict
@@ -175,19 +174,16 @@ class ListPageMenu(BotPages):
         self,
         source: menus.ListPageSource,
         *,
-        ctx: CustomContext,
-        select: Optional[bool] = False
+        ctx: CustomContext
     ):
         self.ctx = ctx
         self.bot = ctx.bot
-        self.do_select = select
         super().__init__(source, ctx=ctx)
-        if select is True and self.source.is_paginating():
-            self.select: ListSelectMenu = self.add_select(ListSelectMenu(self))
 
-    def add_select(self, select: discord.SelectMenu) -> discord.SelectMenu:
+    def add_selects(self, *selects: List[discord.SelectMenu]) -> discord.SelectMenu:
         self.clear_items()
-        self.add_item(select)
+        for select in selects:
+            self.add_item(select)
         self.fill_items()
         return select
 
@@ -200,8 +196,9 @@ class ListPageMenu(BotPages):
             for item in self.pagination_buttons:
                 if item not in self.children:
                     self.add_item(item)
-            if self.do_select is True:
-                self.select.set_default(str(self.current_page))
+            for item in self.children:
+                if isinstance(item, discord.ui.Select):
+                    item.update()
 
         max_pages = self.source.get_max_pages()
         self.go_to_first_page.disabled = page_number == 0
@@ -289,7 +286,6 @@ class ListPageSource(menus.ListPageSource):
         )
         return embed
 
-
 class ListSelectMenu(discord.ui.Select):
     def __init__(self, menu: ListPageMenu):
         super().__init__(placeholder="Jump to page", row=0)
@@ -311,6 +307,9 @@ class ListSelectMenu(discord.ui.Select):
                 value=str(page),
                 # emoji=ALPHABET_EMOJIS.get(initials[0], "#️⃣"),
             )
+
+    def update(self):
+        self.set_default(str(self.menu.current_page))
 
     def set_default(self, value_or_option: Union[str, discord.SelectOption]):
         if isinstance(value_or_option, discord.SelectOption):
@@ -352,3 +351,30 @@ class FieldPageSource(menus.ListPageSource):
         for name, value in entries:
             embed.add_field(name=name, value=value)
         return embed
+
+
+class ActionSelectMenu(discord.ui.Select):
+    def __init__(self, menu: ListPageMenu, *, action_func: Coroutine, placeholder: str):
+        super().__init__(placeholder=placeholder)
+        self.menu = menu
+        self.source = menu.source
+        self.action_func = action_func
+
+        self.category = self.source.category
+
+    def update(self):
+        self.options.clear()
+        base = self.menu.current_page * self.source.per_page
+        entries = self.source.entries[base: base + self.source.per_page]
+
+        for entry in entries:
+            idx = self.source.entries.index(entry)
+            pkm = self.category.pokemon[idx]
+            self.add_option(label=pkm, value=str(idx))
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        idx = int(self.values[0])
+        pokemon = self.category.pokemon[idx]
+        await self.action_func(self.menu.ctx, pokemon)
+        await interaction.edit_original_message()

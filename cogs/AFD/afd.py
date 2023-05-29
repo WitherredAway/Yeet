@@ -2,9 +2,7 @@ from __future__ import annotations
 from collections import defaultdict
 
 import logging
-import os
 import time
-from functools import cached_property
 from typing import TYPE_CHECKING, Callable, Coroutine, DefaultDict, List, Optional, Union
 import pandas as pd
 
@@ -12,13 +10,15 @@ import discord
 import gists
 from discord.ext import commands
 
-from helpers.constants import EMBED_DESC_CHAR_LIMIT, INDENT, NL
+from helpers.constants import INDENT, NL
 from helpers.context import CustomContext
 
 from cogs.AFD.utils.labels import PKM_LABEL
 from cogs.AFD.utils.list_paginator import (
+    ActionSelectMenu,
     ListPageMenu,
     ListPageSource,
+    ListSelectMenu,
     StatsPageMenu,
     get_initial,
 )
@@ -871,7 +871,11 @@ and lets you directly perform actions such as:
         entries = enumerate_list(self.bold_initials_fmt(category.rows))
 
         src = ListPageSource(category, entries=entries)
-        menu = ListPageMenu(src, ctx=ctx, select=True)
+        menu = ListPageMenu(src, ctx=ctx)
+        menu.add_selects(
+            ListSelectMenu(menu),
+            ActionSelectMenu(menu, action_func=self.claim, placeholder="Claim a pokemon")
+        )
         await menu.start()
 
     async def per_user_fmt(self, rows: List[Row], *, joiner: Optional[str] = ", ", enumerate: Optional[bool] = False) -> List[str]:

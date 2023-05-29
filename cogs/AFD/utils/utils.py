@@ -13,6 +13,7 @@ from cogs.AFD.utils.labels import (
     PKM_LABEL,
     USER_ID_LABEL,
 )
+from cogs.Draw.utils.constants import ALPHABET_EMOJIS
 
 from cogs.utils.utils import RoleMenu, enumerate_list, make_progress_bar
 
