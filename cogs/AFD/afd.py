@@ -124,6 +124,21 @@ class Afd(AfdGist):
             embed.set_footer(text=footer)
         return embed
 
+    async def fetch_user(self, user_id: int) -> discord.User:
+        user_id = int(user_id)
+        if (user := self.user_cache.get(user_id)) is not None:
+            return user
+
+        if (user := self.bot.get_user(user_id)) is None:
+            try:
+                user = await self.bot.fetch_user(user_id)
+            except Exception as e:
+                await self.update_channel.send(user_id)
+                raise e
+
+        self.user_cache[user_id] = user
+        return user
+
     def pkm_remind_embed(self, pkm_rows: Union[Row, List[Row]]) -> Bot.Embed:
         if not isinstance(pkm_rows, list):
             pkm_rows = [pkm_rows]
@@ -144,21 +159,6 @@ class Afd(AfdGist):
             text="Please draw them or unclaim any you think you cannot finish. Thank you!"
         )
         return embed
-
-    async def fetch_user(self, user_id: int) -> discord.User:
-        user_id = int(user_id)
-        if (user := self.user_cache.get(user_id)) is not None:
-            return user
-
-        if (user := self.bot.get_user(user_id)) is None:
-            try:
-                user = await self.bot.fetch_user(user_id)
-            except Exception as e:
-                await self.update_channel.send(user_id)
-                raise e
-
-        self.user_cache[user_id] = user
-        return user
 
     async def send_notification(
         self,
@@ -845,16 +845,15 @@ and lets you directly perform actions such as:
     )
     async def list_unclaimed(self, ctx: CustomContext):
         await self.sheet.update_df()
-
         stats = self.get_stats()
-        unclaimed = stats.unclaimed
+        category = stats.unclaimed
+        entries = self.bold_initials_fmt(category.rows)
 
-        entries = self.bold_initials_fmt(unclaimed.rows)
-        src = ListPageSource(unclaimed, entries=entries)
+        src = ListPageSource(category, entries=entries)
         menu = ListPageMenu(src, ctx=ctx, select=True)
         await menu.start()
 
-    async def per_user_fmt(self, rows: List[Row], *, joiner: Optional[str] = "\n>    ", enumerate: Optional[bool] = False) -> List[str]:
+    async def per_user_fmt(self, rows: List[Row], *, joiner: Optional[str] = ", ", enumerate: Optional[bool] = False) -> List[str]:
         users: DefaultDict[discord.User, List[str]] = defaultdict(list)
         for row in rows:
             users[await self.fetch_user(row.user_id)].append(f"`{row.pokemon}`")
@@ -878,13 +877,11 @@ and lets you directly perform actions such as:
     )
     async def list_approved(self, ctx: CustomContext):
         await self.sheet.update_df()
-
         stats = self.get_stats()
-        approved = stats.approved
+        category = stats.approved
+        entries = await self.per_user_fmt(category.rows)
 
-        entries = await self.per_user_fmt(approved.rows, enumerate=True)
-
-        src = ListPageSource(approved, entries=entries, dynamic_pages=True, max_per_page=3)
+        src = ListPageSource(category, entries=entries, dynamic_pages=True, max_per_page=3)
         menu = ListPageMenu(src, ctx=ctx)
         await menu.start()
 
@@ -896,13 +893,27 @@ and lets you directly perform actions such as:
     )
     async def list_unreviewed(self, ctx: CustomContext):
         await self.sheet.update_df()
-
         stats = self.get_stats()
-        unreviewed = stats.unreviewed
+        category = stats.unreviewed
+        entries = await self.per_user_fmt(category.rows)
 
-        entries = await self.per_user_fmt(unreviewed.rows, joiner=", ")
+        src = ListPageSource(category, entries=entries, dynamic_pages=True, max_per_page=5)
+        menu = ListPageMenu(src, ctx=ctx)
+        await menu.start()
 
-        src = ListPageSource(unreviewed, entries=entries, dynamic_pages=True, max_per_page=5)
+    @_list.command(
+        name="incomplete",
+        aliases=("inc",),
+        brief="View pokemon that have been claimed but not yet submitted.",
+        help="View a list of pokemon that have been claimed but no submission yet.",
+    )
+    async def list_incomplete(self, ctx: CustomContext):
+        await self.sheet.update_df()
+        stats = self.get_stats()
+        category = stats.incomplete
+        entries = await self.per_user_fmt(category.rows)
+
+        src = ListPageSource(category, entries=entries, dynamic_pages=True, max_per_page=5)
         menu = ListPageMenu(src, ctx=ctx)
         await menu.start()
 
