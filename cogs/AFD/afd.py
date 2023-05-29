@@ -270,6 +270,7 @@ class Afd(AfdGist):
         elif ctx.invoked_subcommand is None:
             await ctx.send_help(ctx.command)
 
+    # region RESTRICTED COMMANDS
     # --- Owner only commands ---
     @commands.is_owner()
     @afd.command(
@@ -724,6 +725,7 @@ class Afd(AfdGist):
 
         await self.send_notification(embed, user=user, ctx=ctx, view=view)
         return True
+    # endregion
 
     # --- Public commands ---
     @afd.command(
@@ -793,23 +795,9 @@ and lets you directly perform actions such as:
             df: pd.DataFrame = self.df.sort_values(by=PKM_LABEL)
         return Stats(df, self)
 
-    @afd.group(
-        name="list",
-        brief="Show a user's stats",
-        help="Used to see a user's stats. To see your own, leave the user argument empty.",
-        invoke_without_command=True,
-    )
-    async def _list(
-        self, ctx: CustomContext, *, user: Optional[Union[discord.User, discord.Member]]
-    ):
-        await self.sheet.update_df()
-        user = user or ctx.author
-        stats = self.get_stats(user)
+    async def send_all_list(self, ctx: CustomContext, stats: Stats, *, embed: Bot.Embed):
         total_amount = stats.claimed.amount if stats is not None else 0
-
-        description = f"**Total pokemon**: {total_amount}"
-        embed = self.bot.Embed(description=description)
-        embed.set_author(name=f"{user}'s stats", icon_url=user.avatar.url)
+        embed.description = f"**Total pokemon**: {total_amount}"
 
         if stats is None:
             return await ctx.send(embed=embed)
@@ -822,6 +810,38 @@ and lets you directly perform actions such as:
         categories = [stats.correction_pending, stats.incomplete, stats.unreviewed, stats.approved]
         menu = StatsPageMenu(categories, ctx=ctx, original_embed=embed, total_amount=total_amount)
         await menu.start()
+
+    @afd.group(
+        name="list",
+        brief="Show a user's stats",
+        help="Used to see a user's stats. To see your own, leave the user argument empty.",
+        invoke_without_command=True,
+    )
+    async def _list(
+        self, ctx: CustomContext, *, user: Optional[Union[discord.User, discord.Member]]
+    ):
+        await self.sheet.update_df()
+        user = user or ctx.author
+        stats = self.get_stats(user)
+
+        embed = self.bot.Embed()
+        embed.set_author(name=f"{user}'s stats", icon_url=user.avatar.url)
+
+        await self.send_all_list(ctx, stats, embed=embed)
+
+    @_list.command(
+        name="all",
+        brief="View all pokemon, categorized",
+        help="View lists of every category of pokemon."
+    )
+    async def list_all(self, ctx: CustomContext):
+        await self.sheet.update_df()
+        stats = self.get_stats()
+
+        embed = self.bot.Embed()
+        embed.set_author(name=f"All stats")
+
+        await self.send_all_list(ctx, stats, embed=embed)
 
     @staticmethod
     def bold_initials_fmt(rows: List[Row]) -> List[str]:
