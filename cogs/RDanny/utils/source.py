@@ -19,7 +19,7 @@ def source(bot: commands.Bot, *, command: str):
     # Get the current branch using cli and regex
     process = subprocess.Popen(["git", "branch"], stdout=subprocess.PIPE)
     match = re.search("\* (.+)", process.communicate()[0].decode("utf-8"), re.MULTILINE)
-    branch = match.groups()[0]
+    branch = match.groups()[0] if match is not None else "master"
     if command is None:
         return f"{source_url}/"
 
