@@ -55,6 +55,7 @@ class Afd(AfdGist):
     display_emoji = "🗓️"
 
     async def setup(self):
+        await self.reload_sheet()
         self.bot.afd_log_channel = await self.bot.fetch_channel(AFD_LOG_CHANNEL_ID)
         self.bot.afd_update_channel = await self.bot.fetch_channel(AFD_UPDATE_CHANNEL_ID)
         self.bot.afd_credits_gist = await self.bot.wgists_client.get_gist(AFD_CREDITS_GIST_URL)
@@ -62,17 +63,18 @@ class Afd(AfdGist):
         self.bot.add_view(AFDRoleMenu())
 
     async def reload_sheet(self):
-        self.sheet = AfdSheet(SHEET_URL, pokemon_df=self.pk)
+        self.bot.sheet = AfdSheet(SHEET_URL, pokemon_df=self.pk)
         start = time.time()
-        await self.sheet.setup()
+        await self.bot.sheet.setup()
         logger.info(f"AFD: Fetched spreadsheet in {round(time.time()-start, 2)}s")
-
-    async def cog_load(self):
-        await self.reload_sheet()
 
     @force_log_errors
     async def cog_unload(self):
         reload_modules("cogs/AFD", skip=__name__)
+
+    @property
+    def sheet(self) -> AfdSheet:
+        return self.bot.sheet
 
     @property
     def log_channel(self) -> discord.TextChannel:
@@ -898,7 +900,7 @@ and lets you directly perform actions such as:
         stats = self.get_stats()
         unreviewed = stats.unreviewed
 
-        entries = await self.per_user_fmt(unreviewed.rows)
+        entries = await self.per_user_fmt(unreviewed.rows, joiner=", ")
 
         src = ListPageSource(unreviewed, entries=entries, dynamic_pages=True, max_per_page=5)
         menu = ListPageMenu(src, ctx=ctx)
