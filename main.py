@@ -73,8 +73,8 @@ class Bot(commands.Bot):
         self.lock = asyncio.Lock()
 
         self.pokemon_csv = (
-            "https://raw.githubusercontent.com/poketwo/data/master/csv/pokemon.csv"
-            # os.getenv("POKEMON_CSV")
+            # "https://raw.githubusercontent.com/poketwo/data/master/csv/pokemon.csv"
+            os.getenv("POKEMON_CSV")
         )
 
     @cached_property

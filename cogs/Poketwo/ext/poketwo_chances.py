@@ -38,6 +38,7 @@ REGION_GISTS = {
     "Kalos": "https://gist.github.com/849a6b64a35a505c7afb2eb276eda18d",
     "Alola": "https://gist.github.com/a55287b7bff61b90b3182bca602b062a",
     "Galar": "https://gist.github.com/f4d75c84e7ed4ce57273b6ef860a5a54",
+    "Paldea": "https://gist.github.com/6526c45006956f48043ad061ebcc5ce3",
     "Hisui": "https://gist.github.com/46bbc638f81687aa42709a83078aa1f8",
 }
 TYPE_GISTS_GIST = (
@@ -80,6 +81,9 @@ STARTERS = [
     "Grookey",
     "Scorbunny",
     "Sobble",
+    "Sprigatito",
+    "Fuecoco",
+    "Quaxly"
 ]
 
 
@@ -453,8 +457,8 @@ class PoketwoChances(commands.Cog):
 
         cmd = chance.get_command("region")
         regions = []
-        for region_idx in range(1, 9):
-            regions.append(pattern.match(await ctx.invoke(cmd, region_idx)))
+        for region in list(REGION_GISTS.keys())[:-1]:
+            regions.append(pattern.match(await ctx.invoke(cmd, region)))
             await asyncio.sleep(DELAY)
         hisui = pattern.match(await ctx.invoke(cmd, "hisui"))
 
@@ -468,7 +472,7 @@ class PoketwoChances(commands.Cog):
 
         regions_msg = "\n".join(
             [
-                f"""**{idx}. {region.group("title")}** [`{region.group("total")}`] = {region.group("chance_per")}% ({region.group("chance")})
+                f"""**{idx + 1}\. {region.group("title")}** [`{region.group("total")}`] = {region.group("chance_per")}% ({region.group("chance")})
 - <{REGION_GISTS[region.group("title").split(" ")[0]]}>"""
                 for idx, region in enumerate(regions)
             ]
@@ -482,7 +486,7 @@ class PoketwoChances(commands.Cog):
 
 **All pokémon** - <{ALL_GIST}>
 
-**Starter pokémon** = {starters.group("chance_per")} ({starters.group("chance")})
+**Starter pokémon** = {starters.group("chance_per")}% ({starters.group("chance")})
 
 **Mythical pokémon** (?tag `my%`) = {mythical.group("chance_per")}%
 **Legendary pokémon** (?tag `leg%`) = {legendary.group("chance_per")}%
@@ -503,7 +507,7 @@ class PoketwoChances(commands.Cog):
         reg_msg = f"""__**Regional spawn-chances**__ (Includes all catchable forms)
 
 {regions_msg}
-**4.1. Hisui** [`{hisui.group("total")}`] = {hisui.group("chance_per")}% ({hisui.group("chance")})
+**4\.1\. Hisui** [`{hisui.group("total")}`] = {hisui.group("chance_per")}% ({hisui.group("chance")})
 - <{REGION_GISTS[hisui.group("title").split(" ")[0]]}>"""
 
         await ctx.send(reg_msg)
