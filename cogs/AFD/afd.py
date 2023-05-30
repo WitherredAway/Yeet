@@ -951,7 +951,7 @@ and lets you directly perform actions such as:
                 # !NOTE TO SELF: THIS get_pkm IS HACKY AS HELL AND WILL BREAK IF THE FORMAT CHANGES
                 get_pkm=lambda e: re.match("\d+\\\. \*\*(.+?)\*\* - ", e).groups()[0],
                 action_func=self.send_view,
-                placeholder="View a pokemon"
+                placeholder="View an entry"
             )
         )
         await menu.start()
