@@ -2,6 +2,7 @@ from __future__ import annotations
 from collections import defaultdict
 
 import logging
+import re
 import time
 from typing import TYPE_CHECKING, Callable, Coroutine, DefaultDict, List, Optional, Union
 import pandas as pd
@@ -751,6 +752,21 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
         view = AfdView(self, ctx=ctx)
         view.msg = await ctx.reply(embed=self.embed, view=view)
 
+    async def send_view(self, ctx: CustomContext, pokemon: str):
+        pokemon = await self.get_pokemon(ctx, pokemon)
+        if not pokemon:
+            return
+
+        await self.sheet.update_df()
+        row = self.sheet.get_pokemon_row(pokemon)
+        user = (await self.fetch_user(row.user_id)) if row.claimed else None
+        approved_by = (
+            (await self.fetch_user(row.approved_by)) if row.approved_by else None
+        )
+
+        view = PokemonView(ctx, row, afdcog=self, user=user, approved_by=approved_by)
+        view.msg = await ctx.send(embed=view.embed, view=view)
+
     @afd.command(
         name="view",
         aliases=("pokemon", "pkm", "d", "dex"),
@@ -770,19 +786,7 @@ and lets you directly perform actions such as:
     - Commenting""",
     )
     async def view(self, ctx: CustomContext, *, pokemon: str):
-        pokemon = await self.get_pokemon(ctx, pokemon)
-        if not pokemon:
-            return
-
-        await self.sheet.update_df()
-        row = self.sheet.get_pokemon_row(pokemon)
-        user = (await self.fetch_user(row.user_id)) if row.claimed else None
-        approved_by = (
-            (await self.fetch_user(row.approved_by)) if row.approved_by else None
-        )
-
-        view = PokemonView(ctx, row, afdcog=self, user=user, approved_by=approved_by)
-        view.msg = await ctx.send(embed=view.embed, view=view)
+        await self.send_view(ctx, pokemon)
 
     def get_stats(self, user: Optional[discord.User] = None) -> Union[Stats, None]:
         if user is not None:
@@ -849,7 +853,7 @@ and lets you directly perform actions such as:
         initials = []
         for row in rows:
             pokemon = row.pokemon
-            i, bolded = get_initial(pokemon, bold=True)
+            i, bolded = get_initial(pokemon, bold=True)  # !NOTE TO SELF: UPDATE get_pkm IF FORMAT CHANGES
             if i not in initials:
                 entries.append(bolded)
                 initials.append(i)
@@ -873,7 +877,13 @@ and lets you directly perform actions such as:
         menu = ListPageMenu(src, ctx=ctx)
         menu.add_selects(
             ListSelectMenu(menu),
-            ActionSelectMenu(menu, action_func=self.claim, placeholder="Claim a pokemon")
+            ActionSelectMenu(
+                menu,
+                # !NOTE TO SELF: THIS get_pkm IS HACKY AS HELL AND WILL BREAK IF A POKEMON HAS * IN ITS NAME OR FORMAT CHANGES
+                get_pkm=lambda e: re.match("\d+\\\. (.+)", e).groups()[0].replace("*", ""),
+                action_func=self.claim,
+                placeholder="Claim a pokemon"
+            )
         )
         await menu.start()
 
@@ -909,6 +919,18 @@ and lets you directly perform actions such as:
         menu = ListPageMenu(src, ctx=ctx)
         await menu.start()
 
+    async def pokemon_user_fmt(self, rows: List[Row]):
+        entries_dict = defaultdict(list)
+        for row in rows:
+            entries_dict[await self.fetch_user(row.user_id)].append(row.pokemon)
+
+        entries = []
+        for user, pokemon in sorted(entries_dict.items(), key=lambda e: str(e[0])):
+            for pkm in pokemon:
+                entries.append(f"**{pkm}** - `{user}`")  # !NOTE TO SELF: UPDATE get_pkm IF FORMAT CHANGES
+
+        return entries
+
     @_list.command(
         name="unreviewed",
         aliases=("unr", "submitted"),
@@ -919,10 +941,19 @@ and lets you directly perform actions such as:
         await self.sheet.update_df()
         stats = self.get_stats()
         category = stats.unreviewed
-        entries = await self.per_user_fmt(category.rows)
+        entries = enumerate_list(await self.pokemon_user_fmt(category.rows))
 
-        src = ListPageSource(category, entries=entries, dynamic_pages=True, max_per_page=5)
+        src = ListPageSource(category, entries=entries)
         menu = ListPageMenu(src, ctx=ctx)
+        menu.add_selects(
+            ActionSelectMenu(
+                menu,
+                # !NOTE TO SELF: THIS get_pkm IS HACKY AS HELL AND WILL BREAK IF THE FORMAT CHANGES
+                get_pkm=lambda e: re.match("\d+\\\. \*\*(.+?)\*\* - ", e).groups()[0],
+                action_func=self.send_view,
+                placeholder="View a pokemon"
+            )
+        )
         await menu.start()
 
     @_list.command(

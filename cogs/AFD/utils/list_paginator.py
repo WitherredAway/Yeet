@@ -3,7 +3,7 @@ from collections import defaultdict
 import itertools
 import math
 
-from typing import TYPE_CHECKING, Coroutine, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Callable, Coroutine, List, Optional, Tuple, Union
 
 import discord
 from discord.ext import menus
@@ -340,9 +340,10 @@ class FieldPageSource(menus.ListPageSource):
 
 
 class ActionSelectMenu(discord.ui.Select):
-    def __init__(self, menu: ListPageMenu, *, action_func: Coroutine, placeholder: str):
+    def __init__(self, menu: ListPageMenu, *, get_pkm: Callable, action_func: Coroutine, placeholder: str):
         super().__init__(placeholder=placeholder)
         self.menu = menu
+        self.get_pkm = get_pkm
         self.source = menu.source
         self.action_func = action_func
 
@@ -354,13 +355,12 @@ class ActionSelectMenu(discord.ui.Select):
         entries = self.source.entries[base: base + self.source.per_page]
 
         for entry in entries:
-            idx = self.source.entries.index(entry)
-            pkm = self.category.pokemon[idx]
-            self.add_option(label=pkm, value=str(idx))
+            pkm = self.get_pkm(entry)
+            self.add_option(label=pkm, value=pkm)
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
-        idx = int(self.values[0])
-        pokemon = self.category.pokemon[idx]
+        opt = value_to_option_dict(self)[self.values[0]]
+        pokemon = opt.label
         await self.action_func(self.menu.ctx, pokemon)
         await interaction.edit_original_message()
