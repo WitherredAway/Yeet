@@ -836,7 +836,7 @@ and lets you directly perform actions such as:
     @_list.command(
         name="all",
         brief="View all stats, categorized",
-        help="View lists of every category of pokemon."
+        help="View lists of every category of pokemon in a compact form compared to their respective subcommands."
     )
     async def list_all(self, ctx: CustomContext):
         await self.sheet.update_df()
@@ -900,6 +900,54 @@ and lets you directly perform actions such as:
         return entries
 
     @_list.command(
+        name="correction",
+        aliases=("cor", "correction_pending"),
+        brief="View pokemon that have a comment left by an admin.",
+        help="View a list of pokemon that have a comment left by an admin, and hence pending correction of some sort.",
+    )
+    async def list_correction(self, ctx: CustomContext):
+        await self.sheet.update_df()
+        stats = self.get_stats()
+        category = stats.correction_pending
+        entries = enumerate_list(await self.pokemon_user_fmt(category.rows))
+
+        src = ListPageSource(category, entries=entries)
+        menu = ListPageMenu(src, ctx=ctx)
+        await menu.start()
+
+    async def per_user_fmt(self, rows: List[Row], *, joiner: Optional[str] = ", ", enumerate: Optional[bool] = False) -> List[str]:
+        users: DefaultDict[discord.User, List[str]] = defaultdict(list)
+        for row in rows:
+            users[await self.fetch_user(row.user_id)].append(f"`{row.pokemon}`")
+
+        entries = []
+        for user, pokemon in users.items():
+            pokemon = enumerate_list(pokemon) if enumerate else pokemon
+            pkm = joiner.join(pokemon)
+            entry = f"""- **{str(user)}** ({user.id}) [`{len(pokemon)}`]
+>    {pkm}"""
+            entries.append(entry)
+        entries.sort()
+
+        return entries
+
+    @_list.command(
+        name="incomplete",
+        aliases=("inc",),
+        brief="View pokemon that have been claimed but not yet submitted.",
+        help="View a list of pokemon that have been claimed but no submission yet.",
+    )
+    async def list_incomplete(self, ctx: CustomContext):
+        await self.sheet.update_df()
+        stats = self.get_stats()
+        category = stats.incomplete
+        entries = await self.per_user_fmt(category.rows)
+
+        src = ListPageSource(category, entries=entries, dynamic_pages=True, max_per_page=5)
+        menu = ListPageMenu(src, ctx=ctx)
+        await menu.start()
+
+    @_list.command(
         name="unreviewed",
         aliases=("unr", "submitted"),
         brief="View submitted pokemon awaiting review",
@@ -923,38 +971,6 @@ and lets you directly perform actions such as:
             )
         )
         await menu.start()
-
-    @_list.command(
-        name="incomplete",
-        aliases=("inc",),
-        brief="View pokemon that have been claimed but not yet submitted.",
-        help="View a list of pokemon that have been claimed but no submission yet.",
-    )
-    async def list_incomplete(self, ctx: CustomContext):
-        await self.sheet.update_df()
-        stats = self.get_stats()
-        category = stats.incomplete
-        entries = await self.per_user_fmt(category.rows)
-
-        src = ListPageSource(category, entries=entries, dynamic_pages=True, max_per_page=5)
-        menu = ListPageMenu(src, ctx=ctx)
-        await menu.start()
-
-    async def per_user_fmt(self, rows: List[Row], *, joiner: Optional[str] = ", ", enumerate: Optional[bool] = False) -> List[str]:
-        users: DefaultDict[discord.User, List[str]] = defaultdict(list)
-        for row in rows:
-            users[await self.fetch_user(row.user_id)].append(f"`{row.pokemon}`")
-
-        entries = []
-        for user, pokemon in users.items():
-            pokemon = enumerate_list(pokemon) if enumerate else pokemon
-            pkm = joiner.join(pokemon)
-            entry = f"""- **{str(user)}** ({user.id}) [`{len(pokemon)}`]
->    {pkm}"""
-            entries.append(entry)
-        entries.sort()
-
-        return entries
 
     @_list.command(
         name="approved",
