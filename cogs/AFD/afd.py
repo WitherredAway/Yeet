@@ -864,7 +864,7 @@ and lets you directly perform actions such as:
     @_list.command(
         name="unclaimed",
         aliases=("unc", "available"),
-        brief="View unclaimed pokemon",
+        brief="View pokemon that have not been claimed yet.",
         help="View a list of pokemon that are available to claim.",
     )
     async def list_unclaimed(self, ctx: CustomContext):
