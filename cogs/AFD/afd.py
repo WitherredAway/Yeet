@@ -887,38 +887,6 @@ and lets you directly perform actions such as:
         )
         await menu.start()
 
-    async def per_user_fmt(self, rows: List[Row], *, joiner: Optional[str] = ", ", enumerate: Optional[bool] = False) -> List[str]:
-        users: DefaultDict[discord.User, List[str]] = defaultdict(list)
-        for row in rows:
-            users[await self.fetch_user(row.user_id)].append(f"`{row.pokemon}`")
-
-        entries = []
-        for user, pokemon in users.items():
-            pokemon = enumerate_list(pokemon) if enumerate else pokemon
-            pkm = joiner.join(pokemon)
-            entry = f"""- **{str(user)}** ({user.id}) [`{len(pokemon)}`]
->    {pkm}"""
-            entries.append(entry)
-        entries.sort()
-
-        return entries
-
-    @_list.command(
-        name="approved",
-        aliases=("app",),
-        brief="View approved pokemon",
-        help="View a list of pokemon that have been submitted and approved.",
-    )
-    async def list_approved(self, ctx: CustomContext):
-        await self.sheet.update_df()
-        stats = self.get_stats()
-        category = stats.approved
-        entries = await self.per_user_fmt(category.rows)
-
-        src = ListPageSource(category, entries=entries, dynamic_pages=True, max_per_page=3)
-        menu = ListPageMenu(src, ctx=ctx)
-        await menu.start()
-
     async def pokemon_user_fmt(self, rows: List[Row]):
         entries_dict = defaultdict(list)
         for row in rows:
@@ -969,6 +937,38 @@ and lets you directly perform actions such as:
         entries = await self.per_user_fmt(category.rows)
 
         src = ListPageSource(category, entries=entries, dynamic_pages=True, max_per_page=5)
+        menu = ListPageMenu(src, ctx=ctx)
+        await menu.start()
+
+    async def per_user_fmt(self, rows: List[Row], *, joiner: Optional[str] = ", ", enumerate: Optional[bool] = False) -> List[str]:
+        users: DefaultDict[discord.User, List[str]] = defaultdict(list)
+        for row in rows:
+            users[await self.fetch_user(row.user_id)].append(f"`{row.pokemon}`")
+
+        entries = []
+        for user, pokemon in users.items():
+            pokemon = enumerate_list(pokemon) if enumerate else pokemon
+            pkm = joiner.join(pokemon)
+            entry = f"""- **{str(user)}** ({user.id}) [`{len(pokemon)}`]
+>    {pkm}"""
+            entries.append(entry)
+        entries.sort()
+
+        return entries
+
+    @_list.command(
+        name="approved",
+        aliases=("app",),
+        brief="View approved pokemon",
+        help="View a list of pokemon that have been submitted and approved.",
+    )
+    async def list_approved(self, ctx: CustomContext):
+        await self.sheet.update_df()
+        stats = self.get_stats()
+        category = stats.approved
+        entries = await self.per_user_fmt(category.rows)
+
+        src = ListPageSource(category, entries=entries, dynamic_pages=True, max_per_page=3)
         menu = ListPageMenu(src, ctx=ctx)
         await menu.start()
 
