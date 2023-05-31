@@ -235,19 +235,19 @@ class PokemonPageSource(menus.ListPageSource):
         joined = "\n".join(entries) if len(entries) > 0 else "None"
         joined = CODE_BLOCK_FMT % joined
 
-        last_entry = min((menu.current_page + 1) * self.per_page, len(self.entries))
+        page = menu.current_page + 1
+        last_entry = min(page * self.per_page, len(self.entries))
         format = (
             f"**Type:** {move.type}\n"
             f"**Class:** {move.damage_class}\n\n"
             f"**Leveling learnset in *Gen 8 (Galar)*** [`{last_entry}/{len(self.entries)}`]\n"
-            f"{make_progress_bar(last_entry, len(self.entries), length=15)}\n"
             f"%s"
         )
 
         final = format % joined
 
         embed.description = final
-        embed.set_footer(text=f"Use the `@Pokétwo#8236 moveset <pokemon>` command to see how each pokemon obtains the move.")
+        embed.set_footer(text=make_progress_bar(page, self.get_max_pages(), length=15))
         return embed
 
 
