@@ -240,7 +240,7 @@ class PokemonPageSource(menus.ListPageSource):
         format = (
             f"**Type:** {move.type}\n"
             f"**Class:** {move.damage_class}\n\n"
-            f"**Leveling learnset in *Gen 8 (Galar)*** [`{last_entry}/{len(self.entries)}`]\n"
+            f"**Leveling learnset, in Poketwo** [`{last_entry}/{len(self.entries)}`]\n"
             f"%s"
         )
 
@@ -293,7 +293,7 @@ class PoketwoMoves(commands.Cog):
             f"__**{move.name}**__\n"
             f"**Type:** {move.type}\n"
             f"**Class:** {move.damage_class}\n\n"
-            f"**Leveling learnset, in *Poketwo*** [`{len(pokemon)}`]\n"
+            f"**Leveling learnset, in Poketwo** [`{len(pokemon)}`]\n"
             f"%s"
         )
 
