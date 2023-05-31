@@ -1,15 +1,16 @@
+from collections import defaultdict
+import os
 import typing
-from typing import List, Optional, TypeVar
+from typing import TypeVar
 from dataclasses import dataclass
 from functools import cached_property
 from cogs.RDanny.utils.paginator import BotPages
 from cogs.utils.utils import enumerate_list, make_progress_bar
-import gists
 
 from discord.ext import commands, menus
 import pandas as pd
 
-from helpers.constants import CODE_BLOCK_FMT, EMBED_DESC_CHAR_LIMIT
+from helpers.constants import CODE_BLOCK_FMT
 
 if typing.TYPE_CHECKING:
     from main import Bot
@@ -18,12 +19,9 @@ if typing.TYPE_CHECKING:
 D = TypeVar("D", bound="Data")
 
 
-MOVES = "https://raw.githubusercontent.com/poketwo/data/master/csv/moves.csv"
-POKEMON_MOVES = (
-    "https://raw.githubusercontent.com/poketwo/data/master/csv/pokemon_moves.csv"
-)
-MOVE_NAMES = "https://raw.githubusercontent.com/poketwo/data/master/csv/move_names.csv"
-POKEMON_NAMES = "https://raw.githubusercontent.com/poketwo/data/master/csv/pokemon.csv"
+MOVES = os.getenv("MOVES_CSV")
+POKEMON_MOVES = os.getenv("POKEMON_MOVES_CSV")
+MOVE_NAMES = os.getenv("MOVE_NAMES_CSV")
 
 ENGLISH_ID = 9
 
@@ -122,8 +120,14 @@ class Data:
             index_col=0,
         )
         self.pkm_moves_data.query(
-            "pokemon_move_method_id == 1 & version_group_id == 20", inplace=True
+            "pokemon_move_method_id == 1", inplace=True
         )
+        pkm_grouped = self.pkm_moves_data.groupby("pokemon_id")
+
+        self.latest_version_group = defaultdict(int)
+        for idx in set(list(self.pkm_moves_data.index)):
+            row = pkm_grouped.get_group(idx)
+            self.latest_version_group[idx] = max(list(row["version_group_id"]))
 
         self.pkm_grouped = self.pkm_moves_data.groupby("move_id")
 
@@ -200,6 +204,9 @@ class Data:
             for pkm_id, row in move_group.iterrows():
                 if not (pkm_names.loc[pkm_id, "enabled"] > 0):
                     continue
+                if not (row["version_group_id"] == self.latest_version_group[pkm_id]):
+                    continue
+
                 pkm_name = pkm_names.loc[pkm_id, "name.en"]
 
                 pokemon.append(
@@ -284,7 +291,10 @@ class PoketwoMoves(commands.Cog):
     )
     async def resync(self, ctx):
         async with ctx.channel.typing():
-            del self.bot.p2_data
+            try:
+                del self.bot.p2_data
+            except AttributeError:
+                pass
             await self.data()
         await ctx.send("Resynced data!")
 
