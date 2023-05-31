@@ -155,7 +155,7 @@ def make_progress_bar(val: int, max_val: int, *, negative: Optional[bool] = Fals
 
     full_bar = np.full(length, bars[0.0])
 
-    if not (val == max_val == 0):
+    if not any((val == 0, max_val == 0)):
         to_val = round((length / max_val) * val)
     else:
         to_val = 0
@@ -203,7 +203,7 @@ class SimpleModal(discord.ui.Modal):
 
 def enumerate_list(_list: List, *, escape: Optional[bool] = '\\') -> List[str]:
     ret = [f"{idx + 1}{escape}. {element}" for idx, element in enumerate(_list)]
-    return ret if len(ret) > 0 else ["None"]
+    return ret
 
 
 def value_to_option_dict(

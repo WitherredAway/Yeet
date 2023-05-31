@@ -245,6 +245,7 @@ class ListPageSource(menus.ListPageSource):
         max_per_page: Optional[int] = LIST_PER_PAGE
     ):
         self.joiner = NL
+        entries = entries if len(entries) > 0 else ["None"]
         # If dynamic_pages is true, each page should have as many entries as possible.
         if dynamic_pages is True:
             pages = []
