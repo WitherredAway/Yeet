@@ -267,7 +267,7 @@ class PoketwoMoves(commands.Cog):
 
     @commands.group(
         name="moveinfo",
-        aliases=("mi", "move", "mv"),
+        aliases=("mi", "learnset", "ls", "move", "mv"),
         brief="See extended info of a move.",
         help="See the class, type and the pokemon that have a certain move.",
         invoke_without_command=True,
@@ -324,13 +324,14 @@ class PoketwoMoves(commands.Cog):
         return final
 
     @commands.group(
-        name="learnset",
-        aliases=("ls",),
-        brief="See which pokemon learn a specific move.",
-        help="See the class, type and the pokemon that have a certain move.",
+        name="oldmoveinfo",
+        aliases=("omi",),
+        brief="See which pokemon learn a specific move, without pagination.",
+        help="See the class, type and the pokemon that have a certain move. \
+            This command is the older version and does not have pagination like the `moveinfo` command.",
         invoke_without_command=True,
     )
-    async def learnset(self, ctx: commands.Context, *, move_name: str):
+    async def oldmoveinfo(self, ctx: commands.Context, *, move_name: str):
         async with ctx.typing():
             data = await self.data()
             try:
