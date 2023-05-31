@@ -7,6 +7,7 @@ from functools import cached_property
 from cogs.RDanny.utils.paginator import BotPages
 from cogs.utils.utils import enumerate_list, make_progress_bar
 
+import gists
 from discord.ext import commands, menus
 import pandas as pd
 
@@ -282,6 +283,61 @@ class PoketwoMoves(commands.Cog):
         source = PokemonPageSource(move)
         menu = BotPages(source, ctx=ctx, check_embeds=True, compact=True)
         await menu.start()
+
+    async def format_movesets_message(self, move: Move):
+        pokemon = move.pokemon
+        joined = ", ".join(pokemon) if len(pokemon) > 0 else "None"
+        joined = CODE_BLOCK_FMT % joined
+
+        format = (
+            f"__**{move.name}**__\n"
+            f"**Type:** {move.type}\n"
+            f"**Class:** {move.damage_class}\n\n"
+            f"**Leveling learnset, in *Poketwo*** [`{len(pokemon)}`]\n"
+            f"%s"
+        )
+
+        final = format % joined
+        if len(final) > 2000:  # Character limit
+
+            pokemon = sorted(
+                [[pkm.name, pkm.level] for pkm in move.pokemon_objs],
+                key=lambda p: p[1],
+            )
+            gen_8_df = pd.DataFrame(
+                pokemon,
+                columns=["Pokemon (Gen 8)", "Required level"],
+            )
+
+            files = [
+                gists.File(
+                    name="gen_8_table.csv", content=gen_8_df.to_csv(index=False)
+                ),
+            ]
+            description = f"Pokemon that learn the move {move.name} by leveling."
+            gist = await self.bot.gists_client.create_gist(
+                files=files, description=description, public=False
+            )
+
+            final = format % f"<{gist.url}#file-gen_8_table-csv>"  # Header of the gen 8 file
+
+        return final
+
+    @commands.group(
+        name="learnset",
+        aliases=("ls",),
+        brief="See which pokemon learn a specific move.",
+        help="See the class, type and the pokemon that have a certain move.",
+        invoke_without_command=True,
+    )
+    async def learnset(self, ctx: commands.Context, *, move_name: str):
+        async with ctx.typing():
+            data = await self.data()
+            try:
+                move = data.move_by_name(move_name)
+            except IndexError:
+                return await ctx.send(f"No move named `{move_name}` exists!")
+        await ctx.send(await self.format_movesets_message(move))
 
     @moveinfo.command(
         name="resync",
