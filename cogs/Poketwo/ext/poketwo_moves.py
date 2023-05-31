@@ -304,14 +304,14 @@ class PoketwoMoves(commands.Cog):
                 [[pkm.name, pkm.level] for pkm in move.pokemon_objs],
                 key=lambda p: p[1],
             )
-            gen_8_df = pd.DataFrame(
+            learnset_df = pd.DataFrame(
                 pokemon,
-                columns=["Pokemon (Gen 8)", "Required level"],
+                columns=["Pokemon", "Required level"],
             )
 
             files = [
                 gists.File(
-                    name="gen_8_table.csv", content=gen_8_df.to_csv(index=False)
+                    name="learnset_table.csv", content=learnset_df.to_csv(index=False)
                 ),
             ]
             description = f"Pokemon that learn the move {move.name} by leveling."
@@ -319,7 +319,7 @@ class PoketwoMoves(commands.Cog):
                 files=files, description=description, public=False
             )
 
-            final = format % f"<{gist.url}#file-gen_8_table-csv>"  # Header of the gen 8 file
+            final = format % f"<{gist.url}#file-learnset_table-csv>"  # Header of the gen 8 file
 
         return final
 
