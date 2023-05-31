@@ -201,8 +201,8 @@ class SimpleModal(discord.ui.Modal):
         self.stop()
 
 
-def enumerate_list(_list: List) -> List[str]:
-    ret = [f"{idx + 1}\. {element}" for idx, element in enumerate(_list)]
+def enumerate_list(_list: List, *, escape: Optional[bool] = '\\') -> List[str]:
+    ret = [f"{idx + 1}{escape}. {element}" for idx, element in enumerate(_list)]
     return ret if len(ret) > 0 else ["None"]
 
 

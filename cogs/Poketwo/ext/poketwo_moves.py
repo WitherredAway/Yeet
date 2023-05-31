@@ -218,7 +218,7 @@ PER_PAGE = 30
 class PokemonPageSource(menus.ListPageSource):
     def __init__(self, move: Move, per_page=PER_PAGE):
         self.move = move
-        entries = enumerate_list(move.pokemon)
+        entries = enumerate_list(move.pokemon, escape='')
         super().__init__(entries, per_page=per_page)
 
     async def format_page(self, menu: BotPages, entries):
@@ -227,7 +227,7 @@ class PokemonPageSource(menus.ListPageSource):
         joined = "\n".join(entries) if len(entries) > 0 else "None"
         joined = CODE_BLOCK_FMT % joined
 
-        last_entry = int(entries[-1].split('\u200b')[0])  #!IMPORTANT this depends on enumeration of entries
+        last_entry = min((menu.current_page + 1) * self.per_page, len(self.entries))
         format = (
             f"**Type:** {move.type}\n"
             f"**Class:** {move.damage_class}\n\n"
