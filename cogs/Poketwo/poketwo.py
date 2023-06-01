@@ -1,18 +1,33 @@
+from __future__ import annotations
+import asyncio
+
 import re
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 import discord
 from discord.ext import commands
 
-from cogs.utils.utils import force_log_errors, reload_modules
+from cogs.utils.utils import enumerate_list, force_log_errors, reload_modules
 
 from .ext.poketwo_chances import PoketwoChances
 from .ext.poketwo_moves import PoketwoMoves
 
+if TYPE_CHECKING:
+    from main import Bot
+
+
+POKETWO_ID = 716390085896962058
+
 
 class Poketwo(PoketwoChances, PoketwoMoves):
     """Utility commands for the Pokétwo bot"""
+    def __init__(self, bot: Bot):
+        self.bot = bot
+        self.pk = self.bot.pk
 
-    pattern = re.compile(r"^`?\s*(\d+)`?\b", re.MULTILINE)
+        self.pkm_list = list(self.pk["name.en"])
+
+    hint_pattern = re.compile(r"The pokémon is (?P<hint>.+)\.")
+    ids_pattern = re.compile(r"^`?\s*(\d+)`?\b", re.MULTILINE)
 
     display_emoji = "🫒"
 
@@ -36,8 +51,32 @@ class Poketwo(PoketwoChances, PoketwoMoves):
         else:
             return await ctx.send_help(ctx.command)
 
-        ids = self.pattern.findall(content)
+        ids = self.ids_pattern.findall(content)
         await ctx.send(" ".join(ids) or "No IDs found.")
+
+    @commands.Cog.listener("on_message")
+    async def on_message(self, message: discord.Message):
+        if (message.author.id != POKETWO_ID):
+            return
+
+        content = message.content
+        match = self.hint_pattern.match(content)
+        if match is None:
+            return
+
+        hint = match.group("hint").replace(r"\_", ".")
+        hint = f"^{hint}$"
+        pattern = re.compile(hint)
+
+        pkms = []
+        for pkm in self.pkm_list:
+            if pattern.match(pkm):
+                pkms.append(pkm)
+
+        if len(pkms) > 1:
+            pkms = enumerate_list(pkms)
+
+        await message.channel.send("\n".join(pkms), reference=message)
 
 
 async def setup(bot):

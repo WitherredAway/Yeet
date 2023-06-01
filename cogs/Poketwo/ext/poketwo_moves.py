@@ -253,10 +253,6 @@ class PokemonPageSource(menus.ListPageSource):
 
 class PoketwoMoves(commands.Cog):
     """The cog for poketwo move related commands"""
-
-    def __init__(self, bot: commands.Bot):
-        self.bot = bot
-
     display_emoji = "🔠"
 
     async def data(self) -> Data:

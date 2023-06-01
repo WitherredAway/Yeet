@@ -90,11 +90,6 @@ STARTERS = [
 class PoketwoChances(commands.Cog):
     """Commands related to the poketwo bot."""
 
-    def __init__(self, bot):
-        self.bot: Bot = bot
-
-        self.pokemon_csv = self.bot.pokemon_csv
-
     display_emoji = "🔣"
 
     @property
@@ -102,12 +97,10 @@ class PoketwoChances(commands.Cog):
         return self.bot.wgists_client
 
     @cached_property
-    def pk(self):
-        pk = self.bot.pk
-        self.possible_abundance = round(
-            pk.loc[pk["catchable"] > 0, "abundance"].sum(), 4
+    def possible_abundance(self):
+        return round(
+            self.pk.loc[self.pk["catchable"] > 0, "abundance"].sum(), 4
         )
-        return pk
 
     async def update_chance_gist(
         self,
