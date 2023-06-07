@@ -38,6 +38,7 @@ def get_prefix(bot, message):
 class Bot(commands.Bot):
     TEST_BOT_ID = 561963276792102912
     MAIN_BOT_ID = 634409171114262538
+    BUG_CHANNEL_ID = 1116056244503978114
     PREFIXES = os.getenv("PREFIXES").split(", ")
     PREFIX = PREFIXES[0]
 
@@ -130,6 +131,7 @@ class Bot(commands.Bot):
 
         self.status_channel = await self.fetch_channel(os.getenv("statusCHANNEL"))
         self.log_channel = await self.fetch_channel(os.getenv("logCHANNEL"))
+        self.bug_channel = await self.fetch_channel(self.BUG_CHANNEL_ID)
 
         self.session = aiohttp.ClientSession(loop=self.loop)
 
