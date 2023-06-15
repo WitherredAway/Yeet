@@ -146,7 +146,9 @@ BG_EMOJIS_RGBA = {
 inv_CURSOR = invert_dict(CURSOR)
 
 
-LETTER_TO_NUMBER = {letter: idx for idx, letter in enumerate(list(ALPHABET_EMOJIS.keys()))}
+LETTER_TO_NUMBER = {
+    letter: idx for idx, letter in enumerate(list(ALPHABET_EMOJIS.keys()))
+}
 
 
 ALPHABETS = tuple(LETTER_TO_NUMBER.keys())

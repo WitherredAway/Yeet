@@ -39,7 +39,7 @@ def reload_modules(directory: str, skip: Optional[str] = None):
         file_path = os.path.join(directory, file)
         if os.path.isdir(file_path):
             reload_modules(file_path)
-        elif file.endswith('.py'):
+        elif file.endswith(".py"):
             file_path = file_path.replace("/", ".").replace(".py", "")
             if file_path == skip:
                 continue
@@ -79,6 +79,7 @@ def force_log_errors(func):
             logger.error(traceback.format_exc())
         else:
             return result
+
     return wrapper
 
 
@@ -150,7 +151,14 @@ class RoleMenu(discord.ui.View):
 PB_BARS = {0.0: "⬜", 0.3: "🟧", 0.7: "🟨", 1.0: "🟩"}
 NEGATIVE_PB_BARS = {0.0: "⬜", 0.3: "🟩", 0.7: "🟨", 1.0: "🟧"}
 
-def make_progress_bar(val: int, max_val: int, *, negative: Optional[bool] = False, length: Optional[int] = 10) -> str:
+
+def make_progress_bar(
+    val: int,
+    max_val: int,
+    *,
+    negative: Optional[bool] = False,
+    length: Optional[int] = 10,
+) -> str:
     bars = PB_BARS if negative is False else NEGATIVE_PB_BARS
 
     full_bar = np.full(length, bars[0.0])
@@ -201,7 +209,7 @@ class SimpleModal(discord.ui.Modal):
         self.stop()
 
 
-def enumerate_list(_list: List, *, escape: Optional[bool] = '\\') -> List[str]:
+def enumerate_list(_list: List, *, escape: Optional[bool] = "\\") -> List[str]:
     ret = [f"{idx + 1}{escape}. {element}" for idx, element in enumerate(_list)]
     return ret
 

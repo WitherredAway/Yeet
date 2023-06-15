@@ -111,7 +111,7 @@ class Categories(Enum):
     INCOMPLETE: str = "Claimed (Incomplete)"
     UNREVIEWED: str = "Submitted (Awaiting review)"
     CORRECTION: str = "Correction Pending"
-    APPROVED:  str = "Approved 🎉"
+    APPROVED: str = "Approved 🎉"
 
 
 @dataclass
@@ -139,7 +139,12 @@ class Category:
         return f"{self.amount}/{total_amount if total_amount is not None else self.total_amount}"
 
     def progress_bar(self, total_amount: Optional[int] = None) -> str:
-        return make_progress_bar(self.amount, total_amount if total_amount is not None else self.total_amount, negative=self.negative_pb, length=PROGRESS_BAR_LENGTH)
+        return make_progress_bar(
+            self.amount,
+            total_amount if total_amount is not None else self.total_amount,
+            negative=self.negative_pb,
+            length=PROGRESS_BAR_LENGTH,
+        )
 
 
 @dataclass
@@ -169,8 +174,10 @@ class Stats:
                     incomplete_rows.append(row)
             else:
                 unclaimed_rows.append(row)
-        claimed_list = (correction_pending_rows + incomplete_rows + unreviewed_rows + approved_rows)
-        submitted_list = (correction_pending_rows + unreviewed_rows)
+        claimed_list = (
+            correction_pending_rows + incomplete_rows + unreviewed_rows + approved_rows
+        )
+        submitted_list = correction_pending_rows + unreviewed_rows
 
         sort = lambda row: get_initial(row.pokemon)[0]
         unclaimed_rows.sort(key=sort)
@@ -181,13 +188,37 @@ class Stats:
         claimed_list.sort(key=sort)
         submitted_list.sort(key=sort)
 
-        self.claimed = Category(Categories.CLAIMED, claimed_list, total_amount=self.afdcog.total_amount)
-        self.unclaimed = Category(Categories.UNCLAIMED, unclaimed_rows, total_amount=self.afdcog.total_amount, negative_pb=True)
+        self.claimed = Category(
+            Categories.CLAIMED, claimed_list, total_amount=self.afdcog.total_amount
+        )
+        self.unclaimed = Category(
+            Categories.UNCLAIMED,
+            unclaimed_rows,
+            total_amount=self.afdcog.total_amount,
+            negative_pb=True,
+        )
 
-        self.incomplete = Category(Categories.INCOMPLETE, incomplete_rows, total_amount=self.claimed.amount, negative_pb=True)
-        self.submitted = Category(Categories.SUBMITTED, submitted_list, total_amount=self.claimed.amount)
-        self.correction_pending = Category(Categories.CORRECTION, correction_pending_rows, total_amount=self.submitted.amount, negative_pb=True)
-        self.unreviewed = Category(Categories.UNREVIEWED, unreviewed_rows, total_amount=self.submitted.amount, negative_pb=True)
-        self.approved = Category(Categories.APPROVED, approved_rows, total_amount=self.total_amount)
-
-
+        self.incomplete = Category(
+            Categories.INCOMPLETE,
+            incomplete_rows,
+            total_amount=self.claimed.amount,
+            negative_pb=True,
+        )
+        self.submitted = Category(
+            Categories.SUBMITTED, submitted_list, total_amount=self.claimed.amount
+        )
+        self.correction_pending = Category(
+            Categories.CORRECTION,
+            correction_pending_rows,
+            total_amount=self.submitted.amount,
+            negative_pb=True,
+        )
+        self.unreviewed = Category(
+            Categories.UNREVIEWED,
+            unreviewed_rows,
+            total_amount=self.submitted.amount,
+            negative_pb=True,
+        )
+        self.approved = Category(
+            Categories.APPROVED, approved_rows, total_amount=self.total_amount
+        )

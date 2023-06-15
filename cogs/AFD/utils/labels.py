@@ -16,4 +16,3 @@ DEX_LABEL_P = "id"
 
 SUBMIT_BTN_LABEL = "Submit"
 COMMENT_BTN_LABEL = "Add comment"
-

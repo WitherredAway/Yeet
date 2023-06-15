@@ -188,7 +188,10 @@ class Developer(commands.Cog):
             extn = ext.split(".")[-1].capitalize()
             exts.append(f"**{extn}** - `{str(ext)}`")
 
-        embed = self.bot.Embed(title=f"All loaded extensions ({len(exts)})", description="\n".join(enumerate_list(exts)))
+        embed = self.bot.Embed(
+            title=f"All loaded extensions ({len(exts)})",
+            description="\n".join(enumerate_list(exts)),
+        )
         await ctx.send(embed=embed)
 
 

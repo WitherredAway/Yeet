@@ -85,7 +85,6 @@ class Field:
             self.first_page_button.label = f"1 {FIRST_PAGE_SYMBOL}"
 
 
-
 class FieldNavButton(discord.ui.Button):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

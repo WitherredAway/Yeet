@@ -14,7 +14,14 @@ from google.oauth2 import service_account
 
 from cogs.Draw.utils.constants import ALPHABETS
 
-from .constants import DEFAULT_CLAIM_MAX, COL_OFFSET, DEFAULT_UNAPP_MAX, EMAIL, EXPORT_SUFFIX, FIRST_ROW_IDX
+from .constants import (
+    DEFAULT_CLAIM_MAX,
+    COL_OFFSET,
+    DEFAULT_UNAPP_MAX,
+    EMAIL,
+    EXPORT_SUFFIX,
+    FIRST_ROW_IDX,
+)
 from .labels import (
     APPROVED_LABEL,
     CLAIM_MAX_LABEL,
@@ -34,7 +41,7 @@ from .labels import (
     RULES_LABEL,
     DEADLINE_LABEL,
     CLAIM_MAX_LABEL,
-    UNAPP_MAX_LABEL
+    UNAPP_MAX_LABEL,
 )
 from .urls import IMAGE_URL
 from .utils import Row
@@ -113,7 +120,7 @@ class AfdSheet:
                     None,
                     None,
                     None,
-                    None
+                    None,
                 ]
                 data.append(new_row)
             self.df = pd.DataFrame(
@@ -130,8 +137,8 @@ class AfdSheet:
                     RULES_LABEL,
                     DEADLINE_LABEL,
                     CLAIM_MAX_LABEL,
-                    UNAPP_MAX_LABEL
-                ]
+                    UNAPP_MAX_LABEL,
+                ],
             )
             self.df.loc[FIRST_ROW_IDX, CLAIM_MAX_LABEL] = DEFAULT_CLAIM_MAX
             self.df.loc[FIRST_ROW_IDX, UNAPP_MAX_LABEL] = DEFAULT_UNAPP_MAX
@@ -178,14 +185,18 @@ class AfdSheet:
         return int(self.df.loc[FIRST_ROW_IDX, UNAPP_MAX_LABEL])
 
     async def update_row(
-        self, dex: int, *, from_col: Optional[str] = DEX_LABEL, to_col: Optional[str] = COMMENT_LABEL
+        self,
+        dex: int,
+        *,
+        from_col: Optional[str] = DEX_LABEL,
+        to_col: Optional[str] = COMMENT_LABEL,
     ) -> None:
         from_col_idx = self.df.columns.get_loc(from_col)
         to_col_idx = self.df.columns.get_loc(to_col) + 1
-        row_vals = [
-            self.df.iloc[dex, from_col_idx: to_col_idx].fillna("").tolist()
-        ]
-        await self.worksheet.update(f"{ALPHABETS[from_col_idx]}{dex + COL_OFFSET}", row_vals)
+        row_vals = [self.df.iloc[dex, from_col_idx:to_col_idx].fillna("").tolist()]
+        await self.worksheet.update(
+            f"{ALPHABETS[from_col_idx]}{dex + COL_OFFSET}", row_vals
+        )
 
     async def update_sheet(self) -> None:
         """Drops index column"""
@@ -195,9 +206,8 @@ class AfdSheet:
 
     async def update_df(self):
         data = await self.worksheet.get_all_values()
-        self.df = (
-            pd.DataFrame(data[1:], columns=data[0], dtype="object")
-            .replace("", np.nan)
+        self.df = pd.DataFrame(data[1:], columns=data[0], dtype="object").replace(
+            "", np.nan
         )
 
     def get_pokemon(self, name: str) -> str:
@@ -248,12 +258,16 @@ class AfdSheet:
         self.edit_row_where(
             PKM_LABEL, pokemon, set_column=USER_ID_LABEL, to_val=str(user.id)
         )
-        for col in self.df.columns[self.df.columns.get_loc(IMAGE_LABEL):]:  # For all columns after Discord ID
+        for col in self.df.columns[
+            self.df.columns.get_loc(IMAGE_LABEL) :
+        ]:  # For all columns after Discord ID
             self.edit_row_where(PKM_LABEL, pokemon, set_column=col, to_val=None)
         return self.get_pokemon_row(pokemon)
 
     def unclaim(self, pokemon: str) -> Row:
-        for col in self.df.columns[self.df.columns.get_loc(USER_ID_LABEL):]:  # For all columns after Pokemon
+        for col in self.df.columns[
+            self.df.columns.get_loc(USER_ID_LABEL) :
+        ]:  # For all columns after Pokemon
             self.edit_row_where(PKM_LABEL, pokemon, set_column=col, to_val=None)
         return self.get_pokemon_row(pokemon)
 
@@ -282,7 +296,9 @@ class AfdSheet:
         self.edit_row_where(PKM_LABEL, pokemon, set_column=APPROVED_LABEL, to_val=None)
         return self.get_pokemon_row(pokemon)
 
-    def comment(self, pokemon: str, comment: Union[str, None], *, by: Union[int, None]) -> Row:
+    def comment(
+        self, pokemon: str, comment: Union[str, None], *, by: Union[int, None]
+    ) -> Row:
         self.edit_row_where(
             PKM_LABEL,
             pokemon,

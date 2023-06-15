@@ -17,7 +17,8 @@ if typing.TYPE_CHECKING:
     from main import Bot
 
 
-ERROR_COLOUR = 0xc94542
+ERROR_COLOUR = 0xC94542
+
 
 class BotCog(commands.Cog):
     """Commands and events related to the bot's base functionality."""
@@ -83,24 +84,39 @@ class BotCog(commands.Cog):
             await ctx.send_help(ctx.command)
 
         else:
-            tb = "".join(traceback.format_exception(type(error), error, error.__traceback__))
+            tb = "".join(
+                traceback.format_exception(type(error), error, error.__traceback__)
+            )
             cb_fmt = "```py\n%s\n```"
             await ctx.send(
                 embed=self.bot.Embed(
                     title="⚠️ Uh oh! An unexpected error occured :(",
                     description=cb_fmt % str(error),
-                    color=ERROR_COLOUR
-                ).set_footer(text="This error has been reported to the developer, sorry for the inconvenience!")
+                    color=ERROR_COLOUR,
+                ).set_footer(
+                    text="This error has been reported to the developer, sorry for the inconvenience!"
+                )
             )
 
-            embed = self.bot.Embed(title="⚠️ An unexpected error occured", description=cb_fmt % tb[(len(tb) - EMBED_DESC_CHAR_LIMIT) + 20:])
+            embed = self.bot.Embed(
+                title="⚠️ An unexpected error occured",
+                description=cb_fmt % tb[(len(tb) - EMBED_DESC_CHAR_LIMIT) + 20 :],
+            )
             embed.set_author(name=str(ctx.author), icon_url=ctx.author.avatar.url)
-            embed.add_field(name="Command", value=ctx.message.content[:EMBED_FIELD_CHAR_LIMIT])
+            embed.add_field(
+                name="Command", value=ctx.message.content[:EMBED_FIELD_CHAR_LIMIT]
+            )
 
-            view = UrlView({f"{ctx.guild} | #{ctx.channel}" if ctx.guild else "Direct Messages": ctx.message.jump_url})
+            view = UrlView(
+                {
+                    f"{ctx.guild} | #{ctx.channel}"
+                    if ctx.guild
+                    else "Direct Messages": ctx.message.jump_url
+                }
+            )
             await self.bot.bug_channel.send(embed=embed, view=view)
 
-            print(f'Ignoring exception in command {ctx.command}:', file=sys.stderr)
+            print(f"Ignoring exception in command {ctx.command}:", file=sys.stderr)
             print(tb)
 
     # logs

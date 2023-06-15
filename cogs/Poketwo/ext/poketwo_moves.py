@@ -78,8 +78,7 @@ class Move:
     def pokemon(self) -> typing.Dict[int, typing.List[str]]:
         # THis is a dict first to prevent duplicate pokemon while staying ordered
         pokemon = {
-            pkm.name: pkm.id
-            for pkm in sorted(self.pokemon_objs, key=lambda p: p.name)
+            pkm.name: pkm.id for pkm in sorted(self.pokemon_objs, key=lambda p: p.name)
         }
 
         return list(pokemon.keys())
@@ -120,9 +119,7 @@ class Data:
             POKEMON_MOVES,
             index_col=0,
         )
-        self.pkm_moves_data.query(
-            "pokemon_move_method_id == 1", inplace=True
-        )
+        self.pkm_moves_data.query("pokemon_move_method_id == 1", inplace=True)
         pkm_grouped = self.pkm_moves_data.groupby("pokemon_id")
 
         self.latest_version_group = defaultdict(int)
@@ -198,9 +195,7 @@ class Data:
         pokemon = []
         pkm_names = self.pk
 
-        move_group = (
-            grouped.get_group(move_id) if move_id in grouped.groups else None
-        )
+        move_group = grouped.get_group(move_id) if move_id in grouped.groups else None
         if move_group is not None:
             for pkm_id, row in move_group.iterrows():
                 if not (pkm_names.loc[pkm_id, "enabled"] > 0):
@@ -223,10 +218,11 @@ class Data:
 
 PER_PAGE = 30
 
+
 class PokemonPageSource(menus.ListPageSource):
     def __init__(self, move: Move, per_page=PER_PAGE):
         self.move = move
-        entries = enumerate_list(move.pokemon, escape='')
+        entries = enumerate_list(move.pokemon, escape="")
         super().__init__(entries, per_page=per_page)
 
     async def format_page(self, menu: BotPages, entries):
@@ -253,6 +249,7 @@ class PokemonPageSource(menus.ListPageSource):
 
 class PoketwoMoves(commands.Cog):
     """The cog for poketwo move related commands"""
+
     display_emoji = "🔠"
 
     async def data(self) -> Data:
@@ -295,7 +292,6 @@ class PoketwoMoves(commands.Cog):
 
         final = format % joined
         if len(final) > 2000:  # Character limit
-
             pokemon = sorted(
                 [[pkm.name, pkm.level] for pkm in move.pokemon_objs],
                 key=lambda p: p[1],
@@ -315,7 +311,9 @@ class PoketwoMoves(commands.Cog):
                 files=files, description=description, public=False
             )
 
-            final = format % f"<{gist.url}#file-learnset_table-csv>"  # Header of the gen 8 file
+            final = (
+                format % f"<{gist.url}#file-learnset_table-csv>"
+            )  # Header of the gen 8 file
 
         return final
 

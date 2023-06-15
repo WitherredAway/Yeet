@@ -47,7 +47,9 @@ class AfdGist(commands.Cog):
     def user_grouped(self) -> GroupBy:
         return self.df.groupby(USER_ID_LABEL)
 
-    async def format_unreviewed(self, df: pd.DataFrame, row: Row, pkm_indexes: list) -> str:
+    async def format_unreviewed(
+        self, df: pd.DataFrame, row: Row, pkm_indexes: list
+    ) -> str:
         pkm_list = []
         for idx, pkm_idx in enumerate(pkm_indexes):
             pokename = df.loc[pkm_idx, PKM_LABEL]

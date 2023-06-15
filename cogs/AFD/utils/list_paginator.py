@@ -28,6 +28,7 @@ if TYPE_CHECKING:
 
 STATS_PER_PAGE = 20
 
+
 class StatsPageMenu(BotPages):
     def __init__(
         self,
@@ -35,7 +36,7 @@ class StatsPageMenu(BotPages):
         *,
         ctx: CustomContext,
         original_embed: Bot.Embed,
-        total_amount: int
+        total_amount: int,
     ):
         self.categories = categories
         self.original_embed = original_embed
@@ -77,6 +78,7 @@ class StatsPageMenu(BotPages):
         self._update_labels(0)
         await interaction.response.edit_message(**kwargs, view=self)
 
+
 class StatsPageSource(menus.ListPageSource):
     def __init__(
         self,
@@ -93,10 +95,15 @@ class StatsPageSource(menus.ListPageSource):
 
     async def format_page(self, menu: StatsPageMenu, entries: List[str]):
         embed = self.original_embed.copy()
-        embed.add_field(name=f"{self.category.name} {self.category.progress()}\n{self.category.progress_bar()}", value=NL.join(entries))
+        embed.add_field(
+            name=f"{self.category.name} {self.category.progress()}\n{self.category.progress_bar()}",
+            value=NL.join(entries),
+        )
         return embed
 
+
 ALL_OPT_VALUE = "all"
+
 
 class StatsSelectMenu(discord.ui.Select):
     def __init__(self, menu: StatsPageMenu):
@@ -134,7 +141,13 @@ class StatsSelectMenu(discord.ui.Select):
         self.set_default(option)
 
         if value == ALL_OPT_VALUE:
-            fields = [Field(name=f"{c.name} {c.progress()}\n{c.progress_bar()}", values=c.enumerated_pokemon) for c in self.categories]
+            fields = [
+                Field(
+                    name=f"{c.name} {c.progress()}\n{c.progress_bar()}",
+                    values=c.enumerated_pokemon,
+                )
+                for c in self.categories
+            ]
             view = FieldPaginationView(
                 self.ctx, self.menu.original_embed, fields=fields
             )
@@ -155,13 +168,9 @@ class StatsSelectMenu(discord.ui.Select):
 
 LIST_PER_PAGE = 20
 
+
 class ListPageMenu(BotPages):
-    def __init__(
-        self,
-        source: menus.ListPageSource,
-        *,
-        ctx: CustomContext
-    ):
+    def __init__(self, source: menus.ListPageSource, *, ctx: CustomContext):
         self.ctx = ctx
         self.bot = ctx.bot
         super().__init__(source, ctx=ctx)
@@ -235,6 +244,7 @@ class ListPageMenu(BotPages):
         self._update_labels(0)
         await interaction.response.edit_message(**kwargs, view=self)
 
+
 class ListPageSource(menus.ListPageSource):
     def __init__(
         self,
@@ -242,7 +252,7 @@ class ListPageSource(menus.ListPageSource):
         *,
         entries: List[str],
         dynamic_pages: Optional[bool] = False,
-        max_per_page: Optional[int] = LIST_PER_PAGE
+        max_per_page: Optional[int] = LIST_PER_PAGE,
     ):
         self.joiner = NL
         entries = entries if len(entries) > 0 else ["None"]
@@ -254,7 +264,9 @@ class ListPageSource(menus.ListPageSource):
                     pages.append([])
 
                 p = pages[-1] + [entry]
-                if (len(self.joiner.join(p)) >= EMBED_DESC_CHAR_LIMIT) or (len(p) > max_per_page):
+                if (len(self.joiner.join(p)) >= EMBED_DESC_CHAR_LIMIT) or (
+                    len(p) > max_per_page
+                ):
                     pages.append([])
                 pages[-1].append(entry)
 
@@ -267,11 +279,15 @@ class ListPageSource(menus.ListPageSource):
         super().__init__(entries=pages, per_page=per_page)
 
     async def format_page(self, menu: ListPageMenu, entries: List[str]):
-        embed = menu.bot.Embed(title=f"{self.category.name} {self.category.progress()}\n{self.category.progress_bar()}", description=self.joiner.join(entries))
+        embed = menu.bot.Embed(
+            title=f"{self.category.name} {self.category.progress()}\n{self.category.progress_bar()}",
+            description=self.joiner.join(entries),
+        )
         embed.set_footer(
             text=f"Use the `{menu.ctx.clean_prefix}afd view <pokemon>` command to see more info on and interact with an entry"
         )
         return embed
+
 
 class ListSelectMenu(discord.ui.Select):
     def __init__(self, menu: ListPageMenu):
@@ -323,25 +339,30 @@ class ListSelectMenu(discord.ui.Select):
 
 FIELDS_PER_PAGE = 3
 
+
 class FieldPageSource(menus.ListPageSource):
-    def __init__(
-        self,
-        category: Category,
-        *,
-        entries: List[Tuple[str, str]]
-    ):
+    def __init__(self, category: Category, *, entries: List[Tuple[str, str]]):
         self.category = category
         super().__init__(entries=entries, per_page=FIELDS_PER_PAGE)
 
     async def format_page(self, menu: ListPageMenu, entries: List[Tuple[str, str]]):
-        embed = menu.bot.Embed(title=f"{self.category.name} {self.category.progress()}\n{self.category.progress_bar()}")
+        embed = menu.bot.Embed(
+            title=f"{self.category.name} {self.category.progress()}\n{self.category.progress_bar()}"
+        )
         for name, value in entries:
             embed.add_field(name=name, value=value)
         return embed
 
 
 class ActionSelectMenu(discord.ui.Select):
-    def __init__(self, menu: ListPageMenu, *, get_pkm: Callable, action_func: Coroutine, placeholder: str):
+    def __init__(
+        self,
+        menu: ListPageMenu,
+        *,
+        get_pkm: Callable,
+        action_func: Coroutine,
+        placeholder: str,
+    ):
         super().__init__(placeholder=placeholder)
         self.menu = menu
         self.get_pkm = get_pkm
@@ -353,7 +374,7 @@ class ActionSelectMenu(discord.ui.Select):
     def update(self):
         self.options.clear()
         base = self.menu.current_page * self.source.per_page
-        entries = self.source.entries[base: base + self.source.per_page]
+        entries = self.source.entries[base : base + self.source.per_page]
 
         for entry in entries:
             pkm = self.get_pkm(entry)

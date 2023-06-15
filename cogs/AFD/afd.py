@@ -5,7 +5,15 @@ from collections import defaultdict
 import logging
 import re
 import time
-from typing import TYPE_CHECKING, Callable, Coroutine, DefaultDict, List, Optional, Union
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Coroutine,
+    DefaultDict,
+    List,
+    Optional,
+    Union,
+)
 import pandas as pd
 import random
 
@@ -59,8 +67,12 @@ class Afd(AfdGist):
     async def setup(self):
         await self.reload_sheet()
         self.bot.afd_log_channel = await self.bot.fetch_channel(AFD_LOG_CHANNEL_ID)
-        self.bot.afd_update_channel = await self.bot.fetch_channel(AFD_UPDATE_CHANNEL_ID)
-        self.bot.afd_credits_gist = await self.bot.wgists_client.get_gist(AFD_CREDITS_GIST_URL)
+        self.bot.afd_update_channel = await self.bot.fetch_channel(
+            AFD_UPDATE_CHANNEL_ID
+        )
+        self.bot.afd_credits_gist = await self.bot.wgists_client.get_gist(
+            AFD_CREDITS_GIST_URL
+        )
 
         self.bot.add_view(AFDRoleMenu())
 
@@ -251,8 +263,13 @@ class Afd(AfdGist):
             value=NL.join(
                 [
                     f"**{category.name}**\n{category.progress_bar()} {category.progress()}"
-                    for category
-                    in (stats.correction_pending, stats.submitted, stats.unreviewed, stats.claimed, stats.approved)
+                    for category in (
+                        stats.correction_pending,
+                        stats.submitted,
+                        stats.unreviewed,
+                        stats.claimed,
+                        stats.approved,
+                    )
                 ]
             ),
             inline=False,
@@ -727,6 +744,7 @@ class Afd(AfdGist):
 
         await self.send_notification(embed, user=user, ctx=ctx, view=view)
         return True
+
     # endregion
 
     # --- Public commands ---
@@ -800,21 +818,32 @@ and lets you directly perform actions such as:
             df: pd.DataFrame = self.df.sort_values(by=PKM_LABEL)
         return Stats(df, self)
 
-    async def send_all_list(self, ctx: CustomContext, stats: Stats, *, embed: Bot.Embed):
+    async def send_all_list(
+        self, ctx: CustomContext, stats: Stats, *, embed: Bot.Embed
+    ):
         total_amount = stats.claimed.amount if stats is not None else 0
         embed.description = f"**Total pokemon**: {total_amount}"
 
         if stats is None:
             return await ctx.send(embed=embed)
         else:
-            embed.description += f"\n**Total submitted pokemon**: {stats.submitted.amount}"
+            embed.description += (
+                f"\n**Total submitted pokemon**: {stats.submitted.amount}"
+            )
 
         embed.set_footer(
             text=f"Use the `{ctx.clean_prefix}afd view <pokemon>` command to see more info on and interact with an entry"
         )
 
-        categories = [stats.correction_pending, stats.incomplete, stats.unreviewed, stats.approved]
-        menu = StatsPageMenu(categories, ctx=ctx, original_embed=embed, total_amount=total_amount)
+        categories = [
+            stats.correction_pending,
+            stats.incomplete,
+            stats.unreviewed,
+            stats.approved,
+        ]
+        menu = StatsPageMenu(
+            categories, ctx=ctx, original_embed=embed, total_amount=total_amount
+        )
         await menu.start()
 
     @afd.group(
@@ -838,7 +867,7 @@ and lets you directly perform actions such as:
     @_list.command(
         name="all",
         brief="View all stats, categorized",
-        help="View lists of every category of pokemon in a compact form compared to their respective subcommands."
+        help="View lists of every category of pokemon in a compact form compared to their respective subcommands.",
     )
     async def list_all(self, ctx: CustomContext):
         await self.sheet.update_df()
@@ -855,7 +884,9 @@ and lets you directly perform actions such as:
         initials = []
         for row in rows:
             pokemon = row.pokemon
-            i, bolded = get_initial(pokemon, bold=True)  # !NOTE TO SELF: UPDATE get_pkm IF FORMAT CHANGES
+            i, bolded = get_initial(
+                pokemon, bold=True
+            )  # !NOTE TO SELF: UPDATE get_pkm IF FORMAT CHANGES
             if i not in initials:
                 entries.append(bolded)
                 initials.append(i)
@@ -882,10 +913,12 @@ and lets you directly perform actions such as:
             ActionSelectMenu(
                 menu,
                 # !NOTE TO SELF: THIS get_pkm IS HACKY AS HELL AND WILL BREAK IF A POKEMON HAS * IN ITS NAME OR FORMAT CHANGES
-                get_pkm=lambda e: re.match("\d+\\\. (.+)", e).groups()[0].replace("*", ""),
+                get_pkm=lambda e: re.match("\d+\\\. (.+)", e)
+                .groups()[0]
+                .replace("*", ""),
                 action_func=self.claim,
-                placeholder="Claim a pokemon"
-            )
+                placeholder="Claim a pokemon",
+            ),
         )
         await menu.start()
 
@@ -897,7 +930,9 @@ and lets you directly perform actions such as:
         entries = []
         for user, pokemon in sorted(entries_dict.items(), key=lambda e: str(e[0])):
             for pkm in pokemon:
-                entries.append(f"**{pkm}** - `{user}`")  # !NOTE TO SELF: UPDATE get_pkm IF FORMAT CHANGES
+                entries.append(
+                    f"**{pkm}** - `{user}`"
+                )  # !NOTE TO SELF: UPDATE get_pkm IF FORMAT CHANGES
 
         return entries
 
@@ -917,7 +952,13 @@ and lets you directly perform actions such as:
         menu = ListPageMenu(src, ctx=ctx)
         await menu.start()
 
-    async def per_user_fmt(self, rows: List[Row], *, joiner: Optional[str] = ", ", enumerate: Optional[bool] = False) -> List[str]:
+    async def per_user_fmt(
+        self,
+        rows: List[Row],
+        *,
+        joiner: Optional[str] = ", ",
+        enumerate: Optional[bool] = False,
+    ) -> List[str]:
         users: DefaultDict[discord.User, List[str]] = defaultdict(list)
         for row in rows:
             users[await self.fetch_user(row.user_id)].append(f"`{row.pokemon}`")
@@ -945,7 +986,9 @@ and lets you directly perform actions such as:
         category = stats.incomplete
         entries = await self.per_user_fmt(category.rows)
 
-        src = ListPageSource(category, entries=entries, dynamic_pages=True, max_per_page=5)
+        src = ListPageSource(
+            category, entries=entries, dynamic_pages=True, max_per_page=5
+        )
         menu = ListPageMenu(src, ctx=ctx)
         await menu.start()
 
@@ -969,7 +1012,7 @@ and lets you directly perform actions such as:
                 # !NOTE TO SELF: THIS get_pkm IS HACKY AS HELL AND WILL BREAK IF THE FORMAT CHANGES
                 get_pkm=lambda e: re.match("\d+\\\. \*\*(.+?)\*\* - ", e).groups()[0],
                 action_func=self.send_view,
-                placeholder="View an entry"
+                placeholder="View an entry",
             )
         )
         await menu.start()
@@ -986,7 +1029,9 @@ and lets you directly perform actions such as:
         category = stats.approved
         entries = await self.per_user_fmt(category.rows)
 
-        src = ListPageSource(category, entries=entries, dynamic_pages=True, max_per_page=3)
+        src = ListPageSource(
+            category, entries=entries, dynamic_pages=True, max_per_page=3
+        )
         menu = ListPageMenu(src, ctx=ctx)
         await menu.start()
 
@@ -1103,12 +1148,14 @@ and lets you directly perform actions such as:
                 return
 
         check = lambda row: (not row.claimed) or row.user_id != ctx.author.id
+
         async def decide_msg(row):
             return (
                 f"**{pokemon}** is not claimed."
                 if not row.claimed
                 else f"**{pokemon}** is claimed by **{await self.fetch_user(row.user_id)}**!"
             )
+
         decide_footer = (
             lambda row: None
             if not row.claimed
@@ -1349,7 +1396,7 @@ and lets you directly perform actions such as:
         "{loser} had a jousting competition with {winner} and lost.",
         "{loser} was just a figment of your imagination...",
         "{loser} forgot to put on sunscreen and burnt up...",
-        "{loser} was just a figment of your imagination..."
+        "{loser} was just a figment of your imagination...",
     ]
 
     async def random(self, ctx: CustomContext):
@@ -1363,16 +1410,20 @@ and lets you directly perform actions such as:
         elif len(pokemon) == 1:
             choices = pokemon
         else:
-            choices = random.choices(pokemon, k=min(max(round(len(pokemon) / 2), 1), self.CHOICES_LEN))
+            choices = random.choices(
+                pokemon, k=min(max(round(len(pokemon) / 2), 1), self.CHOICES_LEN)
+            )
 
         cont = choices.copy()
         assert len(choices) > 0
         if len(choices) > 1:
-            desc = lambda: f"__**Contestants ({len(cont)}/{len(choices)})**__:\n{NL.join(enumerate_list(choices))}"
+            desc = (
+                lambda: f"__**Contestants ({len(cont)}/{len(choices)})**__:\n{NL.join(enumerate_list(choices))}"
+            )
 
             embed = self.bot.Embed(
                 title=f"{len(choices)} out of {len(pokemon)} unclaimed pokemon were randomly chosen as contestants for this randomizer! Who will win? 👀",
-                description=desc()
+                description=desc(),
             )
             msg = await ctx.send(embed=embed)
             await asyncio.sleep(self.DURATION)
@@ -1384,7 +1435,9 @@ and lets you directly perform actions such as:
                 cont.remove(loser)
                 embed.description = desc()
 
-                message = random.choice(self.MESSAGES).format_map({"winner": f"**{winner}**", "loser": f"**{loser}**"})
+                message = random.choice(self.MESSAGES).format_map(
+                    {"winner": f"**{winner}**", "loser": f"**{loser}**"}
+                )
                 embed.add_field(name=f"Round {rnd}", value=message)
 
                 rnd += 1
@@ -1397,7 +1450,7 @@ and lets you directly perform actions such as:
             choice = choices[0]
             embed = self.bot.Embed(
                 title=f"1 pokemon was randomly chosen out of... 1 unclaimed pokemon...?",
-                description=f"**{choice}** looks around for others... but to no avail... 🦗🦗🦗"
+                description=f"**{choice}** looks around for others... but to no avail... 🦗🦗🦗",
             )
             msg = await ctx.send(embed=embed)
             await asyncio.sleep(self.DURATION)
@@ -1406,12 +1459,10 @@ and lets you directly perform actions such as:
         embed.set_image(url=self.sheet.get_pokemon_image(choice))
         await ctx.send(embed=embed)
 
-    @afd.command(
-        name="random",
-        aliases=("rp", "rand")
-    )
+    @afd.command(name="random", aliases=("rp", "rand"))
     async def random_cmd(self, ctx: CustomContext):
         await self.random(ctx)
+
 
 async def setup(bot):
     await bot.add_cog(Afd(bot))

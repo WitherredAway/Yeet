@@ -83,7 +83,7 @@ STARTERS = [
     "Sobble",
     "Sprigatito",
     "Fuecoco",
-    "Quaxly"
+    "Quaxly",
 ]
 
 
@@ -98,9 +98,7 @@ class PoketwoChances(commands.Cog):
 
     @cached_property
     def possible_abundance(self):
-        return round(
-            self.pk.loc[self.pk["catchable"] > 0, "abundance"].sum(), 4
-        )
+        return round(self.pk.loc[self.pk["catchable"] > 0, "abundance"].sum(), 4)
 
     async def update_chance_gist(
         self,

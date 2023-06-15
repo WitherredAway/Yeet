@@ -20,6 +20,7 @@ POKETWO_ID = 716390085896962058
 
 class Poketwo(PoketwoChances, PoketwoMoves):
     """Utility commands for the Pokétwo bot"""
+
     def __init__(self, bot: Bot):
         self.bot = bot
         self.pk = self.bot.pk
@@ -56,7 +57,7 @@ class Poketwo(PoketwoChances, PoketwoMoves):
 
     @commands.Cog.listener("on_message")
     async def on_message(self, message: discord.Message):
-        if (message.author.id != POKETWO_ID):
+        if message.author.id != POKETWO_ID:
             return
 
         content = message.content

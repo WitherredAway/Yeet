@@ -104,9 +104,13 @@ class EditModal(discord.ui.Modal):
 
         if rules.value != rules.default:
             try:
-                rules_fmt = rules.value.format(CLAIM_MAX=claim_max.value, UNAPP_MAX=unapp_max.value)
+                rules_fmt = rules.value.format(
+                    CLAIM_MAX=claim_max.value, UNAPP_MAX=unapp_max.value
+                )
             except KeyError as e:
-                resp[RULES_LABEL] = f"{e}\nPlease make sure you did not modify any of the variables."
+                resp[
+                    RULES_LABEL
+                ] = f"{e}\nPlease make sure you did not modify any of the variables."
             else:
                 self.df.loc[FIRST_ROW_IDX, RULES_LABEL] = rules.value
                 resp[RULES_LABEL] = f"Updated to:\n```\n{rules_fmt}\n```"
@@ -114,31 +118,43 @@ class EditModal(discord.ui.Modal):
         try:
             datetime.datetime.strptime(deadline.value, "%d/%m/%Y %H:%M")
         except ValueError:
-            resp[DEADLINE_LABEL] = f"{deadline.value} is not a valid format. Expected format: `dd/MM/YYYY HH:mm`"
+            resp[
+                DEADLINE_LABEL
+            ] = f"{deadline.value} is not a valid format. Expected format: `dd/MM/YYYY HH:mm`"
         else:
             if deadline.value != deadline.default:
                 from_ts = self.sheet.DEADLINE_TS
                 self.df.loc[FIRST_ROW_IDX, DEADLINE_LABEL] = deadline.value
-                resp[DEADLINE_LABEL] = f"Updated from `{from_ts}` to {self.sheet.DEADLINE_TS}"
+                resp[
+                    DEADLINE_LABEL
+                ] = f"Updated from `{from_ts}` to {self.sheet.DEADLINE_TS}"
 
         if claim_max.value.isdigit():
             if claim_max.value != claim_max.default:
                 self.df.loc[FIRST_ROW_IDX, CLAIM_MAX_LABEL] = claim_max.value
-                resp[CLAIM_MAX_LABEL] = f"Updated from `{claim_max.default}` to `{claim_max.value}`"
+                resp[
+                    CLAIM_MAX_LABEL
+                ] = f"Updated from `{claim_max.default}` to `{claim_max.value}`"
         else:
             resp[CLAIM_MAX_LABEL] = f"{claim_max.value} is not a valid number"
 
         if unapp_max.value.isdigit():
             if unapp_max.value != unapp_max.default:
                 self.df.loc[FIRST_ROW_IDX, UNAPP_MAX_LABEL] = unapp_max.value
-                resp[UNAPP_MAX_LABEL] = f"Updated from `{unapp_max.default}` to `{unapp_max.value}`"
+                resp[
+                    UNAPP_MAX_LABEL
+                ] = f"Updated from `{unapp_max.default}` to `{unapp_max.value}`"
         else:
             resp[UNAPP_MAX_LABEL] = f"{unapp_max.value} is not a valid number"
 
-        await self.sheet.update_row(FIRST_ROW_IDX, from_col=TOPIC_LABEL, to_col=UNAPP_MAX_LABEL)
+        await self.sheet.update_row(
+            FIRST_ROW_IDX, from_col=TOPIC_LABEL, to_col=UNAPP_MAX_LABEL
+        )
 
         if len(resp) != 0:
-            embed = self.afdcog.bot.Embed(title="The following AFD information field(s) have been updated!")
+            embed = self.afdcog.bot.Embed(
+                title="The following AFD information field(s) have been updated!"
+            )
             for label, msg in resp.items():
                 embed.add_field(name=label, value=msg)
 
@@ -389,7 +405,7 @@ class PokemonView(discord.ui.View):
                 discord.ui.Button(
                     label="Jump To Spreadsheet",
                     url=self.sheet.get_pokemon_loc(row.dex),
-                    row=2
+                    row=2,
                 )
             )  # Add jump to spreadsheet button if admin
 
