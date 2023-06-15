@@ -52,6 +52,76 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+
+class SkipView(discord.ui.View):
+    def __init__(self, remaining: List[str], *, ctx: CustomContext):
+        super().__init__(timeout=300)
+        self.remaining = remaining
+        self.ctx = ctx
+
+    async def on_timeout(self):
+        await self.msg.edit(view=None)
+        self.stop()
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user != self.ctx.author:
+            await interaction.response.send_message(
+                f"This instance does not belong to you!",
+                ephemeral=True,
+            )
+            return False
+        return True
+
+    @discord.ui.button(label="Skip", style=discord.ButtonStyle.red)
+    async def skip_btn(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        await interaction.response.defer()
+        self.remaining[:] = [random.choice(self.remaining)]
+
+
+class RandomView(discord.ui.View):
+    def __init__(self, afdcog: Afd, choice: str, *, ctx: CustomContext):
+        super().__init__(timeout=300)
+        self.afdcog = afdcog
+        self.choice = choice
+        self.ctx = ctx
+
+    async def on_timeout(self):
+        await self.msg.edit(view=None)
+        self.stop()
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user != self.ctx.author:
+            await interaction.response.send_message(
+                f"This instance does not belong to you!",
+                ephemeral=True,
+            )
+            return False
+        return True
+
+    @discord.ui.button(label="Claim", style=discord.ButtonStyle.blurple)
+    async def claim_btn(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        await interaction.response.defer()
+        await self.afdcog.claim(self.ctx, self.choice)
+
+    @discord.ui.button(label="Reroll", style=discord.ButtonStyle.red)
+    async def reroll_btn(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        await interaction.response.defer()
+        await self.afdcog.random(self.ctx)
+
+    @discord.ui.button(label="Reroll (skip)", style=discord.ButtonStyle.red)
+    async def reroll_skp_btn(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        await interaction.response.defer()
+        await self.afdcog.random(self.ctx, skip=True)
+
+
 class Afd(AfdGist):
     def __init__(self, bot):
         self.bot: Bot = bot
@@ -1399,7 +1469,7 @@ and lets you directly perform actions such as:
         "{loser} was just a figment of your imagination...",
     ]
 
-    async def random(self, ctx: CustomContext):
+    async def random(self, ctx: CustomContext, *, skip: Optional[bool] = False):
         await self.sheet.update_df()
         stats = self.get_stats()
         unclaimed = stats.unclaimed
@@ -1409,6 +1479,8 @@ and lets you directly perform actions such as:
             return await ctx.send("There are no unclaimed pokemon to choose from!")
         elif len(pokemon) == 1:
             choices = pokemon
+        elif skip is True:
+            choices = [random.choice(pokemon)]
         else:
             choices = random.choices(
                 pokemon, k=min(max(round(len(pokemon) / 2), 1), self.CHOICES_LEN)
@@ -1416,7 +1488,10 @@ and lets you directly perform actions such as:
 
         cont = choices.copy()
         assert len(choices) > 0
-        if len(choices) > 1:
+        if skip is True:
+            choice = choices[0]
+
+        elif len(choices) > 1:
             desc = (
                 lambda: f"__**Contestants ({len(cont)}/{len(choices)})**__:\n{NL.join(enumerate_list(choices))}"
             )
@@ -1425,7 +1500,8 @@ and lets you directly perform actions such as:
                 title=f"{len(choices)} out of {len(pokemon)} unclaimed pokemon were randomly chosen as contestants for this randomizer! Who will win? 👀",
                 description=desc(),
             )
-            msg = await ctx.send(embed=embed)
+            skip_view = SkipView(cont, ctx=ctx)
+            skip_view.msg = msg = await ctx.reply(embed=embed, view=skip_view)
             await asyncio.sleep(self.DURATION)
 
             rnd = 1
@@ -1452,16 +1528,33 @@ and lets you directly perform actions such as:
                 title=f"1 pokemon was randomly chosen out of... 1 unclaimed pokemon...?",
                 description=f"**{choice}** looks around for others... but to no avail... 🦗🦗🦗",
             )
-            msg = await ctx.send(embed=embed)
+            msg = await ctx.reply(embed=embed)
             await asyncio.sleep(self.DURATION)
 
         embed = self.bot.Embed(title=f"{choice} has won the randomizer contest!")
         embed.set_image(url=self.sheet.get_pokemon_image(choice))
-        await ctx.send(embed=embed)
 
-    @afd.command(name="random", aliases=("rp", "rand"))
+        view = RandomView(self, choice, ctx=ctx)
+        view.msg = await ctx.reply(embed=embed, view=view)
+
+    @afd.group(
+        name="random",
+        aliases=("rp", "rand"),
+        brief="Pick a random unclaimed pokemon",
+        help="Randomly chooses an unclaimed pokemon. Has a little contest to make it more fun, suggested by @metspek (243763234685976577) :D",
+        invoke_without_command=True
+    )
     async def random_cmd(self, ctx: CustomContext):
         await self.random(ctx)
+
+    @random_cmd.command(
+        name="skip",
+        aliases=("sk",),
+        brief="Pick a random unclaimed pokemon but skip the contest",
+        help="Randomly chooses an unclaimed pokemon, but skips the contest :("
+    )
+    async def random_skp_cmd(self, ctx: CustomContext):
+        await self.random(ctx, skip=True)
 
 
 async def setup(bot):
