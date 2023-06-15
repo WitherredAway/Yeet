@@ -8,7 +8,7 @@ Flask==2.2.2
 -e git+https://github.com/WitherredAway/gists.py#egg=gists.py
 gspread_asyncio==1.8.1
 humanize==4.4.0
-jishaku==2.4.0
+jishaku==2.5.1
 lxml==4.9.1
 numpy==1.23.3
 pandas==1.5.0

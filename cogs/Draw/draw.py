@@ -1395,7 +1395,7 @@ class DrawView(discord.ui.View):
             if interaction is None:
                 await self.response.edit(embed=self.embed, view=self)
             else:
-                await interaction.edit_original_message(embed=self.embed, view=self)
+                await interaction.edit_original_response(embed=self.embed, view=self)
 
             # print(f'[{datetime.datetime.strftime(datetime.datetime.utcnow() + datetime.timedelta(), "%H:%M:%S")}]: Edited')
         except discord.HTTPException as error:

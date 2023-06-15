@@ -156,7 +156,7 @@ class StatsSelectMenu(discord.ui.Select):
             view.fill_items()
 
             await interaction.response.edit_message(view=view, embed=view.embed)
-            view.msg = await interaction.original_message()
+            view.msg = await interaction.original_response()
         else:
             source = StatsPageSource(
                 self.categories[self.options.index(option)],
@@ -385,4 +385,4 @@ class ActionSelectMenu(discord.ui.Select):
         opt = value_to_option_dict(self)[self.values[0]]
         pokemon = opt.label
         await self.action_func(self.menu.ctx, pokemon)
-        await interaction.edit_original_message()
+        await interaction.edit_original_response()

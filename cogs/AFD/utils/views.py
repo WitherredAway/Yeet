@@ -453,7 +453,7 @@ class PokemonView(discord.ui.View):
         )
         view = SubmitView(self.afdcog, row=self.row, ctx=self.ctx)
         await interaction.response.send_message(embed=embed, view=view)
-        view.msg = await interaction.original_message()
+        view.msg = await interaction.original_response()
         _t = await view.wait()
         if _t is not True:
             await self.update_msg()

@@ -64,15 +64,15 @@ class Calculator(discord.ui.View):
         if string is None:
             string = self.text
         result = calculate(string)
-        await interaction.edit_original_message(content=result)
+        await interaction.edit_original_response(content=result)
 
     @discord.ui.button(label="■", style=discord.ButtonStyle.danger)
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         if self.text == "":
-            await interaction.delete_original_message()
+            await interaction.delete_original_response()
         else:
-            await interaction.edit_original_message(view=None)
+            await interaction.edit_original_response(view=None)
         self.stop()
 
     @discord.ui.button(label="C", style=discord.ButtonStyle.danger)
@@ -229,7 +229,7 @@ class Calculator(discord.ui.View):
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.defer()
-        await interaction.edit_original_message(content=self.history)
+        await interaction.edit_original_response(content=self.history)
 
     @discord.ui.button(label="=", style=discord.ButtonStyle.green)
     async def _equals(
