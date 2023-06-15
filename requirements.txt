@@ -2,7 +2,7 @@ aiohttp==3.8.3
 aiowiki @ git+https://github.com/Gelbpunkt/aiowiki@34f24bdcaedfd5da96cb6125714505945211287c
 black==23.1.0
 discord-ext-menus @ git+https://github.com/Rapptz/discord-ext-menus@fbb8803779373357e274e1540b368365fd9d8074
-discord.py @ git+https://github.com/Rapptz/discord.py@a106201ad394c207df222521842de796a460f27f
+discord.py==2.3.0
 emoji==2.1.0
 Flask==2.2.2
 -e git+https://github.com/WitherredAway/gists.py#egg=gists.py
