@@ -105,7 +105,7 @@ class PoketwoChances(commands.Cog):
         df: pd.DataFrame,
         *,
         description: Optional[str] = "Spawn chances",
-        gist_id: str,
+        gist: gists.Gist,
         keep_cols: Optional[typing.List[str]] = None,
     ) -> gists.Gist:
         df["Chance"] = np.nan
@@ -158,8 +158,6 @@ class PoketwoChances(commands.Cog):
         new_gist.files = files
         new_gist.description = description
 
-        gist = await self.gists_client.get_gist(gist_id)
-
         if gist == new_gist:
             return
         await gist.edit(files=files, description=description)
@@ -169,7 +167,7 @@ class PoketwoChances(commands.Cog):
         title: str,
         pokemon_dataframe: pd.DataFrame,
         *,
-        gist_link: Optional[str] = None,
+        gist: Optional[Union[str, gists.Gist]] = None,
         list_pokemon: bool = True,
         keep_cols: Optional[typing.List[str]] = None,
     ) -> str:
@@ -180,16 +178,18 @@ class PoketwoChances(commands.Cog):
         per_cent = round(1 / out_of * 100, 4)
         total_chances = f"**Total chance**: {per_cent}% or 1/{out_of}"
 
+        if isinstance(gist, str):
+            gist = await self.gists_client.get_gist(gist)
+
         extra = "\n"
         if list_pokemon is True:
-            gist_id = gist_link.split("/")[-1]
             await self.update_chance_gist(
                 pkm_df,
                 description=f"Spawn chances of {title} pokémon ({len(pkm_df)}). {total_chances}",
-                gist_id=gist_id,
+                gist=gist,
                 keep_cols=keep_cols,
             )
-            all_pokemon = f"> All pokémon: <{gist_link}>"
+            all_pokemon = f"> All pokémon: <{gist.url}>"
             extra = f" (Includes all catchable forms)\n{all_pokemon}\n**Total pokemon**: {len(pkm_df)}"
 
         result = f"__**{title} spawn-chances**__{extra}\n{total_chances}"
@@ -225,7 +225,7 @@ class PoketwoChances(commands.Cog):
 
         async with ctx.channel.typing():
             result = await self.format_chances_message(
-                "All", pkm_df, gist_link=ALL_GIST
+                "All", pkm_df, gist=ALL_GIST
             )
         await ctx.send(result)
         return result
@@ -242,7 +242,7 @@ class PoketwoChances(commands.Cog):
             result = await self.format_chances_message(
                 ", ".join([pkm_row["name.en"] for _, pkm_row in pkm_df.iterrows()]),
                 pkm_df,
-                gist_link=STARTERS_GIST,
+                gist=STARTERS_GIST,
             )
         await ctx.send(result)
         return result
@@ -267,7 +267,7 @@ class PoketwoChances(commands.Cog):
 
         async with ctx.channel.typing():
             result = await self.format_chances_message(
-                rarity, pkm_df, gist_link=RARITY_GISTS.get(rarity)
+                rarity, pkm_df, gist=RARITY_GISTS.get(rarity)
             )
         await ctx.send(result)
         return result
@@ -292,7 +292,7 @@ class PoketwoChances(commands.Cog):
 
         async with ctx.channel.typing():
             result = await self.format_chances_message(
-                form, pkm_df, gist_link=FORM_GISTS.get(form)
+                form, pkm_df, gist=FORM_GISTS.get(form)
             )
         await ctx.send(result)
         return result
@@ -306,10 +306,10 @@ class PoketwoChances(commands.Cog):
     async def _region(self, ctx, region: Union[int, str]):
         options = list(REGION_GISTS.keys())
         if isinstance(region, int):
-            if region < 9:
+            if region < len(options):
                 region = options[region - 1]
             else:
-                return await ctx.send("Invalid generation provided. Options: 1-8")
+                return await ctx.send(f"Invalid generation provided. Options: 1-{len(options) - 1}")
         else:
             region = region.capitalize()
 
@@ -323,7 +323,7 @@ class PoketwoChances(commands.Cog):
 
         async with ctx.channel.typing():
             result = await self.format_chances_message(
-                f"{region} region", pkm_df, gist_link=REGION_GISTS.get(region)
+                f"{region} region", pkm_df, gist=REGION_GISTS.get(region)
             )
         await ctx.send(result)
         return result
@@ -347,8 +347,8 @@ class PoketwoChances(commands.Cog):
                     ],
                     public=False,
                 )
-            ).url
-            types_gists_json[types_identifier] = gist_link
+            )
+            types_gists_json[types_identifier] = gist_link.url
             file.content = json.dumps(types_gists_json, indent=4)
             await types_gist.edit(files=[file])
         return gist_link
@@ -394,7 +394,7 @@ class PoketwoChances(commands.Cog):
             result = await self.format_chances_message(
                 f"{msg} Type(s)",
                 pkm_df,
-                gist_link=await self.get_types_gist(type_1, type_2),
+                gist=await self.get_types_gist(type_1, type_2),
             )
         await ctx.send(result)
         return result
@@ -412,7 +412,7 @@ class PoketwoChances(commands.Cog):
 
         async with ctx.channel.typing():
             result = await self.format_chances_message(
-                "Event", pkm_df, keep_cols=["enabled"], gist_link=EVENT_GIST
+                "Event", pkm_df, keep_cols=["enabled"], gist=EVENT_GIST
             )
         await ctx.send(result)
         return result
