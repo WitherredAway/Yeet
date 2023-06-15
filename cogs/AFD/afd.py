@@ -1,4 +1,5 @@
 from __future__ import annotations
+import asyncio
 from collections import defaultdict
 
 import logging
@@ -6,6 +7,7 @@ import re
 import time
 from typing import TYPE_CHECKING, Callable, Coroutine, DefaultDict, List, Optional, Union
 import pandas as pd
+import random
 
 import discord
 import gists
@@ -1333,6 +1335,83 @@ and lets you directly perform actions such as:
     async def unsubmit_cmd(self, ctx: CustomContext, pokemon: str):
         await self.unsubmit(ctx, pokemon)
 
+    DURATION = 3
+    CHOICES_LEN = 10
+    MESSAGES = [
+        "{winner} bullied {loser} out of the contest :(",
+        "{loser} got bored and left to make tea...",
+        "{winner} caught {loser} with a Master Ball, {winner} wins this round!",
+        "{winner} took inspiration from Will Smith and smacked {loser} out of the contest...",
+        "{loser} forgot the time and didn't show up...",
+        "{loser} lost due to [Intentional Game Design].",
+        "{loser} stubbed its toe :( {winner} wins this round!",
+        "{loser} is allergic to social interaction...",
+        "{loser} had a jousting competition with {winner} and lost.",
+        "{loser} was just a figment of your imagination...",
+        "{loser} forgot to put on sunscreen and burnt up...",
+        "{loser} was just a figment of your imagination..."
+    ]
+
+    async def random(self, ctx: CustomContext):
+        await self.sheet.update_df()
+        stats = self.get_stats()
+        unclaimed = stats.unclaimed
+        pokemon = unclaimed.pokemon
+
+        if len(pokemon) == 0:
+            return await ctx.send("There are no unclaimed pokemon to choose from!")
+        elif len(pokemon) == 1:
+            choices = pokemon
+        else:
+            choices = random.choices(pokemon, k=min(max(round(len(pokemon) / 2), 1), self.CHOICES_LEN))
+
+        cont = choices.copy()
+        assert len(choices) > 0
+        if len(choices) > 1:
+            desc = lambda: f"__**Contestants ({len(cont)}/{len(choices)})**__:\n{NL.join(enumerate_list(choices))}"
+
+            embed = self.bot.Embed(
+                title=f"{len(choices)} out of {len(pokemon)} unclaimed pokemon were randomly chosen as contestants for this randomizer! Who will win? 👀",
+                description=desc()
+            )
+            msg = await ctx.send(embed=embed)
+            await asyncio.sleep(self.DURATION)
+
+            rnd = 1
+            while len(cont) > 1:
+                winner, loser = random.sample(cont, 2)
+                choices[choices.index(loser)] = f"~~{loser}~~ `❌`"
+                cont.remove(loser)
+                embed.description = desc()
+
+                message = random.choice(self.MESSAGES).format_map({"winner": f"**{winner}**", "loser": f"**{loser}**"})
+                embed.add_field(name=f"Round {rnd}", value=message)
+
+                rnd += 1
+                await msg.edit(embed=embed)
+                await asyncio.sleep(self.DURATION)
+
+            choice = cont[0]
+
+        else:
+            choice = choices[0]
+            embed = self.bot.Embed(
+                title=f"1 pokemon was randomly chosen out of... 1 unclaimed pokemon...?",
+                description=f"**{choice}** looks around for others... but to no avail... 🦗🦗🦗"
+            )
+            msg = await ctx.send(embed=embed)
+            await asyncio.sleep(self.DURATION)
+
+        embed = self.bot.Embed(title=f"{choice} has won the randomizer contest!")
+        embed.set_image(url=self.sheet.get_pokemon_image(choice))
+        await ctx.send(embed=embed)
+
+    @afd.command(
+        name="random",
+        aliases=("rp", "rand")
+    )
+    async def random_cmd(self, ctx: CustomContext):
+        await self.random(ctx)
 
 async def setup(bot):
     await bot.add_cog(Afd(bot))
