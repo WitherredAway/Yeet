@@ -4,6 +4,7 @@ import time
 import discord
 from discord.ext import commands
 from cogs.utils.utils import enumerate_list
+from jishaku.codeblocks import codeblock_converter
 
 from helpers.context import CustomContext
 
@@ -150,6 +151,7 @@ class Developer(commands.Cog):
             start = time.time()
             title = desc = None
             if ext == "all":
+                await ctx.invoke(self.bot.get_command("git"), argument=codeblock_converter("pull"))
                 exts = []
                 for ext in list(self.bot.extensions):
                     await self.bot.reload_extension(ext)

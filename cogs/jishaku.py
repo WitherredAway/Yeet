@@ -1,12 +1,10 @@
 import os
-from discord.ext import menus, commands
+from discord.ext import commands
 
 from jishaku.cog import Jishaku
-from jishaku.flags import Flags
-from jishaku.codeblocks import Codeblock, codeblock_converter
+from jishaku.codeblocks import codeblock_converter
 from jishaku.features.baseclass import Feature
 
-from helpers.constants import CODE_BLOCK_FMT
 from .utils.jishaku_py_modal import CodeView
 
 
