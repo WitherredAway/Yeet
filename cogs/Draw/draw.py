@@ -1151,23 +1151,27 @@ class DrawView(discord.ui.View):
 
         while self.reaction_menu is True:
             ### This block wait_for's for both addition and removal of reactions
+            reaction_add = self.bot.loop.create_task(
+                self.bot.wait_for(
+                    "reaction_add", check=self.reaction_check, timeout=None
+                )
+            )
+            reaction_remove = self.bot.loop.create_task(
+                self.bot.wait_for(
+                    "reaction_remove", check=self.reaction_check, timeout=None
+                )
+            )
+
             done, pending = await asyncio.wait(
                 [
-                    self.bot.loop.create_task(
-                        self.bot.wait_for(
-                            "reaction_add", check=self.reaction_check, timeout=None
-                        )
-                    ),
-                    self.bot.loop.create_task(
-                        self.bot.wait_for(
-                            "reaction_remove", check=self.reaction_check, timeout=None
-                        )
-                    ),
+                    reaction_add,
+                    reaction_remove,
                 ],
                 return_when=asyncio.FIRST_COMPLETED,
             )
 
-            reaction, user = done.pop().result()
+            task = done.pop()
+            reaction, user = task.result()
             for future in done:
                 future.exception()
             for future in pending:
@@ -1175,10 +1179,13 @@ class DrawView(discord.ui.View):
             ###
 
             if str(reaction.emoji) == AUTO_DRAW_EMOJI:
-                self.auto = not self.auto
+                if task is reaction_add:
+                    self.auto = True
+                elif task is reaction_remove:
+                    self.auto = False
 
             if str(reaction.emoji) == SELECT_EMOJI:
-                if self.select is False:
+                if task is reaction_add:
                     self.board.initial_coords = (
                         self.board.cursor_row,
                         self.board.cursor_col,
@@ -1187,11 +1194,12 @@ class DrawView(discord.ui.View):
                         self.board.initial_row,
                         self.board.initial_col,
                     ) = self.board.initial_coords
-                    self.select = not self.select
-                elif self.select is True:
-                    self.board.clear_cursors()
-                    self.select = not self.select
-                    await self.edit_message()
+                    self.select = True
+                elif task is reaction_remove:
+                    if self.select is True:
+                        self.board.clear_cursors()
+                        self.select = False
+                        await self.edit_message()
 
     async def create_notification(
         self,
@@ -1391,6 +1399,10 @@ class DrawView(discord.ui.View):
 
     async def edit_message(self, interaction: Optional[discord.Interaction] = None):
         self.update_buttons()
+        if self.auto is False:
+            await self.response.remove_reaction(AUTO_DRAW_EMOJI, self.ctx.author)
+        if self.select is False:
+            await self.response.remove_reaction(SELECT_EMOJI, self.ctx.author)
         try:
             if interaction is None:
                 await self.response.edit(embed=self.embed, view=self)
