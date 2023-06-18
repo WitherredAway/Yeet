@@ -18,7 +18,7 @@ from helpers.context import CustomContext
 from pilmoji import Pilmoji
 
 from ..utils.utils import emoji_to_option_dict, image_to_file, value_to_option_dict
-from helpers.constants import EMBED_FIELD_CHAR_LIMIT, u200b, NL
+from helpers.constants import EMBED_DESC_CHAR_LIMIT, EMBED_FIELD_CHAR_LIMIT, u200b, NL
 from .utils.constants import (
     FONT,
     ROW_ICONS_DICT,
@@ -80,6 +80,14 @@ class Coords:
         self.ix: int = self.x * -1
         self.iy: int = self.y * -1
 
+
+TRANSPARENT_ERROR_MSG = (
+    "Sorry, embed description character limit reached. "
+    "This is most likely because the `transparent` background "
+    "uses custom emojis which are 20+ characters long each. "
+    "Please instead try one of the other background options "
+    "that is a unicode/default emoji (such as `⬜`) or a smaller board."
+)
 
 class StartView(discord.ui.View):
     def __init__(
@@ -145,6 +153,8 @@ class StartView(discord.ui.View):
         self.stop()
 
     async def start(self):
+        if len(str(self.board)) > EMBED_DESC_CHAR_LIMIT:
+            return await self.ctx.send(TRANSPARENT_ERROR_MSG)
         embed = self.bot.Embed(description=str(self.board))
         embed.set_footer(
             text="Custom emojis may not appear here due to a discord limitation, but will render once you create the board."
@@ -167,9 +177,17 @@ class StartView(discord.ui.View):
         self.set_default(self.height_select, self.height)
         self.set_default(self.width_select, self.width)
 
-    async def update(self):
+    async def update(self, interaction: discord.Interaction):
+        if len(str(self.board)) > EMBED_DESC_CHAR_LIMIT:
+            self.height = 9
+            self.width = 9
+            await interaction.followup.send(
+                TRANSPARENT_ERROR_MSG,
+                ephemeral=True
+            )
+
         self.update_buttons()
-        await self.response.edit(
+        await interaction.edit_original_response(
             content=self.initial_message,
             embed=self.bot.Embed(description=str(self.board)),
             view=self,
@@ -184,7 +202,7 @@ class StartView(discord.ui.View):
         if self.background == select.values[0]:
             return
         self.background = select.values[0]
-        await self.update()
+        await self.update(interaction)
 
     @discord.ui.select(options=base_number_options("height"), placeholder="Height")
     async def height_select(
@@ -195,7 +213,7 @@ class StartView(discord.ui.View):
         if self.height == int(select.values[0]):
             return
         self.height = int(select.values[0])
-        await self.update()
+        await self.update(interaction)
 
     @discord.ui.select(options=base_number_options("width"), placeholder="Width")
     async def width_select(
@@ -206,7 +224,7 @@ class StartView(discord.ui.View):
         if self.width == int(select.values[0]):
             return
         self.width = int(select.values[0])
-        await self.update()
+        await self.update(interaction)
 
     async def send_message(
         self, interaction: discord.Interaction, *, draw_view: DrawView
@@ -321,7 +339,7 @@ class Board:
         width: Optional[int] = 9,
         background: Optional[
             Literal["🟥", "🟧", "🟨", "🟩", "🟦", "🟪", "🟫", "⬛", "⬜", "transparent"]
-        ] = TRANSPARENT_KEY,
+        ] = "⬜",
     ) -> None:
         self.height: int = height
         self.width: int = width
@@ -1693,7 +1711,7 @@ class Draw(commands.Cog):
         width: Optional[int] = 9,
         background: Literal[
             "🟥", "🟧", "🟨", "🟩", "🟦", "🟪", "🟫", "⬛", "⬜", "transparent"
-        ] = TRANSPARENT_KEY,
+        ] = "⬜",
     ) -> None:
         if MIN_HEIGHT_OR_WIDTH > height > MAX_HEIGHT_OR_WIDTH:
             return await ctx.send("Height must be atleast 5 and atmost 17")
