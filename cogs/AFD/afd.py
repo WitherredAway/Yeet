@@ -990,6 +990,13 @@ and lets you directly perform actions such as:
                 placeholder="Claim a pokemon",
             ),
         )
+        random_btn = discord.ui.Button(label="Random", style=discord.ButtonStyle.blurple)
+        async def callback(interaction: discord.Interaction):
+            await interaction.response.defer()
+            await self.random(ctx)
+        random_btn.callback = callback
+        menu.add_item(random_btn)
+
         await menu.start()
 
     async def pokemon_user_fmt(self, rows: List[Row]):
@@ -1467,6 +1474,7 @@ and lets you directly perform actions such as:
         "{loser} was just a figment of your imagination...",
         "{loser} forgot to put on sunscreen and burnt up...",
         "{loser} was just a figment of your imagination...",
+        "{loser} had an exam and could not attend..."
     ]
 
     async def random(self, ctx: CustomContext, *, skip: Optional[bool] = False):
@@ -1482,7 +1490,7 @@ and lets you directly perform actions such as:
         elif skip is True:
             choices = [random.choice(pokemon)]
         else:
-            choices = random.choices(
+            choices = random.sample(
                 pokemon, k=min(max(round(len(pokemon) / 2), 1), self.CHOICES_LEN)
             )
 
