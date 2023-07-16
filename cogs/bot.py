@@ -83,6 +83,9 @@ class BotCog(commands.Cog):
         elif isinstance(error, show_help):
             await ctx.send_help(ctx.command)
 
+        elif isinstance(error, (commands.CheckAnyFailure, commands.CheckFailure)):
+            await ctx.reply("You do not have permission to use this command.")
+
         else:
             tb = "".join(
                 traceback.format_exception(type(error), error, error.__traceback__)

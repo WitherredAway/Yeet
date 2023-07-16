@@ -346,7 +346,9 @@ class Afd(AfdGist):
         )
         return embed
 
-    @commands.check_any(commands.is_owner(), commands.has_role(AFD_ROLE_ID))
+    def cog_check(self, ctx: CustomContext):
+        return any((ctx.author.id in ctx.bot.owner_ids, AFD_ROLE_ID in [r.id for r in ctx.author.roles]))
+
     @commands.group(
         name="afd",
         brief="Afd commands",

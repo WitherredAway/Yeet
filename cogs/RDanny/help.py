@@ -294,7 +294,7 @@ class HelpSelectMenu(discord.ui.Select["HelpMenu"]):
             )
             if not commands:
                 await interaction.response.send_message(
-                    "This category has no commands for you", ephemeral=True
+                    "This category has no commands for you.", ephemeral=True
                 )
                 return
 
@@ -544,6 +544,8 @@ class PaginatedHelpCommand(commands.HelpCommand):
         cog_commands = await self.filter_commands(
             cog.get_commands(), sort=True, key=self.define_order_key
         )
+        if not cog_commands:
+            return await self.context.reply("This category has no commands for you.")
         source = GroupHelpPageSource(self.context, cog, cog_commands)
         menu = HelpMenu(source, ctx=self.context)
         menu.initial_source = source
@@ -556,12 +558,16 @@ class PaginatedHelpCommand(commands.HelpCommand):
         )
         await menu.start()
 
-    async def send_command_help(self, command):
+    async def send_command_help(self, command: commands.Command):
+        if not await command.can_run(self.context):
+            return await self.context.reply(f"You do not have permission to use the command `{command.name}`.")
         embed = self.context.bot.Embed()
         self.common_command_formatting(self.context, embed, command)
         await self.context.send(embed=embed)
 
     async def send_group_help(self, group):
+        if not await group.can_run(self.context):
+            return await self.context.reply(f"You do not have permission to use the command `{group.name}`.")
         subcommands = group.commands
         if len(subcommands) == 0:
             return await self.send_command_help(group)
