@@ -15,6 +15,7 @@ from google.oauth2 import service_account
 from cogs.Draw.utils.constants import ALPHABETS
 
 from .constants import (
+    DATETIME_FMT,
     DEFAULT_CLAIM_MAX,
     COL_OFFSET,
     DEFAULT_UNAPP_MAX,
@@ -140,6 +141,13 @@ class AfdSheet:
                     UNAPP_MAX_LABEL,
                 ],
             )
+            deadline_str = datetime.datetime(
+                year=datetime.datetime.utcnow().year + 1, month=3, day=25, hour=0, minute=0, second=0
+            ).strftime(DATETIME_FMT)
+
+            self.df.loc[FIRST_ROW_IDX, TOPIC_LABEL] = "INSERT TOPIC HERE"
+            self.df.loc[FIRST_ROW_IDX, RULES_LABEL] = "INSERT RULES HERE"
+            self.df.loc[FIRST_ROW_IDX, DEADLINE_LABEL] = deadline_str
             self.df.loc[FIRST_ROW_IDX, CLAIM_MAX_LABEL] = DEFAULT_CLAIM_MAX
             self.df.loc[FIRST_ROW_IDX, UNAPP_MAX_LABEL] = DEFAULT_UNAPP_MAX
 
@@ -170,7 +178,7 @@ class AfdSheet:
 
     @property
     def DEADLINE_DT(self):
-        return datetime.datetime.strptime(self.DEADLINE, "%d/%m/%Y %H:%M")
+        return datetime.datetime.strptime(self.DEADLINE, DATETIME_FMT)
 
     @property
     def DEADLINE_TS(self):

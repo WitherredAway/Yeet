@@ -3,6 +3,7 @@ import os
 
 EMAIL = os.getenv("myEMAIL")
 EXPORT_SUFFIX = "export?format=csv"
+DATETIME_FMT = "%d/%m/%Y %H:%M"
 
 AFD_UPDATE_CHANNEL_ID = os.getenv("AFD_UPDATE_CHANNEL_ID")
 ROW_INDEX_OFFSET = 8  # The number of rows after which the pokemon indexes begin

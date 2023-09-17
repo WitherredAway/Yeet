@@ -147,7 +147,7 @@ class Afd(AfdGist):
         self.bot.add_view(AFDRoleMenu())
 
     async def reload_sheet(self):
-        self.bot.sheet = AfdSheet(SHEET_URL, pokemon_df=self.pk)
+        self.bot.sheet = AfdSheet(SHEET_URL, pokemon_df=self.pk) if SHEET_URL else None
         start = time.time()
         await self.bot.sheet.setup()
         logger.info(f"AFD: Fetched spreadsheet in {round(time.time()-start, 2)}s")
@@ -159,6 +159,10 @@ class Afd(AfdGist):
     @property
     def sheet(self) -> AfdSheet:
         return self.bot.sheet
+
+    @sheet.setter
+    def sheet(self, value: AfdSheet):
+        self.bot.sheet = value
 
     @property
     def log_channel(self) -> discord.TextChannel:
@@ -370,11 +374,13 @@ class Afd(AfdGist):
         description="Sets up a new spreadsheet to use. Intended to be used only once.",
     )
     async def new(self, ctx: CustomContext):
-        if hasattr(self, "sheet"):
+        if self.sheet:
             return await ctx.reply("A spreadsheet already exists.")
 
         async with ctx.typing():
-            self.sheet: AfdSheet = await AfdSheet.create_new(pokemon_df=self.pk)
+            new = await AfdSheet.create_new(pokemon_df=self.pk)
+            await ctx.send(new.url)
+            self.sheet: AfdSheet = new
 
         embed = self.bot.Embed(
             title="New Spreadsheet created",

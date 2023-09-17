@@ -6,6 +6,8 @@ from typing import Optional
 
 import discord
 
+from helpers.constants import EMBED_FIELD_CHAR_LIMIT
+
 from cogs.AFD.utils.constants import FIRST_ROW_IDX
 
 from .urls import SUBMISSION_URL
@@ -112,11 +114,16 @@ class EditModal(discord.ui.Modal):
                     RULES_LABEL
                 ] = f"{e}\nPlease make sure you did not modify any of the variables."
             else:
-                self.df.loc[FIRST_ROW_IDX, RULES_LABEL] = rules.value
-                resp[RULES_LABEL] = f"Updated to:\n```\n{rules_fmt}\n```"
+                if len(rules.value) > EMBED_FIELD_CHAR_LIMIT:
+                    resp[
+                        RULES_LABEL
+                    ] = f"Can't be longer than 1024 characters. Let Witherr know if you want to increase this limit."
+                else:
+                    self.df.loc[FIRST_ROW_IDX, RULES_LABEL] = rules.value
+                    resp[RULES_LABEL] = f"Updated to:\n```\n{rules_fmt}\n```"
 
         try:
-            datetime.datetime.strptime(deadline.value, "%d/%m/%Y %H:%M")
+            datetime.datetime.strptime(deadline.value, DATETIME_FMT)
         except ValueError:
             resp[
                 DEADLINE_LABEL
