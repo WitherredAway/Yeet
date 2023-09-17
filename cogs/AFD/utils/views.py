@@ -36,6 +36,7 @@ class EditModal(discord.ui.Modal):
         self.afdcog = afdcog
         self.sheet = afdcog.sheet
         self.df = self.sheet.df
+        self.edited = None
 
         self.add_item(
             discord.ui.TextInput(
