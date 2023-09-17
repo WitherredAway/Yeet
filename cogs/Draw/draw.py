@@ -17,7 +17,7 @@ from PIL import Image
 from helpers.context import CustomContext
 from pilmoji import Pilmoji
 
-from ..utils.utils import emoji_to_option_dict, image_to_file, value_to_option_dict
+from ..utils.utils import emoji_to_option_dict, force_log_errors, image_to_file, reload_modules, value_to_option_dict
 from helpers.constants import EMBED_DESC_CHAR_LIMIT, EMBED_FIELD_CHAR_LIMIT, u200b, NL
 from .utils.constants import (
     FONT,
@@ -1703,6 +1703,10 @@ class Draw(commands.Cog):
         self.bot = bot
 
     display_emoji = "🖌️"
+
+    @force_log_errors
+    async def cog_unload(self):
+        reload_modules("cogs/Draw", skip=__name__)
 
     @commands.bot_has_permissions(external_emojis=True)
     @commands.group(
