@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import time
 
+from cogs.utils.utils import unwind
+
 start_time = time.time()
 
 import asyncio
@@ -43,24 +45,24 @@ class Bot(commands.Bot):
     PREFIXES = os.getenv("PREFIXES").split(", ")
     PREFIX = PREFIXES[0]
 
-    COGS = {
-        "poketwo": "Poketwo.poketwo",
-        "p2": "Poketwo.poketwo",
-        "docs": "RDanny.docs",
-        "help": "RDanny.help",
-        "admin": "admin",
-        "bot": "bot",
-        "channel": "channel",
-        "define": "define",
-        "draw": "Draw.draw",
-        "gist": "gist",
-        "jishaku": "jishaku",
-        "jsk": "jishaku",
-        "math": "math",
-        "image": "Image.image",
-        "afd": "AFD.afd",
-        "test": "test",
-    }
+    COGS = unwind(
+        {
+            ("poketwo", "p2"): "Poketwo.poketwo",
+            "docs": "RDanny.docs",
+            "help": "RDanny.help",
+            "admin": "admin",
+            "bot": "bot",
+            "channel": "channel",
+            "define": "define",
+            "draw": "Draw.draw",
+            "gist": "gist",
+            ("jishaku", "jsk"): "jishaku",
+            "math": "math",
+            "image": "Image.image",
+            "afd": "AFD.afd",
+            "test": "test",
+        }
+    )
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

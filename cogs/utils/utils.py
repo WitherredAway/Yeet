@@ -6,7 +6,7 @@ import os
 import sys
 import traceback
 import typing
-from typing import Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 import cProfile
 from typing import Dict, Optional
 import unicodedata
@@ -236,3 +236,22 @@ def round_up(num: Union[int, float]) -> int:
         return math.floor(num + 0.5)
     else:
         return math.ceil(num - 0.5)
+
+
+def unwind(dictionary: Dict[tuple, Any], *, include_values: Optional[bool] = False):
+    """Unwinds a dictionary with tuples keys, returning a dictionary where each tuple element is assigned to their respective values"""
+
+    result = {}
+    for key, value in dictionary.items():
+        if isinstance(key, str):
+            result[key] = value
+        else:
+            for k in key:
+                result[k] = value
+
+    # If include_values is true, add each item's value as a key aswell.
+    # Useful for shortcutting items to include the original key
+    if include_values is True:
+        result.update({v: v for k, v in dictionary.items()})
+
+    return result
