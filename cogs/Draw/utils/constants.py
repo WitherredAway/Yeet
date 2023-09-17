@@ -7,6 +7,8 @@ from helpers.constants import u200b
 from cogs.utils.utils import invert_dict
 
 
+SAVE_FILENAME = "drawing"
+
 TRANSPARENT_EMOJI = "<:e:1104930506698653706>"
 TRANSPARENT_CURSOR_EMOJI = "<:tc:1104939609240113162>"
 

@@ -36,6 +36,7 @@ from .utils.constants import (
     base_number_options,
     MIN_HEIGHT_OR_WIDTH,
     MAX_HEIGHT_OR_WIDTH,
+    SAVE_FILENAME
 )
 from .utils.emoji import (
     ADD_EMOJIS_EMOJI,
@@ -617,6 +618,19 @@ class Board:
                     node_spacing=node_spacing,
                 )
             return image
+
+    async def save_embed(self, bot: Bot, header: str) -> Bot.Embed:
+        image = await bot.loop.run_in_executor(None, self.save)
+        name = SAVE_FILENAME
+        file = image_to_file(image, filename=name)
+
+        filename = f"{name}.png"
+        embed = bot.Embed(
+            title=filename
+        )
+        embed.set_author(name=header)
+        embed.set_image(url=f"attachment://{filename}")
+        return embed, file
 
     @classmethod
     def from_board(
@@ -1677,12 +1691,8 @@ class DrawView(discord.ui.View):
     @discord.ui.button(emoji=SAVE_EMOJI, style=discord.ButtonStyle.green)
     async def save_btn(self, interaction: discord.Interaction, button: discord.Button):
         await interaction.response.defer(thinking=True)
-        image = await self.bot.loop.run_in_executor(None, self.board.save)
-        filename = "image"
-        file = image_to_file(image, filename=filename)
 
-        embed = self.bot.Embed(title=f"{interaction.user}'s masterpiece ✨")
-        embed.set_image(url=f"attachment://{filename}.png")
+        embed, file = await self.board.save_embed(self.bot, f"{interaction.user}'s masterpiece ✨")
         await interaction.followup.send(embed=embed, file=file)
 
 
@@ -1804,14 +1814,7 @@ class Draw(commands.Cog):
         if not isinstance(board, Board):
             return
 
-        image = await self.bot.loop.run_in_executor(None, board.save)
-        filename = "image"
-        file = image_to_file(image, filename=filename)
-
-        embed = self.bot.Embed(
-            title=message.embeds[0].title.replace("drawing board.", "masterpiece ✨")
-        )
-        embed.set_image(url=f"attachment://{filename}.png")
+        embed, file = await board.save_embed(self.bot, message.embeds[0].title.replace("drawing board.", "masterpiece ✨"))
         await ctx.reply(embed=embed, file=file)
 
 
