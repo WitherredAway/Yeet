@@ -313,7 +313,7 @@ class Afd(AfdGist):
     def embed(self) -> Bot.Embed:
         stats = self.get_stats()
 
-        description = f"""**Topic:** {self.sheet.TOPIC}
+        description = f"""**Theme:** {self.sheet.THEME}
 
 **Deadline**: {self.sheet.DEADLINE_TS}
 **Max claimed (unfinished) pokemon**: {self.sheet.CLAIM_MAX}

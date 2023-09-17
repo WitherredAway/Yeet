@@ -35,10 +35,9 @@ from .labels import (
     PKM_LABEL,
     RULES_LABEL,
     SEPARATOR_LABEL,
-    TOPIC_LABEL,
     UNAPP_MAX_LABEL,
     USER_ID_LABEL,
-    TOPIC_LABEL,
+    THEME_LABEL,
     RULES_LABEL,
     DEADLINE_LABEL,
     CLAIM_MAX_LABEL,
@@ -134,7 +133,7 @@ class AfdSheet:
                     APPROVED_LABEL,
                     COMMENT_LABEL,
                     SEPARATOR_LABEL,
-                    TOPIC_LABEL,
+                    THEME_LABEL,
                     RULES_LABEL,
                     DEADLINE_LABEL,
                     CLAIM_MAX_LABEL,
@@ -145,7 +144,7 @@ class AfdSheet:
                 year=datetime.datetime.utcnow().year + 1, month=3, day=25, hour=0, minute=0, second=0
             ).strftime(DATETIME_FMT)
 
-            self.df.loc[FIRST_ROW_IDX, TOPIC_LABEL] = "INSERT TOPIC HERE"
+            self.df.loc[FIRST_ROW_IDX, THEME_LABEL] = "INSERT THEME HERE"
             self.df.loc[FIRST_ROW_IDX, RULES_LABEL] = "INSERT RULES HERE"
             self.df.loc[FIRST_ROW_IDX, DEADLINE_LABEL] = deadline_str
             self.df.loc[FIRST_ROW_IDX, CLAIM_MAX_LABEL] = DEFAULT_CLAIM_MAX
@@ -165,8 +164,8 @@ class AfdSheet:
             return self
 
     @property
-    def TOPIC(self):
-        return self.df.loc[FIRST_ROW_IDX, TOPIC_LABEL]
+    def THEME(self):
+        return self.df.loc[FIRST_ROW_IDX, THEME_LABEL]
 
     @property
     def RULES(self):

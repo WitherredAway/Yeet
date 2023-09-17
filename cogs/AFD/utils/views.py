@@ -8,7 +8,7 @@ import discord
 
 from helpers.constants import EMBED_FIELD_CHAR_LIMIT
 
-from cogs.AFD.utils.constants import FIRST_ROW_IDX
+from .constants import DATETIME_FMT, FIRST_ROW_IDX
 
 from .urls import SUBMISSION_URL
 from .utils import EmbedColours, Row
@@ -18,7 +18,7 @@ from .labels import (
     COMMENT_LABEL,
     COMMENT_BTN_LABEL,
     SUBMIT_BTN_LABEL,
-    TOPIC_LABEL,
+    THEME_LABEL,
     RULES_LABEL,
     DEADLINE_LABEL,
     CLAIM_MAX_LABEL,
@@ -39,10 +39,10 @@ class EditModal(discord.ui.Modal):
 
         self.add_item(
             discord.ui.TextInput(
-                label=TOPIC_LABEL,
-                default=self.sheet.TOPIC,
+                label=THEME_LABEL,
+                default=self.sheet.THEME,
                 style=discord.TextStyle.short,
-                custom_id="topic",
+                custom_id="theme",
             )
         )
         self.add_item(
@@ -92,7 +92,7 @@ class EditModal(discord.ui.Modal):
         await interaction.response.defer()
         children = self.children_dict()
 
-        topic = children["topic"]
+        theme = children["theme"]
         rules = children["rules"]
         deadline = children["deadline"]
         claim_max = children["claim_max"]
@@ -100,9 +100,9 @@ class EditModal(discord.ui.Modal):
 
         resp = {}
 
-        if topic.value != topic.default:
-            self.df.loc[FIRST_ROW_IDX, TOPIC_LABEL] = topic.value
-            resp[TOPIC_LABEL] = f"Updated from `{topic.default}` to `{topic.value}`"
+        if theme.value != theme.default:
+            self.df.loc[FIRST_ROW_IDX, THEME_LABEL] = theme.value
+            resp[THEME_LABEL] = f"Updated from `{theme.default}` to `{theme.value}`"
 
         if rules.value != rules.default:
             try:
@@ -155,7 +155,7 @@ class EditModal(discord.ui.Modal):
             resp[UNAPP_MAX_LABEL] = f"{unapp_max.value} is not a valid number"
 
         await self.sheet.update_row(
-            FIRST_ROW_IDX, from_col=TOPIC_LABEL, to_col=UNAPP_MAX_LABEL
+            FIRST_ROW_IDX, from_col=THEME_LABEL, to_col=UNAPP_MAX_LABEL
         )
 
         if len(resp) != 0:
