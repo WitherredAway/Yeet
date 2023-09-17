@@ -100,7 +100,7 @@ The way height, width or aspect ratio parameters are passed is through flags.
         files = []
         files_result = []
         for attachment in ctx.message.attachments:
-            if not attachment.content_type.startswith("image"):
+            if not attachment.content_type or not attachment.content_type.startswith("image"):
                 files_result.append(f"`{attachment.filename}`: Not an image")
                 continue
 
