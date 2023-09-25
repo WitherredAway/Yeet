@@ -1129,10 +1129,12 @@ and lets you directly perform actions such as:
         conf = cmsg = None
         await self.sheet.update_df()
         row = self.sheet.get_pokemon_row(pokemon)
+
+        max_msg = f"You already have the max number ({self.sheet.CLAIM_MAX}) of pokemon claimed"
         if not row.claimed:
             p = ""
             if self.sheet.can_claim(ctx.author) is False:
-                p = f"You already have the max number ({self.sheet.CLAIM_MAX}) of pokemon claimed"
+                p = max_msg
                 if not self.is_admin(ctx.author):
                     return await ctx.reply(
                         embed=self.confirmation_embed(
@@ -1152,9 +1154,12 @@ and lets you directly perform actions such as:
                 return
 
         async def decide_msg(row: Row):
-            return f"**{pokemon}** is already claimed by **{'you' if row.user_id == ctx.author.id else await self.fetch_user(row.user_id)}**!"
+            if row.claimed:
+                return f"**{pokemon}** is already claimed by **{'you' if row.user_id == ctx.author.id else await self.fetch_user(row.user_id)}**!"
+            if not self.sheet.can_claim(ctx.author):
+                return f"{max_msg}!"
 
-        check = lambda row: row.claimed
+        check = lambda row: row.claimed or not self.sheet.can_claim(ctx.author)
         decide_footer = (
             lambda row: "You can unclaim it using the `unclaim` command."
             if row.user_id == ctx.author.id
