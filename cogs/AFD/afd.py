@@ -542,6 +542,7 @@ class Afd(AfdGist):
         row = self.sheet.unclaim(
             pokemon,
         )
+        await self.sheet.update_row(row.dex)
         await cmsg.edit(
             embed=self.confirmation_embed(
                 f"You have successfully force unclaimed **{pokemon}** from **{user} ({user.id})**.",
