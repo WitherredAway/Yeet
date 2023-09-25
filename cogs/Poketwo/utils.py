@@ -4,7 +4,7 @@ from cogs.utils.utils import normalize
 
 
 def get_pokemon(name: str, *, pk: pd.DataFrame) -> str:
-    name = name.replace("’", "'").replace("′", "'").casefold()
+    name = normalize(name.replace("’", "'").replace("′", "'").casefold())
     return pk.loc[
         (pk["slug"].apply(normalize) == name)
         | (pk["name.ja"].apply(normalize) == name)
