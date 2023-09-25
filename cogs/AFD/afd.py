@@ -14,8 +14,11 @@ from typing import (
     Optional,
     Union,
 )
+import numpy as np
 import pandas as pd
 import random
+from functools import cached_property
+import difflib
 
 import discord
 import gists
@@ -50,7 +53,6 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
-
 
 
 class SkipView(discord.ui.View):
@@ -180,6 +182,21 @@ class Afd(AfdGist):
     def pk(self) -> pd.DataFrame:
         return self.bot.pk
 
+    @cached_property
+    def all_pk_names(self) -> list:
+        pk = self.pk
+        names = (
+            list(pk["slug"])
+            + list(pk["name.ja"])
+            + list(pk["name.ja_r"])
+            + list(pk["name.ja_t"])
+            + list(pk["name.en"])
+            + list(pk["name.en2"])
+            + list(pk["name.de"])
+            + list(pk["name.fr"])
+        )
+        return list(filter(lambda n: n is not np.nan, names))
+
     @property
     def df(self) -> pd.DataFrame:
         return self.sheet.df
@@ -271,12 +288,22 @@ class Afd(AfdGist):
         try:
             name = self.sheet.get_pokemon(name)
         except IndexError:
+            autocorrection = difflib.get_close_matches(name, self.all_pk_names)
+            if not autocorrection:
+                await ctx.reply(
+                    embed=self.confirmation_embed(
+                        f"`{name}` is not a valid Pokemon!", colour=EmbedColours.INVALID
+                    )
+                )
+                return None
+
+            autocorrection = autocorrection[0]
             await ctx.reply(
                 embed=self.confirmation_embed(
-                    f"`{name}` is not a valid Pokemon!", colour=EmbedColours.INVALID
+                    f"`{name}` is not a valid Pokemon, did you mean `{autocorrection}`?", colour=EmbedColours.INVALID
                 )
             )
-            return None
+            return await self.get_pokemon(ctx, autocorrection)
         return name
 
     async def check_claim(
