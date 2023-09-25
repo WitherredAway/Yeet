@@ -39,11 +39,44 @@ class StatsPageMenu(BotPages):
         total_amount: int,
     ):
         self.categories = categories
+        self.ctx = ctx
+        self.afdcog = ctx.bot.get_cog("Afd")
         self.original_embed = original_embed
         self.total_amount = total_amount
         initial_source = StatsPageSource(categories[0], original_embed=original_embed)
+        stats_select = StatsSelectMenu(self)
+
+        fields = [
+            Field(
+                name=f"{c.name} {c.progress()}\n{c.progress_bar()}",
+                values=c.enumerated_pokemon,
+            )
+            for c in self.categories
+        ]
+        view = FieldPaginationView(
+            self.ctx, self.original_embed, fields=fields
+        )
+        view.clear_items()
+        view.add_item(stats_select)
+        view.fill_items()
+        self.all_view = view
+
         super().__init__(initial_source, ctx=ctx, compact=False)
-        self.add_select(StatsSelectMenu(self))
+        self.add_select(stats_select)
+
+    async def start(self) -> None:
+        if (
+            self.check_embeds
+            and not self.ctx.channel.permissions_for(self.ctx.me).embed_links
+        ):
+            await self.ctx.send(
+                "Bot does not have embed links permission in this channel."
+            )
+            return
+
+        await self.source._prepare_once()
+        self._update_labels(0)
+        self.all_view.message = self.message = await self.ctx.send(embed=self.all_view.embed, view=self.all_view)
 
     def add_select(self, select: discord.SelectMenu):
         self.clear_items()
@@ -115,6 +148,11 @@ class StatsSelectMenu(discord.ui.Select):
         self.set_default(self.options[0])
 
     def __fill_options(self):
+        self.add_option(
+            label="All",
+            value=ALL_OPT_VALUE,
+            description="All categories with individual pagination",
+        )
         for idx, category in enumerate(self.categories):
             name = category.name.split(" ")
             self.add_option(
@@ -122,11 +160,6 @@ class StatsSelectMenu(discord.ui.Select):
                 value=str(idx),
                 description=category.name,
             )
-        self.add_option(
-            label="All",
-            value=ALL_OPT_VALUE,
-            description="All categories with individual pagination",
-        )
 
     def set_default(self, option: discord.SelectOption):
         for o in self.options:
@@ -141,25 +174,13 @@ class StatsSelectMenu(discord.ui.Select):
         self.set_default(option)
 
         if value == ALL_OPT_VALUE:
-            fields = [
-                Field(
-                    name=f"{c.name} {c.progress()}\n{c.progress_bar()}",
-                    values=c.enumerated_pokemon,
-                )
-                for c in self.categories
-            ]
-            view = FieldPaginationView(
-                self.ctx, self.menu.original_embed, fields=fields
-            )
-            view.clear_items()
-            view.add_item(self)
-            view.fill_items()
-
+            view = self.menu.all_view
             await interaction.response.edit_message(view=view, embed=view.embed)
             view.msg = await interaction.original_response()
         else:
+            options = [o for o in self.options if o.value != ALL_OPT_VALUE]
             source = StatsPageSource(
-                self.categories[self.options.index(option)],
+                self.categories[options.index(option)],
                 original_embed=self.menu.original_embed,
             )
             self.menu.initial_source = source
