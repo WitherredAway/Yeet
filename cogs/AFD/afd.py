@@ -842,10 +842,10 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
         *,
         pokemon: Optional[str] = None,
     ):
-        if pokemon and (user is None):
+        if user:
+            return await ctx.invoke(self._list)
+        if pokemon:
             return await ctx.invoke(self.view, pokemon=pokemon)
-        if user is None:
-            user = ctx.author
 
         await self.sheet.update_df()
         view = AfdView(self, ctx=ctx)
@@ -932,7 +932,7 @@ and lets you directly perform actions such as:
         invoke_without_command=True,
     )
     async def _list(
-        self, ctx: CustomContext, *, user: Optional[Union[discord.User, discord.Member]]
+        self, ctx: CustomContext, *, user: Optional[Union[discord.User, discord.Member]] = None
     ):
         await self.sheet.update_df()
         user = user or ctx.author
