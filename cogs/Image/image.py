@@ -63,25 +63,23 @@ class ImageCog(commands.Cog):
         aliases=("crop",),
         brief="Resize image(s) to any size with minimum quality loss.",
         help=f"""**Attach files to resize them to specified height and/or width or aspect ratio.**
-The way height, width or aspect ratio parameters are passed is through flags.
-
-**Flags**
-*Standalone flags*
+Specify height, width or aspect ratio parameters using flags.
+## **Flags**
+- `--url/img <image_url>` - {ResizeFlagDescriptions.url.value}. This is optional, you can just attach images instead.
+### Standalone flags
 - `--height/h <number>` - {ResizeFlagDescriptions.height.value}
 - `--width/w <number>` - {ResizeFlagDescriptions.width.value}
 - `--aspect_ratio/ar <width>:<height>` - {ResizeFlagDescriptions.aspect_ratio.value}
 - `--fit <yes/true>=false` - {ResizeFlagDescriptions.fit.value}
-*Supporting flags*
+### Supporting flags
 - `--center/centre <yes/true>=false` - {ResizeFlagDescriptions.center.value}
 - `--crop <yes/true>=false` - {ResizeFlagDescriptions.crop.value}
-
-**Examples**
+## **Examples**
+- `resize --h 475 --w 475 --fit yes --center yes` - Resizes to and fits image to a 475x475 canvas without stretching.
 - `resize --height 400 --width 600`
 - `resize --aspect_ratio 16:9` - Resizes height based on original width. If original width is 1600, will change height to 900
 - `resize --h 3000 --ar original` - Resizes to height 3000 and width proportional to height based on original AR of each file
-- `resize --h 475 --w 475 --center yes` - Resizes to 475x475 while keeping the image centered, preventing stretching.
-- `resize --fit yes` - Crops away surrounding transparent areas to fit the content fully. Use --crop to crop instead of resizing after fitting.
-- `resize --h 475 --w 475 --fit yes --center yes` - Fills a 475x475 canvas without stretching the image.""",
+- `resize --fit yes` - Crops away surrounding transparent areas to fit the content fully. Use --crop to crop instead of resizing after fitting.""",
         description="Resize image(s) to custom height/width while retaining maximum quality.",
     )
     async def _resize(self, ctx: CustomContext, *, flags: ResizeFlags):
@@ -93,7 +91,7 @@ The way height, width or aspect ratio parameters are passed is through flags.
             attachments.append(FakeAttachment.from_image(image))
 
         if len(attachments) == 0:
-            await ctx.reply("Please provide url (--url) of or attach at least one image to resize!")
+            await ctx.reply("Please provide url (--url) or attach at least one image to resize!")
             return await ctx.send_help(ctx.command)
 
         if len(attachments) > 10:
