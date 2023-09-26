@@ -232,8 +232,7 @@ class SubmitView(discord.ui.View):
         self.update_buttons()
 
     async def on_timeout(self):
-        await self.message.edit(view=None)
-        self.stop()
+        await self._stop()
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user != self.ctx.author:
@@ -250,12 +249,12 @@ class SubmitView(discord.ui.View):
 
     def update_buttons(self):
         self.clear_items()
-        self.add_item(
-            discord.ui.Button(
-                label="Upload",
-                url=SUBMISSION_URL,
-            )
-        )
+        # self.add_item(
+        #     discord.ui.Button(
+        #         label="Upload",
+        #         url=SUBMISSION_URL,
+        #     )
+        # )
         self.submit_btn.label = SUBMIT_BTN_LABEL if not self.row.image else "Resubmit"
         self.add_item(self.submit_btn)
         if self.row.image:
@@ -447,15 +446,18 @@ class PokemonView(discord.ui.View):
     async def submit_btn(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
+        #! TEMPORARY
         embed = self.ctx.bot.Embed(
             title=f"Submit drawing for {self.pokemon}",
             description=f"""**Steps to submit a drawing**:
-- Upload it to the website ({SUBMISSION_URL}) using the Upload button below. You will be given a URL to the uploaded image.
-- Use the green submit button below and paste in the URL to submit it!
+1. Submit using the `afd submit` command (`{self.ctx.clean_prefix}help afd submit`)
+2. Submit through the submit button below
+  - [TEMPORARY] Upload the image to any Discord channel and copy the image url
+  - Use the green submit button below and paste the URL in the modal to submit it!
     - You can edit/delete a submission later!""",
         )
         embed.set_footer(
-            text="The upload website is an official Pokétwo website made by Oliver!"
+            text="We are TEMPORARILY using discord for the images. Please save your drawings somewhere safe for when we find a permanent solution."
         )
         view = SubmitView(self.afdcog, row=self.row, ctx=self.ctx)
         await interaction.response.send_message(embed=embed, view=view)

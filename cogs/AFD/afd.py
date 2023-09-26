@@ -1462,7 +1462,14 @@ and lets you directly perform actions such as:
         bried="Submit a drawing.",
         help="Submit a drawing for a pokemon. This also removes any approved or comment status. WIP, TODO: VALIDATE URL",
     )
-    async def submit_cmd(self, ctx: CustomContext, pokemon: str, image_url: str):
+    async def submit_cmd(self, ctx: CustomContext, pokemon: str, image_url: Optional[str] = None):
+        #! TEMPORARY
+        if image_url is None:
+            if not (attachments := ctx.message.attachments):
+                return await ctx.send_help(ctx.command)
+
+            image_url = attachments[0].url
+
         await self.submit(ctx, pokemon, image_url=image_url)
 
     async def unsubmit(self, ctx: CustomContext, pokemon: str):
