@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+import re
 from typing import TYPE_CHECKING, List, Optional, Union
 import discord
 import pandas as pd
@@ -19,6 +20,9 @@ from cogs.utils.utils import RoleMenu, enumerate_list, make_progress_bar
 
 if TYPE_CHECKING:
     from cogs.AFD.afd import Afd
+
+
+URL_REGEX = re.compile(r"(https?://(www\.)?)[a-zA-Z0-9]{2,}(\.[a-zA-Z0-9]{2,})(\.[a-zA-Z0-9]{2,})?")
 
 
 def get_initial(

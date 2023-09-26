@@ -245,7 +245,7 @@ class SubmitView(discord.ui.View):
         return True
 
     async def _stop(self):
-        await self.message.delete()
+        await self.message.edit(view=None)
         self.stop()
 
     def update_buttons(self):
@@ -283,7 +283,6 @@ class SubmitView(discord.ui.View):
             await self.afdcog.submit(
                 self.ctx, self.row.pokemon, image_url=modal.label_dict[url_label].value
             )
-            await self._stop()
 
     @discord.ui.button(label="Unsubmit", style=discord.ButtonStyle.red, row=1)
     async def unsubmit_btn(
@@ -291,7 +290,6 @@ class SubmitView(discord.ui.View):
     ):
         await interaction.response.defer()
         await self.afdcog.unsubmit(self.ctx, self.row.pokemon)
-        await self._stop()
 
 
 class PokemonView(discord.ui.View):

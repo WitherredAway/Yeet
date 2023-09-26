@@ -35,9 +35,9 @@ from cogs.AFD.utils.list_paginator import (
     ListSelectMenu,
     StatsPageMenu,
 )
-from ..utils.utils import UrlView, enumerate_list, force_log_errors, reload_modules
+from ..utils.utils import UrlView, enumerate_list, force_log_errors, reload_modules, url_to_image
 from .utils.views import AfdView, PokemonView
-from .utils.utils import AFDRoleMenu, Stats, EmbedColours, Row, get_initial
+from .utils.utils import AFDRoleMenu, Stats, EmbedColours, Row, get_initial, URL_REGEX
 from .utils.urls import AFD_CREDITS_GIST_URL, SHEET_URL
 from .utils.sheet import AfdSheet
 from .utils.constants import (
@@ -1363,7 +1363,40 @@ and lets you directly perform actions such as:
         pokemon = await self.get_pokemon(ctx, pokemon)
         if not pokemon:
             return
-        # TODO image_url CHECK
+
+        if not URL_REGEX.match(image_url):
+            return await ctx.send("That's not a URL!")
+
+        try:
+            image = await url_to_image(image_url, self.bot.session)
+        except ValueError:
+            return await ctx.send("That's not an image!")
+
+        if image.format != "PNG":
+            return await ctx.send("Image must have a transparent background (of PNG format)")
+
+        if [
+            colour
+            for n, colour in sorted(
+                image.getcolors(image.size[0] * image.size[1]),
+                key=lambda c: c[0],
+                reverse=True,
+            )
+        ][0][-1] != 0:
+            conf, msg = await ctx.confirm(
+                "The image you have provided does not have a majority of transparent pixels."
+                " This *could* mean that it has a non-transparent background, please double check to make sure!"
+                "\n\nIf it does have a transparent background, please proceed using the confirm button.",
+                edit_after=None
+            )
+            if conf is not True:
+                return await ctx.send("Aborted.")
+
+        if image.height != 475 or image.width != 475:
+            return await ctx.reply(
+                f"Image dimensions must be `475x475` but yours is `{image.width}x{image.height}`."
+                f" Please resize it first using `{ctx.clean_prefix}resize --h 475 --w 475 --fit yes --center yes`",
+            )
 
         conf = cmsg = None
         await self.sheet.update_df()
