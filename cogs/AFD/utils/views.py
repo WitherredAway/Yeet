@@ -182,7 +182,7 @@ class AfdView(discord.ui.View):
         self.sheet = afdcog.sheet
         self.df = afdcog.df
 
-        self.msg: discord.Message
+        self.message: discord.Message
 
         url_dict = {
             "AFD Credits": (afdcog.credits_gist.url, 0),
@@ -197,7 +197,7 @@ class AfdView(discord.ui.View):
 
     async def on_timeout(self):
         self.remove_item(self.edit_fields)
-        await self.msg.edit(embed=self.msg.embeds[0], view=self)
+        await self.message.edit(embed=self.message.embeds[0], view=self)
         self.stop()
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -219,7 +219,7 @@ class AfdView(discord.ui.View):
         await modal.wait()
 
         if modal.edited:
-            await self.msg.edit(embed=self.afdcog.embed, view=self)
+            await self.message.edit(embed=self.afdcog.embed, view=self)
 
 
 class SubmitView(discord.ui.View):
@@ -232,7 +232,7 @@ class SubmitView(discord.ui.View):
         self.update_buttons()
 
     async def on_timeout(self):
-        await self.msg.edit(view=None)
+        await self.message.edit(view=None)
         self.stop()
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -245,7 +245,7 @@ class SubmitView(discord.ui.View):
         return True
 
     async def _stop(self):
-        await self.msg.delete()
+        await self.message.delete()
         self.stop()
 
     def update_buttons(self):
@@ -313,10 +313,10 @@ class PokemonView(discord.ui.View):
         self.user = user
         self.approved_by = approved_by
 
-        self.msg: discord.Message
+        self.message: discord.Message
 
     async def on_timeout(self):
-        await self.msg.edit(embed=self.embed, view=None)
+        await self.message.edit(embed=self.embed, view=None)
         self.stop()
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -427,7 +427,7 @@ class PokemonView(discord.ui.View):
             if self.row.claimed
             else None
         )
-        await self.msg.edit(embed=self.embed, view=self)
+        await self.message.edit(embed=self.embed, view=self)
 
     @discord.ui.button(label="Claim", style=discord.ButtonStyle.blurple, row=0)
     async def claim_btn(
@@ -461,7 +461,7 @@ class PokemonView(discord.ui.View):
         )
         view = SubmitView(self.afdcog, row=self.row, ctx=self.ctx)
         await interaction.response.send_message(embed=embed, view=view)
-        view.msg = await interaction.original_response()
+        view.message = await interaction.original_response()
         _t = await view.wait()
         if _t is not True:
             await self.update_msg()

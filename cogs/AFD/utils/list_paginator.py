@@ -176,7 +176,7 @@ class StatsSelectMenu(discord.ui.Select):
         if value == ALL_OPT_VALUE:
             view = self.menu.all_view
             await interaction.response.edit_message(view=view, embed=view.embed)
-            view.msg = await interaction.original_response()
+            view.message = await interaction.original_response()
         else:
             options = [o for o in self.options if o.value != ALL_OPT_VALUE]
             source = StatsPageSource(

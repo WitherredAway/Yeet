@@ -62,7 +62,7 @@ class SkipView(discord.ui.View):
         self.ctx = ctx
 
     async def on_timeout(self):
-        await self.msg.edit(view=None)
+        await self.message.edit(view=None)
         self.stop()
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -90,7 +90,7 @@ class RandomView(discord.ui.View):
         self.ctx = ctx
 
     async def on_timeout(self):
-        await self.msg.edit(view=None)
+        await self.message.edit(view=None)
         self.stop()
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -876,7 +876,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
 
         await self.sheet.update_df()
         view = AfdView(self, ctx=ctx)
-        view.msg = await ctx.reply(embed=self.embed, view=view)
+        view.message = await ctx.reply(embed=self.embed, view=view)
 
     async def send_view(self, ctx: CustomContext, pokemon: str):
         pokemon = await self.get_pokemon(ctx, pokemon)
@@ -891,7 +891,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
         )
 
         view = PokemonView(ctx, row, afdcog=self, user=user, approved_by=approved_by)
-        view.msg = await ctx.send(embed=view.embed, view=view)
+        view.message = await ctx.send(embed=view.embed, view=view)
 
     @afd.command(
         name="view",
@@ -1550,7 +1550,7 @@ and lets you directly perform actions such as:
                 description=desc(),
             )
             skip_view = SkipView(cont, ctx=ctx)
-            skip_view.msg = msg = await ctx.reply(embed=embed, view=skip_view)
+            skip_view.message = msg = await ctx.reply(embed=embed, view=skip_view)
             await asyncio.sleep(self.DURATION)
 
             rnd = 1
@@ -1584,7 +1584,7 @@ and lets you directly perform actions such as:
         embed.set_image(url=self.sheet.get_pokemon_image(choice))
 
         view = RandomView(self, choice, ctx=ctx)
-        view.msg = await ctx.reply(embed=embed, view=view)
+        view.message = await ctx.reply(embed=embed, view=view)
 
     @afd.group(
         name="random",

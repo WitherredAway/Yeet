@@ -181,7 +181,7 @@ class FieldPaginationView(discord.ui.View):
         return embed
 
     async def on_timeout(self):
-        await self.msg.edit(view=None)
+        await self.message.edit(view=None)
         self.stop()
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
