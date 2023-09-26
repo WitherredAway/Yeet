@@ -77,7 +77,8 @@ class BotCog(commands.Cog):
 
         elif isinstance(error, commands.DisabledCommand):
             await ctx.send(
-                f"Command `{ctx.command}` has been disabled by the developer for updates, debugging or due to some other issue."
+                ctx.command.extras.get("disabled-message")
+                or f"The `{ctx.command}` command has been disabled by the developer for updates, debugging or due to some other issue."
             )
 
         elif isinstance(error, show_help):

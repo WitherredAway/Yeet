@@ -1,5 +1,6 @@
 import asyncio
 import time
+from typing import Optional
 
 import discord
 from discord.ext import commands
@@ -51,8 +52,9 @@ class Developer(commands.Cog):
         description="Enable or disable a command.",
     )
     @commands.is_owner()
-    async def toggle(self, ctx: commands.Context, *, command: str):
-        command = self.bot.get_command(command)
+    async def toggle(self, ctx: commands.Context, *command_and_message: str):
+        *command, disabled_message = command_and_message
+        command = self.bot.get_command(" ".join(command))
 
         if command is None:
             return await ctx.send(f":x: Command `{command}` not found.")
@@ -62,6 +64,8 @@ class Developer(commands.Cog):
 
         else:
             command.enabled = not command.enabled
+            if disabled_message:
+                command.extras["disabled-message"] = disabled_message
             await ctx.send(
                 f'{"↪️ Enabled" if command.enabled else "↩️ Disabled"} command `{command.qualified_name}`.'
             )
