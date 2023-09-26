@@ -60,7 +60,6 @@ class ImageCog(commands.Cog):
 
     @commands.command(
         name="resize",
-        aliases=("crop",),
         brief="Resize image(s) to any size with minimum quality loss.",
         help=f"""**Attach files to resize them to specified height and/or width or aspect ratio.**
 Specify height, width or aspect ratio parameters using flags.

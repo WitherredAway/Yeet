@@ -1360,6 +1360,18 @@ and lets you directly perform actions such as:
 
         return embeds
 
+    @afd.command(
+        name="resize",
+        bried="Resize a drawing to required specifications",
+        help="Alias of the `resize` command with pre-defined specifications required for the AFD event. Equivalent to `resize --h 475 --w 475 --fit yes --center yes`",
+    )
+    async def _resize(self, ctx: CustomContext, *, image_url: Optional[str] = None):
+        ctx.message.content = f"{ctx.prefix}resize --h 475 --w 475 --fit yes --center yes"
+        if image_url:
+            ctx.message.content +=  f" --url {image_url}"
+
+        return await ctx.bot.process_commands(ctx.message)
+
     async def submit(self, ctx: CustomContext, pokemon: str, *, image_url: str):
         pokemon = await self.get_pokemon(ctx, pokemon)
         if not pokemon:
