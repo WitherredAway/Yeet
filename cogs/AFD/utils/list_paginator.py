@@ -391,6 +391,7 @@ class ActionSelectMenu(discord.ui.Select):
         self.action_func = action_func
 
         self.category = self.source.category
+        self.update()
 
     def update(self):
         self.options.clear()
