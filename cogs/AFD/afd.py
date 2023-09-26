@@ -760,7 +760,7 @@ class Afd(AfdGist):
         else:
             desc = f"""Are you sure you want to comment the following on **{pokemon}**?
 > {comment}"""
-            conf_desc = f"""**%s** %s commented the following on **{pokemon}**:
+            conf_desc = f"""**%s** commented the following on **{pokemon}**:
 > {comment}"""
 
         conf, cmsg = await ctx.confirm(
@@ -779,13 +779,13 @@ class Afd(AfdGist):
 
         await cmsg.edit(
             embed=self.confirmation_embed(
-                conf_desc % ("You" if row.correction_pending else ("You", "have")),
+                conf_desc % "You",
                 row=row,
                 colour=EmbedColours.CORRECTION,
             )
         )
         embed = self.confirmation_embed(
-            conf_desc % (ctx.author if row.correction_pending else (ctx.author, "has")),
+            conf_desc % ctx.author,
             row=row,
             colour=EmbedColours.CORRECTION,
         )
