@@ -1515,7 +1515,9 @@ and lets you directly perform actions such as:
         "{loser} was just a figment of your imagination...",
         "{loser} forgot to put on sunscreen and burnt up...",
         "{loser} was just a figment of your imagination...",
-        "{loser} had an exam and could not attend..."
+        "{loser} had an exam and could not attend...",
+        "{loser} drank expired milk...",
+        "{loser} tripped over a rock...",
     ]
 
     async def random(self, ctx: CustomContext, *, skip: Optional[bool] = False):
