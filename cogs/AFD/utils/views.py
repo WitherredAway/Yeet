@@ -12,7 +12,7 @@ from .constants import DATETIME_FMT, FIRST_ROW_IDX
 
 from .urls import SUBMISSION_URL
 from .utils import EmbedColours, Row
-from ...utils.utils import SimpleModal
+from ...utils.utils import SimpleModal, url_to_image
 from helpers.context import CustomContext
 from .labels import (
     COMMENT_LABEL,
@@ -310,6 +310,7 @@ class PokemonView(discord.ui.View):
         self.user = user
         self.approved_by = approved_by
 
+        self.image_info = None
         self.message: discord.Message
 
     async def on_timeout(self):
@@ -324,6 +325,19 @@ class PokemonView(discord.ui.View):
             )
             return False
         return True
+
+    async def set_image_info(self):
+        if self.row.image:
+            image = await url_to_image(self.row.image, self.ctx.bot.session)
+            t = sum(1 for r, g, b, a in list(image.getdata()) if a == 0)
+            total = image.height * image.width
+            transparent = round((t / total) * 100, 2)
+
+            self.image_info = {
+                "height": image.height,
+                "width": image.width,
+                "transparent": transparent
+            }
 
     @property
     def embed(self) -> Bot.Embed:
@@ -390,6 +404,15 @@ class PokemonView(discord.ui.View):
                     status = "Submitted, Awaiting review."
                     color = EmbedColours.UNREVIEWED.value
 
+                if self.image_info:
+                    h = self.image_info["height"]
+                    w = self.image_info["width"]
+                    t = self.image_info["transparent"]
+                    embed.add_field(
+                        name="Image info",
+                        value=f"height: {h}\nwidth: {w}\ntransparent pixels: {t}%"
+                    )
+
             if (not row.image) or (row.correction_pending):
                 if self.afdcog.is_admin(self.ctx.author):
                     self.add_item(
@@ -424,6 +447,7 @@ class PokemonView(discord.ui.View):
             if self.row.claimed
             else None
         )
+        await self.set_image_info()
         await self.message.edit(embed=self.embed, view=self)
 
     @discord.ui.button(label="Claim", style=discord.ButtonStyle.blurple, row=0)
