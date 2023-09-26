@@ -1,4 +1,5 @@
 from __future__ import annotations
+from dataclasses import dataclass
 import re
 
 import typing
@@ -7,6 +8,9 @@ from typing import Optional
 
 import discord
 from discord.ext import commands
+from PIL.Image import Image
+
+from cogs.utils.utils import url_to_image
 
 from .utils.utils import center_resize, fit_image, resize
 from helpers.constants import NL
@@ -16,6 +20,34 @@ from .utils.flags import ResizeFlagDescriptions, ResizeFlags
 
 if typing.TYPE_CHECKING:
     from main import Bot
+
+
+@dataclass
+class FakeAttachment:
+    height: int
+    width: int
+    content_type: str
+    filename: str
+    fp: io.BytesIO
+
+    async def read(self):
+        return self.fp.read()
+
+    @classmethod
+    def from_image(cls, image: Image):
+        format = image.format.lower()
+
+        fp = io.BytesIO()
+        image.save(fp, "PNG")
+        fp.seek(0)
+
+        return cls(
+            image.height,
+            image.width,
+            image.filename or f"image.{format}",
+            f"image/{format}",
+            fp
+        )
 
 
 class ImageCog(commands.Cog):
@@ -54,9 +86,18 @@ The way height, width or aspect ratio parameters are passed is through flags.
     )
     async def _resize(self, ctx: CustomContext, *, flags: ResizeFlags):
         await ctx.typing()
-        if len(ctx.message.attachments) == 0:
-            await ctx.reply("Please attach 1 or more images to resize!")
+
+        attachments = ctx.message.attachments[:]
+        if flags.url:
+            image = await url_to_image(flags.url, self.bot.session)
+            attachments.append(FakeAttachment.from_image(image))
+
+        if len(attachments) == 0:
+            await ctx.reply("Please provide url (--url) of or attach at least one image to resize!")
             return await ctx.send_help(ctx.command)
+
+        if len(attachments) > 10:
+            return await ctx.reply("Cannot resize more than 10 images at once!")
 
         height = flags.height
         width = flags.width
@@ -99,7 +140,7 @@ The way height, width or aspect ratio parameters are passed is through flags.
 
         files = []
         files_result = []
-        for attachment in ctx.message.attachments:
+        for attachment in attachments:
             if not attachment.content_type or not attachment.content_type.startswith("image"):
                 files_result.append(f"`{attachment.filename}`: Not an image")
                 continue

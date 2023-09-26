@@ -12,6 +12,7 @@ from .utils import ASPECT_RATIO_ORIGINAL
 
 
 class ResizeFlagDescriptions(Enum):
+    url = "Flag to pass in an image url"
     height = "Flag to specify height."
     width = "Flag to specify width."
     aspect_ratio = f"Flag to specify width:height aspect ratio when resizing. \
@@ -26,6 +27,9 @@ If neither is specified, it will use the original width to resize the height."
 class ResizeFlags(
     commands.FlagConverter, prefix="--", delimiter=" ", case_insensitive=True
 ):
+    url: Optional[str] = commands.flag(
+        aliases=("image", "img"), max_args=1, description=ResizeFlagDescriptions.url.value
+    )
     height: Optional[int] = commands.flag(
         aliases=("h",), max_args=1, description=ResizeFlagDescriptions.height.value
     )

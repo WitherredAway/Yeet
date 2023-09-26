@@ -11,6 +11,8 @@ import cProfile
 from typing import Dict, Optional
 import unicodedata
 from PIL import Image
+import PIL
+import aiohttp
 
 import discord
 import numpy as np
@@ -255,3 +257,16 @@ def unwind(dictionary: Dict[tuple, Any], *, include_values: Optional[bool] = Fal
         result.update({v: v for k, v in dictionary.items()})
 
     return result
+
+
+async def url_to_image(image_url: str, session: aiohttp.ClientSession):
+    resp = await session.get(image_url)
+    if not resp.content_type.startswith("image"):
+        raise ValueError("not an image")
+
+    try:
+        image = Image.open(io.BytesIO(await resp.read()))
+    except PIL.UnidentifiedImageError:
+        raise ValueError("not an image")
+
+    return image
