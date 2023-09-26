@@ -1,7 +1,12 @@
 from enum import Enum
-from typing import Optional
+from typing import Optional, Self
 
 from discord.ext import commands
+from discord.utils import maybe_coroutine
+from discord.ext.commands import MissingRequiredFlag, TooManyFlags
+from discord.ext.commands.flags import convert_flag
+
+from helpers.context import CustomContext
 
 from .utils import ASPECT_RATIO_ORIGINAL
 
@@ -45,3 +50,82 @@ class ResizeFlags(
     crop: Optional[bool] = commands.flag(
         name="crop", max_args=1, description=ResizeFlagDescriptions.crop.value
     )
+
+    @classmethod
+    async def convert(cls, ctx: CustomContext, argument: str) -> Self:
+        """|coro|
+
+        The method that actually converters an argument to the flag mapping.
+
+        Parameters
+        ----------
+        ctx: :class:`Context`
+            The invocation context.
+        argument: :class:`str`
+            The argument to convert from.
+
+        Raises
+        --------
+        FlagError
+            A flag related parsing error.
+
+        Returns
+        --------
+        :class:`FlagConverter`
+            The flag converter instance with all flags parsed.
+        """
+        argument = argument.replace("—", "--")
+
+        # Only respect ignore_extra if the parameter is a keyword-only parameter
+        ignore_extra = True
+        if (
+            ctx.command is not None
+            and ctx.current_parameter is not None
+            and ctx.current_parameter.kind == ctx.current_parameter.KEYWORD_ONLY
+        ):
+            ignore_extra = ctx.command.ignore_extra
+
+        arguments = cls.parse_flags(argument, ignore_extra=ignore_extra)
+        flags = cls.__commands_flags__
+
+        self = cls.__new__(cls)
+        for name, flag in flags.items():
+            try:
+                values = arguments[name]
+            except KeyError:
+                if flag.required:
+                    raise MissingRequiredFlag(flag)
+                else:
+                    if callable(flag.default):
+                        # Type checker does not understand flag.default is a Callable
+                        default = await maybe_coroutine(flag.default, ctx)
+                        setattr(self, flag.attribute, default)
+                    else:
+                        setattr(self, flag.attribute, flag.default)
+                    continue
+
+            if flag.max_args > 0 and len(values) > flag.max_args:
+                if flag.override:
+                    values = values[-flag.max_args :]
+                else:
+                    raise TooManyFlags(flag, values)
+
+            # Special case:
+            if flag.max_args == 1:
+                value = await convert_flag(ctx, values[0], flag)
+                setattr(self, flag.attribute, value)
+                continue
+
+            # Another special case, tuple parsing.
+            # Tuple parsing is basically converting arguments within the flag
+            # So, given flag: hello 20 as the input and Tuple[str, int] as the type hint
+            # We would receive ('hello', 20) as the resulting value
+            # This uses the same whitespace and quoting rules as regular parameters.
+            values = [await convert_flag(ctx, value, flag) for value in values]
+
+            if flag.cast_to_dict:
+                values = dict(values)
+
+            setattr(self, flag.attribute, values)
+
+        return self
