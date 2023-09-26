@@ -53,6 +53,9 @@ class ConfirmView(discord.ui.View):
             kwargs["embeds"] = self.embeds
         elif self.edit_after:
             kwargs["content"] = self.edit_after
+        else:
+            await self.message.delete()
+            return self.stop()
 
         await self.message.edit(**kwargs)
         self.stop()
@@ -74,12 +77,17 @@ class CustomContext(commands.Context):
         content: Optional[str] = None,
         *,
         embed: Optional[Union[Bot.Embed, List[Bot.Embed]]] = None,
-        edit_after: Optional[str] = "Hang on...",
+        file: Optional[Union[discord.File, List[discord.File]]] = None,
+        edit_after: Optional[str] = "Hang on...",  # None means delete
         confirm_label: Optional[str] = "Confirm",
         cancel_label: Optional[str] = "Cancel",
     ) -> Tuple[bool, discord.Message]:
-        if not isinstance(embed, list):
+
+        if embed and not isinstance(embed, list):
             embed = [embed]
+        if file and not isinstance(file, list):
+            file = [file]
+
         view = ConfirmView(
             self,
             embeds=embed,
@@ -87,6 +95,6 @@ class CustomContext(commands.Context):
             confirm_label=confirm_label,
             cancel_label=cancel_label,
         )
-        view.message = await self.message.reply(content, embeds=embed, view=view)
+        view.message = await self.message.reply(content, embeds=embed, files=file, view=view)
         await view.wait()
         return view.result, view.message
