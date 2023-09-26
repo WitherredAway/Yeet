@@ -1743,12 +1743,13 @@ class Draw(commands.Cog):
     async def board_from_message(
         self, ctx: CustomContext, *, message: discord.Message
     ) -> Union[Tuple[Board, ToolMenu, ColourMenu], None]:
-        if message.author.id not in (self.bot.TEST_BOT_ID, self.bot.MAIN_BOT_ID):
-            raise InvalidDrawMessageError("Not a message from the bot.")
-        if len(message.embeds) == 0:
-            raise InvalidDrawMessageError("Not a drawing embed.")
-        if "drawing board" not in message.embeds[0].title:
-            raise InvalidDrawMessageError("Not a drawing embed.")
+        if (
+            message.author.id not in (self.bot.TEST_BOT_ID, self.bot.MAIN_BOT_ID)
+            or len(message.embeds) == 0
+            or "drawing board" not in message.embeds[0].title
+        ):
+            await ctx.reply("That's not a valid draw message!")
+            return None
 
         description = message.embeds[0].description
 
@@ -1784,11 +1785,13 @@ class Draw(commands.Cog):
         elif message_link is None or not isinstance(message_link, discord.Message):
             return await ctx.send_help(ctx.command)
 
-        board, tool_options, colour_options = await self.board_from_message(
+        items = await self.board_from_message(
             ctx, message=message
         )
-        if not isinstance(board, Board):
+        if not items:
             return
+
+        board, tool_options, colour_options = items
 
         start_view = StartView(
             ctx=ctx,
@@ -1814,9 +1817,11 @@ class Draw(commands.Cog):
         elif message_link is None or not isinstance(message_link, discord.Message):
             return await ctx.send_help(ctx.command)
 
-        board, _, _ = await self.board_from_message(ctx, message=message)
-        if not isinstance(board, Board):
+        items = await self.board_from_message(ctx, message=message)
+        if not items:
             return
+
+        board, tool_options, colour_options = items
 
         embed, file = await board.save_embed(self.bot, message.embeds[0].title.replace("drawing board.", "masterpiece ✨"))
         await ctx.reply(embed=embed, file=file)
