@@ -1382,7 +1382,7 @@ and lets you directly perform actions such as:
             return
 
         if not URL_REGEX.match(image_url):
-            return await ctx.send("That's not a URL!")
+            return await ctx.send(f"`{image_url}` is not a valid URL!")
 
         try:
             image = await url_to_image(image_url, self.bot.session)
@@ -1478,8 +1478,17 @@ and lets you directly perform actions such as:
         name="submit",
         bried="Submit a drawing.",
         help="Submit a drawing for a pokemon. This also removes any approved or comment status. WIP, TODO: VALIDATE URL",
+        usage="<pokemon> [image_url=None]"
     )
-    async def submit_cmd(self, ctx: CustomContext, pokemon: str, image_url: Optional[str] = None):
+    async def submit_cmd(self, ctx: CustomContext, *pokemon_and_url: str):
+        pokemon_and_url = list(pokemon_and_url)
+        image_url = None
+        if len(pokemon_and_url) > 1:
+            if URL_REGEX.match(pokemon_and_url[-1]):
+                image_url = pokemon_and_url.pop()
+
+        pokemon = " ".join(pokemon_and_url)
+
         #! TEMPORARY
         if image_url is None:
             if not (attachments := ctx.message.attachments):
