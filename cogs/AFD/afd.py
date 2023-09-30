@@ -158,6 +158,16 @@ class Afd(AfdGist):
     async def cog_unload(self):
         reload_modules("cogs/AFD", skip=__name__)
 
+    def cog_check(self, ctx: CustomContext):
+        if not ctx.guild:
+            return False
+
+        roles = [r.id for r in ctx.author.roles]
+        return any((ctx.author.id in ctx.bot.owner_ids, AFD_ROLE_ID in roles, AFD_ADMIN_ROLE_ID in roles))
+
+    def is_admin(self, user: discord.Member) -> bool:
+        return AFD_ADMIN_ROLE_ID in [r.id for r in user.roles]
+
     @property
     def sheet(self) -> AfdSheet:
         return self.bot.sheet
@@ -204,9 +214,6 @@ class Afd(AfdGist):
     @property
     def total_amount(self) -> int:
         return len(self.df)
-
-    def is_admin(self, user: discord.Member) -> bool:
-        return AFD_ADMIN_ROLE_ID in [r.id for r in user.roles]
 
     def confirmation_embed(
         self,
@@ -376,9 +383,6 @@ class Afd(AfdGist):
             inline=False,
         )
         return embed
-
-    def cog_check(self, ctx: CustomContext):
-        return any((ctx.author.id in ctx.bot.owner_ids, AFD_ROLE_ID in [r.id for r in ctx.author.roles]))
 
     @commands.group(
         name="afd",
