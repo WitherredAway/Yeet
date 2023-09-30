@@ -1649,10 +1649,14 @@ and lets you directly perform actions such as:
         name="random",
         aliases=("rp", "rand"),
         brief="Pick a random unclaimed pokémon",
-        description="Randomly chooses an unclaimed pokémon to help you decide what to draw. Has a little contest to make it more fun, suggested by @metspek (243763234685976577) :D",
+        description="Randomly rolls an unclaimed pokémon to help you decide what to draw. Has a little contest to make it more fun, suggested by @metspek (243763234685976577) :D",
         help=f"""## Flags
 - `--name/n <pokemon>` - This flag can be used to specify all the pokémon that will participate in the randomizer. Otherwise it'll randomly pick 10 unclaimed pokémon.
-- `--skip/sk <y/n>` - This flag can be used to skip the contest directly to the winner.""",
+- `--skip/sk <y/n>` - This flag can be used to skip the contest directly to the winner.
+## Examples
+- `afd random` - Randomly rolls a pokémon from all unclaimed pokémon.
+- `afd random --skip y` - Randomly rolls a pokémon from all unclaimed pokémon, skipping straight to the winner.
+- `afd random --n ralts --n kirlia --n gardevoir --n gallade` - Randomly rolls a pokémon from the 4 specified pokémon.""",
         invoke_without_command=True
     )
     async def random_cmd(self, ctx: CustomContext, *, flags: RandomFlags):
