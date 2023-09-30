@@ -30,8 +30,13 @@ class BotCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message_edit(self, before: discord.Message, after: discord.Message):
+        # Prevent command trigger on pinning
         if after.pinned is not before.pinned:
             return
+        # Prevent command trigger on media embedding
+        if len([e for e in after.embeds if e.type != "rich"]) != len([e for e in before.embeds if e.type != "rich"]):
+            return
+
         await self.bot.process_commands(after)
 
     @commands.Cog.listener()
