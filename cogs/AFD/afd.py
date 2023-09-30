@@ -1343,24 +1343,29 @@ and lets you directly perform actions such as:
         self,
         description: str,
         *,
-        url1: Optional[Union[str, None]] = None,
-        url2: str,
+        before: Optional[Union[str, None]] = None,
+        after: str,
         thumbnail: str,
         color: Optional[int] = None,
         footer: Optional[str] = None,
     ):
         embeds = []
-        embed = self.bot.Embed(description=description, url=url1, color=color)
+        embed = self.bot.Embed(description=description, color=color)
+        embeds.append(embed)
         embed.set_thumbnail(url=thumbnail)
-        if footer:
-            embed.set_footer(text=footer)
-        if url1:
-            embed.set_image(url=url1)
-            embeds.append(embed)
 
-        embed2 = embed.copy()
-        embed2.set_image(url=url2)
-        embeds.append(embed2)
+        if before:
+            embed.add_field(name="Before", value="")
+            embed.set_image(url=before)
+
+            embed2 = self.bot.Embed(color=color)
+            embed2.add_field(name="After", value="")
+            embed2.set_image(url=after)
+            embed2.set_footer(text=footer)
+            embeds.append(embed2)
+        else:
+            embed.set_image(url=after)
+            embed.set_footer(text=footer)
 
         return embeds
 
@@ -1435,9 +1440,9 @@ and lets you directly perform actions such as:
             )
 
         embeds = self.dual_image_embed(
-            description=f"Are you sure you want to {'re' if row.image else ''}submit the following drawing for **{pokemon}**?\n\n{'Before / After' if row.image else ''}",
-            url1=row.image,
-            url2=image_url,
+            description=f"Are you sure you want to {'re' if row.image else ''}submit the following drawing for **{pokemon}**?",
+            before=row.image,
+            after=image_url,
             thumbnail=base_image,
         )
         conf, cmsg = await ctx.confirm(
@@ -1450,9 +1455,9 @@ and lets you directly perform actions such as:
         self.sheet.submit(pokemon, image_url=image_url)
         await self.sheet.update_row(row.dex)
         embeds = self.dual_image_embed(
-            description=f"You have successfully {'re' if row.image else ''}submitted the following image for **{pokemon}**.\n\n{'Before / After' if row.image else ''}",
-            url1=row.image,
-            url2=image_url,
+            description=f"You have successfully {'re' if row.image else ''}submitted the following image for **{pokemon}**.",
+            before=row.image,
+            after=image_url,
             thumbnail=base_image,
             color=EmbedColours.UNREVIEWED.value,
             footer="You will be notified when it has been reviewed :)",
@@ -1462,9 +1467,9 @@ and lets you directly perform actions such as:
         view = UrlView({"Go to message": cmsg.jump_url})
         await self.log_channel.send(
             embeds=self.dual_image_embed(
-                description=f"{ctx.author} has {'re' if row.image else ''}submitted the following image for **{pokemon}**.\n\n{'Before / After' if row.image else ''}",
-                url1=row.image,
-                url2=image_url,
+                description=f"{ctx.author} has {'re' if row.image else ''}submitted the following image for **{pokemon}**.",
+                before=row.image,
+                after=image_url,
                 thumbnail=base_image,
                 color=EmbedColours.UNREVIEWED.value,
             ),
@@ -1524,7 +1529,7 @@ and lets you directly perform actions such as:
 
         embeds = self.dual_image_embed(
             description=f"Are you sure you want to unsubmit the following drawing for **{pokemon}**?",
-            url2=row.image,
+            after=row.image,
             thumbnail=base_image,
         )
         conf, cmsg = await ctx.confirm(
@@ -1538,7 +1543,7 @@ and lets you directly perform actions such as:
         await self.sheet.update_row(row.dex)
         embeds = self.dual_image_embed(
             description=f"You have successfully unsubmitted the following image for **{pokemon}**",
-            url2=row.image,
+            after=row.image,
             thumbnail=base_image,
             color=EmbedColours.INCOMPLETE.value,
         )
@@ -1548,7 +1553,7 @@ and lets you directly perform actions such as:
         await self.log_channel.send(
             embeds=self.dual_image_embed(
                 description=f"{ctx.author} has unsubmitted the following image for **{pokemon}**.",
-                url2=row.image,
+                after=row.image,
                 thumbnail=base_image,
                 color=EmbedColours.INCOMPLETE.value,
             ),
