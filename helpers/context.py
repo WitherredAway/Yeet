@@ -82,7 +82,6 @@ class CustomContext(commands.Context):
         confirm_label: Optional[str] = "Confirm",
         cancel_label: Optional[str] = "Cancel",
     ) -> Tuple[bool, discord.Message]:
-
         if embed and not isinstance(embed, list):
             embed = [embed]
         if file and not isinstance(file, list):
@@ -95,6 +94,8 @@ class CustomContext(commands.Context):
             confirm_label=confirm_label,
             cancel_label=cancel_label,
         )
-        view.message = await self.message.reply(content, embeds=embed, files=file, view=view)
+        view.message = await self.message.reply(
+            content, embeds=embed, files=file, view=view
+        )
         await view.wait()
         return view.result, view.message

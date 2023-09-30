@@ -41,7 +41,13 @@ class SkipView(discord.ui.View):
 
 
 class RandomView(discord.ui.View):
-    def __init__(self, afdcog: Afd, ctx: CustomContext, choice: str, pokemon_options: Optional[List[str]] = None):
+    def __init__(
+        self,
+        afdcog: Afd,
+        ctx: CustomContext,
+        choice: str,
+        pokemon_options: Optional[List[str]] = None,
+    ):
         super().__init__(timeout=300)
         self.afdcog = afdcog
         self.choice = choice
@@ -95,7 +101,10 @@ class RandomFlags(
         aliases=("n",), max_args=-1, description=RandomFlagDescriptions.name.value
     )
     skip: Optional[bool] = commands.flag(
-        aliases=("sk",), default=False, max_args=1, description=RandomFlagDescriptions.skip.value
+        aliases=("sk",),
+        default=False,
+        max_args=1,
+        description=RandomFlagDescriptions.skip.value,
     )
 
     @classmethod

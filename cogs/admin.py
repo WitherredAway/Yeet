@@ -155,7 +155,9 @@ class Developer(commands.Cog):
             start = time.time()
             title = desc = None
             if ext == "all":
-                await ctx.invoke(self.bot.get_command("git"), argument=codeblock_converter("pull"))
+                await ctx.invoke(
+                    self.bot.get_command("git"), argument=codeblock_converter("pull")
+                )
                 exts = []
                 for ext in list(self.bot.extensions):
                     await self.bot.reload_extension(ext)

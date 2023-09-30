@@ -336,7 +336,7 @@ class PokemonView(discord.ui.View):
             self.image_info = {
                 "height": image.height,
                 "width": image.width,
-                "transparent": transparent
+                "transparent": transparent,
             }
 
     @property
@@ -410,7 +410,7 @@ class PokemonView(discord.ui.View):
                     t = self.image_info["transparent"]
                     embed.add_field(
                         name="Image info",
-                        value=f"height: {h}\nwidth: {w}\ntransparent pixels: {t}%"
+                        value=f"height: {h}\nwidth: {w}\ntransparent pixels: {t}%",
                     )
 
             if (not row.image) or (row.correction_pending):

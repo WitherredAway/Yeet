@@ -22,7 +22,9 @@ if TYPE_CHECKING:
     from cogs.AFD.afd import Afd
 
 
-URL_REGEX = re.compile(r"(https?://(www\.)?)[a-zA-Z0-9]{2,}(\.[a-zA-Z0-9]{2,})(\.[a-zA-Z0-9]{2,})?")
+URL_REGEX = re.compile(
+    r"(https?://(www\.)?)[a-zA-Z0-9]{2,}(\.[a-zA-Z0-9]{2,})(\.[a-zA-Z0-9]{2,})?"
+)
 
 
 def get_initial(

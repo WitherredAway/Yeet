@@ -141,7 +141,12 @@ class AfdSheet:
                 ],
             )
             deadline_str = datetime.datetime(
-                year=datetime.datetime.utcnow().year + 1, month=3, day=25, hour=0, minute=0, second=0
+                year=datetime.datetime.utcnow().year + 1,
+                month=3,
+                day=25,
+                hour=0,
+                minute=0,
+                second=0,
             ).strftime(DATETIME_FMT)
 
             self.df.loc[FIRST_ROW_IDX, THEME_LABEL] = "INSERT THEME HERE"

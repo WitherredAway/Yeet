@@ -224,9 +224,7 @@ class PoketwoChances(commands.Cog):
         pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance"]]
 
         async with ctx.channel.typing():
-            result = await self.format_chances_message(
-                "All", pkm_df, gist=ALL_GIST
-            )
+            result = await self.format_chances_message("All", pkm_df, gist=ALL_GIST)
         await ctx.send(result)
         return result
 
@@ -309,7 +307,9 @@ class PoketwoChances(commands.Cog):
             if region < len(options):
                 region = options[region - 1]
             else:
-                return await ctx.send(f"Invalid generation provided. Options: 1-{len(options) - 1}")
+                return await ctx.send(
+                    f"Invalid generation provided. Options: 1-{len(options) - 1}"
+                )
         else:
             region = region.capitalize()
 
@@ -339,14 +339,12 @@ class PoketwoChances(commands.Cog):
             gist_link = types_gists_json.get(f"{type_2}-{type_1}", None)
 
         if gist_link is None:
-            gist_link = (
-                await self.gists_client.create_gist(
-                    files=[
-                        gists.File(name="pokemon_chances.csv", content="."),
-                        gists.File(name="pokemon_chances_grouped.csv", content="."),
-                    ],
-                    public=False,
-                )
+            gist_link = await self.gists_client.create_gist(
+                files=[
+                    gists.File(name="pokemon_chances.csv", content="."),
+                    gists.File(name="pokemon_chances_grouped.csv", content="."),
+                ],
+                public=False,
             )
             types_gists_json[types_identifier] = gist_link.url
             file.content = json.dumps(types_gists_json, indent=4)

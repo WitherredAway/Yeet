@@ -560,14 +560,18 @@ class PaginatedHelpCommand(commands.HelpCommand):
 
     async def send_command_help(self, command: commands.Command):
         if not await command.can_run(self.context):
-            return await self.context.reply(f"You do not have permission to use the command `{command.name}`.")
+            return await self.context.reply(
+                f"You do not have permission to use the command `{command.name}`."
+            )
         embed = self.context.bot.Embed()
         self.common_command_formatting(self.context, embed, command)
         await self.context.send(embed=embed)
 
     async def send_group_help(self, group):
         if not await group.can_run(self.context):
-            return await self.context.reply(f"You do not have permission to use the command `{group.name}`.")
+            return await self.context.reply(
+                f"You do not have permission to use the command `{group.name}`."
+            )
         subcommands = group.commands
         if len(subcommands) == 0:
             return await self.send_command_help(group)

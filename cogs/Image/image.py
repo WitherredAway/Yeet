@@ -46,7 +46,7 @@ class FakeAttachment:
             image.width,
             image.filename or f"image.{format}",
             f"image/{format}",
-            fp
+            fp,
         )
 
 
@@ -90,7 +90,9 @@ Specify height, width or aspect ratio parameters using flags.
             attachments.append(FakeAttachment.from_image(image))
 
         if len(attachments) == 0:
-            await ctx.reply("Please provide url (--url) or attach at least one image to resize!")
+            await ctx.reply(
+                "Please provide url (--url) or attach at least one image to resize!"
+            )
             return await ctx.send_help(ctx.command)
 
         if len(attachments) > 10:
@@ -138,7 +140,9 @@ Specify height, width or aspect ratio parameters using flags.
         files = []
         files_result = []
         for attachment in attachments:
-            if not attachment.content_type or not attachment.content_type.startswith("image"):
+            if not attachment.content_type or not attachment.content_type.startswith(
+                "image"
+            ):
                 files_result.append(f"`{attachment.filename}`: Not an image")
                 continue
 

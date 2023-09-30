@@ -53,9 +53,7 @@ class StatsPageMenu(BotPages):
             )
             for c in self.categories
         ]
-        view = FieldPaginationView(
-            self.ctx, self.original_embed, fields=fields
-        )
+        view = FieldPaginationView(self.ctx, self.original_embed, fields=fields)
         view.clear_items()
         view.add_item(stats_select)
         view.fill_items()
@@ -76,7 +74,9 @@ class StatsPageMenu(BotPages):
 
         await self.source._prepare_once()
         self._update_labels(0)
-        self.all_view.message = self.message = await self.ctx.send(embed=self.all_view.embed, view=self.all_view)
+        self.all_view.message = self.message = await self.ctx.send(
+            embed=self.all_view.embed, view=self.all_view
+        )
 
     def add_select(self, select: discord.SelectMenu):
         self.clear_items()

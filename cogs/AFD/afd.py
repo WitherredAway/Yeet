@@ -37,7 +37,13 @@ from cogs.AFD.utils.list_paginator import (
     ListSelectMenu,
     StatsPageMenu,
 )
-from ..utils.utils import UrlView, enumerate_list, force_log_errors, reload_modules, url_to_image
+from ..utils.utils import (
+    UrlView,
+    enumerate_list,
+    force_log_errors,
+    reload_modules,
+    url_to_image,
+)
 from .utils.views import AfdView, PokemonView
 from .utils.utils import AFDRoleMenu, Stats, EmbedColours, Row, get_initial, URL_REGEX
 from .utils.urls import AFD_CREDITS_GIST_URL, SHEET_URL
@@ -96,7 +102,13 @@ class Afd(AfdGist):
             return False
 
         roles = [r.id for r in ctx.author.roles]
-        return any((ctx.author.id in ctx.bot.owner_ids, AFD_ROLE_ID in roles, AFD_ADMIN_ROLE_ID in roles))
+        return any(
+            (
+                ctx.author.id in ctx.bot.owner_ids,
+                AFD_ROLE_ID in roles,
+                AFD_ADMIN_ROLE_ID in roles,
+            )
+        )
 
     def is_admin(self, user: discord.Member) -> bool:
         return AFD_ADMIN_ROLE_ID in [r.id for r in user.roles]
@@ -247,7 +259,8 @@ class Afd(AfdGist):
         elif isinstance(pokemon, tuple):
             await ctx.reply(
                 embed=self.confirmation_embed(
-                    f"`{name}` is not a valid Pokémon, did you mean `{pokemon[-1]}`?", colour=EmbedColours.INVALID
+                    f"`{name}` is not a valid Pokémon, did you mean `{pokemon[-1]}`?",
+                    colour=EmbedColours.INVALID,
                 )
             )
             pokemon = pokemon[0]
@@ -905,7 +918,10 @@ and lets you directly perform actions such as:
         invoke_without_command=True,
     )
     async def _list(
-        self, ctx: CustomContext, *, user: Optional[Union[discord.User, discord.Member]] = None
+        self,
+        ctx: CustomContext,
+        *,
+        user: Optional[Union[discord.User, discord.Member]] = None,
     ):
         await self.sheet.update_df()
         user = user or ctx.author
@@ -972,10 +988,14 @@ and lets you directly perform actions such as:
                 placeholder="Claim a pokémon",
             ),
         )
-        random_btn = discord.ui.Button(label="Random", style=discord.ButtonStyle.blurple)
+        random_btn = discord.ui.Button(
+            label="Random", style=discord.ButtonStyle.blurple
+        )
+
         async def callback(interaction: discord.Interaction):
             await interaction.response.defer()
             await self.random(ctx)
+
         random_btn.callback = callback
         menu.add_item(random_btn)
 
@@ -1316,9 +1336,11 @@ and lets you directly perform actions such as:
         help="Alias of the `resize` command with pre-defined specifications required for the AFD event. Equivalent to `resize --h 475 --w 475 --fit yes --center yes`",
     )
     async def _resize(self, ctx: CustomContext, *, image_url: Optional[str] = None):
-        ctx.message.content = f"{ctx.prefix}resize --h 475 --w 475 --fit yes --center yes"
+        ctx.message.content = (
+            f"{ctx.prefix}resize --h 475 --w 475 --fit yes --center yes"
+        )
         if image_url:
-            ctx.message.content +=  f" --url {image_url}"
+            ctx.message.content += f" --url {image_url}"
 
         return await ctx.bot.process_commands(ctx.message)
 
@@ -1336,7 +1358,9 @@ and lets you directly perform actions such as:
             return await ctx.send("That's not an image!")
 
         if image.format != "PNG":
-            return await ctx.send("Image must have a transparent background (of PNG format)")
+            return await ctx.send(
+                "Image must have a transparent background (of PNG format)"
+            )
 
         if [
             colour
@@ -1350,7 +1374,7 @@ and lets you directly perform actions such as:
                 "The image you have provided does not have a majority of transparent pixels."
                 " This *could* mean that it has a non-transparent background, please double check to make sure!"
                 "\n\nIf it does have a transparent background, please proceed using the confirm button.",
-                edit_after=None
+                edit_after=None,
             )
             if conf is False:
                 return await ctx.send("Aborted.")
@@ -1424,7 +1448,7 @@ and lets you directly perform actions such as:
         name="submit",
         bried="Submit a drawing.",
         help="Submit a drawing for a pokémon. This also removes any approved or comment status. WIP, TODO: VALIDATE URL",
-        usage="<pokémon> [image_url=None]"
+        usage="<pokémon> [image_url=None]",
     )
     async def submit_cmd(self, ctx: CustomContext, *pokemon_and_url: str):
         pokemon_and_url = list(pokemon_and_url)
@@ -1532,7 +1556,13 @@ and lets you directly perform actions such as:
         "{loser} tripped over a rock...",
     ]
 
-    async def random(self, ctx: CustomContext, pokemon_options: Optional[List[str]] = None, *, skip: Optional[bool] = False):
+    async def random(
+        self,
+        ctx: CustomContext,
+        pokemon_options: Optional[List[str]] = None,
+        *,
+        skip: Optional[bool] = False,
+    ):
         await self.sheet.update_df()
 
         errors = {}
@@ -1571,10 +1601,7 @@ and lets you directly perform actions such as:
                     name="Proceed with the following?",
                     value="\n".join([f"- `{p}`" for p in pokemon]),
                 )
-                conf, _ = await ctx.confirm(
-                    embed=conf_embed,
-                    edit_after=""
-                )
+                conf, _ = await ctx.confirm(embed=conf_embed, edit_after="")
                 if conf is False:
                     return
 
@@ -1587,9 +1614,7 @@ and lets you directly perform actions such as:
         elif skip is True:
             choices = [random.choice(pokemon)]
         else:
-            choices = random.sample(
-                pokemon, k=min(len(pokemon), self.CHOICES_LEN)
-            )
+            choices = random.sample(pokemon, k=min(len(pokemon), self.CHOICES_LEN))
 
         cont = choices.copy()
         assert len(choices) > 0
@@ -1602,7 +1627,8 @@ and lets you directly perform actions such as:
             )
             text = (
                 f"{len(choices)} out of {len(pokemon)} unclaimed pokémon were randomly chosen as contestants for this randomizer!"
-                if pokemon_options is None else f"{len(pokemon)} pokémon are participating in this randomizer contest!"
+                if pokemon_options is None
+                else f"{len(pokemon)} pokémon are participating in this randomizer contest!"
             )
             embed = self.bot.Embed(
                 title=f"{text} Who will win? 👀",
@@ -1657,7 +1683,7 @@ and lets you directly perform actions such as:
 - `afd random` - Randomly rolls a pokémon from all unclaimed pokémon.
 - `afd random --skip y` - Randomly rolls a pokémon from all unclaimed pokémon, skipping straight to the winner.
 - `afd random --n ralts --n kirlia --n gardevoir --n gallade` - Randomly rolls a pokémon from the 4 specified pokémon.""",
-        invoke_without_command=True
+        invoke_without_command=True,
     )
     async def random_cmd(self, ctx: CustomContext, *, flags: RandomFlags):
         await self.random(ctx, flags.name, skip=flags.skip)

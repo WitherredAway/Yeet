@@ -17,7 +17,13 @@ from PIL import Image
 from helpers.context import CustomContext
 from pilmoji import Pilmoji
 
-from ..utils.utils import emoji_to_option_dict, force_log_errors, image_to_file, reload_modules, value_to_option_dict
+from ..utils.utils import (
+    emoji_to_option_dict,
+    force_log_errors,
+    image_to_file,
+    reload_modules,
+    value_to_option_dict,
+)
 from helpers.constants import EMBED_DESC_CHAR_LIMIT, EMBED_FIELD_CHAR_LIMIT, u200b, NL
 from .utils.constants import (
     FONT,
@@ -36,7 +42,7 @@ from .utils.constants import (
     base_number_options,
     MIN_HEIGHT_OR_WIDTH,
     MAX_HEIGHT_OR_WIDTH,
-    SAVE_FILENAME
+    SAVE_FILENAME,
 )
 from .utils.emoji import (
     ADD_EMOJIS_EMOJI,
@@ -89,6 +95,7 @@ TRANSPARENT_ERROR_MSG = (
     "Please instead try one of the other background options "
     "that is a unicode/default emoji (such as `⬜`) or a smaller board."
 )
+
 
 class StartView(discord.ui.View):
     def __init__(
@@ -182,10 +189,7 @@ class StartView(discord.ui.View):
         if len(str(self.board)) > EMBED_DESC_CHAR_LIMIT:
             self.height = 9
             self.width = 9
-            await interaction.followup.send(
-                TRANSPARENT_ERROR_MSG,
-                ephemeral=True
-            )
+            await interaction.followup.send(TRANSPARENT_ERROR_MSG, ephemeral=True)
 
         self.update_buttons()
         await interaction.edit_original_response(
@@ -625,9 +629,7 @@ class Board:
         file = image_to_file(image, filename=name)
 
         filename = f"{name}.png"
-        embed = bot.Embed(
-            title=filename
-        )
+        embed = bot.Embed(title=filename)
         embed.set_author(name=header)
         embed.set_image(url=f"attachment://{filename}")
         return embed, file
@@ -1692,7 +1694,9 @@ class DrawView(discord.ui.View):
     async def save_btn(self, interaction: discord.Interaction, button: discord.Button):
         await interaction.response.defer(thinking=True)
 
-        embed, file = await self.board.save_embed(self.bot, f"{interaction.user}'s masterpiece ✨")
+        embed, file = await self.board.save_embed(
+            self.bot, f"{interaction.user}'s masterpiece ✨"
+        )
         await interaction.followup.send(embed=embed, file=file)
 
 
@@ -1785,9 +1789,7 @@ class Draw(commands.Cog):
         elif message_link is None or not isinstance(message_link, discord.Message):
             return await ctx.send_help(ctx.command)
 
-        items = await self.board_from_message(
-            ctx, message=message
-        )
+        items = await self.board_from_message(ctx, message=message)
         if not items:
             return
 
@@ -1823,7 +1825,9 @@ class Draw(commands.Cog):
 
         board, tool_options, colour_options = items
 
-        embed, file = await board.save_embed(self.bot, message.embeds[0].title.replace("drawing board.", "masterpiece ✨"))
+        embed, file = await board.save_embed(
+            self.bot, message.embeds[0].title.replace("drawing board.", "masterpiece ✨")
+        )
         await ctx.reply(embed=embed, file=file)
 
 
