@@ -241,13 +241,13 @@ class Afd(AfdGist):
         if pokemon is None:
             await ctx.reply(
                 embed=self.confirmation_embed(
-                    f"`{name}` is not a valid Pokemon!", colour=EmbedColours.INVALID
+                    f"`{name}` is not a valid Pokémon!", colour=EmbedColours.INVALID
                 )
             )
         elif isinstance(pokemon, tuple):
             await ctx.reply(
                 embed=self.confirmation_embed(
-                    f"`{name}` is not a valid Pokemon, did you mean `{pokemon[-1]}`?", colour=EmbedColours.INVALID
+                    f"`{name}` is not a valid Pokémon, did you mean `{pokemon[-1]}`?", colour=EmbedColours.INVALID
                 )
             )
             pokemon = pokemon[0]
@@ -390,8 +390,8 @@ class Afd(AfdGist):
     @afd.command(
         name="forceclaim",
         aliases=("fc",),
-        brief="Forcefully claim a pokemon in someone's behalf.",
-        description="AFD Admin-only command to forcefully claim a pokemon in someone's behalf.",
+        brief="Forcefully claim a pokémon in someone's behalf.",
+        description="AFD Admin-only command to forcefully claim a pokémon in someone's behalf.",
         help=f"""When this command is ran, first the sheet data will be fetched. Then:
 1. A pokemon, with the normalized and deaccented version of the provided name *including alt names*, will be searched for. If not found, it will return invalid.
 2. That pokemon's availability on the sheet will be checked:
@@ -417,7 +417,7 @@ class Afd(AfdGist):
         if not row.claimed:
             content = None
             if self.sheet.can_claim(user) is False:
-                content = f"**{user}** already has the max number ({self.sheet.CLAIM_MAX}) of pokemon claimed, still continue?"
+                content = f"**{user}** already has the max number ({self.sheet.CLAIM_MAX}) of pokémon claimed, still continue?"
 
             conf, cmsg = await ctx.confirm(
                 embed=self.confirmation_embed(
@@ -473,8 +473,8 @@ class Afd(AfdGist):
     @afd.command(
         name="forceunclaim",
         aliases=("ufc",),
-        brief="Forcefully unclaim a pokemon",
-        description="AFD Admin-only command to forcefully unclaim a pokemon",
+        brief="Forcefully unclaim a pokémon",
+        description="AFD Admin-only command to forcefully unclaim a pokémon",
         help=f"""When this command is ran, first the sheet data will be fetched. Then:
 1. A pokemon, with the normalized and deaccented version of the provided name *including alt names*, will be searched for. If not found, it will return invalid.
 2. That pokemon's availability on the sheet will be checked:
@@ -842,7 +842,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
     @afd.command(
         name="view",
         aliases=("pokemon", "pkm", "d", "dex"),
-        brief="See info of a pokemon from the sheet",
+        brief="See info of a pokémon from the sheet",
         help="""Shows you all the information about a pokemon such as:
     - Claim status
     - User who claimed
@@ -874,17 +874,17 @@ and lets you directly perform actions such as:
         self, ctx: CustomContext, stats: Stats, *, embed: Bot.Embed
     ):
         total_amount = stats.claimed.amount if stats is not None else 0
-        embed.description = f"**Total pokemon**: {total_amount}"
+        embed.description = f"**Total pokémon**: {total_amount}"
 
         if stats is None:
             return await ctx.send(embed=embed)
         else:
             embed.description += (
-                f"\n**Total submitted pokemon**: {stats.submitted.amount}"
+                f"\n**Total submitted pokémon**: {stats.submitted.amount}"
             )
 
         embed.set_footer(
-            text=f"Use the `{ctx.clean_prefix}afd view <pokemon>` command to see more info on and interact with an entry"
+            text=f"Use the `{ctx.clean_prefix}afd view <pokémon>` command to see more info on and interact with an entry"
         )
 
         categories = [
@@ -901,7 +901,7 @@ and lets you directly perform actions such as:
     @afd.group(
         name="list",
         brief="View a user's stats, categorized",
-        help="View lists of every category of pokemon of a specific user. To see your own, leave the user argument empty.",
+        help="View lists of every category of pokémon of a specific user. To see your own, leave the user argument empty.",
         invoke_without_command=True,
     )
     async def _list(
@@ -919,7 +919,7 @@ and lets you directly perform actions such as:
     @_list.command(
         name="all",
         brief="View all stats, categorized",
-        help="View lists of every category of pokemon in a compact form compared to their respective subcommands.",
+        help="View lists of every category of pokémon in a compact form compared to their respective subcommands.",
     )
     async def list_all(self, ctx: CustomContext):
         await self.sheet.update_df()
@@ -949,8 +949,8 @@ and lets you directly perform actions such as:
     @_list.command(
         name="unclaimed",
         aliases=("unc", "available"),
-        brief="View pokemon that have not been claimed yet.",
-        help="View a list of pokemon that are available to claim.",
+        brief="View pokémon that have not been claimed yet.",
+        help="View a list of pokémon that are available to claim.",
     )
     async def list_unclaimed(self, ctx: CustomContext):
         await self.sheet.update_df()
@@ -969,7 +969,7 @@ and lets you directly perform actions such as:
                 .groups()[0]
                 .replace("*", ""),
                 action_func=self.claim,
-                placeholder="Claim a pokemon",
+                placeholder="Claim a pokémon",
             ),
         )
         random_btn = discord.ui.Button(label="Random", style=discord.ButtonStyle.blurple)
@@ -998,8 +998,8 @@ and lets you directly perform actions such as:
     @_list.command(
         name="correction",
         aliases=("cor", "correction_pending"),
-        brief="View pokemon that have a comment left by an admin.",
-        help="View a list of pokemon that have a comment left by an admin, and hence pending correction of some sort.",
+        brief="View pokémon that have a comment left by an admin.",
+        help="View a list of pokémon that have a comment left by an admin, and hence pending correction of some sort.",
     )
     async def list_correction(self, ctx: CustomContext):
         await self.sheet.update_df()
@@ -1036,8 +1036,8 @@ and lets you directly perform actions such as:
     @_list.command(
         name="incomplete",
         aliases=("inc",),
-        brief="View pokemon that have been claimed but not yet submitted.",
-        help="View a list of pokemon that have been claimed but no submission yet.",
+        brief="View pokémon that have been claimed but not yet submitted.",
+        help="View a list of pokémon that have been claimed but no submission yet.",
     )
     async def list_incomplete(self, ctx: CustomContext):
         await self.sheet.update_df()
@@ -1054,8 +1054,8 @@ and lets you directly perform actions such as:
     @_list.command(
         name="unreviewed",
         aliases=("unr", "submitted"),
-        brief="View submitted pokemon awaiting review",
-        help="View a list of pokemon that have been submitted but no review (comment/approval) yet.",
+        brief="View submitted pokémon awaiting review",
+        help="View a list of pokémon that have been submitted but no review (comment/approval) yet.",
     )
     async def list_unreviewed(self, ctx: CustomContext):
         await self.sheet.update_df()
@@ -1079,8 +1079,8 @@ and lets you directly perform actions such as:
     @_list.command(
         name="approved",
         aliases=("app",),
-        brief="View approved pokemon",
-        help="View a list of pokemon that have been submitted and approved.",
+        brief="View approved pokémon",
+        help="View a list of pokémon that have been submitted and approved.",
     )
     async def list_approved(self, ctx: CustomContext):
         await self.sheet.update_df()
@@ -1103,7 +1103,7 @@ and lets you directly perform actions such as:
         await self.sheet.update_df()
         row = self.sheet.get_pokemon_row(pokemon)
 
-        max_msg = f"You already have the max number ({self.sheet.CLAIM_MAX}) of pokemon claimed"
+        max_msg = f"You already have the max number ({self.sheet.CLAIM_MAX}) of pokémon claimed"
         if not row.claimed:
             p = ""
             if self.sheet.can_claim(ctx.author) is False:
@@ -1175,8 +1175,8 @@ and lets you directly perform actions such as:
 
     @afd.command(
         name="claim",
-        brief="Claim a pokemon to draw",
-        description=f"Claim a pokemon to draw. Use the `afd` to know the claim limit at a time. Pokemon alt names are supported!",
+        brief="Claim a pokémon to draw",
+        description=f"Claim a pokémon to draw. Use the `afd` to know the claim limit at a time. Pokemon alt names are supported!",
         help=f"""When this command is ran, first the sheet data will be fetched. Then:
 1. A pokemon, with the normalized and deaccented version of the provided name *including alt names*, will be searched for. If not found, it will return invalid.
 2. That pokemon's availability on the sheet will be checked:
@@ -1265,8 +1265,8 @@ and lets you directly perform actions such as:
 
     @afd.command(
         name="unclaim",
-        brief="Unclaim a pokemon",
-        description=f"Unclaim a pokemon claimed by you.",
+        brief="Unclaim a pokémon",
+        description=f"Unclaim a pokémon claimed by you.",
         help=f"""When this command is ran, first the sheet data will be fetched. Then:
 1. A pokemon, with the normalized and deaccented version of the provided name *including alt names*, will be searched for. If not found, it will return invalid.
 2. That pokemon's availability on the sheet will be checked:
@@ -1423,8 +1423,8 @@ and lets you directly perform actions such as:
     @afd.command(
         name="submit",
         bried="Submit a drawing.",
-        help="Submit a drawing for a pokemon. This also removes any approved or comment status. WIP, TODO: VALIDATE URL",
-        usage="<pokemon> [image_url=None]"
+        help="Submit a drawing for a pokémon. This also removes any approved or comment status. WIP, TODO: VALIDATE URL",
+        usage="<pokémon> [image_url=None]"
     )
     async def submit_cmd(self, ctx: CustomContext, *pokemon_and_url: str):
         pokemon_and_url = list(pokemon_and_url)
@@ -1506,8 +1506,8 @@ and lets you directly perform actions such as:
 
     @afd.command(
         name="unsubmit",
-        bried="Clear submitted drawing of a pokemon.",
-        help="Clear submitted drawing of a pokemon. This also removes any approved or comment status.",
+        bried="Clear submitted drawing of a pokémon.",
+        help="Clear submitted drawing of a pokémon. This also removes any approved or comment status.",
     )
     async def unsubmit_cmd(self, ctx: CustomContext, pokemon: str):
         await self.unsubmit(ctx, pokemon)
@@ -1581,7 +1581,7 @@ and lets you directly perform actions such as:
                 return await self.random(ctx, pokemon, skip=skip)
 
         if len(pokemon) == 0:
-            return await ctx.send("There are no unclaimed pokemon to choose from!")
+            return await ctx.send("There are no unclaimed pokémon to choose from!")
         elif len(pokemon) == 1:
             choices = pokemon
         elif skip is True:
@@ -1601,7 +1601,7 @@ and lets you directly perform actions such as:
                 lambda: f"__**Contestants ({len(cont)}/{len(choices)})**__:\n{NL.join(enumerate_list(choices))}"
             )
             text = (
-                f"{len(choices)} out of {len(pokemon)} unclaimed pokemon were randomly chosen as contestants for this randomizer!"
+                f"{len(choices)} out of {len(pokemon)} unclaimed pokémon were randomly chosen as contestants for this randomizer!"
                 if pokemon_options is None else f"{len(pokemon)} pokémon are participating in this randomizer contest!"
             )
             embed = self.bot.Embed(
@@ -1633,7 +1633,7 @@ and lets you directly perform actions such as:
         else:
             choice = choices[0]
             embed = self.bot.Embed(
-                title=f"1 pokemon was randomly chosen out of.. 1 unclaimed pokemon..",
+                title=f"1 pokémon was randomly chosen out of.. 1 unclaimed pokémon..",
                 description=f"**{choice}** is the only one who showed up... 🦗",
             )
             msg = await ctx.reply(embed=embed)
@@ -1648,8 +1648,8 @@ and lets you directly perform actions such as:
     @afd.group(
         name="random",
         aliases=("rp", "rand"),
-        brief="Pick a random unclaimed pokemon",
-        description="Randomly chooses an unclaimed pokemon to help you decide what to draw. Has a little contest to make it more fun, suggested by @metspek (243763234685976577) :D",
+        brief="Pick a random unclaimed pokémon",
+        description="Randomly chooses an unclaimed pokémon to help you decide what to draw. Has a little contest to make it more fun, suggested by @metspek (243763234685976577) :D",
         help=f"""## Flags
 - `--name/n <pokemon>` - This flag can be used to specify all the pokémon that will participate in the randomizer. Otherwise it'll randomly pick 10 unclaimed pokémon.
 - `--skip/sk <y/n>` - This flag can be used to skip the contest directly to the winner.""",
