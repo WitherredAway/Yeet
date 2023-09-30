@@ -51,7 +51,7 @@ class ConfirmView(discord.ui.View):
             for embed in self.embeds:
                 embed.description = self.edit_after
             kwargs["embeds"] = self.embeds
-        elif self.edit_after:
+        elif self.edit_after is not None:
             kwargs["content"] = self.edit_after
         else:
             await self.message.delete()

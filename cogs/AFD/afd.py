@@ -12,6 +12,7 @@ from typing import (
     DefaultDict,
     List,
     Optional,
+    Tuple,
     Union,
 )
 import numpy as np
@@ -28,6 +29,7 @@ from helpers.constants import INDENT, NL
 from helpers.context import CustomContext
 
 from cogs.AFD.utils.labels import PKM_LABEL
+from cogs.AFD.utils.random import RandomView, SkipView, RandomFlags
 from cogs.AFD.utils.list_paginator import (
     ActionSelectMenu,
     ListPageMenu,
@@ -53,75 +55,6 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
-
-
-class SkipView(discord.ui.View):
-    def __init__(self, remaining: List[str], *, ctx: CustomContext):
-        super().__init__(timeout=300)
-        self.remaining = remaining
-        self.ctx = ctx
-
-    async def on_timeout(self):
-        await self.message.edit(view=None)
-        self.stop()
-
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        if interaction.user != self.ctx.author:
-            await interaction.response.send_message(
-                f"This instance does not belong to you!",
-                ephemeral=True,
-            )
-            return False
-        return True
-
-    @discord.ui.button(label="Skip", style=discord.ButtonStyle.red)
-    async def skip_btn(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ):
-        await interaction.response.defer()
-        self.remaining[:] = [random.choice(self.remaining)]
-
-
-class RandomView(discord.ui.View):
-    def __init__(self, afdcog: Afd, choice: str, *, ctx: CustomContext):
-        super().__init__(timeout=300)
-        self.afdcog = afdcog
-        self.choice = choice
-        self.ctx = ctx
-
-    async def on_timeout(self):
-        await self.message.edit(view=None)
-        self.stop()
-
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        if interaction.user != self.ctx.author:
-            await interaction.response.send_message(
-                f"This instance does not belong to you!",
-                ephemeral=True,
-            )
-            return False
-        return True
-
-    @discord.ui.button(label="Claim", style=discord.ButtonStyle.blurple)
-    async def claim_btn(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ):
-        await interaction.response.defer()
-        await self.afdcog.claim(self.ctx, self.choice)
-
-    @discord.ui.button(label="Reroll", style=discord.ButtonStyle.red)
-    async def reroll_btn(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ):
-        await interaction.response.defer()
-        await self.afdcog.random(self.ctx)
-
-    @discord.ui.button(label="Reroll (skip)", style=discord.ButtonStyle.red)
-    async def reroll_skp_btn(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ):
-        await interaction.response.defer()
-        await self.afdcog.random(self.ctx, skip=True)
 
 
 class Afd(AfdGist):
@@ -291,27 +224,35 @@ class Afd(AfdGist):
         else:
             return True
 
-    async def get_pokemon(self, ctx: CustomContext, name: str) -> Union[str, None]:
+    def pokemon_by_name(self, name: str) -> Union[str, None, Tuple[str, str]]:
         try:
             name = self.sheet.get_pokemon(name)
         except IndexError:
             autocorrection = difflib.get_close_matches(name, self.all_pk_names)
             if not autocorrection:
-                await ctx.reply(
-                    embed=self.confirmation_embed(
-                        f"`{name}` is not a valid Pokemon!", colour=EmbedColours.INVALID
-                    )
-                )
                 return None
 
             autocorrection = autocorrection[0]
+            return self.pokemon_by_name(autocorrection), autocorrection
+        return name
+
+    async def get_pokemon(self, ctx: CustomContext, name: str) -> Union[str, None]:
+        pokemon = self.pokemon_by_name(name)
+        if pokemon is None:
             await ctx.reply(
                 embed=self.confirmation_embed(
-                    f"`{name}` is not a valid Pokemon, did you mean `{autocorrection}`?", colour=EmbedColours.INVALID
+                    f"`{name}` is not a valid Pokemon!", colour=EmbedColours.INVALID
                 )
             )
-            return await self.get_pokemon(ctx, autocorrection)
-        return name
+        elif isinstance(pokemon, tuple):
+            await ctx.reply(
+                embed=self.confirmation_embed(
+                    f"`{name}` is not a valid Pokemon, did you mean `{pokemon[-1]}`?", colour=EmbedColours.INVALID
+                )
+            )
+            pokemon = pokemon[0]
+
+        return pokemon
 
     async def check_claim(
         self,
@@ -1411,7 +1352,7 @@ and lets you directly perform actions such as:
                 "\n\nIf it does have a transparent background, please proceed using the confirm button.",
                 edit_after=None
             )
-            if conf is not True:
+            if conf is False:
                 return await ctx.send("Aborted.")
 
         if image.height != 475 or image.width != 475:
@@ -1591,11 +1532,53 @@ and lets you directly perform actions such as:
         "{loser} tripped over a rock...",
     ]
 
-    async def random(self, ctx: CustomContext, *, skip: Optional[bool] = False):
+    async def random(self, ctx: CustomContext, pokemon_options: Optional[List[str]] = None, *, skip: Optional[bool] = False):
         await self.sheet.update_df()
-        stats = self.get_stats()
-        unclaimed = stats.unclaimed
-        pokemon = unclaimed.pokemon
+
+        errors = {}
+        if pokemon_options is None:
+            stats = self.get_stats()
+            unclaimed = stats.unclaimed
+            pokemon = unclaimed.pokemon
+        else:
+            pokemon = []
+            for name in pokemon_options:
+                pkm = self.pokemon_by_name(name)
+                if pkm is None:
+                    errors[name] = "Invalid pokémon"
+                    continue
+                elif isinstance(pkm, tuple):
+                    pkm, ac = pkm
+                    errors[name] = f"Invalid pokémon, autocorrected to `{ac}`"
+
+                row = self.sheet.get_pokemon_row(pkm)
+                if row.claimed:
+                    errors[pkm] = "Already claimed"
+                    continue
+
+                pokemon.append(pkm)
+
+            if errors:
+                conf_embed = ctx.bot.Embed()
+                conf_embed.add_field(
+                    name="Could not include",
+                    value="\n".join([f"- `{p}` - {m}" for p, m in errors.items()]),
+                )
+                if len(pokemon) == 0:
+                    return await ctx.reply(embed=conf_embed)
+
+                conf_embed.add_field(
+                    name="Proceed with the following?",
+                    value="\n".join([f"- `{p}`" for p in pokemon]),
+                )
+                conf, _ = await ctx.confirm(
+                    embed=conf_embed,
+                    edit_after=""
+                )
+                if conf is False:
+                    return
+
+                return await self.random(ctx, pokemon, skip=skip)
 
         if len(pokemon) == 0:
             return await ctx.send("There are no unclaimed pokemon to choose from!")
@@ -1605,7 +1588,7 @@ and lets you directly perform actions such as:
             choices = [random.choice(pokemon)]
         else:
             choices = random.sample(
-                pokemon, k=min(max(round(len(pokemon) / 2), 1), self.CHOICES_LEN)
+                pokemon, k=min(len(pokemon), self.CHOICES_LEN)
             )
 
         cont = choices.copy()
@@ -1617,9 +1600,12 @@ and lets you directly perform actions such as:
             desc = (
                 lambda: f"__**Contestants ({len(cont)}/{len(choices)})**__:\n{NL.join(enumerate_list(choices))}"
             )
-
+            text = (
+                f"{len(choices)} out of {len(pokemon)} unclaimed pokemon were randomly chosen as contestants for this randomizer!"
+                if pokemon_options is None else f"{len(pokemon)} pokémon are participating in this randomizer contest!"
+            )
             embed = self.bot.Embed(
-                title=f"{len(choices)} out of {len(pokemon)} unclaimed pokemon were randomly chosen as contestants for this randomizer! Who will win? 👀",
+                title=f"{text} Who will win? 👀",
                 description=desc(),
             )
             skip_view = SkipView(cont, ctx=ctx)
@@ -1647,8 +1633,8 @@ and lets you directly perform actions such as:
         else:
             choice = choices[0]
             embed = self.bot.Embed(
-                title=f"1 pokemon was randomly chosen out of... 1 unclaimed pokemon...?",
-                description=f"**{choice}** looks around for others... but to no avail... 🦗🦗🦗",
+                title=f"1 pokemon was randomly chosen out of.. 1 unclaimed pokemon..",
+                description=f"**{choice}** is the only one who showed up... 🦗",
             )
             msg = await ctx.reply(embed=embed)
             await asyncio.sleep(self.DURATION)
@@ -1656,27 +1642,21 @@ and lets you directly perform actions such as:
         embed = self.bot.Embed(title=f"{choice} has won the randomizer contest!")
         embed.set_image(url=self.sheet.get_pokemon_image(choice))
 
-        view = RandomView(self, choice, ctx=ctx)
+        view = RandomView(self, ctx, choice, pokemon_options)
         view.message = await ctx.reply(embed=embed, view=view)
 
     @afd.group(
         name="random",
         aliases=("rp", "rand"),
         brief="Pick a random unclaimed pokemon",
-        help="Randomly chooses an unclaimed pokemon. Has a little contest to make it more fun, suggested by @metspek (243763234685976577) :D",
+        description="Randomly chooses an unclaimed pokemon to help you decide what to draw. Has a little contest to make it more fun, suggested by @metspek (243763234685976577) :D",
+        help=f"""## Flags
+- `--name/n <pokemon>` - This flag can be used to specify all the pokémon that will participate in the randomizer. Otherwise it'll randomly pick 10 unclaimed pokémon.
+- `--skip/sk <y/n>` - This flag can be used to skip the contest directly to the winner.""",
         invoke_without_command=True
     )
-    async def random_cmd(self, ctx: CustomContext):
-        await self.random(ctx)
-
-    @random_cmd.command(
-        name="skip",
-        aliases=("sk",),
-        brief="Pick a random unclaimed pokemon but skip the contest",
-        help="Randomly chooses an unclaimed pokemon, but skips the contest :("
-    )
-    async def random_skp_cmd(self, ctx: CustomContext):
-        await self.random(ctx, skip=True)
+    async def random_cmd(self, ctx: CustomContext, *, flags: RandomFlags):
+        await self.random(ctx, flags.name, skip=flags.skip)
 
 
 async def setup(bot):
