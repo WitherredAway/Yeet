@@ -9,7 +9,7 @@ import discord
 from discord.ext import menus
 
 
-from .utils import Category, get_initial
+from .utils import Category, Row, get_initial
 from cogs.utils.utils import value_to_option_dict
 from cogs.RDanny.utils.paginator import (
     FIRST_PAGE_SYMBOL,
@@ -24,6 +24,7 @@ from helpers.field_paginator import Field, FieldPaginationView
 
 if TYPE_CHECKING:
     from main import Bot
+    from ..afd import Afd
 
 
 STATS_PER_PAGE = 20
@@ -408,3 +409,27 @@ class ActionSelectMenu(discord.ui.Select):
         pokemon = opt.label
         await self.action_func(self.menu.ctx, pokemon)
         await interaction.edit_original_response()
+
+
+class RemindAllButton(discord.ui.Button):
+    def __init__(self, afdcog: Afd, rows: List[Row], *, ctx: CustomContext):
+        self.afdcog = afdcog
+        self.rows = rows
+        self.ctx = ctx
+        super().__init__(label="Remind All", style=discord.ButtonStyle.blurple)
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer(thinking=True)
+        grouped = defaultdict(list)
+        for row in self.rows:
+            grouped[row.user_id].append(row)
+
+        for user_id, rows in grouped.items():
+            await self.afdcog.send_notification(
+                embed=self.afdcog.pkm_remind_embed(rows), user=user_id, ctx=self.ctx
+            )
+
+        users = [f"**{await self.afdcog.fetch_user(user_id)}**" for user_id in grouped.keys()]
+        await interaction.followup.send(
+            f"Successfully sent a reminder to {', '.join(users)}.", ephemeral=True
+        )

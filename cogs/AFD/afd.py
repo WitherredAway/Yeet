@@ -36,6 +36,7 @@ from cogs.AFD.utils.list_paginator import (
     ListPageSource,
     ListSelectMenu,
     StatsPageMenu,
+    RemindAllButton
 )
 from ..utils.utils import (
     UrlView,
@@ -221,17 +222,21 @@ class Afd(AfdGist):
         self,
         embed: Union[Bot.Embed, List[Bot.Embed]],
         *,
-        user: discord.User,
+        user: Union[discord.abc.Snowflake, int],
         ctx: CustomContext,
         view: Optional[discord.ui.View] = None,
     ) -> bool:
         if not isinstance(embed, list):
             embed = [embed]
 
+        if not isinstance(user, discord.abc.Snowflake):
+            user = discord.Object(user)
+
         try:
-            await user.send(embeds=embed, view=view)
+            dm = await self.bot.create_dm(user)
+            await asyncio.create_task(dm.send(embeds=embed, view=view))
         except (discord.Forbidden, discord.HTTPException):
-            await ctx.send(f"{user.mention} (Unable to DM)", embeds=embed, view=view)
+            await asyncio.create_task(ctx.send(f"<@{user.id}> (Unable to DM)", embeds=embed, view=view))
             return False
         else:
             return True
@@ -1030,6 +1035,17 @@ and lets you directly perform actions such as:
 
         src = ListPageSource(category, entries=entries)
         menu = ListPageMenu(src, ctx=ctx)
+        if entries:
+            menu.add_selects(
+                ActionSelectMenu(
+                    menu,
+                    # !NOTE TO SELF: THIS get_pkm IS HACKY AS HELL AND WILL BREAK IF THE FORMAT CHANGES
+                    get_pkm=lambda e: re.match("\d+\\\. \*\*(.+?)\*\* - ", e).groups()[0],
+                    action_func=self.send_view,
+                    placeholder="View an entry",
+                )
+            )
+            menu.add_item(RemindAllButton(self, category.rows, ctx=ctx))
         await menu.start()
 
     async def per_user_fmt(
@@ -1070,6 +1086,8 @@ and lets you directly perform actions such as:
             category, entries=entries, dynamic_pages=True, max_per_page=5
         )
         menu = ListPageMenu(src, ctx=ctx)
+        if entries:
+            menu.add_item(RemindAllButton(self, category.rows, ctx=ctx))
         await menu.start()
 
     @_list.command(
