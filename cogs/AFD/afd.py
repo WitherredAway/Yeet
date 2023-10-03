@@ -415,8 +415,8 @@ class Afd(AfdGist):
     @afd.command(
         name="forceclaim",
         aliases=("fc",),
-        brief="Forcefully claim a pokémon in someone's behalf.",
-        description="AFD Admin-only command to forcefully claim a pokémon in someone's behalf.",
+        brief="Forcefully claim a pokémon on someone's behalf.",
+        description="AFD Admin-only command to forcefully claim a pokémon on someone's behalf.",
         help=f"""When this command is ran, first the sheet data will be fetched. Then:
 1. A pokemon, with the normalized and deaccented version of the provided name *including alt names*, will be searched for. If not found, it will return invalid.
 2. That pokemon's availability on the sheet will be checked:
@@ -1362,7 +1362,7 @@ and lets you directly perform actions such as:
 
     @afd.command(
         name="resize",
-        bried="Resize a drawing to required specifications",
+        brief="Resize a drawing to required specifications",
         help="Alias of the `resize` command with pre-defined specifications required for the AFD event. Equivalent to `resize --h 475 --w 475 --fit yes --center yes`",
     )
     async def _resize(self, ctx: CustomContext, *, image_url: Optional[str] = None):
@@ -1476,7 +1476,7 @@ and lets you directly perform actions such as:
 
     @afd.command(
         name="submit",
-        bried="Submit a drawing.",
+        brief="Submit a drawing.",
         help="Submit a drawing for a pokémon. This also removes any approved or comment status. WIP, TODO: VALIDATE URL",
         usage="<pokémon> [image_url=None]",
     )
@@ -1560,7 +1560,7 @@ and lets you directly perform actions such as:
 
     @afd.command(
         name="unsubmit",
-        bried="Clear submitted drawing of a pokémon.",
+        brief="Clear submitted drawing of a pokémon.",
         help="Clear submitted drawing of a pokémon. This also removes any approved or comment status.",
     )
     async def unsubmit_cmd(self, ctx: CustomContext, pokemon: str):
