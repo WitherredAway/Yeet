@@ -7,6 +7,7 @@ import discord
 from discord.ext import commands
 
 from cogs.utils.utils import enumerate_list, force_log_errors, reload_modules
+from helpers.context import CustomContext
 
 from .ext.poketwo_chances import PoketwoChances
 from .ext.poketwo_moves import PoketwoMoves
@@ -37,17 +38,15 @@ class Poketwo(PoketwoChances, PoketwoMoves):
         reload_modules("cogs/Poketwo", skip=__name__)
 
     @commands.command(
-        name="extract_ids",
-        aliases=["ids"],
+        aliases=("ids", "extractids"),
         brief="Extract pokémon IDs from Pokétwo embeds",
-        help="Extract pokémon IDs from Pokétwo embeds like marketplace, inventory, etc by providing message link, ID or by replying to the message",
+        help="Extract pokémon IDs from Pokétwo embeds like marketplace, inventory, etc by providing message link, ID or by replying to the message.",
     )
     async def extract_ids(
-        self, ctx: commands.Context, msg: Optional[discord.Message] = None
+        self, ctx: CustomContext, msg: Optional[discord.Message] = None
     ):
-        if (ref := ctx.message.reference) is not None:
-            content = ref.resolved.embeds[0].description
-        elif msg is not None:
+        msg = msg or ((ref.resolved or await ctx.channel.fetch_message(ref.message_id)) if (ref := ctx.message.reference) else None)
+        if msg is not None:
             content = msg.embeds[0].description
         else:
             return await ctx.send_help(ctx.command)
