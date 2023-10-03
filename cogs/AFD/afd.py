@@ -1,6 +1,7 @@
 from __future__ import annotations
 import asyncio
 from collections import defaultdict
+import io
 
 import logging
 import re
@@ -15,6 +16,8 @@ from typing import (
     Tuple,
     Union,
 )
+import PIL
+from PIL import Image
 import numpy as np
 import pandas as pd
 import random
@@ -557,6 +560,176 @@ class Afd(AfdGist):
         await self.log_channel.send(embed=embed, view=view)
         embed.description = f"**{pokemon}** has been forcefully unclaimed from you."
         await self.send_notification(embed, user=user, ctx=ctx, view=view)
+
+    @commands.has_role(AFD_ADMIN_ROLE_ID)
+    @afd.command(
+        name="forcesubmit",
+        aliases=("fs",),
+        brief="Forcefully submit drawing for a pokémon on someone's behalf.",
+        description="AFD Admin-only command to forcefully submit drawing for a pokémon on someone's behalf. This also removes any approved or comment status.",
+        usage="<pokémon> [image_url=None]",
+    )
+    async def forcesubmit(
+        self, ctx: CustomContext, *pokemon_and_url: str
+    ):
+        pokemon_and_url = list(pokemon_and_url)
+        image_url = None
+        if len(pokemon_and_url) > 1:
+            if URL_REGEX.match(pokemon_and_url[-1]):
+                image_url = pokemon_and_url.pop()
+
+        pokemon = " ".join(pokemon_and_url)
+
+        #! TEMPORARY
+        if image_url is not None:
+            try:
+                image = await url_to_image(image_url, self.bot.session)
+            except ValueError:
+                return await ctx.send("That's not an image!")
+        else:
+            if not (attachments := ctx.message.attachments):
+                return await ctx.send_help(ctx.command)
+
+            if not attachments[0].content_type.startswith("image"):
+                return await ctx.send("That's not an image!")
+
+            try:
+                image = Image.open(io.BytesIO(await attachments[0].read()))
+            except PIL.UnidentifiedImageError:
+                return await ctx.send("That's not an image!")
+
+        pokemon = await self.get_pokemon(ctx, pokemon)
+        if not pokemon:
+            return
+
+        if await self.submit_image_check(ctx, image) is not True:
+            return
+
+        conf = cmsg = None
+        await self.sheet.update_df()
+        row = self.sheet.get_pokemon_row(pokemon)
+        user = await self.fetch_user(row.user_id)
+        base_image = self.sheet.get_pokemon_image(row.pokemon)
+        if not row.claimed:
+            return await ctx.reply(
+                embed=self.confirmation_embed(
+                    f"**{pokemon}** is not claimed.",
+                    colour=EmbedColours.INVALID,
+                )
+            )
+        if not (row.user_id == user.id):
+            return await ctx.reply(
+                embed=self.confirmation_embed(
+                    f"**{pokemon}** is not claimed by **{user} ({user.id})**!",
+                    colour=EmbedColours.INVALID,
+                )
+            )
+
+        embeds = self.dual_image_embed(
+            description=f"Are you sure you want to force {'re' if row.image else ''}submit the following drawing for **{pokemon}** on **{user} ({user.id})**'s behalf?",
+            before=row.image,
+            after=image_url,
+            thumbnail=base_image,
+        )
+        conf, cmsg = await ctx.confirm(
+            embed=embeds,
+            confirm_label="Force Submit",
+        )
+        if conf is False:
+            return
+
+        self.sheet.submit(pokemon, image_url=image_url)
+        await self.sheet.update_row(row.dex)
+        embeds = self.dual_image_embed(
+            description=f"You have successfully force {'re' if row.image else ''}submitted the following image for **{pokemon}** on **{user} ({user.id})**'s behalf.",
+            before=row.image,
+            after=image_url,
+            thumbnail=base_image,
+            color=EmbedColours.UNREVIEWED.value,
+            footer="You will be notified when it has been reviewed :)",
+        )
+        await cmsg.edit(embeds=embeds)
+
+        view = UrlView({"Go to message": cmsg.jump_url})
+        await self.log_channel.send(
+            embeds=self.dual_image_embed(
+                description=f"**{ctx.author} ({ctx.author.id})** has force {'re' if row.image else ''}submitted the following image for **{pokemon}** on **{user} ({user.id})**'s behalf.",
+                before=row.image,
+                after=image_url,
+                thumbnail=base_image,
+                color=EmbedColours.UNREVIEWED.value,
+            ),
+            view=view,
+        )
+
+        embeds[0].description = f"**{ctx.author} ({ctx.author.id})** has force {'re' if row.image else ''}submitted the following image for **{pokemon}** on your behalf."
+        await self.send_notification(embeds, user=user, ctx=ctx, view=view)
+        return True
+
+    @commands.has_role(AFD_ADMIN_ROLE_ID)
+    @afd.command(
+        name="forceunsubmit",
+        aliases=("ufs",),
+        brief="Forcefully unsubmit a submitted drawing",
+        description="AFD Admin-only command to forcefully clear submission of a pokémon.",
+    )
+    async def forcesubmit(
+        self, ctx: CustomContext, *, pokemon: str
+    ):
+
+        pokemon = await self.get_pokemon(ctx, pokemon)
+        if not pokemon:
+            return
+
+        conf = cmsg = None
+        await self.sheet.update_df()
+        row = self.sheet.get_pokemon_row(pokemon)
+        user = await self.fetch_user(row.user_id)
+        base_image = self.sheet.get_pokemon_image(row.pokemon)
+        if not row.image:
+            return await ctx.reply(
+                embed=self.confirmation_embed(
+                    f"**{pokemon}** is not submitted.",
+                    colour=EmbedColours.INVALID,
+                )
+            )
+
+        embeds = self.dual_image_embed(
+            description=f"Are you sure you want to force unsubmit **{user} ({user.id})**'s drawing for **{pokemon}**?",
+            after=row.image,
+            thumbnail=base_image,
+        )
+        conf, cmsg = await ctx.confirm(
+            embed=embeds,
+            confirm_label="Force Unsubmit",
+        )
+        if conf is False:
+            return
+
+        self.sheet.submit(pokemon, image_url="")
+        await self.sheet.update_row(row.dex)
+        embeds = self.dual_image_embed(
+            description=f"You have successfully force unsubmitted **{user} ({user.id})**'s drawing for **{pokemon}**.",
+            after=row.image,
+            thumbnail=base_image,
+            color=EmbedColours.INCOMPLETE.value,
+        )
+        await cmsg.edit(embeds=embeds)
+
+        view = UrlView({"Go to message": cmsg.jump_url})
+        await self.log_channel.send(
+            embeds=self.dual_image_embed(
+                description=f"**{ctx.author} ({ctx.author.id})** has force unsubmitted **{user} ({user.id})**'s drawing for **{pokemon}**.",
+                after=row.image,
+                thumbnail=base_image,
+                color=EmbedColours.INCOMPLETE.value,
+            ),
+            view=view,
+        )
+
+        embeds[0].description = f"**{ctx.author} ({ctx.author.id})** has force unsubmitted your drawing for **{pokemon}**."
+        await self.send_notification(embeds, user=user, ctx=ctx, view=view)
+        return True
 
     async def approve(self, ctx: CustomContext, pokemon: str):
         pokemon = await self.get_pokemon(ctx, pokemon)
@@ -1360,6 +1533,37 @@ and lets you directly perform actions such as:
 
         return embeds
 
+    async def submit_image_check(self, ctx: CustomContext, image: Image):
+        if image.format != "PNG":
+            return await ctx.send(
+                "Image must have a transparent background (of PNG format)"
+            )
+
+        if [
+            colour
+            for n, colour in sorted(
+                image.getcolors(image.size[0] * image.size[1]),
+                key=lambda c: c[0],
+                reverse=True,
+            )
+        ][0][-1] != 0:
+            conf, msg = await ctx.confirm(
+                "The image you have provided does not have a majority of transparent pixels."
+                " This *could* mean that it has a non-transparent background, please double check to make sure!"
+                "\n\nIf it does have a transparent background, please proceed using the confirm button.",
+                edit_after=None,
+            )
+            if conf is False:
+                return await ctx.send("Aborted.")
+
+        if image.height != 475 or image.width != 475:
+            return await ctx.reply(
+                f"Image dimensions must be `475x475` but yours is `{image.width}x{image.height}`."
+                f" Please resize it first using `{ctx.clean_prefix}afd resize`",
+            )
+
+        return True
+
     @afd.command(
         name="resize",
         brief="Resize a drawing to required specifications",
@@ -1387,33 +1591,8 @@ and lets you directly perform actions such as:
         except ValueError:
             return await ctx.send("That's not an image!")
 
-        if image.format != "PNG":
-            return await ctx.send(
-                "Image must have a transparent background (of PNG format)"
-            )
-
-        if [
-            colour
-            for n, colour in sorted(
-                image.getcolors(image.size[0] * image.size[1]),
-                key=lambda c: c[0],
-                reverse=True,
-            )
-        ][0][-1] != 0:
-            conf, msg = await ctx.confirm(
-                "The image you have provided does not have a majority of transparent pixels."
-                " This *could* mean that it has a non-transparent background, please double check to make sure!"
-                "\n\nIf it does have a transparent background, please proceed using the confirm button.",
-                edit_after=None,
-            )
-            if conf is False:
-                return await ctx.send("Aborted.")
-
-        if image.height != 475 or image.width != 475:
-            return await ctx.reply(
-                f"Image dimensions must be `475x475` but yours is `{image.width}x{image.height}`."
-                f" Please resize it first using `{ctx.clean_prefix}resize --h 475 --w 475 --fit yes --center yes`",
-            )
+        if await self.submit_image_check(ctx, image) is not True:
+            return
 
         conf = cmsg = None
         await self.sheet.update_df()
