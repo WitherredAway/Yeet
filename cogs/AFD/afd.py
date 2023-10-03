@@ -589,6 +589,7 @@ class Afd(AfdGist):
         user = await self.fetch_user(row.user_id)
         row = self.sheet.approve(pokemon, by=ctx.author.id)
         await self.sheet.update_row(row.dex)
+        await self.update_credits()
         await cmsg.edit(
             embed=self.confirmation_embed(
                 f"**{pokemon}** has been approved! 🎉",
@@ -647,6 +648,7 @@ class Afd(AfdGist):
         user = await self.fetch_user(row.user_id)
         row = self.sheet.unapprove(pokemon)
         await self.sheet.update_row(row.dex)
+        await self.update_credits()
         await cmsg.edit(
             embed=self.confirmation_embed(
                 f"**{pokemon}** has been unapproved.",
