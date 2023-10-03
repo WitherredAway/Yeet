@@ -29,14 +29,19 @@ from helpers.constants import INDENT, NL
 from helpers.context import CustomContext
 
 from cogs.AFD.utils.labels import PKM_LABEL
-from cogs.AFD.utils.random import RandomFlagDescriptions, RandomView, SkipView, RandomFlags
+from cogs.AFD.utils.random import (
+    RandomFlagDescriptions,
+    RandomView,
+    SkipView,
+    RandomFlags,
+)
 from cogs.AFD.utils.list_paginator import (
     ActionSelectMenu,
     ListPageMenu,
     ListPageSource,
     ListSelectMenu,
     StatsPageMenu,
-    RemindAllButton
+    RemindAllButton,
 )
 from ..utils.utils import (
     UrlView,
@@ -236,7 +241,9 @@ class Afd(AfdGist):
             dm = await self.bot.create_dm(user)
             await asyncio.create_task(dm.send(embeds=embed, view=view))
         except (discord.Forbidden, discord.HTTPException):
-            await asyncio.create_task(ctx.send(f"<@{user.id}> (Unable to DM)", embeds=embed, view=view))
+            await asyncio.create_task(
+                ctx.send(f"<@{user.id}> (Unable to DM)", embeds=embed, view=view)
+            )
             return False
         else:
             return True
@@ -896,9 +903,7 @@ and lets you directly perform actions such as:
         total_amount = stats.claimed.amount if stats is not None else 0
         embed.description = f"**Total pokémon**: {total_amount}"
 
-        embed.description += (
-            f"\n**Total submitted pokémon**: {stats.submitted.amount}"
-        )
+        embed.description += f"\n**Total submitted pokémon**: {stats.submitted.amount}"
 
         embed.set_footer(
             text=f"Use the `{ctx.clean_prefix}afd view <pokémon>` command to see more info on and interact with an entry"
@@ -1039,7 +1044,9 @@ and lets you directly perform actions such as:
                 ActionSelectMenu(
                     menu,
                     # !NOTE TO SELF: THIS get_pkm IS HACKY AS HELL AND WILL BREAK IF THE FORMAT CHANGES
-                    get_pkm=lambda e: re.match("\d+\\\. \*\*(.+?)\*\* - ", e).groups()[0],
+                    get_pkm=lambda e: re.match("\d+\\\. \*\*(.+?)\*\* - ", e).groups()[
+                        0
+                    ],
                     action_func=self.send_view,
                     placeholder="View an entry",
                 )
@@ -1109,7 +1116,9 @@ and lets you directly perform actions such as:
                 ActionSelectMenu(
                     menu,
                     # !NOTE TO SELF: THIS get_pkm IS HACKY AS HELL AND WILL BREAK IF THE FORMAT CHANGES
-                    get_pkm=lambda e: re.match("\d+\\\. \*\*(.+?)\*\* - ", e).groups()[0],
+                    get_pkm=lambda e: re.match("\d+\\\. \*\*(.+?)\*\* - ", e).groups()[
+                        0
+                    ],
                     action_func=self.send_view,
                     placeholder="View an entry",
                 )
@@ -1615,7 +1624,9 @@ and lets you directly perform actions such as:
                     if include_claimed and row.user_id == ctx.author.id:
                         pass
                     else:
-                        errors[pkm] = f"Already claimed{' by you' if row.user_id == ctx.author.id else ''}"
+                        errors[
+                            pkm
+                        ] = f"Already claimed{' by you' if row.user_id == ctx.author.id else ''}"
                         continue
 
                 pokemon.append(pkm)
@@ -1637,10 +1648,14 @@ and lets you directly perform actions such as:
                 if conf is False:
                     return
 
-                return await self.random(ctx, pokemon, skip=skip, include_claimed=include_claimed)
+                return await self.random(
+                    ctx, pokemon, skip=skip, include_claimed=include_claimed
+                )
 
         if len(pokemon) == 0:
-            return await ctx.send(f"There are no {category_text}pokémon to choose from!")
+            return await ctx.send(
+                f"There are no {category_text}pokémon to choose from!"
+            )
         elif len(pokemon) == 1:
             choices = pokemon
         elif skip is True:
@@ -1721,7 +1736,9 @@ and lets you directly perform actions such as:
         invoke_without_command=True,
     )
     async def random_cmd(self, ctx: CustomContext, *, flags: RandomFlags):
-        await self.random(ctx, flags.name, skip=flags.skip, include_claimed=flags.claimed)
+        await self.random(
+            ctx, flags.name, skip=flags.skip, include_claimed=flags.claimed
+        )
 
 
 async def setup(bot):

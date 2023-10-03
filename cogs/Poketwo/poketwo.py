@@ -45,7 +45,11 @@ class Poketwo(PoketwoChances, PoketwoMoves):
     async def extract_ids(
         self, ctx: CustomContext, msg: Optional[discord.Message] = None
     ):
-        msg = msg or ((ref.resolved or await ctx.channel.fetch_message(ref.message_id)) if (ref := ctx.message.reference) else None)
+        msg = msg or (
+            (ref.resolved or await ctx.channel.fetch_message(ref.message_id))
+            if (ref := ctx.message.reference)
+            else None
+        )
         if msg is not None:
             content = msg.embeds[0].description
         else:
@@ -58,7 +62,7 @@ class Poketwo(PoketwoChances, PoketwoMoves):
         name="resolve_id",
         aliases=("resolveid",),
         brief="Get the timestamp associated with a Pokémon ID",
-        help="Get the timestamp associated with a Pokémon ID"
+        help="Get the timestamp associated with a Pokémon ID",
     )
     async def resolve_id(self, ctx: CustomContext, pokemon_id: str):
         try:

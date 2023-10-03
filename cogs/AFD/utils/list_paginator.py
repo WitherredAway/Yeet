@@ -429,7 +429,9 @@ class RemindAllButton(discord.ui.Button):
                 embed=self.afdcog.pkm_remind_embed(rows), user=user_id, ctx=self.ctx
             )
 
-        users = [f"**{await self.afdcog.fetch_user(user_id)}**" for user_id in grouped.keys()]
+        users = [
+            f"**{await self.afdcog.fetch_user(user_id)}**" for user_id in grouped.keys()
+        ]
         await interaction.followup.send(
             f"Successfully sent a reminder to {', '.join(users)}.", ephemeral=True
         )
