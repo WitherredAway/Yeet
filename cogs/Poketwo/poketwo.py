@@ -54,6 +54,25 @@ class Poketwo(PoketwoChances, PoketwoMoves):
         ids = self.ids_pattern.findall(content)
         await ctx.send(" ".join(ids) or "No IDs found.")
 
+    @commands.command(
+        name="resolve_id",
+        aliases=("resolveid",),
+        brief="Get the timestamp associated with a Pokémon ID",
+        help="Get the timestamp associated with a Pokémon ID"
+    )
+    async def resolve_id(self, ctx: CustomContext, pokemon_id: str):
+        try:
+            if len(pokemon_id) < 8:
+                raise ValueError
+
+            timestamp = int(pokemon_id[:8], 16)
+        except ValueError:
+            content = f"`{pokemon_id}` is not a valid Pokémon ID!"
+        else:
+            content = f"<t:{timestamp}:F> (<t:{timestamp}:R>)"
+
+        await ctx.reply(content)
+
     @commands.Cog.listener("on_message")
     async def on_message(self, message: discord.Message):
         if message.author.id != POKETWO_ID:
