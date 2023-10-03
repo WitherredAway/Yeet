@@ -1302,6 +1302,7 @@ and lets you directly perform actions such as:
 
     @afd.command(
         name="unclaim",
+        aliases=("unc",),
         brief="Unclaim a pokémon",
         description=f"Unclaim a pokémon claimed by you.",
         help=f"""When this command is ran, first the sheet data will be fetched. Then:
