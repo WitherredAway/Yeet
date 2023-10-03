@@ -442,12 +442,12 @@ class Afd(AfdGist):
         if not row.claimed:
             content = None
             if self.sheet.can_claim(user) is False:
-                content = f"**{user}** already has the max number ({self.sheet.CLAIM_MAX}) of pokémon claimed, still continue?"
+                content = f"**{user} ({user.id})** already has the max number ({self.sheet.CLAIM_MAX}) of pokémon claimed, still continue?"
 
             conf, cmsg = await ctx.confirm(
                 embed=self.confirmation_embed(
                     content
-                    or f"Are you sure you want to forceclaim **{pokemon}** for **{user}**?",
+                    or f"Are you sure you want to forceclaim **{pokemon}** for **{user} ({user.id})**?",
                     row=row,
                 ),
                 confirm_label="Force Claim",
@@ -457,7 +457,7 @@ class Afd(AfdGist):
         elif row.user_id == user.id:
             return await ctx.reply(
                 embed=self.confirmation_embed(
-                    f"**{pokemon}** is already claimed by **{user}**!",
+                    f"**{pokemon}** is already claimed by **{user} ({user.id})**!",
                     row=row,
                     colour=EmbedColours.INVALID,
                 )
@@ -465,7 +465,7 @@ class Afd(AfdGist):
         else:
             conf, cmsg = await ctx.confirm(
                 embed=self.confirmation_embed(
-                    f"**{pokemon}** is already claimed by **{await self.fetch_user(row.user_id)} ({row.user_id})**, override and claim it for **{user}**?\
+                    f"**{pokemon}** is already claimed by **{await self.fetch_user(row.user_id)} ({row.user_id})**, override and claim it for **{user} ({user.id})**?\
                         {' There is a drawing submitted already which will be removed.' if row.image else ''}",
                     row=row,
                 ),
@@ -487,7 +487,7 @@ class Afd(AfdGist):
             f"**{pokemon}** has been forcefully claimed for **{user} ({user.id})**.",
             row=row,
             colour=EmbedColours.INCOMPLETE,
-            footer=f"by {ctx.author}",
+            footer=f"by {ctx.author} ({ctx.author.id})",
         )
         view = UrlView({"Go to message": cmsg.jump_url})
         await self.log_channel.send(embed=embed, view=view)
@@ -551,7 +551,7 @@ class Afd(AfdGist):
             f"**{pokemon}** has been forcefully unclaimed from **{user} ({user.id})**.",
             row=row,
             colour=EmbedColours.UNCLAIMED,
-            footer=f"by {ctx.author}",
+            footer=f"by {ctx.author} ({ctx.author.id})",
         )
         view = UrlView({"Go to message": cmsg.jump_url})
         await self.log_channel.send(embed=embed, view=view)
@@ -579,13 +579,13 @@ class Afd(AfdGist):
         elif row.approved:
             return await ctx.reply(
                 embed=self.confirmation_embed(
-                    f"**{pokemon}** has already been approved by **{approved_by}**!",
+                    f"**{pokemon}** has already been approved by **{approved_by} ({approved_by.id})**!",
                     colour=EmbedColours.APPROVED,
                 )
             )
         conf, cmsg = await ctx.confirm(
             embed=self.confirmation_embed(
-                f"""{f'There is a correction pending with comment "{row.comment}" by **{approved_by}**. ' if row.correction_pending else ''}\nAre you sure you want to approve **{pokemon}**?""",
+                f"""{f'There is a correction pending with comment "{row.comment}" by **{approved_by} ({approved_by.id})**. ' if row.correction_pending else ''}\nAre you sure you want to approve **{pokemon}**?""",
                 row=row,
             ),
             confirm_label="Approve",
@@ -609,7 +609,7 @@ class Afd(AfdGist):
             f"**{pokemon}** has been approved! 🎉",
             row=row,
             colour=EmbedColours.APPROVED,
-            footer=f"by {ctx.author}",
+            footer=f"by {ctx.author} ({ctx.author.id})",
         )
         view = UrlView({"Go to message": cmsg.jump_url})
         await self.log_channel.send(embed=embed, view=view)
@@ -645,7 +645,7 @@ class Afd(AfdGist):
             embed=self.confirmation_embed(
                 f"Are you sure you want to unapprove **{pokemon}**?",
                 row=row,
-                footer=f"Approved by {approved_by}",
+                footer=f"Approved by {approved_by} ({approved_by.id})",
             ),
             confirm_label="Unapprove",
         )
@@ -667,7 +667,7 @@ class Afd(AfdGist):
             f"**{pokemon}** has been unapproved.",
             row=row,
             colour=EmbedColours.UNREVIEWED,
-            footer=f"by {ctx.author}",
+            footer=f"by {ctx.author} ({ctx.author.id})",
         )
         view = UrlView({"Go to message": cmsg.jump_url})
         await self.log_channel.send(embed=embed, view=view)
@@ -717,17 +717,17 @@ class Afd(AfdGist):
 
         if row.correction_pending:
             desc = f"""Are you sure you want to modify the existing comment on **{pokemon}**?:
-**From** (by **{approved_by}**)
+**From** (by **{approved_by} ({approved_by.id})**)
 > {row.comment}
 **To**
 > {comment}"""
             conf_desc = f"""Comment has been modified on **{pokemon}**:
-**From** (by **{approved_by}**)
+**From** (by **{approved_by} ({approved_by.id})**)
 > {row.comment}
 **To** (by **%s**)
 > {comment}"""
         elif row.approved:
-            desc = f"""**{pokemon}** has already been approved (by **{approved_by}**)! Are you sure you want to unapprove and comment the following?
+            desc = f"""**{pokemon}** has already been approved (by **{approved_by} ({approved_by.id})**)! Are you sure you want to unapprove and comment the following?
 > {comment}"""
         else:
             desc = f"""Are you sure you want to comment the following on **{pokemon}**?
@@ -791,7 +791,7 @@ class Afd(AfdGist):
 
         conf, cmsg = await ctx.confirm(
             embed=self.confirmation_embed(
-                f"""Are you sure you want to *clear* the following comment (by **{approved_by}**) on **{pokemon}**?
+                f"""Are you sure you want to *clear* the following comment (by **{approved_by} ({approved_by.id})**) on **{pokemon}**?
 > {row.comment}""",
                 row=row,
             ),
@@ -803,7 +803,7 @@ class Afd(AfdGist):
         user = await self.fetch_user(row.user_id)
         row = self.sheet.comment(pokemon, None, by=None)
         await self.sheet.update_row(row.dex)
-        conf_desc = f"""The following comment (by **{approved_by}**) on **{pokemon}** has been cleared:
+        conf_desc = f"""The following comment (by **{approved_by} ({approved_by.id})**) on **{pokemon}** has been cleared:
 > {row.comment}"""
         await cmsg.edit(
             embed=self.confirmation_embed(
@@ -1212,7 +1212,7 @@ and lets you directly perform actions such as:
         view = UrlView({"Go to message": cmsg.jump_url})
         await self.log_channel.send(
             embed=self.confirmation_embed(
-                f"**{ctx.author}** has claimed **{pokemon}**.",
+                f"**{ctx.author} ({ctx.author.id})** has claimed **{pokemon}**.",
                 row=row,
                 colour=EmbedColours.INCOMPLETE,
             ),
@@ -1302,7 +1302,7 @@ and lets you directly perform actions such as:
         view = UrlView({"Go to message": cmsg.jump_url})
         await self.log_channel.send(
             embed=self.confirmation_embed(
-                f"**{ctx.author}** has unclaimed **{pokemon}**.",
+                f"**{ctx.author} ({ctx.author.id})** has unclaimed **{pokemon}**.",
                 row=row,
                 colour=EmbedColours.UNCLAIMED,
             ),
@@ -1462,7 +1462,7 @@ and lets you directly perform actions such as:
         view = UrlView({"Go to message": cmsg.jump_url})
         await self.log_channel.send(
             embeds=self.dual_image_embed(
-                description=f"{ctx.author} has {'re' if row.image else ''}submitted the following image for **{pokemon}**.",
+                description=f"**{ctx.author} ({ctx.author.id})** has {'re' if row.image else ''}submitted the following image for **{pokemon}**.",
                 before=row.image,
                 after=image_url,
                 thumbnail=base_image,
@@ -1547,7 +1547,7 @@ and lets you directly perform actions such as:
         view = UrlView({"Go to message": cmsg.jump_url})
         await self.log_channel.send(
             embeds=self.dual_image_embed(
-                description=f"{ctx.author} has unsubmitted the following image for **{pokemon}**.",
+                description=f"**{ctx.author} ({ctx.author.id})** has unsubmitted the following image for **{pokemon}**.",
                 after=row.image,
                 thumbnail=base_image,
                 color=EmbedColours.INCOMPLETE.value,
