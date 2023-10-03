@@ -976,28 +976,29 @@ and lets you directly perform actions such as:
 
         src = ListPageSource(category, entries=entries)
         menu = ListPageMenu(src, ctx=ctx)
-        menu.add_selects(
-            ListSelectMenu(menu),
-            ActionSelectMenu(
-                menu,
-                # !NOTE TO SELF: THIS get_pkm IS HACKY AS HELL AND WILL BREAK IF A POKEMON HAS * IN ITS NAME OR FORMAT CHANGES
-                get_pkm=lambda e: re.match("\d+\\\. (.+)", e)
-                .groups()[0]
-                .replace("*", ""),
-                action_func=self.claim,
-                placeholder="Claim a pokémon",
-            ),
-        )
-        random_btn = discord.ui.Button(
-            label="Random", style=discord.ButtonStyle.blurple
-        )
+        if entries:
+            menu.add_selects(
+                ListSelectMenu(menu),
+                ActionSelectMenu(
+                    menu,
+                    # !NOTE TO SELF: THIS get_pkm IS HACKY AS HELL AND WILL BREAK IF A POKEMON HAS * IN ITS NAME OR FORMAT CHANGES
+                    get_pkm=lambda e: re.match("\d+\\\. (.+)", e)
+                    .groups()[0]
+                    .replace("*", ""),
+                    action_func=self.claim,
+                    placeholder="Claim a pokémon",
+                ),
+            )
+            random_btn = discord.ui.Button(
+                label="Random", style=discord.ButtonStyle.blurple
+            )
 
-        async def callback(interaction: discord.Interaction):
-            await interaction.response.defer()
-            await self.random(ctx)
+            async def callback(interaction: discord.Interaction):
+                await interaction.response.defer()
+                await self.random(ctx)
 
-        random_btn.callback = callback
-        menu.add_item(random_btn)
+            random_btn.callback = callback
+            menu.add_item(random_btn)
 
         await menu.start()
 
@@ -1085,15 +1086,16 @@ and lets you directly perform actions such as:
 
         src = ListPageSource(category, entries=entries)
         menu = ListPageMenu(src, ctx=ctx)
-        menu.add_selects(
-            ActionSelectMenu(
-                menu,
-                # !NOTE TO SELF: THIS get_pkm IS HACKY AS HELL AND WILL BREAK IF THE FORMAT CHANGES
-                get_pkm=lambda e: re.match("\d+\\\. \*\*(.+?)\*\* - ", e).groups()[0],
-                action_func=self.send_view,
-                placeholder="View an entry",
+        if entries:
+            menu.add_selects(
+                ActionSelectMenu(
+                    menu,
+                    # !NOTE TO SELF: THIS get_pkm IS HACKY AS HELL AND WILL BREAK IF THE FORMAT CHANGES
+                    get_pkm=lambda e: re.match("\d+\\\. \*\*(.+?)\*\* - ", e).groups()[0],
+                    action_func=self.send_view,
+                    placeholder="View an entry",
+                )
             )
-        )
         await menu.start()
 
     @_list.command(
