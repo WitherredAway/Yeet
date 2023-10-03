@@ -1042,7 +1042,8 @@ and lets you directly perform actions such as:
                     placeholder="View an entry",
                 )
             )
-            menu.add_item(RemindAllButton(self, category.rows, ctx=ctx))
+            if self.is_admin(ctx.author):
+                menu.add_item(RemindAllButton(self, category.rows, ctx=ctx))
         await menu.start()
 
     async def per_user_fmt(
@@ -1083,7 +1084,7 @@ and lets you directly perform actions such as:
             category, entries=entries, dynamic_pages=True, max_per_page=5
         )
         menu = ListPageMenu(src, ctx=ctx)
-        if entries:
+        if entries and self.is_admin(ctx.author):
             menu.add_item(RemindAllButton(self, category.rows, ctx=ctx))
         await menu.start()
 
