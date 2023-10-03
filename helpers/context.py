@@ -31,7 +31,7 @@ class ConfirmView(discord.ui.View):
         self.cancel.label = cancel_label
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        if interaction.user != self.ctx.author:
+        if interaction.user.id not in (self.ctx.author.id, *self.ctx.bot.owner_ids):
             await interaction.response.send_message(
                 f"This instance does not belong to you.",
                 ephemeral=True,

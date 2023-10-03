@@ -29,7 +29,7 @@ from helpers.constants import INDENT, NL
 from helpers.context import CustomContext
 
 from cogs.AFD.utils.labels import PKM_LABEL
-from cogs.AFD.utils.random import RandomView, SkipView, RandomFlags
+from cogs.AFD.utils.random import RandomFlagDescriptions, RandomView, SkipView, RandomFlags
 from cogs.AFD.utils.list_paginator import (
     ActionSelectMenu,
     ListPageMenu,
@@ -883,7 +883,7 @@ and lets you directly perform actions such as:
             try:
                 df: pd.DataFrame = self.user_grouped.get_group(str(user.id))
             except KeyError:
-                return None
+                return Stats(pd.DataFrame(), self)
         else:
             df: pd.DataFrame = self.df.sort_values(by=PKM_LABEL)
         return Stats(df, self)
@@ -894,12 +894,9 @@ and lets you directly perform actions such as:
         total_amount = stats.claimed.amount if stats is not None else 0
         embed.description = f"**Total pokémon**: {total_amount}"
 
-        if stats is None:
-            return await ctx.send(embed=embed)
-        else:
-            embed.description += (
-                f"\n**Total submitted pokémon**: {stats.submitted.amount}"
-            )
+        embed.description += (
+            f"\n**Total submitted pokémon**: {stats.submitted.amount}"
+        )
 
         embed.set_footer(
             text=f"Use the `{ctx.clean_prefix}afd view <pokémon>` command to see more info on and interact with an entry"
@@ -1582,14 +1579,22 @@ and lets you directly perform actions such as:
         pokemon_options: Optional[List[str]] = None,
         *,
         skip: Optional[bool] = False,
+        include_claimed: Optional[bool] = False,
     ):
         await self.sheet.update_df()
 
         errors = {}
+        category_text = ""
         if pokemon_options is None:
-            stats = self.get_stats()
-            unclaimed = stats.unclaimed
-            pokemon = unclaimed.pokemon
+            if include_claimed:
+                stats = self.get_stats(ctx.author)
+                category = stats.incomplete
+                category_text = "claimed "
+            else:
+                stats = self.get_stats()
+                category = stats.unclaimed
+                category_text = "unclaimed "
+            pokemon = category.pokemon
         else:
             pokemon = []
             for name in pokemon_options:
@@ -1603,8 +1608,11 @@ and lets you directly perform actions such as:
 
                 row = self.sheet.get_pokemon_row(pkm)
                 if row.claimed:
-                    errors[pkm] = "Already claimed"
-                    continue
+                    if include_claimed and row.user_id == ctx.author.id:
+                        pass
+                    else:
+                        errors[pkm] = f"Already claimed{' by you' if row.user_id == ctx.author.id else ''}"
+                        continue
 
                 pokemon.append(pkm)
 
@@ -1625,10 +1633,10 @@ and lets you directly perform actions such as:
                 if conf is False:
                     return
 
-                return await self.random(ctx, pokemon, skip=skip)
+                return await self.random(ctx, pokemon, skip=skip, include_claimed=include_claimed)
 
         if len(pokemon) == 0:
-            return await ctx.send("There are no unclaimed pokémon to choose from!")
+            return await ctx.send(f"There are no {category_text}pokémon to choose from!")
         elif len(pokemon) == 1:
             choices = pokemon
         elif skip is True:
@@ -1646,7 +1654,7 @@ and lets you directly perform actions such as:
                 lambda: f"__**Contestants ({len(cont)}/{len(choices)})**__:\n{NL.join(enumerate_list(choices))}"
             )
             text = (
-                f"{len(choices)} out of {len(pokemon)} unclaimed pokémon were randomly chosen as contestants for this randomizer!"
+                f"{len(choices)} out of {len(pokemon)} {category_text}pokémon were randomly chosen as contestants for this randomizer!"
                 if pokemon_options is None
                 else f"{len(pokemon)} pokémon are participating in this randomizer contest!"
             )
@@ -1679,7 +1687,7 @@ and lets you directly perform actions such as:
         else:
             choice = choices[0]
             embed = self.bot.Embed(
-                title=f"1 pokémon was randomly chosen out of.. 1 unclaimed pokémon..",
+                title=f"1 pokémon was randomly chosen out of.. 1 {category_text}pokémon..",
                 description=f"**{choice}** is the only one who showed up... 🦗",
             )
             msg = await ctx.reply(embed=embed)
@@ -1697,16 +1705,19 @@ and lets you directly perform actions such as:
         brief="Pick a random unclaimed pokémon",
         description="Randomly rolls an unclaimed pokémon to help you decide what to draw. Has a little contest to make it more fun, suggested by @metspek (243763234685976577) :D",
         help=f"""## Flags
-- `--name/n <pokemon>` - This flag can be used to specify all the pokémon that will participate in the randomizer. Otherwise it'll randomly pick 10 unclaimed pokémon.
-- `--skip/sk <y/n>` - This flag can be used to skip the contest directly to the winner.
+- `--name/n <pokemon>` - {RandomFlagDescriptions._name.value}
+- `--skip/sk <y/n>` - {RandomFlagDescriptions.skip.value}
+- `--claimed <y/n>` - {RandomFlagDescriptions.claimed.value}
 ## Examples
 - `afd random` - Randomly rolls a pokémon from all unclaimed pokémon.
+- `afd random --claimed y` - Randomly rolls a pokémon from all of your claimed pokémon.
 - `afd random --skip y` - Randomly rolls a pokémon from all unclaimed pokémon, skipping straight to the winner.
-- `afd random --n ralts --n kirlia --n gardevoir --n gallade` - Randomly rolls a pokémon from the 4 specified pokémon.""",
+- `afd random --n ralts --n kirlia --n gardevoir --n gallade` - Randomly rolls a pokémon from the 4 specified pokémon.
+- `afd random --n ralts --n kirlia --n gardevoir --n gallade --claimed y` - Randomly rolls a pokémon from the 4 specified pokémon, even if one of them is claimed by you.""",
         invoke_without_command=True,
     )
     async def random_cmd(self, ctx: CustomContext, *, flags: RandomFlags):
-        await self.random(ctx, flags.name, skip=flags.skip)
+        await self.random(ctx, flags.name, skip=flags.skip, include_claimed=flags.claimed)
 
 
 async def setup(bot):

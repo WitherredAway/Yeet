@@ -90,21 +90,27 @@ class RandomView(discord.ui.View):
 
 
 class RandomFlagDescriptions(Enum):
-    name = "Flag to specify pokémon to participate in randomizer. Picks from all unclaimed pokémon if no name flags passed."
-    skip = "Flag to specify whether to skip contest directly to randomizer winner."
+    _name = "This flag can be used to specify all the pokémon that will participate in the randomizer. Otherwise it'll randomly pick 10 unclaimed pokémon."
+    skip = "This flag can be used to skip the contest directly to the winner."
+    claimed = "This flag can be used to include claimed pokémon to help decide which to draw. If used alone, it will instead proceed with all of your claimed pokémon."
 
 
 class RandomFlags(
     commands.FlagConverter, prefix="--", delimiter=" ", case_insensitive=True
 ):
     name: Optional[str] = commands.flag(
-        aliases=("n",), max_args=-1, description=RandomFlagDescriptions.name.value
+        aliases=("n",), max_args=-1, description=RandomFlagDescriptions._name.value
     )
     skip: Optional[bool] = commands.flag(
         aliases=("sk",),
         default=False,
         max_args=1,
         description=RandomFlagDescriptions.skip.value,
+    )
+    claimed: Optional[bool] = commands.flag(
+        default=False,
+        max_args=1,
+        description=RandomFlagDescriptions.claimed.value,
     )
 
     @classmethod

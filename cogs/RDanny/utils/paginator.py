@@ -146,8 +146,8 @@ class BotPages(discord.ui.View):
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user and interaction.user.id in (
-            self.ctx.bot.owner_id,
             self.ctx.author.id,
+            *self.ctx.bot.owner_ids,
         ):
             return True
         await interaction.response.send_message(

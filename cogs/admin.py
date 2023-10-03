@@ -19,7 +19,7 @@ class RepeatView(discord.ui.View):
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user != self.ctx.author:
             await interaction.response.send_message(
-                f"This instance does not belong to you, use the `{self.ctx.command}` command to create your own instance.",
+                f"This cannot be used by you.",
                 ephemeral=True,
             )
             return False
