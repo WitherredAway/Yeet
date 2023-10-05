@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional, Self
+from typing import Optional
 
 from discord.ext import commands
 from discord.utils import maybe_coroutine
@@ -58,6 +58,6 @@ class ResizeFlags(
     )
 
     @classmethod
-    async def convert(cls, ctx: CustomContext, argument: str) -> Self:
+    async def convert(cls, ctx: CustomContext, argument: str):
         argument = argument.replace("—", "--")
         return await super().convert(ctx, argument)

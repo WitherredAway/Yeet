@@ -2,7 +2,7 @@ from __future__ import annotations
 from enum import Enum
 
 import random
-from typing import List, Optional, Self
+from typing import List, Optional
 import typing
 import discord
 from discord.ext import commands
@@ -114,6 +114,6 @@ class RandomFlags(
     )
 
     @classmethod
-    async def convert(cls, ctx: CustomContext, argument: str) -> Self:
+    async def convert(cls, ctx: CustomContext, argument: str):
         argument = argument.replace("—", "--")
         return await super().convert(ctx, argument)

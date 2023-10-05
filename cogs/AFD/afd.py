@@ -673,7 +673,7 @@ class Afd(AfdGist):
         brief="Forcefully unsubmit a submitted drawing",
         description="AFD Admin-only command to forcefully clear submission of a pokémon.",
     )
-    async def forcesubmit(
+    async def forceunsubmit(
         self, ctx: CustomContext, *, pokemon: str
     ):
 
