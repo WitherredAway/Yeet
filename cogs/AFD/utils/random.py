@@ -51,8 +51,11 @@ class RandomView(discord.ui.View):
         super().__init__(timeout=300)
         self.afdcog = afdcog
         self.choice = choice
+        self.row = afdcog.sheet.get_pokemon_row(choice)
         self.pokemon_options = pokemon_options
         self.ctx = ctx
+
+        self.claim_btn.disabled = self.row.claimed
 
     async def on_timeout(self):
         await self.message.edit(view=None)
