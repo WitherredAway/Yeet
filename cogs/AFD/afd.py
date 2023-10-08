@@ -77,9 +77,6 @@ class Afd(AfdGist):
         self.bot: Bot = bot
         self.hidden = True
 
-        self.bot.user_cache: dict = {}
-        self.user_cache = self.bot.user_cache
-
         self.sheet: AfdSheet
 
     display_emoji = "🗓️"
@@ -190,20 +187,14 @@ class Afd(AfdGist):
             embed.set_footer(text=footer)
         return embed
 
-    async def fetch_user(self, user_id: int) -> discord.User:
-        user_id = int(user_id)
-        if (user := self.user_cache.get(user_id)) is not None:
-            return user
+    async def fetch_user(self, user_id: int, /, return_from_cache: Optional[bool] = False) -> Tuple[discord.User, bool]:
+        try:
+            user, from_cache = await self.bot.fetch_user_cache(user_id)
+        except Exception as e:
+            await self.update_channel.send(user_id)
+            raise e
 
-        if (user := self.bot.get_user(user_id)) is None:
-            try:
-                user = await self.bot.fetch_user(user_id)
-            except Exception as e:
-                await self.update_channel.send(user_id)
-                raise e
-
-        self.user_cache[user_id] = user
-        return user
+        return (user, from_cache) if return_from_cache else user
 
     def pkm_remind_embed(self, pkm_rows: Union[Row, List[Row]]) -> Bot.Embed:
         if not isinstance(pkm_rows, list):

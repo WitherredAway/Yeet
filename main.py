@@ -10,9 +10,8 @@ import asyncio
 import datetime
 import logging
 import os
-import sys
 from functools import cached_property
-from typing import Any, Union
+from typing import Any, Tuple, Union
 
 import aiohttp
 import discord
@@ -109,6 +108,17 @@ class Bot(commands.Bot):
 
     async def get_context(self, message, *, cls=None):
         return await super().get_context(message, cls=cls or CustomContext)
+
+    async def fetch_user_cache(self, user_id: int, /) -> Tuple[discord.User, bool]:
+        "Gets user from cache if exists. Otherwise fetches user and caches it. Returns user and if it was returned from cache."
+        user_id = int(user_id)
+        if (user := self.get_user(user_id)) is not None:
+            return user, True
+        else:
+            user = await self.fetch_user(user_id)
+            self._connection._users[user.id] = user
+
+        return user, False
 
     async def setup_hook(self):
         self.EMOJI_SERVER_IDS = [
