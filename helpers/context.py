@@ -72,6 +72,7 @@ class Select(discord.ui.Select):
         await interaction.response.defer()
         self.view.result = self.values
         self.view.disable()
+        await self.view.message.edit(view=self.view)
         self.view.stop()
         if self.view.delete_after:
             await self.view.message.delete()
