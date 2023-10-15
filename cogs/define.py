@@ -80,16 +80,16 @@ class TermPageSource(menus.ListPageSource):
         """
 
         if (example := entry.get("example", "")) != "":
-            self.embed.add_field(name="example", value=example, inline=True)
+            self.embed.add_field(name="example", value=example)
 
         if antonyms := entry["antonyms"]:
             self.embed.add_field(
-                name="antonyms", value=", ".join(antonyms), inline=True
+                name="antonyms", value=", ".join(antonyms)
             )
 
         if synonyms := entry["synonyms"]:
             self.embed.add_field(
-                name="synonyms", value=", ".join(synonyms), inline=True
+                name="synonyms", value=", ".join(synonyms)
             )
 
         maximum = self.get_max_pages()
