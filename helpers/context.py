@@ -71,6 +71,7 @@ class Select(discord.ui.Select):
     async def callback(self, interaction):
         await interaction.response.defer()
         self.view.result = self.values
+        discord.utils.get(self.options, value=self.values[0]).default = True
         self.view.disable()
         await self.view.message.edit(view=self.view)
         self.view.stop()
