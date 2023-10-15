@@ -1,4 +1,5 @@
 from __future__ import annotations
+import difflib
 
 import urllib
 import typing
@@ -7,6 +8,8 @@ import discord
 from discord.ext import commands, menus
 import aiohttp
 import aiowiki
+
+from helpers.context import CustomContext
 
 from .RDanny.utils.paginator import BotPages
 from helpers.constants import MESSAGE_CHAR_LIMIT, NL
@@ -152,6 +155,13 @@ class Define(commands.Cog):
 
     display_emoji: discord.PartialEmoji = "🔍"
 
+    async def cog_load(self) -> None:
+        self.ALL_DEFINE_WORDS = (
+            await (
+                await self.bot.session.get("https://raw.githubusercontent.com/meetDeveloper/freeDictionaryAPI/master/meta/wordList/english.txt")
+            ).text()
+        ).split("\n")
+
     async def cog_unload(self) -> None:
         await self.wiki_client.close()
 
@@ -160,11 +170,20 @@ class Define(commands.Cog):
         aliases=("definition", "definitions", "df"),
         description=("Show definitions and other info about a term."),
     )
-    async def define(self, ctx: commands.Context, *, term: str):
+    async def define(self, ctx: CustomContext, *, term: str):
         try:
             term = await Term(term)
         except KeyError:
-            return await ctx.send("Could not find anything. Sorry.")
+            autocorrect = difflib.get_close_matches(term, self.ALL_DEFINE_WORDS, 5)
+            if not autocorrect:
+                return await ctx.send("Could not find the searched term or similar matches, sorry.")
+
+            options = [discord.SelectOption(label=entry, value=entry) for entry in autocorrect]
+            values, msg = await ctx.select(f"Could not find the searched term, did you mean one of these?", options=options, placeholder="Select a term")
+            if not values:
+                return
+            term = await Term(values[0])
+
         formatter = TermPageSource(term, ctx=ctx, per_page=1)
         menu = TermPages(formatter, ctx=ctx, compact=True)
         await menu.start()

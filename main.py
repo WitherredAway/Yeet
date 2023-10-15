@@ -52,7 +52,7 @@ class Bot(commands.Bot):
             "admin": "admin",
             "bot": "bot",
             "channel": "channel",
-            "define": "define",
+            ("define", "df"): "define",
             "draw": "Draw.draw",
             "gist": "gist",
             ("jishaku", "jsk"): "jishaku",

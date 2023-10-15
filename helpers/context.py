@@ -67,6 +67,43 @@ class ConfirmView(discord.ui.View):
         self.stop()
 
 
+class Select(discord.ui.Select):
+    async def callback(self, interaction):
+        await interaction.response.defer()
+        self.view.result = self.values
+        self.view.disable()
+        self.view.stop()
+        if self.view.delete_after:
+            await self.view.message.delete()
+
+
+class SelectView(discord.ui.View):
+    def __init__(self, ctx, *, options: List[discord.SelectOption], delete_after: Optional[bool] = None, placeholder: Optional[str] = None) -> None:
+        super().__init__(timeout=30)
+        self.result = None
+        self.ctx = ctx
+        self.message = None
+        self.delete_after = delete_after
+        self.select = Select(options=options, placeholder=placeholder)
+        self.add_item(self.select)
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id not in (self.ctx.author.id, *self.ctx.bot.owner_ids):
+            await interaction.response.send_message(
+                f"This instance does not belong to you.",
+                ephemeral=True,
+            )
+            return False
+        return True
+
+    def disable(self):
+        for item in self.children:
+            item.disabled = True
+
+    async def on_timeout(self):
+        await self.message.edit(view=self)
+
+
 class CustomContext(commands.Context):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -96,6 +133,24 @@ class CustomContext(commands.Context):
         )
         view.message = await self.message.reply(
             content, embeds=embed, files=file, view=view
+        )
+        await view.wait()
+        return view.result, view.message
+
+    async def select(
+        self,
+        content: Optional[str] = None,
+        *,
+        embed: Optional[Union[Bot.Embed, List[Bot.Embed]]] = None,
+        options: List[discord.SelectOption],
+        delete_after: Optional[bool] = False,
+        placeholder: Optional[str] = None
+    ) -> Tuple[bool, discord.Message]:
+        view = SelectView(self, options=options, delete_after=delete_after, placeholder=placeholder)
+        view.message = await self.send(
+            content,
+            embed=embed,
+            view=view,
         )
         await view.wait()
         return view.result, view.message
