@@ -569,7 +569,21 @@ class Afd(AfdGist):
             if URL_REGEX.match(pokemon_and_url[-1]):
                 image_url = pokemon_and_url.pop()
 
-        pokemon = " ".join(pokemon_and_url)
+        pokemon = await self.get_pokemon(ctx, " ".join(pokemon_and_url))
+        if not pokemon:
+            return
+
+        await self.sheet.update_df()
+        row = self.sheet.get_pokemon_row(pokemon)
+        base_image = self.sheet.get_pokemon_image(row.pokemon)
+        if not row.claimed:
+            return await ctx.reply(
+                embed=self.confirmation_embed(
+                    f"**{pokemon}** is not claimed.",
+                    row=row,
+                    colour=EmbedColours.INVALID,
+                )
+            )
 
         #! TEMPORARY
         if image_url is not None:
@@ -589,32 +603,11 @@ class Afd(AfdGist):
             except PIL.UnidentifiedImageError:
                 return await ctx.send("That's not an image!")
 
-        pokemon = await self.get_pokemon(ctx, pokemon)
-        if not pokemon:
-            return
-
         if await self.submit_image_check(ctx, image) is not True:
             return
 
         conf = cmsg = None
-        await self.sheet.update_df()
-        row = self.sheet.get_pokemon_row(pokemon)
         user = await self.fetch_user(row.user_id)
-        base_image = self.sheet.get_pokemon_image(row.pokemon)
-        if not row.claimed:
-            return await ctx.reply(
-                embed=self.confirmation_embed(
-                    f"**{pokemon}** is not claimed.",
-                    colour=EmbedColours.INVALID,
-                )
-            )
-        if not (row.user_id == user.id):
-            return await ctx.reply(
-                embed=self.confirmation_embed(
-                    f"**{pokemon}** is not claimed by **{user} ({user.id})**!",
-                    colour=EmbedColours.INVALID,
-                )
-            )
 
         embeds = self.dual_image_embed(
             description=f"Are you sure you want to force {'re' if row.image else ''}submit the following drawing for **{pokemon}** on **{user} ({user.id})**'s behalf?",
