@@ -113,7 +113,7 @@ class BotCog(commands.Cog):
                 title="⚠️ An unexpected error occured",
                 description=cb_fmt % tb[(len(tb) - EMBED_DESC_CHAR_LIMIT) + 20 :],
             )
-            embed.set_author(name=str(ctx.author), icon_url=ctx.author.avatar.url)
+            embed.set_author(name=str(ctx.author), icon_url=ctx.author.display_avatar.url)
             embed.add_field(
                 name="Command", value=ctx.message.content[:EMBED_FIELD_CHAR_LIMIT]
             )
@@ -139,7 +139,7 @@ class BotCog(commands.Cog):
         em = self.bot.Embed()
 
         em.description = ctx.message.content
-        em.set_author(name=user, icon_url=user.avatar.url)
+        em.set_author(name=user, icon_url=user.display_avatar.url)
         em.timestamp = datetime.datetime.utcnow()
         em.add_field(
             name="Go to",
@@ -198,7 +198,7 @@ class BotCog(commands.Cog):
             title="Add the bot to your server using the following link.",
             description=f"[Invite link.]({self.bot.invite_url})",
         )
-        embed.set_thumbnail(url=self.bot.user.avatar.url)
+        embed.set_thumbnail(url=self.bot.user.display_avatar.url)
 
         await ctx.send(embed=embed)
 

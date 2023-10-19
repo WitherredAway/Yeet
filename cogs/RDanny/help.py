@@ -613,7 +613,7 @@ class Help(commands.Cog):
     async def avatar(self, ctx, member: discord.Member = None):
         member = member or ctx.author
         embed = self.bot.Embed(title=f"Avatar of {member}")
-        embed.set_image(url=member.avatar.url)
+        embed.set_image(url=member.display_avatar.url)
         await ctx.send(embed=embed)
 
     @commands.command(aliases=("whois",), brief="Shows info about an user, role, etc")
@@ -643,7 +643,7 @@ class Help(commands.Cog):
             e.title = title
 
             e.add_field(name="ID", value=user.id, inline=False)
-            e.add_field(name="Avatar", value=f"[Link]({user.avatar.url})", inline=False)
+            e.add_field(name="Avatar", value=f"[Link]({user.display_avatar.url})", inline=False)
             e.add_field(
                 name="Joined",
                 value=format_date(getattr(user, "joined_at", None)),

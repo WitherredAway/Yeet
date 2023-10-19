@@ -1094,7 +1094,7 @@ and lets you directly perform actions such as:
         stats = self.get_stats(user)
 
         embed = self.bot.Embed()
-        embed.set_author(name=f"{user}'s stats", icon_url=user.avatar.url)
+        embed.set_author(name=f"{user}'s stats", icon_url=user.display_avatar.url)
 
         await self.send_all_list(ctx, stats, embed=embed)
 
