@@ -182,6 +182,7 @@ class BotCog(commands.Cog):
 
     def __init__(self, bot: Bot):
         self.bot = bot
+        self.all_timezones = [tz.casefold() for tz in zoneinfo.available_timezones()]
 
     display_emoji = "👾"
 
@@ -373,15 +374,19 @@ class BotCog(commands.Cog):
         if args.snowflake:
             dt = discord.utils.snowflake_time(args.snowflake.id).replace(tzinfo=args.timezone)
         else:
-            dt = datetime(
-                year=args.year,
-                month=args.month,
-                day=args.day,
-                hour=args.hour,
-                minute=args.minute,
-                second=args.second,
-                tzinfo=args.timezone
-            )
+            try:
+                dt = datetime(
+                    year=args.year,
+                    month=args.month,
+                    day=args.day,
+                    hour=args.hour,
+                    minute=args.minute,
+                    second=args.second,
+                    tzinfo=args.timezone
+                )
+            except ValueError as e:
+                return await ctx.send(e.args[0].capitalize())
+
         timestamp = Timestamp.from_dt(dt)
 
         if args.message:
@@ -396,10 +401,11 @@ class BotCog(commands.Cog):
 
     @timestamp.autocomplete("timezone")
     async def timezone_autocomplete(self, interaction: discord.Interaction, current: str):
+        current = current.casefold()
         timezones = sorted(
-            [tz for tz in zoneinfo.available_timezones() if current.lower() in tz.lower()],
-            key=lambda s: s.find(current.lower())
-        ) or zoneinfo.available_timezones()
+            [tz for tz in self.all_timezones if current in tz],
+            key=lambda s: s.find(current)
+        ) or self.all_timezones
         return (
             [
                 app_commands.Choice(name=tz, value=tz)
