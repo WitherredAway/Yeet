@@ -101,6 +101,11 @@ class Timestamp:
 class TimestampArgs(
     commands.FlagConverter, case_insensitive=True
 ):
+    timezone: TimezoneConverter = commands.flag(
+        aliases=("tz", "z"),
+        description="Timezone to base off of.",
+        max_args=1,
+    )
     year: Optional[int] = commands.flag(
         aliases=("years", "yyyy", "y"),
         description="Year as a full 4-digit number. E.g. 2023.",
@@ -129,12 +134,6 @@ class TimestampArgs(
     second: Optional[int] = commands.flag(
         aliases=("seconds", "ss", "s"),
         description="Second as a number 0-59.",
-        max_args=1,
-    )
-    timezone: Optional[TimezoneConverter] = commands.flag(
-        aliases=("tz", "z"),
-        description="Timezone to base off of. Defaults to UTC.",
-        default=ZoneInfo("UTC"),
         max_args=1,
     )
     style: Optional[StyleConverter] = commands.flag(
