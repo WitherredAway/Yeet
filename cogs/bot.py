@@ -36,23 +36,6 @@ TIMESTAMP_STYLES = {
 }
 
 
-class TimestampNumericError(Exception):
-    pass
-
-
-class TimestampNumericConverter(commands.Converter):
-    def __init__(self, _range: Optional[range] = None):
-        self.range = _range
-
-    async def convert(self, ctx: CustomContext, argument: Union[int, None]):
-        argument = int(argument)
-        if self.range:
-            if argument not in self.range:
-                raise TimestampNumericError(f"Value must be between {self.range[0]} and {self.range[-1]}, provided {argument} instead.")
-
-        return argument
-
-
 class TimestampTimezoneError(Exception):
     pass
 
@@ -117,32 +100,32 @@ class Timestamp:
 class TimestampArgs(
     commands.FlagConverter, case_insensitive=True
 ):
-    year: Optional[TimestampNumericConverter] = commands.flag(
+    year: Optional[int] = commands.flag(
         aliases=("years", "yyyy", "y"),
         description="Year as a full 4-digit number. E.g. 2023.",
         max_args=1,
     )
-    month: Optional[TimestampNumericConverter(range(1, 13))] = commands.flag(
+    month: Optional[int] = commands.flag(
         aliases=("months", "mm"),
         description="Month as a number 1-12.",
         max_args=1,
     )
-    day: Optional[TimestampNumericConverter(range(1, 32))] = commands.flag(
+    day: Optional[int] = commands.flag(
         aliases=("days", "dd", "d"),
         description="Day of the month as a number 1-31.",
         max_args=1,
     )
-    hour: Optional[TimestampNumericConverter(range(0, 24))] = commands.flag(
+    hour: Optional[int] = commands.flag(
         aliases=("hours", "hh", "h"),
         description="Hour as a number 0-23 in 24h format.",
         max_args=1,
     )
-    minute: Optional[TimestampNumericConverter(range(0, 60))] = commands.flag(
+    minute: Optional[int] = commands.flag(
         aliases=("minutes", "m"),
         description="Minute as a number 0-59.",
         max_args=1,
     )
-    second: Optional[TimestampNumericConverter(range(0, 60))] = commands.flag(
+    second: Optional[int] = commands.flag(
         aliases=("seconds", "ss", "s"),
         description="Second as a number 0-59.",
         max_args=1,
@@ -196,7 +179,7 @@ class BotCog(commands.Cog):
     @commands.Cog.listener()
     async def on_command_error(self, ctx: CustomContext, error: Exception):
         ignore = commands.CommandNotFound
-        send_error = (TimestampNumericError, TimestampTimezoneError, TimestampStyleError, SnowflakeError)
+        send_error = (TimestampTimezoneError, TimestampStyleError, SnowflakeError)
         show_help = (commands.MissingRequiredArgument, commands.UserInputError)
 
         if isinstance(error, ignore):
