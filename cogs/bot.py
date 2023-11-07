@@ -120,37 +120,31 @@ class TimestampArgs(
     year: Optional[TimestampNumericConverter] = commands.flag(
         aliases=("years", "yyyy", "y"),
         description="Year as a full 4-digit number. E.g. 2023.",
-        default=lambda c: utcnow().year,
         max_args=1,
     )
     month: Optional[TimestampNumericConverter(range(1, 13))] = commands.flag(
         aliases=("months", "mm"),
         description="Month as a number 1-12.",
-        default=lambda c: utcnow().month,
         max_args=1,
     )
     day: Optional[TimestampNumericConverter(range(1, 32))] = commands.flag(
         aliases=("days", "dd", "d"),
         description="Day of the month as a number 1-31.",
-        default=lambda c: utcnow().day,
         max_args=1,
     )
     hour: Optional[TimestampNumericConverter(range(0, 24))] = commands.flag(
         aliases=("hours", "hh", "h"),
         description="Hour as a number 0-23 in 24h format.",
-        default=lambda c: utcnow().hour,
         max_args=1,
     )
     minute: Optional[TimestampNumericConverter(range(0, 60))] = commands.flag(
         aliases=("minutes", "m"),
         description="Minute as a number 0-59.",
-        default=lambda c: utcnow().minute,
         max_args=1,
     )
     second: Optional[TimestampNumericConverter(range(0, 60))] = commands.flag(
         aliases=("seconds", "ss", "s"),
         description="Second as a number 0-59.",
-        default=lambda c: utcnow().second,
         max_args=1,
     )
     timezone: Optional[TimezoneConverter] = commands.flag(
@@ -182,7 +176,7 @@ class BotCog(commands.Cog):
 
     def __init__(self, bot: Bot):
         self.bot = bot
-        self.all_timezones = [tz.casefold() for tz in zoneinfo.available_timezones()]
+        self.all_timezones = {tz.casefold(): tz for tz in zoneinfo.available_timezones()}
 
     display_emoji = "👾"
 
@@ -372,18 +366,17 @@ class BotCog(commands.Cog):
                 setattr(args, flag.attribute, await maybe_coroutine(arg, ctx))
 
         if args.snowflake:
-            dt = discord.utils.snowflake_time(args.snowflake.id).replace(tzinfo=args.timezone)
+            dt = discord.utils.snowflake_time(args.snowflake.id)
         else:
             try:
-                dt = datetime(
-                    year=args.year,
-                    month=args.month,
-                    day=args.day,
-                    hour=args.hour,
-                    minute=args.minute,
-                    second=args.second,
-                    tzinfo=args.timezone
-                )
+                dt = utcnow().astimezone(args.timezone)
+                replace = {}
+                for flag in args.get_flags().values():
+                    if hasattr(dt, flag.attribute):
+                        val = getattr(args, flag.attribute)
+                        if val is not None:
+                            replace[flag.attribute] = val
+                dt = dt.replace(**replace)
             except ValueError as e:
                 return await ctx.send(e.args[0].capitalize())
 
@@ -403,13 +396,13 @@ class BotCog(commands.Cog):
     async def timezone_autocomplete(self, interaction: discord.Interaction, current: str):
         current = current.casefold()
         timezones = sorted(
-            [tz for tz in self.all_timezones if current in tz],
-            key=lambda s: s.find(current)
-        ) or self.all_timezones
+            [tz for tz in self.all_timezones.items() if current in tz[0]],
+            key=lambda s: s[0].find(current)
+        ) or self.all_timezones.items()
         return (
             [
                 app_commands.Choice(name=tz, value=tz)
-                for tz in timezones
+                for tzl, tz in timezones
             ]
         )[:25]
 
