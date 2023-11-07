@@ -46,7 +46,7 @@ class TimezoneConverter(commands.Converter):
         try:
             return ZoneInfo(argument)
         except ZoneInfoNotFoundError:
-            raise TimestampTimezoneError(f"`{argument}`: Invalid timezone indentifier provided. See available timezone identifiers [here](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List).")
+            raise TimestampTimezoneError(f"`{argument}`: Invalid timezone indentifier provided. See available timezone identifiers [here](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List) or use the slash command.")
 
 
 class TimestampStyleError(Exception):
