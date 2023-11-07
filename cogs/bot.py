@@ -1,4 +1,5 @@
 from __future__ import annotations
+import calendar
 
 from datetime import datetime
 import difflib
@@ -160,6 +161,7 @@ class BotCog(commands.Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
         self.all_timezones = {tz.casefold(): tz for tz in zoneinfo.available_timezones()}
+        self.month_names = list(enumerate(calendar.month_name))[1:]
 
     display_emoji = "👾"
 
@@ -374,6 +376,18 @@ class BotCog(commands.Cog):
             message = f"{timestamp:{args.style}}"
 
         await ctx.send(message)
+
+    @timestamp.autocomplete("month")
+    async def month_autocomplete(self, interaction: discord.Interaction, current: str):
+        current = current.casefold()
+        styles = sorted(
+            [m for m in self.month_names if current in m[1].lower()],
+            key=lambda m: m[1].find(current)
+        ) or self.month_names
+        return [
+            app_commands.Choice(name=f"{i}: {n}", value=i)
+            for i, n in styles
+        ][:25]
 
     @timestamp.autocomplete("timezone")
     async def timezone_autocomplete(self, interaction: discord.Interaction, current: str):
