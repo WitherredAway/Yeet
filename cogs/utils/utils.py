@@ -251,10 +251,10 @@ def unwind(dictionary: Dict[tuple, Any], *, include_values: Optional[bool] = Fal
             for k in key:
                 result[k] = value
 
-    # If include_values is true, add each item's value as a key aswell.
-    # Useful for shortcutting items to include the original key
-    if include_values is True:
-        result.update({v: v for k, v in dictionary.items()})
+        # If include_values is true, add each item's value as a key aswell.
+        # Useful for shortcutting items to include the original key
+        if include_values is True:
+            result[value] = value
 
     return result
 
