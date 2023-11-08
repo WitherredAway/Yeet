@@ -358,7 +358,7 @@ class BotCog(commands.Cog):
         aliases=("ts",),
         brief="Generate discord timestamp.",
         description="Generate custom discord timestamps.",
-        help=f"""**Arguments**\n{NL.join([f"{'•' if flag.required else '◦'} `{flag.name}` - {flag.description}" for flag in TimestampArgs.get_flags().values()])}""",
+        help=f"""**Arguments**\n{NL.join([f"- `{flag.name}` - {flag.description}" for flag in TimestampArgs.get_flags().values()])}""",
     )
     async def timestamp(self, ctx: CustomContext, *, args: TimestampArgs):
         # TODO: This is temporary until this bug is fixed in discord.py (https://github.com/Rapptz/discord.py/issues/9641)
