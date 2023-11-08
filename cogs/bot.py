@@ -17,7 +17,7 @@ from discord import app_commands
 from discord.utils import utcnow, maybe_coroutine
 
 from cogs.utils.utils import UrlView, unwind
-from helpers.constants import EMBED_DESC_CHAR_LIMIT, EMBED_FIELD_CHAR_LIMIT
+from helpers.constants import EMBED_DESC_CHAR_LIMIT, EMBED_FIELD_CHAR_LIMIT, NL
 from helpers.context import CustomContext
 
 if TYPE_CHECKING:
@@ -348,7 +348,12 @@ class BotCog(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @commands.hybrid_command(aliases=("ts",))
+    @commands.hybrid_command(
+        aliases=("ts",),
+        brief="Generate discord timestamp.",
+        description="Generate custom discord timestamps.",
+        help=f"""**Arguments**\n{NL.join([f"{'•' if flag.required else '◦'} `{flag.name}` - {flag.description}" for flag in TimestampArgs.get_flags().values()])}"""
+    )
     async def timestamp(self, ctx: CustomContext, *, args: TimestampArgs):
         # TODO: This is temporary until this bug is fixed in discord.py (https://github.com/Rapptz/discord.py/issues/9641)
         for flag in args.get_flags().values():
