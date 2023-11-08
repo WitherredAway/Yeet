@@ -359,7 +359,8 @@ class PokemonView(discord.ui.View):
         color = self.ctx.bot.Embed.COLOUR
         if row.claimed:
             embed.set_author(
-                name=f"{self.user} ({self.user.id})", icon_url=self.user.display_avatar.url
+                name=f"{self.user} ({self.user.id})",
+                icon_url=self.user.display_avatar.url,
             )
 
             status = "Claimed."

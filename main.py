@@ -263,7 +263,7 @@ if __name__ == "__main__":
         owner_ids=[267550284979503104, 761944238887272481],
         case_insensitive=True,
         intents=discord.Intents.all(),
-        strip_after_prefix=True
+        strip_after_prefix=True,
     )
     bot.start_time = start_time
     if os.getenv("REPL_ID") is not None:

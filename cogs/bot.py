@@ -33,7 +33,7 @@ TIMESTAMP_STYLES = {
     "Long Date (dd Month yyyy)": "D",
     "Short Date Time (dd Month yyyy HH:mm)": "f",
     "Long Date Time (Day, dd Month yyyy HH:mm)": "F",
-    "Relative Time": "R"
+    "Relative Time": "R",
 }
 
 
@@ -47,7 +47,12 @@ class TimezoneConverter(commands.Converter):
         try:
             return ZoneInfo(all_timezones.get(argument.casefold(), argument))
         except ZoneInfoNotFoundError:
-            autocorrect = [f"`{all_timezones[t]}`" for t in difflib.get_close_matches(argument.casefold(), all_timezones.keys(), n=5)]
+            autocorrect = [
+                f"`{all_timezones[t]}`"
+                for t in difflib.get_close_matches(
+                    argument.casefold(), all_timezones.keys(), n=5
+                )
+            ]
             if autocorrect:
                 text = f"`{argument}`: Invalid timezone indentifier provided, did you mean one of these?: {', '.join(autocorrect)}"
             else:
@@ -75,7 +80,9 @@ class SnowflakeConverter(commands.Converter):
         try:
             return discord.Object(int(argument))
         except ValueError:
-            raise SnowflakeError(f"`{argument}`: Invalid snowflake provided. Make sure it's a valid integer. E.g. 267550284979503104")
+            raise SnowflakeError(
+                f"`{argument}`: Invalid snowflake provided. Make sure it's a valid integer. E.g. 267550284979503104"
+            )
 
 
 class Timestamp:
@@ -88,8 +95,12 @@ class Timestamp:
     @staticmethod
     def validate_spec(spec: str) -> str:
         if spec not in TIMESTAMP_STYLES.values():
-            valid = "\n".join([f"- {style}: {key}" for key, style in TIMESTAMP_STYLES.items()])
-            raise TimestampStyleError(f"`{spec}`: Invalid timestamp style provided. Valid styles:\n{valid}")
+            valid = "\n".join(
+                [f"- {style}: {key}" for key, style in TIMESTAMP_STYLES.items()]
+            )
+            raise TimestampStyleError(
+                f"`{spec}`: Invalid timestamp style provided. Valid styles:\n{valid}"
+            )
         return spec
 
     def __format__(self, spec: str) -> str:
@@ -104,9 +115,7 @@ class Timestamp:
         return cls(int(datetime.timestamp()))
 
 
-class TimestampArgs(
-    commands.FlagConverter, case_insensitive=True
-):
+class TimestampArgs(commands.FlagConverter, case_insensitive=True):
     timezone: Optional[TimezoneConverter] = commands.flag(
         aliases=("tz", "z"),
         description="Timezone to base off of.",
@@ -166,7 +175,9 @@ class BotCog(commands.Cog):
 
     def __init__(self, bot: Bot):
         self.bot = bot
-        self.all_timezones = {tz.casefold(): tz for tz in zoneinfo.available_timezones()}
+        self.all_timezones = {
+            tz.casefold(): tz for tz in zoneinfo.available_timezones()
+        }
         self.month_names = list(enumerate(calendar.month_name))[1:]
 
     display_emoji = "👾"
@@ -264,7 +275,9 @@ class BotCog(commands.Cog):
                 title="⚠️ An unexpected error occured",
                 description=cb_fmt % tb[(len(tb) - EMBED_DESC_CHAR_LIMIT) + 20 :],
             )
-            embed.set_author(name=str(ctx.author), icon_url=ctx.author.display_avatar.url)
+            embed.set_author(
+                name=str(ctx.author), icon_url=ctx.author.display_avatar.url
+            )
             embed.add_field(
                 name="Command", value=ctx.message.content[:EMBED_FIELD_CHAR_LIMIT]
             )
@@ -320,24 +333,24 @@ class BotCog(commands.Cog):
         )
         embed.add_field(
             name="Prefixes",
-            value="\n".join([f"- `{p}`" for p in self.bot.command_prefix(self.bot, ctx.message)])
+            value="\n".join(
+                [f"- `{p}`" for p in self.bot.command_prefix(self.bot, ctx.message)]
+            ),
         )
         embed.add_field(
             name="Uptime",
             value=f"`{humanize.precisedelta(datetime.utcnow() - self.bot.uptime)}`",
-            inline=False
+            inline=False,
         )
-        embed.add_field(
-            name="Guilds",
-            value=len(self.bot.guilds),
-            inline=False
-        )
+        embed.add_field(name="Guilds", value=len(self.bot.guilds), inline=False)
         embed.add_field(
             name="Average Latency",
             value=f"{round(self.bot.latency * 100)}ms",
-            inline=False
+            inline=False,
         )
-        embed.set_thumbnail(url=(self.bot.user.display_avatar or self.bot.user.default_avatar).url)
+        embed.set_thumbnail(
+            url=(self.bot.user.display_avatar or self.bot.user.default_avatar).url
+        )
         view = UrlView({"Invite the bot": self.bot.invite_url})
         await ctx.send(embed=embed, view=view)
 
@@ -345,7 +358,7 @@ class BotCog(commands.Cog):
         aliases=("ts",),
         brief="Generate discord timestamp.",
         description="Generate custom discord timestamps.",
-        help=f"""**Arguments**\n{NL.join([f"{'•' if flag.required else '◦'} `{flag.name}` - {flag.description}" for flag in TimestampArgs.get_flags().values()])}"""
+        help=f"""**Arguments**\n{NL.join([f"{'•' if flag.required else '◦'} `{flag.name}` - {flag.description}" for flag in TimestampArgs.get_flags().values()])}""",
     )
     async def timestamp(self, ctx: CustomContext, *, args: TimestampArgs):
         # TODO: This is temporary until this bug is fixed in discord.py (https://github.com/Rapptz/discord.py/issues/9641)
@@ -384,37 +397,38 @@ class BotCog(commands.Cog):
     @timestamp.autocomplete("month")
     async def month_autocomplete(self, interaction: discord.Interaction, current: str):
         current = current.casefold()
-        styles = sorted(
-            [m for m in self.month_names if current in m[1].lower()],
-            key=lambda m: m[1].find(current)
-        ) or self.month_names
-        return [
-            app_commands.Choice(name=f"{i}: {n}", value=i)
-            for i, n in styles
-        ][:25]
+        styles = (
+            sorted(
+                [m for m in self.month_names if current in m[1].lower()],
+                key=lambda m: m[1].find(current),
+            )
+            or self.month_names
+        )
+        return [app_commands.Choice(name=f"{i}: {n}", value=i) for i, n in styles][:25]
 
     @timestamp.autocomplete("timezone")
-    async def timezone_autocomplete(self, interaction: discord.Interaction, current: str):
+    async def timezone_autocomplete(
+        self, interaction: discord.Interaction, current: str
+    ):
         current = current.casefold()
-        timezones = sorted(
-            [tz for tz in self.all_timezones.items() if current in tz[0]],
-            key=lambda s: s[0].find(current)
-        ) or self.all_timezones.items()
-        return (
-            [
-                app_commands.Choice(name=tz, value=tz)
-                for tzl, tz in timezones
-            ]
-        )[:25]
+        timezones = (
+            sorted(
+                [tz for tz in self.all_timezones.items() if current in tz[0]],
+                key=lambda s: s[0].find(current),
+            )
+            or self.all_timezones.items()
+        )
+        return ([app_commands.Choice(name=tz, value=tz) for tzl, tz in timezones])[:25]
 
     @timestamp.autocomplete("style")
     async def style_autocomplete(self, interaction: discord.Interaction, current: str):
-        styles = {k: v for k, v in TIMESTAMP_STYLES.items() if current.lower() in k.lower()} or TIMESTAMP_STYLES
+        styles = {
+            k: v for k, v in TIMESTAMP_STYLES.items() if current.lower() in k.lower()
+        } or TIMESTAMP_STYLES
         return [
             app_commands.Choice(name=f"{style}: {text}", value=style)
             for text, style in styles.items()
         ][:25]
-
 
 
 async def setup(bot: commands.Bot):

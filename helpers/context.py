@@ -80,7 +80,14 @@ class Select(discord.ui.Select):
 
 
 class SelectView(discord.ui.View):
-    def __init__(self, ctx, *, options: List[discord.SelectOption], delete_after: Optional[bool] = None, placeholder: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        ctx,
+        *,
+        options: List[discord.SelectOption],
+        delete_after: Optional[bool] = None,
+        placeholder: Optional[str] = None,
+    ) -> None:
         super().__init__(timeout=30)
         self.result = None
         self.ctx = ctx
@@ -146,9 +153,11 @@ class CustomContext(commands.Context):
         embed: Optional[Union[Bot.Embed, List[Bot.Embed]]] = None,
         options: List[discord.SelectOption],
         delete_after: Optional[bool] = False,
-        placeholder: Optional[str] = None
+        placeholder: Optional[str] = None,
     ) -> Tuple[bool, discord.Message]:
-        view = SelectView(self, options=options, delete_after=delete_after, placeholder=placeholder)
+        view = SelectView(
+            self, options=options, delete_after=delete_after, placeholder=placeholder
+        )
         view.message = await self.send(
             content,
             embed=embed,

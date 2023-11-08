@@ -187,7 +187,9 @@ class Afd(AfdGist):
             embed.set_footer(text=footer)
         return embed
 
-    async def fetch_user(self, user_id: int, /, return_from_cache: Optional[bool] = False) -> Tuple[discord.User, bool]:
+    async def fetch_user(
+        self, user_id: int, /, return_from_cache: Optional[bool] = False
+    ) -> Tuple[discord.User, bool]:
         try:
             user, from_cache = await self.bot.fetch_user_cache(user_id)
         except Exception as e:
@@ -560,9 +562,7 @@ class Afd(AfdGist):
         description="AFD Admin-only command to forcefully submit drawing for a pokémon on someone's behalf. This also removes any approved or comment status.",
         usage="<pokémon> [image_url=None]",
     )
-    async def forcesubmit(
-        self, ctx: CustomContext, *pokemon_and_url: str
-    ):
+    async def forcesubmit(self, ctx: CustomContext, *pokemon_and_url: str):
         pokemon_and_url = list(pokemon_and_url)
         image_url = None
         if len(pokemon_and_url) > 1:
@@ -646,7 +646,9 @@ class Afd(AfdGist):
             view=view,
         )
 
-        embeds[0].description = f"**{ctx.author} ({ctx.author.id})** has force {'re' if row.image else ''}submitted the following image for **{pokemon}** on your behalf."
+        embeds[
+            0
+        ].description = f"**{ctx.author} ({ctx.author.id})** has force {'re' if row.image else ''}submitted the following image for **{pokemon}** on your behalf."
         await self.send_notification(embeds, user=user, ctx=ctx, view=view)
         return True
 
@@ -657,10 +659,7 @@ class Afd(AfdGist):
         brief="Forcefully unsubmit a submitted drawing",
         description="AFD Admin-only command to forcefully clear submission of a pokémon.",
     )
-    async def forceunsubmit(
-        self, ctx: CustomContext, *, pokemon: str
-    ):
-
+    async def forceunsubmit(self, ctx: CustomContext, *, pokemon: str):
         pokemon = await self.get_pokemon(ctx, pokemon)
         if not pokemon:
             return
@@ -711,7 +710,9 @@ class Afd(AfdGist):
             view=view,
         )
 
-        embeds[0].description = f"**{ctx.author} ({ctx.author.id})** has force unsubmitted your drawing for **{pokemon}**."
+        embeds[
+            0
+        ].description = f"**{ctx.author} ({ctx.author.id})** has force unsubmitted your drawing for **{pokemon}**."
         await self.send_notification(embeds, user=user, ctx=ctx, view=view)
         return True
 

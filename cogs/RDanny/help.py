@@ -643,7 +643,9 @@ class Help(commands.Cog):
             e.title = title
 
             e.add_field(name="ID", value=user.id, inline=False)
-            e.add_field(name="Avatar", value=f"[Link]({user.display_avatar.url})", inline=False)
+            e.add_field(
+                name="Avatar", value=f"[Link]({user.display_avatar.url})", inline=False
+            )
             e.add_field(
                 name="Joined",
                 value=format_date(getattr(user, "joined_at", None)),

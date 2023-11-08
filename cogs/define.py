@@ -83,14 +83,10 @@ class TermPageSource(menus.ListPageSource):
             self.embed.add_field(name="example", value=example)
 
         if antonyms := entry["antonyms"]:
-            self.embed.add_field(
-                name="antonyms", value=", ".join(antonyms)
-            )
+            self.embed.add_field(name="antonyms", value=", ".join(antonyms))
 
         if synonyms := entry["synonyms"]:
-            self.embed.add_field(
-                name="synonyms", value=", ".join(synonyms)
-            )
+            self.embed.add_field(name="synonyms", value=", ".join(synonyms))
 
         maximum = self.get_max_pages()
         if maximum > 1:
@@ -158,7 +154,9 @@ class Define(commands.Cog):
     async def cog_load(self) -> None:
         self.ALL_DEFINE_WORDS = (
             await (
-                await self.bot.session.get("https://raw.githubusercontent.com/meetDeveloper/freeDictionaryAPI/master/meta/wordList/english.txt")
+                await self.bot.session.get(
+                    "https://raw.githubusercontent.com/meetDeveloper/freeDictionaryAPI/master/meta/wordList/english.txt"
+                )
             ).text()
         ).split("\n")
 
@@ -176,10 +174,18 @@ class Define(commands.Cog):
         except KeyError:
             autocorrect = difflib.get_close_matches(term, self.ALL_DEFINE_WORDS, 5)
             if not autocorrect:
-                return await ctx.send("Could not find the searched term or similar matches, sorry.")
+                return await ctx.send(
+                    "Could not find the searched term or similar matches, sorry."
+                )
 
-            options = [discord.SelectOption(label=entry, value=entry) for entry in autocorrect]
-            values, msg = await ctx.select(f"Could not find the searched term, did you mean one of these?", options=options, placeholder="Select a term")
+            options = [
+                discord.SelectOption(label=entry, value=entry) for entry in autocorrect
+            ]
+            values, msg = await ctx.select(
+                f"Could not find the searched term, did you mean one of these?",
+                options=options,
+                placeholder="Select a term",
+            )
             if not values:
                 return
             term = await Term(values[0])
