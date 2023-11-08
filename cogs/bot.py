@@ -101,9 +101,10 @@ class Timestamp:
 class TimestampArgs(
     commands.FlagConverter, case_insensitive=True
 ):
-    timezone: TimezoneConverter = commands.flag(
+    timezone: Optional[TimezoneConverter] = commands.flag(
         aliases=("tz", "z"),
         description="Timezone to base off of.",
+        default=ZoneInfo("UTC"),
         max_args=1,
     )
     year: Optional[int] = commands.flag(
