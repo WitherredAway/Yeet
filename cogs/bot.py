@@ -291,28 +291,12 @@ class BotCog(commands.Cog):
         em.description = ctx.message.content
         em.set_author(name=user, icon_url=user.display_avatar.url)
         em.timestamp = utcnow()
-        em.add_field(
-            name="Go to",
-            value=f"[Warp]({ctx.message.jump_url})",
-        )
         em.set_footer(
             text=f"{ctx.guild.name} | #{ctx.channel.name}"
             if ctx.guild
             else "Direct Messages"
         )
-        await log_ch.send(embed=em)
-
-    @commands.command(
-        name="prefix",
-        aliases=("prefixes",),
-        brief="Shows prefixes.",
-        help="Shows the prefixes of the bot. Cannot be changed.",
-    )
-    async def _prefix(self, ctx: commands.Context):
-        n = "\n> "
-        await ctx.send(
-            f"My prefixes are:\n> {n.join((self.bot.user.mention, *self.bot.PREFIXES))}\nThey cannot be changed."
-        )
+        await log_ch.send(embed=em, view=UrlView({"Jump": ctx.message.jump_url}))
 
     @commands.command(
         name="ping",
@@ -322,31 +306,40 @@ class BotCog(commands.Cog):
     async def ping(self, ctx: commands.Context):
         message = await ctx.send("Pong!")
         ms = int((message.created_at - ctx.message.created_at).total_seconds() * 1000)
-        await message.edit(content=f"Pong! {ms} ms")
+        await message.edit(content=f"Pong! **{ms}ms**")
 
     @commands.command(
-        name="uptime",
-        brief="How long the bot has been up.",
-        help="Shows how long it has been since the bot last went offline.",
+        name="stats",
+        aliases=("invite", "uptime", "prefix", "prefixes"),
+        brief="Shows bot stats.",
+        help="Shows bot stats such as number of guilds, bot uptime, prefixes, etc.",
     )
-    async def uptime(self, ctx: commands.Context):
+    async def stats(self, ctx: commands.Context):
         embed = self.bot.Embed(
-            title="Bot's uptime",
-            description=f"The bot has been up for `{humanize.precisedelta(utcnow() - self.bot.uptime)}`.",
+            title="Bot stats",
         )
-        await ctx.send(embed=embed)
-
-    @commands.command(
-        name="invite", brief="Bot's invite link", help="Sends the bot's invite link."
-    )
-    async def invite(self, ctx: commands.Context):
-        embed = self.bot.Embed(
-            title="Add the bot to your server using the following link.",
-            description=f"[Invite link.]({self.bot.invite_url})",
+        embed.add_field(
+            name="Prefixes",
+            value="\n".join([f"- `{p}`" for p in self.bot.command_prefix(self.bot, ctx.message)])
         )
-        embed.set_thumbnail(url=self.bot.user.display_avatar.url)
-
-        await ctx.send(embed=embed)
+        embed.add_field(
+            name="Uptime",
+            value=f"`{humanize.precisedelta(datetime.utcnow() - self.bot.uptime)}`",
+            inline=False
+        )
+        embed.add_field(
+            name="Guilds",
+            value=len(self.bot.guilds),
+            inline=False
+        )
+        embed.add_field(
+            name="Average Latency",
+            value=f"{round(self.bot.latency * 100)}ms",
+            inline=False
+        )
+        embed.set_thumbnail(url=(self.bot.user.display_avatar or self.bot.user.default_avatar).url)
+        view = UrlView({"Invite the bot": self.bot.invite_url})
+        await ctx.send(embed=embed, view=view)
 
     @commands.hybrid_command(
         aliases=("ts",),
