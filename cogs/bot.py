@@ -43,10 +43,16 @@ class TimestampTimezoneError(Exception):
 
 class TimezoneConverter(commands.Converter):
     async def convert(self, ctx: CustomContext, argument: str):
+        all_timezones = ctx.bot.get_cog("BotCog").all_timezones
         try:
-            return ZoneInfo(argument)
+            return ZoneInfo(all_timezones.get(argument.casefold(), argument))
         except ZoneInfoNotFoundError:
-            raise TimestampTimezoneError(f"`{argument}`: Invalid timezone indentifier provided. See available timezone identifiers [here](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List) or use the slash command.")
+            autocorrect = [f"`{all_timezones[t]}`" for t in difflib.get_close_matches(argument.casefold(), all_timezones.keys(), n=5)]
+            if autocorrect:
+                text = f"`{argument}`: Invalid timezone indentifier provided, did you mean one of these?: {', '.join(autocorrect)}"
+            else:
+                text = f"`{argument}`: Invalid timezone indentifier provided. See available timezone identifiers [here](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List) or use the slash command."
+            raise TimestampTimezoneError(text)
 
 
 class TimestampStyleError(Exception):
