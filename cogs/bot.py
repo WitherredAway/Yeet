@@ -416,7 +416,7 @@ class BotCog(commands.Cog):
                 [tz for tz in self.all_timezones.items() if current in tz[0]],
                 key=lambda s: s[0].find(current),
             )
-            or self.all_timezones.items()
+            if current else self.all_timezones.items()
         )
         return ([app_commands.Choice(name=tz, value=tz) for tzl, tz in timezones])[:25]
 
