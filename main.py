@@ -1,8 +1,10 @@
 from __future__ import annotations
+import sys
 
 import time
+import traceback
 
-from cogs.utils.utils import unwind
+from cogs.utils.utils import UrlView, unwind
 
 start_time = time.time()
 
@@ -11,7 +13,7 @@ import datetime
 import logging
 import os
 from functools import cached_property
-from typing import Any, Tuple, Union
+from typing import Any, Optional, Tuple, Union
 
 import aiohttp
 import discord
@@ -23,7 +25,7 @@ from helpers.context import CustomContext
 from cogs.Draw.utils.colour import Colour
 from cogs.Draw.draw import DrawView
 from cogs.Draw.utils.emoji_cache import EmojiCache
-from helpers.constants import LOG_BORDER, NL
+from helpers.constants import PY_BLOCK_FMT, EMBED_DESC_CHAR_LIMIT, EMBED_FIELD_CHAR_LIMIT, LOG_BORDER, NL
 from helpers.keep_alive import keep_alive
 
 logging.basicConfig(level=logging.INFO)
@@ -176,6 +178,34 @@ class Bot(commands.Bot):
         msg = f"\033[32;1m{self.user}\033[0;32m connected in \033[33;1m{round(m)}m{round(s)}s\033[0;32m.\033[0m"
         await self.status_channel.send(f"```ansi\n{msg}\n```")
         log.info(msg)
+
+    async def report_error(self, error: Exception, ctx: Optional[CustomContext] = None):
+        tb = "".join(
+            traceback.format_exception(type(error), error, error.__traceback__)
+        )
+        embed = self.Embed(
+            title="⚠️ An unexpected error occured",
+            description=PY_BLOCK_FMT % tb[(len(tb) - EMBED_DESC_CHAR_LIMIT) + 20 :],
+        )
+
+        if ctx:
+            embed.set_author(
+                name=str(ctx.author), icon_url=ctx.author.display_avatar.url
+            )
+            embed.add_field(
+                name="Command", value=ctx.message.content[:EMBED_FIELD_CHAR_LIMIT]
+            )
+
+            view = UrlView(
+                {
+                    f"{ctx.guild} | #{ctx.channel}"
+                    if ctx.guild
+                    else "Direct Messages": ctx.message.jump_url
+                }
+            )
+        await self.bug_channel.send(embed=embed, view=view if ctx else None)
+        print(tb, file=sys.stderr)
+
 
     class Embed(discord.Embed):
         COLOUR = 0x9BFFD6

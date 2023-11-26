@@ -3,10 +3,8 @@ import calendar
 
 from datetime import datetime
 import difflib
-import itertools
 import sys
-import traceback
-from typing import TYPE_CHECKING, Literal, Optional, Union
+from typing import TYPE_CHECKING, Optional
 import zoneinfo
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -16,8 +14,8 @@ from discord.ext import commands
 from discord import app_commands
 from discord.utils import utcnow, maybe_coroutine
 
-from cogs.utils.utils import UrlView, unwind
-from helpers.constants import EMBED_DESC_CHAR_LIMIT, EMBED_FIELD_CHAR_LIMIT, NL
+from cogs.utils.utils import UrlView
+from helpers.constants import PY_BLOCK_FMT, NL
 from helpers.context import CustomContext
 
 if TYPE_CHECKING:
@@ -257,42 +255,18 @@ class BotCog(commands.Cog):
                 if isinstance(err, send_error):
                     return await ctx.send(err.args[0])
 
-            tb = "".join(
-                traceback.format_exception(type(error), error, error.__traceback__)
-            )
-            cb_fmt = "```py\n%s\n```"
             await ctx.send(
                 embed=self.bot.Embed(
                     title="⚠️ Uh oh! An unexpected error occured :(",
-                    description=cb_fmt % str(error),
+                    description=PY_BLOCK_FMT % str(error),
                     color=ERROR_COLOUR,
                 ).set_footer(
                     text="This error has been reported to the developer, sorry for the inconvenience!"
                 )
             )
 
-            embed = self.bot.Embed(
-                title="⚠️ An unexpected error occured",
-                description=cb_fmt % tb[(len(tb) - EMBED_DESC_CHAR_LIMIT) + 20 :],
-            )
-            embed.set_author(
-                name=str(ctx.author), icon_url=ctx.author.display_avatar.url
-            )
-            embed.add_field(
-                name="Command", value=ctx.message.content[:EMBED_FIELD_CHAR_LIMIT]
-            )
-
-            view = UrlView(
-                {
-                    f"{ctx.guild} | #{ctx.channel}"
-                    if ctx.guild
-                    else "Direct Messages": ctx.message.jump_url
-                }
-            )
-            await self.bot.bug_channel.send(embed=embed, view=view)
-
             print(f"Ignoring exception in command {ctx.command}:", file=sys.stderr)
-            print(tb)
+            await self.bot.report_error(error, ctx)
 
     @commands.Cog.listener(name="on_command")
     async def on_command(self, ctx: commands.Context):

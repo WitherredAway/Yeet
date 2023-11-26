@@ -3,6 +3,7 @@ COMMAND_COOLDOWN = 2  # seconds
 NL = "\n"
 
 CODE_BLOCK_FMT = "```\n%s\n```"
+PY_BLOCK_FMT = "```py\n%s\n```"
 
 u200b = "\u200b"
 
