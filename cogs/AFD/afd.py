@@ -87,9 +87,12 @@ class Afd(AfdGist):
         self.bot.afd_update_channel = await self.bot.fetch_channel(
             AFD_UPDATE_CHANNEL_ID
         )
-        self.bot.afd_credits_gist = await self.bot.wgists_client.get_gist(
-            AFD_CREDITS_GIST_URL
-        )
+        try:
+            self.bot.afd_credits_gist = await self.bot.wgists_client.get_gist(
+                AFD_CREDITS_GIST_URL
+            )
+        except gists.HTTPException as e:
+            await self.bot.report_error(e)
 
         self.bot.add_view(AFDRoleMenu())
 
