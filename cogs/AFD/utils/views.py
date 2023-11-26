@@ -185,7 +185,7 @@ class AfdView(discord.ui.View):
         self.message: discord.Message
 
         url_dict = {
-            "AFD Credits": (afdcog.credits_gist.url, 0),
+            # "AFD Credits": (afdcog.credits_gist.url, 0),
             "Spreadsheet": (afdcog.sheet.url, 0),
         }
         for label, (url, row) in url_dict.items():
