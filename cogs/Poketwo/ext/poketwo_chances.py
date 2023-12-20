@@ -17,7 +17,7 @@ if typing.TYPE_CHECKING:
     from main import Bot
 
 
-ALL_GIST = "https://gist.github.com/1bc525b05f4cd52555a2a18c331e0cf9"
+ALL_GIST = "https://gist.github.com/WitherredAway/64a9a8db43ff75bf6ff9a09efe39ab88"
 STARTERS_GIST = "https://gist.github.com/1bdee3b3fb2a29ae8f83ebdd70013456"
 RARITY_GISTS = {
     "Mythical": "https://gist.github.com/ba3f32d61cfdaf857c8541d168c21698",
@@ -103,6 +103,7 @@ class PoketwoChances(commands.Cog):
     async def update_chance_gist(
         self,
         df: pd.DataFrame,
+        possible_abundance: float,
         *,
         description: Optional[str] = "Spawn chances",
         gist: gists.Gist,
@@ -111,32 +112,31 @@ class PoketwoChances(commands.Cog):
         df["Chance"] = np.nan
         df["Chance percentage"] = np.nan
         for idx in df.index:
-            chance = self.possible_abundance / df.at[idx, "abundance"]
+            abundance = df.at[idx, "abundance"]
+            chance = possible_abundance / abundance
             df.at[idx, "Chance"] = "1/" + str(round(chance))
             df.at[idx, "Chance percentage"] = str(round(1 / chance * 100, 4)) + "%"
 
-        df.sort_values("abundance", ascending=False, inplace=True)
+        df.sort_values(["abundance", "name.en"], ascending=False, inplace=True)
         if keep_cols is None:
             keep_cols = []
-        drop_cols = ["abundance", "catchable"]
+        drop_cols = ["catchable"]
         df.drop(columns=drop_cols, inplace=True)
 
-        rename_cols = {"name.en": "Pokemon", "id": "Dex"}
+        rename_cols = {"name.en": "Pokemon", "id": "Dex", "abundance": "Abundance"}
         if "enabled" in keep_cols:
             rename_cols["enabled"] = "Currently catchable"
         df.rename(columns=rename_cols, inplace=True)
 
-        df_groupby = df.set_index("Pokemon").groupby("Chance")
+        df_groupby = df.set_index("Pokemon").groupby("Abundance")
         df_groupby = [
-            (int(chance.split("/")[-1]), pokemons)
-            for chance, pokemons in df_groupby.groups.items()
+            (abundance, pokemons)
+            for abundance, pokemons in df_groupby.groups.items()
         ]
-        df_groupby.sort(key=lambda x: x[0])
+        df_groupby.sort(key=lambda x: x[0], reverse=True)
         df_groupby = {
-            f"{round(1 / chance * 100, 4)}% or 1/{chance} ({len(pokemons)})": sorted(
-                pokemons
-            )
-            for chance, pokemons in df_groupby
+            f"{round(1 / round(possible_abundance / abundance) * 100, 4)}% or 1/{round(possible_abundance / abundance)} or {abundance} ({len(pokemons)})": pokemons
+            for abundance, pokemons in df_groupby
         }
 
         df_grouped = pd.DataFrame.from_dict(df_groupby, orient="index")
@@ -166,15 +166,17 @@ class PoketwoChances(commands.Cog):
         self,
         title: str,
         pokemon_dataframe: pd.DataFrame,
+        possible_abundance: Optional[float] = None,
         *,
         gist: Optional[Union[str, gists.Gist]] = None,
         list_pokemon: bool = True,
         keep_cols: Optional[typing.List[str]] = None,
     ) -> str:
         pkm_df = pokemon_dataframe
+        possible_abundance = possible_abundance if possible_abundance is not None else self.possible_abundance
         total_abundance = round(pkm_df["abundance"][pkm_df["catchable"] > 0].sum())
 
-        out_of = round(self.possible_abundance / total_abundance)
+        out_of = round(possible_abundance / total_abundance)
         per_cent = round(1 / out_of * 100, 4)
         total_chances = f"**Total chance**: {per_cent}% or 1/{out_of}"
 
@@ -185,6 +187,7 @@ class PoketwoChances(commands.Cog):
         if list_pokemon is True:
             await self.update_chance_gist(
                 pkm_df,
+                possible_abundance,
                 description=f"Spawn chances of {title} pokémon ({len(pkm_df)}). {total_chances}",
                 gist=gist,
                 keep_cols=keep_cols,
@@ -218,13 +221,29 @@ class PoketwoChances(commands.Cog):
         await ctx.send(result)
         return result
 
+    async def fetch_dev_pk(self):
+        spreadsheet = await self.bot.get_cog("Afd").sheet.gc.open_by_url("https://docs.google.com/spreadsheets/d/1IGpetku7gxcP_kzmtcWyuxyHt1FMm1ESVWXnbh3bTkc")
+        worksheet = await spreadsheet.get_worksheet(0)
+        data = await worksheet.get_all_values()
+
+        pkm_df = pd.DataFrame(data[1:], columns=data[0]).replace('', np.nan)
+        pkm_df.catchable = pkm_df.catchable.astype(float)
+        pkm_df = pkm_df[pkm_df["catchable"] > 0]
+
+        pkm_df.abundance = pkm_df.abundance.astype(int)
+        pkm_df.enabled = pkm_df.enabled.astype(int)
+
+        possible_abundance = round(pkm_df.loc[pkm_df["enabled"] > 0, "abundance"].sum(), 4)
+
+        return pkm_df, possible_abundance
+
     @chance.command(name="all", help="See the chances of all pokémon in a nice table")
     async def all(self, ctx):
-        pkm_df = self.pk
+        pkm_df, possible_abundance = await self.fetch_dev_pk()
         pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance"]]
 
         async with ctx.channel.typing():
-            result = await self.format_chances_message("All", pkm_df, gist=ALL_GIST)
+            result = await self.format_chances_message("All", pkm_df, possible_abundance, gist=ALL_GIST)
         await ctx.send(result)
         return result
 
