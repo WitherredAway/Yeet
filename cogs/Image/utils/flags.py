@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional
+from typing import Optional, List
 
 from discord.ext import commands
 from discord.utils import maybe_coroutine
@@ -27,9 +27,8 @@ If neither is specified, it will use the original width to resize the height."
 class ResizeFlags(
     commands.FlagConverter, prefix="--", delimiter=" ", case_insensitive=True
 ):
-    url: Optional[str] = commands.flag(
+    url: Optional[List[str]] = commands.flag(
         aliases=("image", "img"),
-        max_args=1,
         description=ResizeFlagDescriptions.url.value,
     )
     height: Optional[int] = commands.flag(
