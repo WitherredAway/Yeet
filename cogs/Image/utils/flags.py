@@ -27,9 +27,11 @@ If neither is specified, it will use the original width to resize the height."
 class ResizeFlags(
     commands.FlagConverter, prefix="--", delimiter=" ", case_insensitive=True
 ):
-    url: Optional[List[str]] = commands.flag(
+    url: Optional[str] = commands.flag(
         aliases=("image", "img"),
         description=ResizeFlagDescriptions.url.value,
+        max_args=-1,
+        default=list
     )
     height: Optional[int] = commands.flag(
         aliases=("h",), max_args=1, description=ResizeFlagDescriptions.height.value
