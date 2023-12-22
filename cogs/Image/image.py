@@ -85,9 +85,10 @@ Specify height, width or aspect ratio parameters using flags.
         await ctx.typing()
 
         attachments = ctx.message.attachments[:]
-        for url in flags.url:
-            image = await url_to_image(url, self.bot.session)
-            attachments.append(FakeAttachment.from_image(image))
+        if flags.url:
+            for url in flags.url:
+                image = await url_to_image(url, self.bot.session)
+                attachments.append(FakeAttachment.from_image(image))
 
         if len(attachments) == 0:
             await ctx.reply(
