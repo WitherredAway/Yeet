@@ -31,7 +31,6 @@ class ResizeFlags(
         aliases=("image", "img"),
         description=ResizeFlagDescriptions.url.value,
         max_args=-1,
-        default=list
     )
     height: Optional[int] = commands.flag(
         aliases=("h",), max_args=1, description=ResizeFlagDescriptions.height.value
