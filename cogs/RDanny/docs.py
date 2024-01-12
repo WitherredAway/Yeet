@@ -1,8 +1,9 @@
 from dataclasses import dataclass
+from functools import cached_property
 import importlib
 import inspect
 import sys
-import PIL
+from types import ModuleType
 import discord
 import re
 import io
@@ -18,6 +19,11 @@ from helpers.context import CustomContext
 from .utils import fuzzy
 from .utils.paginator import BotPages
 from .utils.source import source
+
+# Imports that are for getting source code
+# but not actually used here
+import PIL
+import pymongo
 
 
 class SphinxObjectFileReader:
@@ -56,8 +62,17 @@ class SphinxObjectFileReader:
 @dataclass
 class Source:
     url: str
-    branch: str
+    module: ModuleType
+    branch_fmt_str: Optional[str] = "master"
     directory: Optional[str] = ""
+
+    @cached_property
+    def branch(self) -> str:
+        version = getattr(self.module, "__version__")
+        if not version:
+            return self.branch_fmt_str
+        major, minor, macro = version.split('.')
+        return self.branch_fmt_str.format_map(dict(major=major, minor=minor, macro=macro))
 
 @dataclass
 class Doc:
@@ -124,9 +139,6 @@ class DocEntry:
         location = os.path.join(self.doc.source.directory, obj.__module__.replace(".", "/") + ".py")
         return parent, f"{self.doc.source.url}/blob/{self.doc.source.branch}/{location}#L{firstlineno}-L{firstlineno + len(lines) - 1}"
 
-def get_version_branch(module, *, fmt_str: bool = "{}"):
-    return fmt_str.format(f"{'.'.join(module.__version__.split('.')[:-1])}.x")
-
 DOCS = {
     "python": Doc(
         name="Python",
@@ -135,30 +147,32 @@ DOCS = {
     "discord.py": Doc(
         name="discord.py",
         url="https://discordpy.readthedocs.io/en/latest",
-        remove_substrings=("discord.ext.commands.",),
+        remove_substrings=("ext.commands.",),
         module_name="discord",
         source=Source(
+            module=discord,
             url="https://github.com/Rapptz/discord.py",
-            branch=get_version_branch(discord, fmt_str="v{}")
+            branch_fmt_str="v{major}.{minor}.x"
         )
     ),
     "pymongo": Doc(
         name="PyMongo",
         url="https://pymongo.readthedocs.io/en/stable",
-        remove_substrings=("pymongo.collection.",),
-        # module_name="pymongo",
-        # source=Source(
-        #     url="https://github.com/mongodb/mongo-python-driver",
-        #     branch="master",
-        # )
+        module_name="pymongo",
+        source=Source(
+            module=pymongo,
+            url="https://github.com/mongodb/mongo-python-driver",
+            branch_fmt_str="v{major}.{minor}",
+        )
     ),
     "pillow": Doc(
         name="Pillow",
         url="https://pillow.readthedocs.io/en/stable",
         module_name="PIL",
         source=Source(
+            module=PIL,
             url="https://github.com/python-pillow/Pillow",
-            branch=get_version_branch(PIL),
+            branch_fmt_str="{major}.{minor}.x",
             directory="src",
         )
     )
@@ -180,7 +194,7 @@ class DocsPageSource(menus.ListPageSource):
         super().__init__(entries, per_page=per_page)
         self.ctx = ctx
         self.bot = self.ctx.bot
-        self.embed = self.bot.Embed(title=f"{DOCS[key].name}")
+        self.embed = self.bot.Embed(title=f"{DOCS[key].name}" + (f" v{DOCS[key].source.module.__version__}" if DOCS[key].source else ""))
 
     async def format_page(self, menu, entries: List[DocEntry]):
         self.embed.clear_fields()
@@ -264,10 +278,10 @@ class Documentation(commands.Cog):
             key = path = name if dispname == "-" else dispname
             prefix = f"{subdirective}:" if domain == "std" else ""
 
+            key = key.replace(f'{doc.module_name}.', '')
             if doc.remove_substrings:
                 for r in doc.remove_substrings:
                     key = key.replace(r, '')
-            key = key.replace(f'{doc.module_name}.', '')
 
             result.append(
                 DocEntry(

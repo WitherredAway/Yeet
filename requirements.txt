@@ -15,6 +15,7 @@ pandas==1.5.0
 parsedatetime==2.6
 Pillow==9.2.0
 pilmoji @ git+https://github.com/jay3332/pilmoji/
+pymongo==3.13.0
 protobuf==4.23.1
 python-dateutil==2.8.2
 simpleeval==0.9.12
