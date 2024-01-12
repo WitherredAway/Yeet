@@ -141,12 +141,12 @@ DOCS = {
     "pymongo": Doc(
         name="PyMongo",
         url="https://pymongo.readthedocs.io/en/stable",
-        module_name="pymongo",
-        source=Source(
-            url="https://github.com/mongodb/mongo-python-driver",
-            branch="master",
-        )
-    )
+        # module_name="pymongo",
+        # source=Source(
+        #     url="https://github.com/mongodb/mongo-python-driver",
+        #     branch="master",
+        # )
+    ),
 }
 
 
