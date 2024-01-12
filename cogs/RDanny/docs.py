@@ -148,9 +148,13 @@ DOCS = {
 
 
 def format_doc(label: str, docs_url: str, source: Tuple[bool, str] = None):
+    text = f"[`{label}`]({docs_url})"
     if source:
         parent, source_url = source
-    return f"[`{label}`]({docs_url})" + (f" \u200b *[{'ᵖᵃʳᵉⁿᵗ ' if parent else ''}ˢᵒᵘʳᶜᵉ]({source_url})*" if source else "")
+        source_text = f"{'ᵖᵃʳᵉⁿᵗ ' if parent else ''}ˢᵒᵘʳᶜᵉ"
+        text += (f" \u200b *[{source_text}]({source_url})*" if source else "")
+
+    return text
 
 
 class DocsPageSource(menus.ListPageSource):
@@ -158,7 +162,7 @@ class DocsPageSource(menus.ListPageSource):
         super().__init__(entries, per_page=per_page)
         self.ctx = ctx
         self.bot = self.ctx.bot
-        self.embed = self.bot.Embed(title=f"{DOCS[key].name} docs")
+        self.embed = self.bot.Embed(title=f"{DOCS[key].name}")
 
     async def format_page(self, menu, entries: List[DocEntry]):
         self.embed.clear_fields()
