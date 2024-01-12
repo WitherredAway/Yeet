@@ -60,7 +60,7 @@ class SphinxObjectFileReader:
 
 
 @dataclass
-class Source:
+class DocSource:
     url: str
     module: ModuleType
     branch_fmt_str: Optional[str] = "master"
@@ -83,7 +83,14 @@ class Doc:
     url: str
     remove_substrings: Optional[Tuple[str]] = None
     module_name: Optional[str] = None
-    source: Optional[Source] = None
+    source: Optional[DocSource] = None
+
+
+@dataclass
+class DocEntrySource:
+    url: str
+    parent: bool  # Whether the parent object's source is being shown e.g. if it's an attribute
+    object: object
 
 
 @dataclass
@@ -97,7 +104,10 @@ class DocEntry:
     def docs_url(self) -> str:
         return os.path.join(self.doc.url, self.location)
 
-    def get_source_url(self) -> str | None:
+    def get_source(self) -> DocEntrySource | None:
+        if hasattr(self, "_source"):
+            return self._source
+
         if not self.path or not self.doc.source or not self.doc.module_name:
             return None
 
@@ -138,17 +148,23 @@ class DocEntry:
             except (AttributeError, TypeError):
                 parent = True  # Whether the parent object's source is being shown
                 break
+            except OSError:
+                print(f"Failed to get source of {candidate}.")
+                continue
             else:
                 obj = candidate
 
         if obj is None:
             return None
 
-        location = os.path.relpath(filename).replace("\\", "/").split("/site-packages/")[-1]  # Might cause issues for hardcoding 'site-packages'
-        return (
-            parent,
-            f"{self.doc.source.url}/blob/{self.doc.source.branch}/{location}#L{firstlineno}-L{firstlineno + len(lines) - 1}",
+        location = os.path.join(
+            self.doc.source.directory,
+            os.path.relpath(filename).replace("\\", "/").split("/site-packages/")[-1]  # Might cause issues for hardcoding 'site-packages'
         )
+        url = f"{self.doc.source.url}/blob/{self.doc.source.branch}/{location}#L{firstlineno}-L{firstlineno + len(lines) - 1}"
+
+        self._source = DocEntrySource(url=url, object=obj, parent=parent)
+        return self._source
 
 
 DOCS = {
@@ -158,7 +174,7 @@ DOCS = {
         url="https://discordpy.readthedocs.io/en/latest",
         remove_substrings=("ext.commands.",),
         module_name="discord",
-        source=Source(
+        source=DocSource(
             module=discord,
             url="https://github.com/Rapptz/discord.py",
             branch_fmt_str="v{major}.{minor}.x",
@@ -168,7 +184,7 @@ DOCS = {
         name="PyMongo",
         url="https://pymongo.readthedocs.io/en/stable",
         module_name="pymongo",
-        source=Source(
+        source=DocSource(
             module=pymongo,
             url="https://github.com/mongodb/mongo-python-driver",
             branch_fmt_str="v{major}.{minor}",
@@ -178,7 +194,7 @@ DOCS = {
         name="Pillow",
         url="https://pillow.readthedocs.io/en/stable",
         module_name="PIL",
-        source=Source(
+        source=DocSource(
             module=PIL,
             url="https://github.com/python-pillow/Pillow",
             branch_fmt_str="{major}.{minor}.x",
@@ -188,12 +204,11 @@ DOCS = {
 }
 
 
-def format_doc(label: str, docs_url: str, source: Tuple[bool, str] = None):
+def format_doc(label: str, docs_url: str, source: DocEntrySource = None):
     text = f"[`{label}`]({docs_url})"
     if source:
-        parent, source_url = source
-        source_text = f"{'ᵖᵃʳᵉⁿᵗ ' if parent else ''}ˢᵒᵘʳᶜᵉ"
-        text += f" \u200b *[{source_text}]({source_url})*" if source else ""
+        source_text = f"{'ᵖᵃʳᵉⁿᵗ ' if source.parent else ''}ˢᵒᵘʳᶜᵉ"
+        text += f" \u200b *[{source_text}]({source.url})*" if source else ""
 
     return text
 
@@ -218,7 +233,7 @@ class DocsPageSource(menus.ListPageSource):
                     label=doc_entry.name,
                     docs_url=doc_entry.docs_url,
                     source=await self.bot.loop.run_in_executor(
-                        None, doc_entry.get_source_url
+                        None, doc_entry.get_source
                     ),
                 )
                 for doc_entry in entries
@@ -300,14 +315,13 @@ class Documentation(commands.Cog):
                 for r in doc.remove_substrings:
                     key = key.replace(r, "")
 
-            result.append(
-                DocEntry(
-                    name=f"{prefix}{key}",
-                    doc=doc,
-                    path=path,
-                    location=location,
-                )
+            doc_entry = DocEntry(
+                name=f"{prefix}{key}",
+                doc=doc,
+                path=path,
+                location=location,
             )
+            result.append(doc_entry)
 
         return result
 
