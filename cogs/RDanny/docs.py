@@ -8,11 +8,12 @@ import discord
 import re
 import io
 import os
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import zlib
 import aiohttp
 from discord.ext import commands, menus
+from helpers.constants import NL
 
 from helpers.context import CustomContext
 
@@ -80,10 +81,15 @@ class DocSource:
 @dataclass
 class Doc:
     name: str
+    aliases: Tuple[str]
     url: str
     remove_substrings: Optional[Tuple[str]] = None
     module_name: Optional[str] = None
     source: Optional[DocSource] = None
+
+    @property
+    def qualified_names(self) -> Tuple[str]:
+        return (name.lower() for name in self.aliases + (self.name,))
 
 
 @dataclass
@@ -167,10 +173,15 @@ class DocEntry:
         return self._source
 
 
-DOCS = {
-    "python": Doc(name="Python", url="https://docs.python.org/3"),
+LIBRARIES = {
+    "python": Doc(
+        name="Python",
+        aliases=("py",),
+        url="https://docs.python.org/3"
+    ),
     "discord.py": Doc(
         name="discord.py",
+        aliases=("dpy", "discord"),
         url="https://discordpy.readthedocs.io/en/latest",
         remove_substrings=("ext.commands.",),
         module_name="discord",
@@ -182,7 +193,9 @@ DOCS = {
     ),
     "pymongo": Doc(
         name="PyMongo",
+        aliases=("mongo",),
         url="https://pymongo.readthedocs.io/en/stable",
+        remove_substrings=("collection.",),
         module_name="pymongo",
         source=DocSource(
             module=pymongo,
@@ -192,6 +205,7 @@ DOCS = {
     ),
     "pillow": Doc(
         name="Pillow",
+        aliases=("pil",),
         url="https://pillow.readthedocs.io/en/stable",
         module_name="PIL",
         source=DocSource(
@@ -202,6 +216,24 @@ DOCS = {
         ),
     ),
 }
+
+DEFAULT_LIBRARY = "discord.py"
+
+class LibraryAndQueryConverter(commands.Converter):
+    async def convert(self, ctx: CustomContext, lib_and_query: Optional[str] = None) -> Tuple[str, Union[str, None]]:
+        if not lib_and_query:
+            return DEFAULT_LIBRARY, None
+
+        split = lib_and_query.split(" ", 1)
+        if len(split) == 1:
+            split.insert(0, DEFAULT_LIBRARY)
+
+        lib, query = split
+        names = {a: l for l, d in LIBRARIES.items() for a in d.qualified_names}
+        if og_lib := names.get(lib.lower()):
+            return og_lib, query
+        else:
+            return DEFAULT_LIBRARY, lib_and_query
 
 
 def format_doc(label: str, docs_url: str, source: DocEntrySource = None):
@@ -215,14 +247,16 @@ def format_doc(label: str, docs_url: str, source: DocEntrySource = None):
 
 class DocsPageSource(menus.ListPageSource):
     def __init__(
-        self, ctx: CustomContext, key: str, entries: List[DocEntry], *, per_page: int
+        self, ctx: CustomContext, lib: str, entries: List[DocEntry], *, per_page: int
     ):
         super().__init__(entries, per_page=per_page)
         self.ctx = ctx
         self.bot = self.ctx.bot
+
+        doc = LIBRARIES[lib]
         self.embed = self.bot.Embed(
-            title=f"{DOCS[key].name}"
-            + (f" v{DOCS[key].source.module.__version__}" if DOCS[key].source else "")
+            title=f"{doc.name}"
+            + (f" v{doc.source.module.__version__}" if doc.source else "")
         )
 
     async def format_page(self, menu, entries: List[DocEntry]):
@@ -255,10 +289,6 @@ class Documentation(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-
-    async def cog_load(self):
-        return  # TODO
-        self.build_rtfm_lookup_table(DOCS)
 
     display_emoji = "📄"
 
@@ -341,9 +371,9 @@ class Documentation(commands.Cog):
 
         self._rtfm_cache = cache
 
-    async def do_rtfm(self, ctx, key, obj):
-        if obj is None:
-            doc = DOCS[key]
+    async def do_rtfm(self, ctx: CustomContext, lib: str, query: str):
+        if query is None:
+            doc = LIBRARIES[lib]
             await ctx.send(
                 format_doc(
                     name=doc.name,
@@ -355,76 +385,63 @@ class Documentation(commands.Cog):
 
         if not hasattr(self, "_rtfm_cache"):
             await ctx.typing()
-            await self.build_rtfm_lookup_table(DOCS)
+            await self.build_rtfm_lookup_table(LIBRARIES)
 
-        obj = re.sub(r"^(?:discord\.(?:ext\.)?)?(?:commands\.)?(.+)", r"\1", obj)
+        query = re.sub(r"^(?:discord\.(?:ext\.)?)?(?:commands\.)?(.+)", r"\1", query)
 
-        if key.startswith("discord.py"):
+        if lib.startswith("discord.py"):
             # point the abc.Messageable types properly:
-            q = obj.lower()
+            q = query.lower()
             for name in dir(discord.abc.Messageable):
                 if name[0] == "_":
                     continue
                 if q == name:
-                    obj = f"abc.Messageable.{name}"
+                    query = f"abc.Messageable.{name}"
                     break
 
-        cache = self._rtfm_cache[key]
+        cache = self._rtfm_cache[lib]
 
         def transform(tup):
             return tup[0]
 
-        matches = fuzzy.finder(obj, cache, key=lambda t: t.name, lazy=False)
+        matches = fuzzy.finder(query, cache, key=lambda t: t.name, lazy=False)
 
         if len(matches) == 0:
-            return await ctx.send("Could not find anything. Sorry.")
+            return await ctx.send(f"Could not find anything in `{lib}`'s entities, sorry.")
 
-        formatter = DocsPageSource(ctx, key, matches, per_page=8)
+        formatter = DocsPageSource(ctx, lib, matches, per_page=8)
         menu = BotPages(formatter, ctx=ctx)
         await menu.start()
 
     @commands.group(
-        aliases=["rtfd", "rtfm", "rtfs", "doc", "documentation", "documentations"],
+        aliases=["rtfd", "rtfm", "rtfs", "doc", "documentation"],
         invoke_without_command=True,
-        brief=f"Get documentation and source code link for {', '.join(map(lambda s: f'`{s}`', DOCS.keys()))} entities",
+        brief=f"Get documentation and source code links for {', '.join(map(lambda s: f'`{s}`', LIBRARIES.keys()))} entities",
+        usage=f"""[lib="{DEFAULT_LIBRARY}"] [entity_query=None]""",
+        description=f"""
+Find documentation and source code links for entities of the following modules/libraries:
+{NL.join([f"- {' | '.join(f'`{d.qualified_names}`')}" for l, d in LIBRARIES.items()])}
+
+Events, objects, and functions are all supported through
+a cruddy fuzzy algorithm."""
     )
-    async def docs(self, ctx, *, obj: str = None):
-        """Gives you a documentation link for a discord.py entity.
+    async def docs(self, ctx, *, lib_and_query: LibraryAndQueryConverter = commands.param(converter=LibraryAndQueryConverter)):
+        await self.do_rtfm(ctx, *lib_and_query)
 
-        Events, objects, and functions are all supported through
-        a cruddy fuzzy algorithm.
-        """
-
-        await self.do_rtfm(ctx, "discord.py", obj)
+    @docs.command(name="view")
+    async def docs_view(self, ctx):
+        ...
 
     @docs.command(name="refresh", aliases=["delcache", "del-cache"])
     async def docs_refresh_cache(self, ctx):
         """Refresh rtfm cache. For example to update with latest docs."""
 
         async with ctx.typing():
-            await self.build_rtfm_lookup_table(DOCS)
+            await self.build_rtfm_lookup_table(LIBRARIES)
             refreshed = self._rtfm_cache.keys()
             await ctx.send(
                 f"Refreshed rtfm cache for {', '.join(map(lambda s: f'`{s}`', refreshed))}."
             )
-
-    @docs.command(name="python", aliases=["py"])
-    async def docs_python(self, ctx, *, obj: str = None):
-        """Gives you a documentation link for a Python entity."""
-
-        await self.do_rtfm(ctx, "python", obj)
-
-    @docs.command(name="pymongo", aliases=["mongo", "mongodb"])
-    async def docs_mongo(self, ctx, *, obj: str = None):
-        """Gives you a documentation link for a PyMongo entity."""
-
-        await self.do_rtfm(ctx, "pymongo", obj)
-
-    @docs.command(name="pillow", aliases=["pil"])
-    async def docs_pillow(self, ctx, *, obj: str = None):
-        """Gives you a documentation link for a Pillow entity."""
-
-        await self.do_rtfm(ctx, "pillow", obj)
 
     @commands.command(
         name="source",
