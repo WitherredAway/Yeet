@@ -1,14 +1,22 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from functools import cached_property
 import importlib
 import inspect
+import logging
 import sys
 from types import ModuleType
 import discord
 import re
 import io
 import os
-from typing import Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Tuple, Union
+
+from cogs.utils.utils import format_join
+
+if TYPE_CHECKING:
+    from main import Bot
 
 import zlib
 import aiohttp
@@ -25,6 +33,9 @@ from .utils.source import source
 # but not actually used here
 import PIL
 import pymongo
+
+
+logger = logging.getLogger(__name__)
 
 
 class SphinxObjectFileReader:
@@ -84,6 +95,33 @@ class DocSource:
 
 @dataclass
 class Doc:
+    """The Document object for a documentation source.
+
+    Parameters
+    ----------
+    name: `str`
+        The name of the documentation source.
+    aliases: `Tuple[str]`
+        The extra names that can be used to refer to this documentation source.
+    url: `str`
+        The documentation url.
+    remove_substrings: `Optional[Tuple[str]]` = None
+        A tuple of substrings that will be removed from this Doc's objects' names when parsing.
+    module_name: `Optional[str]` = None
+        The name of the module this Doc represents.
+    source: `Optional[DocSource]` = None
+        A DocSource object containing the data for showing the source code of objects. Will not
+        show source code if this is None.
+
+    Attributes
+    ----------
+    qualified_names: `Tuple[str]`
+        A tuple of all of its names and aliases.
+
+    Methods
+    -------
+    """  # TODO
+
     name: str
     aliases: Tuple[str]
     url: str
@@ -91,222 +129,22 @@ class Doc:
     module_name: Optional[str] = None
     source: Optional[DocSource] = None
 
+    def __hash__(self) -> int:
+        return hash(self.name)
+
+    def __format__(self, spec: str) -> str:
+        if "l" in spec:
+            if hasattr(self, "_objects"):
+                return str(len(self._objects))
+        return self.name
+
     @property
     def qualified_names(self) -> Tuple[str]:
         """All (lowercase) names of the doc."""
 
-        aliases = self.aliases
-        return tuple(n.lower() for n in (self.name,) + aliases)
+        return tuple(n.lower() for n in (self.name, *self.aliases))
 
-
-@dataclass
-class DocEntrySource:
-    url: str
-    parent: bool  # Whether the parent object's source is being shown e.g. if it's an attribute
-    object: object
-
-
-@dataclass
-class DocEntry:
-    name: str
-    doc: Doc
-    path: str
-    location: str
-
-    @property
-    def docs_url(self) -> str:
-        return os.path.join(self.doc.url, self.location)
-
-    def get_source(self) -> DocEntrySource | None:
-        if hasattr(self, "_source"):
-            return self._source
-
-        if not self.path or not self.doc.source or not self.doc.module_name:
-            return None
-
-        parent_module_name = self.doc.module_name
-        split = self.path.split(".")
-        if len(split) == 1 and split[0] != parent_module_name:
-            split.insert(0, parent_module_name)
-
-        # Get module name by looping through and importing all
-        # cummulative split parts from the start until it errors.
-        # Hacky but it works. Theoretically.
-        module = None
-        for i in range(len(split)):
-            try:
-                module_name = ".".join(split[0 : i + 1])
-                candidate = sys.modules.get(module_name) or importlib.import_module(
-                    module_name
-                )
-            except ModuleNotFoundError:
-                break
-            else:
-                module = candidate
-                if module_name not in sys.modules:
-                    sys.modules[module_name] = module
-
-        if module is None:
-            return None
-
-        split = split[i:]
-        obj = None
-        filename = None
-        parent = False
-        for attr in split:
-            try:
-                candidate = getattr(obj or module, attr)
-                filename = inspect.getsourcefile(candidate)
-                lines, firstlineno = inspect.getsourcelines(candidate)
-            except (AttributeError, TypeError):
-                parent = True  # Whether the parent object's source is being shown
-                break
-            except OSError:
-                print(f"Failed to get source of {candidate}.")
-                continue
-            else:
-                obj = candidate
-
-        if obj is None:
-            return None
-
-        location = os.path.join(
-            self.doc.source.directory,
-            os.path.relpath(filename).replace("\\", "/").split("/site-packages/")[-1]  # Might cause issues for hardcoding 'site-packages'
-        )
-        url = f"{self.doc.source.url}/{location}#L{firstlineno}-L{firstlineno + len(lines) - 1}"
-
-        self._source = DocEntrySource(url=url, object=obj, parent=parent)
-        return self._source
-
-
-LIBRARIES = {
-    "python": Doc(
-        name="Python",
-        aliases=("py",),
-        url="https://docs.python.org/3"
-    ),
-    "discord.py": Doc(
-        name="discord.py",
-        aliases=("dpy", "discord"),
-        url="https://discordpy.readthedocs.io/en/latest",
-        remove_substrings=("ext.commands.",),
-        module_name="discord",
-        source=DocSource(
-            base_url="https://github.com/Rapptz/discord.py",
-            module=discord,
-            branch_fmt_str="v{major}.{minor}.x",
-        ),
-    ),
-    "pymongo": Doc(
-        name="PyMongo",
-        aliases=("mongo",),
-        url="https://pymongo.readthedocs.io/en/stable",
-        remove_substrings=("collection.",),
-        module_name="pymongo",
-        source=DocSource(
-            base_url="https://github.com/mongodb/mongo-python-driver",
-            module=pymongo,
-            branch_fmt_str="v{major}.{minor}",
-        ),
-    ),
-    "pillow": Doc(
-        name="Pillow",
-        aliases=("pil",),
-        url="https://pillow.readthedocs.io/en/stable",
-        module_name="PIL",
-        source=DocSource(
-            base_url="https://github.com/python-pillow/Pillow",
-            module=PIL,
-            branch_fmt_str="{major}.{minor}.x",
-            directory="src",
-        ),
-    ),
-}
-
-DEFAULT_LIBRARY = "discord.py"
-
-class LibraryAndQueryConverter(commands.Converter):
-    async def convert(self, ctx: CustomContext, lib_and_query: Optional[str] = None) -> Tuple[str, Union[str, None]]:
-        if not lib_and_query:  # No parameters pass. use default lib and no query
-            return DEFAULT_LIBRARY, None
-
-        names = {a: l for l, d in LIBRARIES.items() for a in d.qualified_names}
-
-        lib_and_or_query = lib_and_query.split(" ", 1)
-        if len(lib_and_or_query) == 1:
-            # Only lib or query passed in
-            if lib_and_or_query[0] in names:  # It's lib. no query
-                # We don't want to lower the entire thing, just the library name
-                return names[lib_and_or_query[0].lower()], None
-            else:  # It's query. use default lib
-                return DEFAULT_LIBRARY, lib_and_or_query[0]
-        else:
-            # Two supposed parameters passed
-            lib, query = lib_and_or_query
-            if og_lib := names.get(lib.lower()):  # If first one is lib
-                return og_lib, query
-            else:
-                return DEFAULT_LIBRARY, lib_and_query  # If the entire thing is query. use default lib
-
-
-def format_doc(label: str, docs_url: str, source: DocEntrySource | DocSource = None):
-    text = f"[`{label}`]({docs_url})"
-    if source:
-        source_text = f"{'ᵖᵃʳᵉⁿᵗ ' if getattr(source, 'parent', None) else ''}ˢᵒᵘʳᶜᵉ"
-        text += f" \u200b *[{source_text}]({source.url})*" if source else ""
-
-    return text
-
-
-class DocsPageSource(menus.ListPageSource):
-    def __init__(
-        self, ctx: CustomContext, lib: str, entries: List[DocEntry], *, per_page: int
-    ):
-        super().__init__(entries, per_page=per_page)
-        self.ctx = ctx
-        self.bot = self.ctx.bot
-
-        doc = LIBRARIES[lib]
-        self.embed = self.bot.Embed(
-            title=f"{doc.name}"
-            + (f" v{doc.source.module.__version__}" if doc.source else "")
-        )
-
-    async def format_page(self, menu, entries: List[DocEntry]):
-        self.embed.clear_fields()
-        self.embed.description = "\n".join(
-            [
-                format_doc(
-                    label=doc_entry.name,
-                    docs_url=doc_entry.docs_url,
-                    source=await self.bot.loop.run_in_executor(
-                        None, doc_entry.get_source
-                    ),
-                )
-                for doc_entry in entries
-            ]
-        )
-
-        maximum = self.get_max_pages()
-        if maximum > 1:
-            text = (
-                f"Page {menu.current_page + 1}/{maximum} ({len(self.entries)} entries)"
-            )
-            self.embed.set_footer(text=text)
-
-        return self.embed
-
-
-class Documentation(commands.Cog):
-    """Documentation of Discord.py and source code of features"""
-
-    def __init__(self, bot):
-        self.bot = bot
-
-    display_emoji = "📄"
-
-    def parse_object_inv(self, stream: SphinxObjectFileReader, doc: Doc):
+    def parse_object_inv(self, stream: SphinxObjectFileReader) -> List[DocObject]:
         # key: URL
         # n.b.: key doesn't have `discord` or `discord.ext.commands` namespaces
         result = []
@@ -354,56 +192,43 @@ class Documentation(commands.Cog):
             key = path = name if dispname == "-" else dispname
             prefix = f"{subdirective}:" if domain == "std" else ""
 
-            key = key.replace(f"{doc.module_name}.", "")
-            if doc.remove_substrings:
-                for r in doc.remove_substrings:
+            key = key.replace(f"{self.module_name}.", "")
+            if self.remove_substrings:
+                for r in self.remove_substrings:
                     key = key.replace(r, "")
 
-            doc_entry = DocEntry(
-                name=f"{prefix}{key}",
-                doc=doc,
+            obj = DocObject(
+                label=f"{prefix}{key}",
+                doc=self,
                 path=path,
                 location=location,
             )
-            result.append(doc_entry)
+            result.append(obj)
 
         return result
 
-    async def build_rtfm_lookup_table(self, docs: Dict[str, Doc]):
-        cache = {}
-        for doc_name, doc in docs.items():
-            sub = cache[doc_name] = {}
-            async with aiohttp.ClientSession() as session:
-                async with session.get(os.path.join(doc.url, "objects.inv")) as resp:
-                    if resp.status != 200:
-                        raise RuntimeError(
-                            "Cannot build rtfm lookup table, try again later."
-                        )
+    async def build_objects(self, bot: Bot):
+        async with bot.session.get(os.path.join(self.url, "objects.inv")) as resp:
+            if resp.status != 200:
+                raise RuntimeError("Cannot build rtfm lookup table, try again later.")
 
-                    stream = SphinxObjectFileReader(await resp.read())
-                    cache[doc_name] = self.parse_object_inv(stream, doc)
-
-        self._rtfm_cache = cache
-
-    async def do_rtfm(self, ctx: CustomContext, lib: str, query: str):
-        if query is None:
-            doc = LIBRARIES[lib]
-            await ctx.send(
-                format_doc(
-                    label=doc.name,
-                    docs_url=doc.url,
-                    source=doc.source,
-                )
+            stream = SphinxObjectFileReader(await resp.read())
+            self._objects = await bot.loop.run_in_executor(
+                None, self.parse_object_inv, stream
             )
-            return
 
-        if not hasattr(self, "_rtfm_cache"):
-            await ctx.typing()
-            await self.build_rtfm_lookup_table(LIBRARIES)
+    async def get_objects(self, bot: Bot) -> List[DocObject]:
+        if not hasattr(self, "_objects"):
+            await self.build_objects(bot)
+        return self._objects
 
+    def clear_objects(self):
+        if hasattr(self, "_source"):
+            del self._objects
+
+    async def fuzzyfind(self, bot: Bot, query: str) -> Generator[DocObject]:
         query = re.sub(r"^(?:discord\.(?:ext\.)?)?(?:commands\.)?(.+)", r"\1", query)
-
-        if lib.startswith("discord.py"):
+        if self.name.lower().startswith("discord.py"):
             # point the abc.Messageable types properly:
             q = query.lower()
             for name in dir(discord.abc.Messageable):
@@ -413,48 +238,291 @@ class Documentation(commands.Cog):
                     query = f"abc.Messageable.{name}"
                     break
 
-        cache = self._rtfm_cache[lib]
+        matches = fuzzy.finder(
+            query, await self.get_objects(bot), key=lambda obj: obj.label, lazy=False
+        )
+        return matches
 
-        def transform(tup):
-            return tup[0]
 
-        matches = fuzzy.finder(query, cache, key=lambda t: t.name, lazy=False)
+@dataclass
+class DocObjectSource:
+    url: str
+    parent: bool  # Whether the parent object's source is being shown e.g. if it's an attribute
+    object: object
 
-        if len(matches) == 0:
-            return await ctx.send(f"Could not find anything in `{lib}`'s entities, sorry.")
 
-        formatter = DocsPageSource(ctx, lib, matches, per_page=8)
+@dataclass
+class DocObject:
+    label: str
+    doc: Doc
+    path: str
+    location: str
+
+    @property
+    def docs_url(self) -> str:
+        return os.path.join(self.doc.url, self.location)
+
+    def build_source(self):
+        doc_object = None
+        if all((self.path, self.doc.source, self.doc.module_name)):
+            parent_module_name = self.doc.module_name
+            split = self.path.split(".")
+            if len(split) == 1 and split[0] != parent_module_name:
+                split.insert(0, parent_module_name)
+
+            # Get module name by looping through and importing all
+            # cummulative split parts from the start until it errors.
+            # Hacky but it works. Theoretically.
+            module = None
+            for i in range(len(split)):
+                try:
+                    module_name = ".".join(split[0 : i + 1])
+                    candidate = sys.modules.get(module_name) or importlib.import_module(
+                        module_name
+                    )
+                except ModuleNotFoundError:
+                    break
+                else:
+                    module = candidate
+                    if module_name not in sys.modules:
+                        sys.modules[module_name] = module
+
+            if module is not None:
+                split = split[i:]
+                obj = None
+                filename = None
+                parent = False
+                for attr in split:
+                    try:
+                        candidate = getattr(obj or module, attr)
+                        filename = inspect.getsourcefile(candidate)
+                        lines, firstlineno = inspect.getsourcelines(candidate)
+                    except (AttributeError, TypeError):
+                        parent = (
+                            True  # Whether the parent object's source is being shown
+                        )
+                        break
+                    except OSError:
+                        print(f"Failed to get source of {candidate}.")
+                        continue
+                    else:
+                        obj = candidate
+
+                if obj is not None:
+                    location = os.path.join(
+                        self.doc.source.directory,
+                        os.path.relpath(filename)
+                        .replace("\\", "/")
+                        .split("/site-packages/")[
+                            -1
+                        ],  # Might cause issues for hardcoding 'site-packages'
+                    )
+                    url = f"{self.doc.source.url}/{location}#L{firstlineno}-L{firstlineno + len(lines) - 1}"
+                    doc_object = DocObjectSource(url=url, object=obj, parent=parent)
+
+        self._source = doc_object
+
+    async def get_source(self, bot: Bot) -> DocObjectSource | None:
+        if not hasattr(self, "_source"):
+            await bot.loop.run_in_executor(None, self.build_source)
+        return self._source
+
+    def clear_source(self):
+        if hasattr(self, "_source"):
+            del self._source
+
+
+DOCS = {
+    "python": Doc(name="Python", aliases=("py",), url="https://docs.python.org/3"),
+    "discord.py": Doc(
+        name="discord.py",
+        aliases=("dpy", "discord"),
+        url="https://discordpy.readthedocs.io/en/latest",
+        remove_substrings=("ext.commands.",),
+        module_name="discord",
+        source=DocSource(
+            base_url="https://github.com/Rapptz/discord.py",
+            module=discord,
+            branch_fmt_str="v{major}.{minor}.x",
+        ),
+    ),
+    "pymongo": Doc(
+        name="PyMongo",
+        aliases=("mongo",),
+        url="https://pymongo.readthedocs.io/en/stable",
+        remove_substrings=("collection.",),
+        module_name="pymongo",
+        source=DocSource(
+            base_url="https://github.com/mongodb/mongo-python-driver",
+            module=pymongo,
+            branch_fmt_str="v{major}.{minor}",
+        ),
+    ),
+    "pillow": Doc(
+        name="Pillow",
+        aliases=("pil",),
+        url="https://pillow.readthedocs.io/en/stable",
+        module_name="PIL",
+        source=DocSource(
+            base_url="https://github.com/python-pillow/Pillow",
+            module=PIL,
+            branch_fmt_str="{major}.{minor}.x",
+            directory="src",
+        ),
+    ),
+}
+
+DEFAULT_LIBRARY = "discord.py"
+
+
+class DocAndObjectsConverter(commands.Converter):
+    async def convert(
+        self, ctx: CustomContext, lib_and_query: Optional[str] = None
+    ) -> Tuple[Doc, Union[List[DocObject], None]]:
+        if not lib_and_query:  # No parameters pass. use default lib and no query
+            lib, query = DEFAULT_LIBRARY, None
+
+        else:
+            names = {a: l for l, d in DOCS.items() for a in d.qualified_names}
+
+            lib_and_or_query = lib_and_query.split(" ", 1)
+            if len(lib_and_or_query) == 1:
+                # Only lib or query passed in
+                if lib_and_or_query[0] in names:  # It's lib. no query
+                    # We don't want to lower the entire thing, just the library name
+                    lib, query = names[lib_and_or_query[0].lower()], None
+                else:  # It's query. use default lib
+                    lib, query = DEFAULT_LIBRARY, lib_and_or_query[0]
+            else:
+                # Two supposed parameters passed
+                lib, query = lib_and_or_query
+                if og_lib := names.get(lib.lower()):  # If first one is lib
+                    lib, query = og_lib, query
+                else:
+                    lib, query = (
+                        DEFAULT_LIBRARY,
+                        lib_and_query,
+                    )  # If the entire thing is query. use default lib
+
+        doc = DOCS[lib]
+        objs = await doc.fuzzyfind(ctx.bot, query) if query is not None else None
+
+        if objs is None:
+            await ctx.send(
+                format_doc(
+                    label=doc.name,
+                    docs_url=doc.url,
+                    source=doc.source,
+                )
+            )
+        elif len(objs) == 0:
+            await ctx.send(
+                f"Could not find anything in `{doc.name}`'s entities, sorry."
+            )
+
+        return doc, objs
+
+
+def format_doc(label: str, docs_url: str, source: DocObjectSource | DocSource = None):
+    text = f"[`{label}`]({docs_url})"
+    if source:
+        source_text = f"{'ᵖᵃʳᵉⁿᵗ ' if getattr(source, 'parent', None) else ''}ˢᵒᵘʳᶜᵉ"
+        text += f" \u200b *[{source_text}]({source.url})*" if source else ""
+
+    return text
+
+
+class DocsPageSource(menus.ListPageSource):
+    def __init__(
+        self, ctx: CustomContext, doc: Doc, objects: List[DocObject], *, per_page: int
+    ):
+        super().__init__(objects, per_page=per_page)
+        self.ctx = ctx
+        self.bot = self.ctx.bot
+
+        self.embed = self.bot.Embed(
+            title=f"{doc.name}"
+            + (f" v{doc.source.module.__version__}" if doc.source else "")
+        )
+
+    async def format_page(self, menu, objects: List[DocObject]):
+        self.embed.clear_fields()
+        self.embed.description = "\n".join(
+            [
+                format_doc(
+                    label=obj.label,
+                    docs_url=obj.docs_url,
+                    source=await obj.get_source(self.bot),
+                )
+                for obj in objects
+            ]
+        )
+
+        maximum = self.get_max_pages()
+        if maximum > 1:
+            text = (
+                f"Page {menu.current_page + 1}/{maximum} ({len(self.entries)} objects)"
+            )
+            self.embed.set_footer(text=text)
+
+        return self.embed
+
+
+class Documentation(commands.Cog):
+    """Documentation of Discord.py and source code of features"""
+
+    def __init__(self, bot):
+        self.bot = bot
+
+    display_emoji = "📄"
+
+    async def do_rtfm(self, ctx: CustomContext, doc: Doc, objs: List[DocObject] | None):
+        if not objs:
+            return
+
+        formatter = DocsPageSource(ctx, doc, objs, per_page=8)
         menu = BotPages(formatter, ctx=ctx)
         await menu.start()
 
     @commands.group(
         aliases=["rtfd", "rtfm", "rtfs", "doc", "documentation"],
         invoke_without_command=True,
-        brief=f"Get documentation and source code links for {', '.join(map(lambda s: f'`{s}`', LIBRARIES.keys()))} entities",
+        brief=f"Get documentation and source code links for {', '.join(map(lambda s: f'`{s}`', DOCS.keys()))} entities",
         usage=f"""[lib="{DEFAULT_LIBRARY}"] [entity_query=None]""",
         description=f"""
 Find documentation and source code links for entities of the following modules/libraries:
-{NL.join([f"- {'/'.join([f'`{n}`' for n in d.qualified_names])}" for l, d in LIBRARIES.items()])}
+{NL.join([f"- {'/'.join([f'`{n}`' for n in d.qualified_names])}" for l, d in DOCS.items()])}
 
 Events, objects, and functions are all supported through
-a cruddy fuzzy algorithm."""
+a cruddy fuzzy algorithm.""",
     )
-    async def docs(self, ctx: CustomContext, *, lib_and_query: LibraryAndQueryConverter = commands.param(default=LibraryAndQueryConverter().convert)):
-        await self.do_rtfm(ctx, *lib_and_query)
+    async def docs(
+        self,
+        ctx: CustomContext,
+        *,
+        doc_and_objects: DocAndObjectsConverter = commands.param(
+            default=DocAndObjectsConverter().convert
+        ),
+    ):
+        await self.do_rtfm(ctx, *doc_and_objects)
 
-    @docs.command(name="view")
-    async def docs_view(self, ctx: CustomContext):
-        ...
+    async def refresh_cache(self, libraries: Dict[str, Doc]) -> Tuple[Doc]:
+        refreshed = {}
+        for doc_name, doc in libraries.items():
+            old_objs = len(getattr(doc, "_objects", []))
+            await doc.build_objects(self.bot)
+            refreshed[doc] = len(doc._objects) - old_objs
+        return tuple(refreshed.items())
 
-    @docs.command(name="refresh", aliases=["delcache", "del-cache"])
+    @docs.command(name="refresh", aliases=["recache"])
     async def docs_refresh_cache(self, ctx: CustomContext):
         """Refresh rtfm cache. For example to update with latest docs."""
 
         async with ctx.typing():
-            await self.build_rtfm_lookup_table(LIBRARIES)
-            refreshed = self._rtfm_cache.keys()
+            refreshed = await self.refresh_cache(DOCS)
             await ctx.send(
-                f"Refreshed rtfm cache for {', '.join(map(lambda s: f'`{s}`', refreshed))}."
+                f"Refreshed rtfm cache of the following modules/libraries:\n"
+                f"{format_join(refreshed, '- `{0}` — {0:l} objects ({1:+})', joiner=NL)}"
             )
 
     @commands.command(

@@ -272,17 +272,41 @@ async def url_to_image(image_url: str, session: aiohttp.ClientSession):
     return image
 
 
-def format_join(iterable: Iterable, *, symbol: Optional[str] = "`", joiner: Optional[str] = ", ") -> str:
+def isiterable(variable: Any) -> bool:
+    if isinstance(variable, str):  # For our case we don't want to include string
+        return False
+
+    try:
+        iter(variable)
+        return True
+    except TypeError:
+        return False
+
+
+def format_join(
+    iterable: Iterable,
+    fmt_string: Optional[str] = "`{}`",
+    *,
+    joiner: Optional[str] = ", ",
+) -> str:
     """Join the items of an iterable that have been put within provided symbol.
 
     Parameters
     ----------
     iterable: `Iterable`
-        The iterable object whose items to format and join
-    symbol: `str`
-        The symbol whom to put the items within. "\`" by default.
+        The iterable object whose items to format and join.
+    fmt_string: `str`
+        The string to `.format()` with for each item. Inline codeblock by default.
     joiner: `str`
-        The string by which to join the formatted items. ", " by default
+        The fmt_string by which to join the formatted items. ", " by default.
     """
 
-    return joiner.join([f"{symbol}{i}{symbol}" for i in iterable])
+    join_list = []
+    for i in iterable:
+        if isinstance(i, dict):
+            method = "format_map"
+        else:
+            method = "format"
+        join_list.append(getattr(fmt_string, method)(*i if isiterable(i) else i))
+
+    return joiner.join(join_list)

@@ -145,7 +145,7 @@ def extract_matches(query, choices, *, scorer=quick_ratio, score_cutoff=0):
     return to_return
 
 
-def finder(text, collection, *, key=None, lazy=True):
+def finder(text, collection, *, key=None, lazy=True, n=None):
     suggestions = []
     text = str(text)
     pat = ".*?".join(map(re.escape, text))
