@@ -1,17 +1,20 @@
-import asyncio
-import datetime
+from dataclasses import dataclass
+import importlib
+import inspect
+import sys
 import discord
 import re
-import zlib
 import io
 import os
-import aiohttp
-import lxml.etree as etree
+from typing import Dict, List, Optional, Tuple
 
+import zlib
+import aiohttp
 from discord.ext import commands, menus
+
+from helpers.context import CustomContext
+
 from .utils import fuzzy
-from collections import Counter
-from typing import Optional, Tuple
 from .utils.paginator import BotPages
 from .utils.source import source
 
@@ -49,18 +52,124 @@ class SphinxObjectFileReader:
                 pos = buf.find(b"\n")
 
 
+@dataclass
+class Source:
+    url: str
+    branch: str
+
+@dataclass
+class Doc:
+    name: str
+    url: str
+    module_name: Optional[str] = None
+    source: Optional[Source] = None
+
+@dataclass
+class DocEntry:
+    name: str
+    doc: Doc
+    path: str
+    location: str
+
+    @property
+    def docs_url(self) -> str:
+        return os.path.join(self.doc.url, self.location)
+
+    def get_source_url(self) -> str | None:
+        if not self.path or not self.doc.source or not self.doc.module_name:
+            return None
+
+        parent_module_name = self.doc.module_name
+        split = self.path.split(".")
+        if len(split) == 1 and split[0] != parent_module_name:
+            split.insert(0, parent_module_name)
+
+        # Get module name by looping through and importing all
+        # cummulative split parts from the start until it errors.
+        # Hacky but it works. Theoretically.
+        module = None
+        for i in range(len(split)):
+            try:
+                module_name = ".".join(split[0:i+1])
+                candidate = sys.modules.get(module_name) or importlib.import_module(module_name)
+            except ModuleNotFoundError:
+                break
+            else:
+                module = candidate
+                if module_name not in sys.modules:
+                    sys.modules[module_name] = module
+
+        if module is None:
+            return None
+
+        split = split[i:]
+        obj = None
+        parent = False
+        for attr in split:
+            try:
+                candidate = getattr(obj or module, attr)
+                lines, firstlineno = inspect.getsourcelines(candidate)
+            except (AttributeError, TypeError):
+                parent = True  # Whether the parent object's source is being shown
+                break
+            else:
+                obj = candidate
+
+        if obj is None:
+            return None
+
+        location = obj.__module__.replace(".", "/") + ".py"
+        return parent, f"{self.doc.source.url}/blob/{self.doc.source.branch}/{location}#L{firstlineno}-L{firstlineno + len(lines) - 1}"
+
+DOCS = {
+    "python": Doc(
+        name="Python",
+        url="https://docs.python.org/3"
+    ),
+    "discord.py": Doc(
+        name="discord.py",
+        url="https://discordpy.readthedocs.io/en/latest",
+        module_name="discord",
+        source=Source(
+            url="https://github.com/Rapptz/discord.py",
+            branch=f"v{discord.version_info.major}.{discord.version_info.minor}.x"
+        )
+    ),
+    "pymongo": Doc(
+        name="PyMongo",
+        url="https://pymongo.readthedocs.io/en/stable",
+        module_name="pymongo",
+        source=Source(
+            url="https://github.com/mongodb/mongo-python-driver",
+            branch="master",
+        )
+    )
+}
+
+
+def format_doc(label: str, docs_url: str, source: Tuple[bool, str] = None):
+    if source:
+        parent, source_url = source
+    return f"[`{label}`]({docs_url})" + (f" \u200b *[{'ᵖᵃʳᵉⁿᵗ ' if parent else ''}ˢᵒᵘʳᶜᵉ]({source_url})*" if source else "")
+
+
 class DocsPageSource(menus.ListPageSource):
-    def __init__(self, ctx, projname: str, entries: Tuple, *, per_page: int):
+    def __init__(self, ctx: CustomContext, key: str, entries: List[DocEntry], *, per_page: int):
         super().__init__(entries, per_page=per_page)
-        self.projname = projname
         self.ctx = ctx
         self.bot = self.ctx.bot
-        self.embed = self.bot.Embed(title=f"{projname} docs")
+        self.embed = self.bot.Embed(title=f"{DOCS[key].name} docs")
 
-    async def format_page(self, menu, entries):
+    async def format_page(self, menu, entries: List[DocEntry]):
         self.embed.clear_fields()
         self.embed.description = "\n".join(
-            [f"[`{key}`]({url})" for key, url in entries]
+            [
+                format_doc(
+                    label=doc_entry.name,
+                    docs_url=doc_entry.docs_url,
+                    source=await self.bot.loop.run_in_executor(None, doc_entry.get_source_url)
+                ) for doc_entry in entries
+            ]
         )
 
         maximum = self.get_max_pages()
@@ -73,27 +182,22 @@ class DocsPageSource(menus.ListPageSource):
         return self.embed
 
 
-PAGE_TYPES = {
-    "discord.py": "https://discordpy.readthedocs.io/en/latest",
-    "python": "https://docs.python.org/3",
-    "pymongo": "https://pymongo.readthedocs.io/en/stable"
-}
-
-
 class Documentation(commands.Cog):
     """Documentation of Discord.py and source code of features"""
 
     def __init__(self, bot):
         self.bot = bot
 
-        self.projnames = {}
+    async def cog_load(self):
+        return  # TODO
+        self.build_rtfm_lookup_table(DOCS)
 
     display_emoji = "📄"
 
-    def parse_object_inv(self, stream, url):
+    def parse_object_inv(self, stream: SphinxObjectFileReader, doc: Doc):
         # key: URL
         # n.b.: key doesn't have `discord` or `discord.ext.commands` namespaces
-        result = {}
+        result = []
 
         # first line is version info
         inv_version = stream.readline().rstrip()
@@ -135,44 +239,50 @@ class Documentation(commands.Cog):
             if location.endswith("$"):
                 location = location[:-1] + name
 
-            key = name if dispname == "-" else dispname
+            key = path = name if dispname == "-" else dispname
             prefix = f"{subdirective}:" if domain == "std" else ""
 
             if projname == "discord.py":
                 key = key.replace("discord.ext.commands.", "").replace("discord.", "")
-
             elif projname == "PyMongo":
                 key = key.replace("pymongo.collection.", "").replace("pymongo.", "")
 
-            result[f"{prefix}{key}"] = os.path.join(url, location)
-            self.projnames[key] = projname
+            result.append(
+                DocEntry(
+                    name=f"{prefix}{key}",
+                    doc=doc,
+                    path=path,
+                    location=location,
+                )
+            )
 
         return result
 
-    async def build_rtfm_lookup_table(self, page_types):
+    async def build_rtfm_lookup_table(self, docs: Dict[str, Doc]):
         cache = {}
-        for key, page in page_types.items():
-            sub = cache[key] = {}
+        for doc_name, doc in docs.items():
+            sub = cache[doc_name] = {}
             async with aiohttp.ClientSession() as session:
-                async with session.get(page + "/objects.inv") as resp:
+                async with session.get(doc.url + "/objects.inv") as resp:
                     if resp.status != 200:
                         raise RuntimeError(
                             "Cannot build rtfm lookup table, try again later."
                         )
 
                     stream = SphinxObjectFileReader(await resp.read())
-                    cache[key] = self.parse_object_inv(stream, page)
+                    cache[doc_name] = self.parse_object_inv(stream, doc)
 
         self._rtfm_cache = cache
 
     async def do_rtfm(self, ctx, key, obj):
         if obj is None:
-            await ctx.send(PAGE_TYPES[key])
+            doc = DOCS[key]
+            await ctx.send(format_doc(name=doc.name, docs_url=doc.url, source_url=getattr(doc.source, "url", None)))
             return
 
         if not hasattr(self, "_rtfm_cache"):
             await ctx.typing()
-            await self.build_rtfm_lookup_table(PAGE_TYPES)
+            await self.build_rtfm_lookup_table(DOCS)
 
         obj = re.sub(r"^(?:discord\.(?:ext\.)?)?(?:commands\.)?(.+)", r"\1", obj)
 
@@ -186,24 +296,24 @@ class Documentation(commands.Cog):
                     obj = f"abc.Messageable.{name}"
                     break
 
-        cache = list(self._rtfm_cache[key].items())
+        cache = self._rtfm_cache[key]
 
         def transform(tup):
             return tup[0]
 
-        matches = fuzzy.finder(obj, cache, key=lambda t: t[0], lazy=False)
+        matches = fuzzy.finder(obj, cache, key=lambda t: t.name, lazy=False)
 
         if len(matches) == 0:
             return await ctx.send("Could not find anything. Sorry.")
 
-        formatter = DocsPageSource(ctx, self.projnames.get(key, key), matches, per_page=8)
+        formatter = DocsPageSource(ctx, key, matches, per_page=8)
         menu = BotPages(formatter, ctx=ctx)
         await menu.start()
 
     @commands.group(
-        aliases=["rtfd", "rtfm", "doc", "documentation", "documentations"],
+        aliases=["rtfd", "rtfm", "rtfs", "doc", "documentation", "documentations"],
         invoke_without_command=True,
-        brief=f"Get documentation link for {', '.join(map(lambda s: f'`{s}`', PAGE_TYPES))} entities",
+        brief=f"Get documentation and source code link for {', '.join(map(lambda s: f'`{s}`', DOCS.keys()))} entities",
     )
     async def docs(self, ctx, *, obj: str = None):
         """Gives you a documentation link for a discord.py entity.
@@ -215,9 +325,9 @@ class Documentation(commands.Cog):
         await self.do_rtfm(ctx, "discord.py", obj)
 
     @docs.command(name="refresh", aliases=["delcache", "del-cache"])
-    async def docs_delete_cache(self, ctx):
+    async def docs_refresh_cache(self, ctx):
         async with ctx.typing():
-            await self.build_rtfm_lookup_table(PAGE_TYPES)
+            await self.build_rtfm_lookup_table(DOCS)
             refreshed = self._rtfm_cache.keys()
             await ctx.send(f"Refreshed rtfm cache for {', '.join(map(lambda s: f'`{s}`', refreshed))}.")
 

@@ -39,13 +39,13 @@ def source(bot: commands.Bot, *, command: str):
         filename = src.co_filename
 
     lines, firstlineno = inspect.getsourcelines(src)
-    if not module.startswith("discord"):
-        # not a built-in command
-        location = os.path.relpath(filename).replace("\\", "/")
     if module.startswith("discord"):
         location = module.replace(".", "/") + ".py"
         source_url = "https://github.com/Rapptz/discord.py"
         branch = "master"
+    else:
+        # not a built-in command
+        location = os.path.relpath(filename).replace("\\", "/")
 
     final_url = f"{source_url}/blob/{branch}/{location}#L{firstlineno}-L{firstlineno + len(lines) - 1}"
     return final_url
