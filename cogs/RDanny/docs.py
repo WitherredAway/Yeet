@@ -50,11 +50,12 @@ class SphinxObjectFileReader:
 
 
 class DocsPageSource(menus.ListPageSource):
-    def __init__(self, ctx, entries: Tuple, *, per_page: int):
+    def __init__(self, ctx, projname: str, entries: Tuple, *, per_page: int):
         super().__init__(entries, per_page=per_page)
+        self.projname = projname
         self.ctx = ctx
         self.bot = self.ctx.bot
-        self.embed = self.bot.Embed()
+        self.embed = self.bot.Embed(title=f"{projname} docs")
 
     async def format_page(self, menu, entries):
         self.embed.clear_fields()
@@ -72,11 +73,20 @@ class DocsPageSource(menus.ListPageSource):
         return self.embed
 
 
+PAGE_TYPES = {
+    "discord.py": "https://discordpy.readthedocs.io/en/latest",
+    "python": "https://docs.python.org/3",
+    "pymongo": "https://pymongo.readthedocs.io/en/stable"
+}
+
+
 class Documentation(commands.Cog):
     """Documentation of Discord.py and source code of features"""
 
     def __init__(self, bot):
         self.bot = bot
+
+        self.projnames = {}
 
     display_emoji = "📄"
 
@@ -131,7 +141,11 @@ class Documentation(commands.Cog):
             if projname == "discord.py":
                 key = key.replace("discord.ext.commands.", "").replace("discord.", "")
 
+            elif projname == "PyMongo":
+                key = key.replace("pymongo.collection.", "").replace("pymongo.", "")
+
             result[f"{prefix}{key}"] = os.path.join(url, location)
+            self.projnames[key] = projname
 
         return result
 
@@ -152,22 +166,17 @@ class Documentation(commands.Cog):
         self._rtfm_cache = cache
 
     async def do_rtfm(self, ctx, key, obj):
-        page_types = {
-            "latest": "https://discordpy.readthedocs.io/en/latest",
-            "python": "https://docs.python.org/3",
-        }
-
         if obj is None:
-            await ctx.send(page_types[key])
+            await ctx.send(PAGE_TYPES[key])
             return
 
         if not hasattr(self, "_rtfm_cache"):
             await ctx.typing()
-            await self.build_rtfm_lookup_table(page_types)
+            await self.build_rtfm_lookup_table(PAGE_TYPES)
 
         obj = re.sub(r"^(?:discord\.(?:ext\.)?)?(?:commands\.)?(.+)", r"\1", obj)
 
-        if key.startswith("latest"):
+        if key.startswith("discord.py"):
             # point the abc.Messageable types properly:
             q = obj.lower()
             for name in dir(discord.abc.Messageable):
@@ -187,7 +196,7 @@ class Documentation(commands.Cog):
         if len(matches) == 0:
             return await ctx.send("Could not find anything. Sorry.")
 
-        formatter = DocsPageSource(ctx, matches, per_page=8)
+        formatter = DocsPageSource(ctx, self.projnames.get(key, key), matches, per_page=8)
         menu = BotPages(formatter, ctx=ctx)
         await menu.start()
 
@@ -202,22 +211,20 @@ class Documentation(commands.Cog):
         Events, objects, and functions are all supported through
         a cruddy fuzzy algorithm.
         """
-        key = "latest"
-        await self.do_rtfm(ctx, key, obj)
+
+        await self.do_rtfm(ctx, "discord.py", obj)
 
     @docs.command(name="python", aliases=["py"])
     async def docs_python(self, ctx, *, obj: str = None):
         """Gives you a documentation link for a Python entity."""
-        key = "python"
-        await self.do_rtfm(ctx, key, obj)
 
-    def library_name(self, channel):
-        # language_<name>
-        name = channel.name
-        index = name.find("_")
-        if index != -1:
-            name = name[index + 1 :]
-        return name.replace("-", ".")
+        await self.do_rtfm(ctx, "python", obj)
+
+    @docs.command(name="pymongo", aliases=["mongo", "mongodb"])
+    async def docs_mongo(self, ctx, *, obj: str = None):
+        """Gives you a documentation link for a pymongo entity."""
+
+        await self.do_rtfm(ctx, "pymongo", obj)
 
     @commands.command(
         name="source",
@@ -231,7 +238,7 @@ class Documentation(commands.Cog):
     )
     async def source(self, ctx, *, command: str = None):
         """
-        To display the source code of a subcommand you can separate it by periods, e.g. timer.start for the start subcommand of the timer command or by spaces.
+        To display the source code of a subcommand. You can separate it by periods, e.g. timer.start for the start subcommand of the timer command or by spaces.
         """
         # use the imported source function from utils/source.py
         final_url = source(self.bot, command=command)
