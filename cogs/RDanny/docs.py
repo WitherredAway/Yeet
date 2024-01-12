@@ -121,6 +121,9 @@ class DocEntry:
         location = obj.__module__.replace(".", "/") + ".py"
         return parent, f"{self.doc.source.url}/blob/{self.doc.source.branch}/{location}#L{firstlineno}-L{firstlineno + len(lines) - 1}"
 
+def get_version_branch(module, *, fmt_str: bool = "{}"):
+    return fmt_str.format(f"{'.'.join(module.__version__.split('.')[:-1])}.x")
+
 DOCS = {
     "python": Doc(
         name="Python",
@@ -132,7 +135,7 @@ DOCS = {
         module_name="discord",
         source=Source(
             url="https://github.com/Rapptz/discord.py",
-            branch=f"v{discord.version_info.major}.{discord.version_info.minor}.x"
+            branch=get_version_branch(discord, fmt_str="v{}")
         )
     ),
     "pymongo": Doc(
@@ -267,7 +270,7 @@ class Documentation(commands.Cog):
         for doc_name, doc in docs.items():
             sub = cache[doc_name] = {}
             async with aiohttp.ClientSession() as session:
-                async with session.get(doc.url + "/objects.inv") as resp:
+                async with session.get(os.path.join(doc.url, "objects.inv")) as resp:
                     if resp.status != 200:
                         raise RuntimeError(
                             "Cannot build rtfm lookup table, try again later."
@@ -343,7 +346,7 @@ class Documentation(commands.Cog):
 
     @docs.command(name="pymongo", aliases=["mongo", "mongodb"])
     async def docs_mongo(self, ctx, *, obj: str = None):
-        """Gives you a documentation link for a pymongo entity."""
+        """Gives you a documentation link for a PyMongo entity."""
 
         await self.do_rtfm(ctx, "pymongo", obj)
 
