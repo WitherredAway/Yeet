@@ -128,10 +128,12 @@ class DocEntry:
 
         split = split[i:]
         obj = None
+        filename = None
         parent = False
         for attr in split:
             try:
                 candidate = getattr(obj or module, attr)
+                filename = inspect.getsourcefile(candidate)
                 lines, firstlineno = inspect.getsourcelines(candidate)
             except (AttributeError, TypeError):
                 parent = True  # Whether the parent object's source is being shown
@@ -142,9 +144,7 @@ class DocEntry:
         if obj is None:
             return None
 
-        location = os.path.join(
-            self.doc.source.directory, obj.__module__.replace(".", "/") + ".py"
-        )
+        location = os.path.relpath(filename).replace("\\", "/").split("/site-packages/")[-1]  # Might cause issues for hardcoding 'site-packages'
         return (
             parent,
             f"{self.doc.source.url}/blob/{self.doc.source.branch}/{location}#L{firstlineno}-L{firstlineno + len(lines) - 1}",
