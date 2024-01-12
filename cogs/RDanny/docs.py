@@ -71,8 +71,11 @@ class Source:
         version = getattr(self.module, "__version__")
         if not version:
             return self.branch_fmt_str
-        major, minor, macro = version.split('.')
-        return self.branch_fmt_str.format_map(dict(major=major, minor=minor, macro=macro))
+        major, minor, macro = version.split(".")
+        return self.branch_fmt_str.format_map(
+            dict(major=major, minor=minor, macro=macro)
+        )
+
 
 @dataclass
 class Doc:
@@ -81,6 +84,7 @@ class Doc:
     remove_substrings: Optional[Tuple[str]] = None
     module_name: Optional[str] = None
     source: Optional[Source] = None
+
 
 @dataclass
 class DocEntry:
@@ -108,8 +112,10 @@ class DocEntry:
         module = None
         for i in range(len(split)):
             try:
-                module_name = ".".join(split[0:i+1])
-                candidate = sys.modules.get(module_name) or importlib.import_module(module_name)
+                module_name = ".".join(split[0 : i + 1])
+                candidate = sys.modules.get(module_name) or importlib.import_module(
+                    module_name
+                )
             except ModuleNotFoundError:
                 break
             else:
@@ -136,14 +142,17 @@ class DocEntry:
         if obj is None:
             return None
 
-        location = os.path.join(self.doc.source.directory, obj.__module__.replace(".", "/") + ".py")
-        return parent, f"{self.doc.source.url}/blob/{self.doc.source.branch}/{location}#L{firstlineno}-L{firstlineno + len(lines) - 1}"
+        location = os.path.join(
+            self.doc.source.directory, obj.__module__.replace(".", "/") + ".py"
+        )
+        return (
+            parent,
+            f"{self.doc.source.url}/blob/{self.doc.source.branch}/{location}#L{firstlineno}-L{firstlineno + len(lines) - 1}",
+        )
+
 
 DOCS = {
-    "python": Doc(
-        name="Python",
-        url="https://docs.python.org/3"
-    ),
+    "python": Doc(name="Python", url="https://docs.python.org/3"),
     "discord.py": Doc(
         name="discord.py",
         url="https://discordpy.readthedocs.io/en/latest",
@@ -152,8 +161,8 @@ DOCS = {
         source=Source(
             module=discord,
             url="https://github.com/Rapptz/discord.py",
-            branch_fmt_str="v{major}.{minor}.x"
-        )
+            branch_fmt_str="v{major}.{minor}.x",
+        ),
     ),
     "pymongo": Doc(
         name="PyMongo",
@@ -163,7 +172,7 @@ DOCS = {
             module=pymongo,
             url="https://github.com/mongodb/mongo-python-driver",
             branch_fmt_str="v{major}.{minor}",
-        )
+        ),
     ),
     "pillow": Doc(
         name="Pillow",
@@ -174,8 +183,8 @@ DOCS = {
             url="https://github.com/python-pillow/Pillow",
             branch_fmt_str="{major}.{minor}.x",
             directory="src",
-        )
-    )
+        ),
+    ),
 }
 
 
@@ -184,17 +193,22 @@ def format_doc(label: str, docs_url: str, source: Tuple[bool, str] = None):
     if source:
         parent, source_url = source
         source_text = f"{'ᵖᵃʳᵉⁿᵗ ' if parent else ''}ˢᵒᵘʳᶜᵉ"
-        text += (f" \u200b *[{source_text}]({source_url})*" if source else "")
+        text += f" \u200b *[{source_text}]({source_url})*" if source else ""
 
     return text
 
 
 class DocsPageSource(menus.ListPageSource):
-    def __init__(self, ctx: CustomContext, key: str, entries: List[DocEntry], *, per_page: int):
+    def __init__(
+        self, ctx: CustomContext, key: str, entries: List[DocEntry], *, per_page: int
+    ):
         super().__init__(entries, per_page=per_page)
         self.ctx = ctx
         self.bot = self.ctx.bot
-        self.embed = self.bot.Embed(title=f"{DOCS[key].name}" + (f" v{DOCS[key].source.module.__version__}" if DOCS[key].source else ""))
+        self.embed = self.bot.Embed(
+            title=f"{DOCS[key].name}"
+            + (f" v{DOCS[key].source.module.__version__}" if DOCS[key].source else "")
+        )
 
     async def format_page(self, menu, entries: List[DocEntry]):
         self.embed.clear_fields()
@@ -203,8 +217,11 @@ class DocsPageSource(menus.ListPageSource):
                 format_doc(
                     label=doc_entry.name,
                     docs_url=doc_entry.docs_url,
-                    source=await self.bot.loop.run_in_executor(None, doc_entry.get_source_url)
-                ) for doc_entry in entries
+                    source=await self.bot.loop.run_in_executor(
+                        None, doc_entry.get_source_url
+                    ),
+                )
+                for doc_entry in entries
             ]
         )
 
@@ -278,10 +295,10 @@ class Documentation(commands.Cog):
             key = path = name if dispname == "-" else dispname
             prefix = f"{subdirective}:" if domain == "std" else ""
 
-            key = key.replace(f'{doc.module_name}.', '')
+            key = key.replace(f"{doc.module_name}.", "")
             if doc.remove_substrings:
                 for r in doc.remove_substrings:
-                    key = key.replace(r, '')
+                    key = key.replace(r, "")
 
             result.append(
                 DocEntry(
@@ -313,7 +330,13 @@ class Documentation(commands.Cog):
     async def do_rtfm(self, ctx, key, obj):
         if obj is None:
             doc = DOCS[key]
-            await ctx.send(format_doc(name=doc.name, docs_url=doc.url, source_url=getattr(doc.source, "url", None)))
+            await ctx.send(
+                format_doc(
+                    name=doc.name,
+                    docs_url=doc.url,
+                    source_url=getattr(doc.source, "url", None),
+                )
+            )
             return
 
         if not hasattr(self, "_rtfm_cache"):
@@ -362,10 +385,14 @@ class Documentation(commands.Cog):
 
     @docs.command(name="refresh", aliases=["delcache", "del-cache"])
     async def docs_refresh_cache(self, ctx):
+        """Refresh rtfm cache. For example to update with latest docs."""
+
         async with ctx.typing():
             await self.build_rtfm_lookup_table(DOCS)
             refreshed = self._rtfm_cache.keys()
-            await ctx.send(f"Refreshed rtfm cache for {', '.join(map(lambda s: f'`{s}`', refreshed))}.")
+            await ctx.send(
+                f"Refreshed rtfm cache for {', '.join(map(lambda s: f'`{s}`', refreshed))}."
+            )
 
     @docs.command(name="python", aliases=["py"])
     async def docs_python(self, ctx, *, obj: str = None):

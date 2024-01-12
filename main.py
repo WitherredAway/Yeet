@@ -26,7 +26,13 @@ from helpers.context import CustomContext
 from cogs.Draw.utils.colour import Colour
 from cogs.Draw.draw import DrawView
 from cogs.Draw.utils.emoji_cache import EmojiCache
-from helpers.constants import PY_BLOCK_FMT, EMBED_DESC_CHAR_LIMIT, EMBED_FIELD_CHAR_LIMIT, LOG_BORDER, NL
+from helpers.constants import (
+    PY_BLOCK_FMT,
+    EMBED_DESC_CHAR_LIMIT,
+    EMBED_FIELD_CHAR_LIMIT,
+    LOG_BORDER,
+    NL,
+)
 from helpers.keep_alive import keep_alive
 
 
@@ -34,7 +40,9 @@ if __name__ == "__main__":
     with open(".env") as f:
         env = json.load(f)
         for key, value in env.items():
-            os.environ[key] = str(value) if not isinstance(value, dict) else json.dumps(value)
+            os.environ[key] = (
+                str(value) if not isinstance(value, dict) else json.dumps(value)
+            )
 
 
 logging.basicConfig(level=logging.INFO)
@@ -214,7 +222,6 @@ class Bot(commands.Bot):
             )
         await self.bug_channel.send(embed=embed, view=view if ctx else None)
         print(tb, file=sys.stderr)
-
 
     class Embed(discord.Embed):
         COLOUR = 0x9BFFD6
