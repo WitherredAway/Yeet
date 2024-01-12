@@ -2,6 +2,7 @@ from dataclasses import dataclass
 import importlib
 import inspect
 import sys
+import PIL
 import discord
 import re
 import io
@@ -56,11 +57,13 @@ class SphinxObjectFileReader:
 class Source:
     url: str
     branch: str
+    directory: Optional[str] = ""
 
 @dataclass
 class Doc:
     name: str
     url: str
+    remove_substrings: Optional[Tuple[str]] = None
     module_name: Optional[str] = None
     source: Optional[Source] = None
 
@@ -118,7 +121,7 @@ class DocEntry:
         if obj is None:
             return None
 
-        location = obj.__module__.replace(".", "/") + ".py"
+        location = os.path.join(self.doc.source.directory, obj.__module__.replace(".", "/") + ".py")
         return parent, f"{self.doc.source.url}/blob/{self.doc.source.branch}/{location}#L{firstlineno}-L{firstlineno + len(lines) - 1}"
 
 def get_version_branch(module, *, fmt_str: bool = "{}"):
@@ -132,6 +135,7 @@ DOCS = {
     "discord.py": Doc(
         name="discord.py",
         url="https://discordpy.readthedocs.io/en/latest",
+        remove_substrings=("discord.ext.commands.",),
         module_name="discord",
         source=Source(
             url="https://github.com/Rapptz/discord.py",
@@ -141,12 +145,23 @@ DOCS = {
     "pymongo": Doc(
         name="PyMongo",
         url="https://pymongo.readthedocs.io/en/stable",
+        remove_substrings=("pymongo.collection.",),
         # module_name="pymongo",
         # source=Source(
         #     url="https://github.com/mongodb/mongo-python-driver",
         #     branch="master",
         # )
     ),
+    "pillow": Doc(
+        name="Pillow",
+        url="https://pillow.readthedocs.io/en/stable",
+        module_name="PIL",
+        source=Source(
+            url="https://github.com/python-pillow/Pillow",
+            branch=get_version_branch(PIL),
+            directory="src",
+        )
+    )
 }
 
 
@@ -249,10 +264,10 @@ class Documentation(commands.Cog):
             key = path = name if dispname == "-" else dispname
             prefix = f"{subdirective}:" if domain == "std" else ""
 
-            if projname == "discord.py":
-                key = key.replace("discord.ext.commands.", "").replace("discord.", "")
-            elif projname == "PyMongo":
-                key = key.replace("pymongo.collection.", "").replace("pymongo.", "")
+            if doc.remove_substrings:
+                for r in doc.remove_substrings:
+                    key = key.replace(r, '')
+            key = key.replace(f'{doc.module_name}.', '')
 
             result.append(
                 DocEntry(
@@ -349,6 +364,12 @@ class Documentation(commands.Cog):
         """Gives you a documentation link for a PyMongo entity."""
 
         await self.do_rtfm(ctx, "pymongo", obj)
+
+    @docs.command(name="pillow", aliases=["pil"])
+    async def docs_pillow(self, ctx, *, obj: str = None):
+        """Gives you a documentation link for a Pillow entity."""
+
+        await self.do_rtfm(ctx, "pillow", obj)
 
     @commands.command(
         name="source",
