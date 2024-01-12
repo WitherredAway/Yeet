@@ -93,6 +93,8 @@ class Doc:
 
     @property
     def qualified_names(self) -> Tuple[str]:
+        """All (lowercase) names of the doc."""
+
         aliases = self.aliases
         return tuple(n.lower() for n in (self.name,) + aliases)
 
@@ -432,7 +434,7 @@ class Documentation(commands.Cog):
         usage=f"""[lib="{DEFAULT_LIBRARY}"] [entity_query=None]""",
         description=f"""
 Find documentation and source code links for entities of the following modules/libraries:
-{NL.join([f"- `{d.name.lower()}` [{'/'.join([f'`{a.lower()}`' for a in d.aliases])}]" for l, d in LIBRARIES.items()])}
+{NL.join([f"- {'/'.join([f'`{n}`' for n in d.qualified_names])}" for l, d in LIBRARIES.items()])}
 
 Events, objects, and functions are all supported through
 a cruddy fuzzy algorithm."""
