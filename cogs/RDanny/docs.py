@@ -62,7 +62,7 @@ class SphinxObjectFileReader:
 
 @dataclass
 class DocSource:
-    url: str
+    base_url: str
     module: ModuleType
     branch_fmt_str: Optional[str] = "master"
     directory: Optional[str] = ""
@@ -77,6 +77,10 @@ class DocSource:
             dict(major=major, minor=minor, macro=macro)
         )
 
+    @cached_property
+    def url(self) -> str:
+        return f"{self.base_url}/blob/{self.branch}"
+
 
 @dataclass
 class Doc:
@@ -89,7 +93,8 @@ class Doc:
 
     @property
     def qualified_names(self) -> Tuple[str]:
-        return (name.lower() for name in self.aliases + (self.name,))
+        aliases = self.aliases
+        return tuple(n.lower() for n in (self.name,) + aliases)
 
 
 @dataclass
@@ -167,7 +172,7 @@ class DocEntry:
             self.doc.source.directory,
             os.path.relpath(filename).replace("\\", "/").split("/site-packages/")[-1]  # Might cause issues for hardcoding 'site-packages'
         )
-        url = f"{self.doc.source.url}/blob/{self.doc.source.branch}/{location}#L{firstlineno}-L{firstlineno + len(lines) - 1}"
+        url = f"{self.doc.source.url}/{location}#L{firstlineno}-L{firstlineno + len(lines) - 1}"
 
         self._source = DocEntrySource(url=url, object=obj, parent=parent)
         return self._source
@@ -186,8 +191,8 @@ LIBRARIES = {
         remove_substrings=("ext.commands.",),
         module_name="discord",
         source=DocSource(
+            base_url="https://github.com/Rapptz/discord.py",
             module=discord,
-            url="https://github.com/Rapptz/discord.py",
             branch_fmt_str="v{major}.{minor}.x",
         ),
     ),
@@ -198,8 +203,8 @@ LIBRARIES = {
         remove_substrings=("collection.",),
         module_name="pymongo",
         source=DocSource(
+            base_url="https://github.com/mongodb/mongo-python-driver",
             module=pymongo,
-            url="https://github.com/mongodb/mongo-python-driver",
             branch_fmt_str="v{major}.{minor}",
         ),
     ),
@@ -209,8 +214,8 @@ LIBRARIES = {
         url="https://pillow.readthedocs.io/en/stable",
         module_name="PIL",
         source=DocSource(
+            base_url="https://github.com/python-pillow/Pillow",
             module=PIL,
-            url="https://github.com/python-pillow/Pillow",
             branch_fmt_str="{major}.{minor}.x",
             directory="src",
         ),
@@ -221,25 +226,32 @@ DEFAULT_LIBRARY = "discord.py"
 
 class LibraryAndQueryConverter(commands.Converter):
     async def convert(self, ctx: CustomContext, lib_and_query: Optional[str] = None) -> Tuple[str, Union[str, None]]:
-        if not lib_and_query:
+        if not lib_and_query:  # No parameters pass. use default lib and no query
             return DEFAULT_LIBRARY, None
 
-        split = lib_and_query.split(" ", 1)
-        if len(split) == 1:
-            split.insert(0, DEFAULT_LIBRARY)
-
-        lib, query = split
         names = {a: l for l, d in LIBRARIES.items() for a in d.qualified_names}
-        if og_lib := names.get(lib.lower()):
-            return og_lib, query
+
+        lib_and_or_query = lib_and_query.split(" ", 1)
+        if len(lib_and_or_query) == 1:
+            # Only lib or query passed in
+            if lib_and_or_query[0] in names:  # It's lib. no query
+                # We don't want to lower the entire thing, just the library name
+                return names[lib_and_or_query[0].lower()], None
+            else:  # It's query. use default lib
+                return DEFAULT_LIBRARY, lib_and_or_query[0]
         else:
-            return DEFAULT_LIBRARY, lib_and_query
+            # Two supposed parameters passed
+            lib, query = lib_and_or_query
+            if og_lib := names.get(lib.lower()):  # If first one is lib
+                return og_lib, query
+            else:
+                return DEFAULT_LIBRARY, lib_and_query  # If the entire thing is query. use default lib
 
 
-def format_doc(label: str, docs_url: str, source: DocEntrySource = None):
+def format_doc(label: str, docs_url: str, source: DocEntrySource | DocSource = None):
     text = f"[`{label}`]({docs_url})"
     if source:
-        source_text = f"{'ᵖᵃʳᵉⁿᵗ ' if source.parent else ''}ˢᵒᵘʳᶜᵉ"
+        source_text = f"{'ᵖᵃʳᵉⁿᵗ ' if getattr(source, 'parent', None) else ''}ˢᵒᵘʳᶜᵉ"
         text += f" \u200b *[{source_text}]({source.url})*" if source else ""
 
     return text
@@ -376,9 +388,9 @@ class Documentation(commands.Cog):
             doc = LIBRARIES[lib]
             await ctx.send(
                 format_doc(
-                    name=doc.name,
+                    label=doc.name,
                     docs_url=doc.url,
-                    source_url=getattr(doc.source, "url", None),
+                    source=doc.source,
                 )
             )
             return
@@ -420,20 +432,20 @@ class Documentation(commands.Cog):
         usage=f"""[lib="{DEFAULT_LIBRARY}"] [entity_query=None]""",
         description=f"""
 Find documentation and source code links for entities of the following modules/libraries:
-{NL.join([f"- {' | '.join(f'`{d.qualified_names}`')}" for l, d in LIBRARIES.items()])}
+{NL.join([f"- `{d.name.lower()}` [{'/'.join([f'`{a.lower()}`' for a in d.aliases])}]" for l, d in LIBRARIES.items()])}
 
 Events, objects, and functions are all supported through
 a cruddy fuzzy algorithm."""
     )
-    async def docs(self, ctx, *, lib_and_query: LibraryAndQueryConverter = commands.param(converter=LibraryAndQueryConverter)):
+    async def docs(self, ctx: CustomContext, *, lib_and_query: LibraryAndQueryConverter = commands.param(default=LibraryAndQueryConverter().convert)):
         await self.do_rtfm(ctx, *lib_and_query)
 
     @docs.command(name="view")
-    async def docs_view(self, ctx):
+    async def docs_view(self, ctx: CustomContext):
         ...
 
     @docs.command(name="refresh", aliases=["delcache", "del-cache"])
-    async def docs_refresh_cache(self, ctx):
+    async def docs_refresh_cache(self, ctx: CustomContext):
         """Refresh rtfm cache. For example to update with latest docs."""
 
         async with ctx.typing():
@@ -453,7 +465,7 @@ a cruddy fuzzy algorithm."""
         Code taken from [Robodanny](https://github.com/Rapptz/RoboDanny).
         """,
     )
-    async def source(self, ctx, *, command: str = None):
+    async def source(self, ctx: CustomContext, *, command: str = None):
         """
         To display the source code of a subcommand. You can separate it by periods, e.g. timer.start for the start subcommand of the timer command or by spaces.
         """
