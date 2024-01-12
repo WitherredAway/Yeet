@@ -1,4 +1,5 @@
 from __future__ import annotations
+import json
 import sys
 
 import time
@@ -27,6 +28,14 @@ from cogs.Draw.draw import DrawView
 from cogs.Draw.utils.emoji_cache import EmojiCache
 from helpers.constants import PY_BLOCK_FMT, EMBED_DESC_CHAR_LIMIT, EMBED_FIELD_CHAR_LIMIT, LOG_BORDER, NL
 from helpers.keep_alive import keep_alive
+
+
+if __name__ == "__main__":
+    with open(".env") as f:
+        env = json.load(f)
+        for key, value in env.items():
+            os.environ[key] = str(value) if not isinstance(value, dict) else json.dumps(value)
+
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
