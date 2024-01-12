@@ -6,7 +6,7 @@ import os
 import sys
 import traceback
 import typing
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, Iterable, List, Tuple, Union
 import cProfile
 from typing import Dict, Optional
 import unicodedata
@@ -270,3 +270,19 @@ async def url_to_image(image_url: str, session: aiohttp.ClientSession):
         raise ValueError("not an image")
 
     return image
+
+
+def format_join(iterable: Iterable, *, symbol: Optional[str] = "`", joiner: Optional[str] = ", ") -> str:
+    """Join the items of an iterable that have been put within provided symbol.
+
+    Parameters
+    ----------
+    iterable: `Iterable`
+        The iterable object whose items to format and join
+    symbol: `str`
+        The symbol whom to put the items within. "\`" by default.
+    joiner: `str`
+        The string by which to join the formatted items. ", " by default
+    """
+
+    return joiner.join([f"{symbol}{i}{symbol}" for i in iterable])

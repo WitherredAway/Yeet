@@ -7,6 +7,7 @@ import typing
 from typing import Any, Dict, List, Optional, Union, Tuple
 
 from discord.ext import commands, menus
+from cogs.utils.utils import format_join
 
 from helpers.constants import NL
 from helpers.context import CustomContext
@@ -117,7 +118,7 @@ class GroupHelpPageSource(menus.ListPageSource):
             # signature = f"{self.prefix}{PaginatedHelpCommand.get_command_signature(self, command)}"
             # value = f">>> **Category**: `{command.cog_name if command.cog else 'None'}`\n\n**Description**: {command.description if command.description else 'No description found.'}\n\n**Help**: {command.help if command.help else 'No help found.'}"
             signature = (
-                f"`{self.prefix}`{PaginatedHelpCommand.get_command_signature(command)}"
+                f"`{self.prefix}`**{command.name}**"
             )
             desc = (
                 command.brief
@@ -130,13 +131,13 @@ class GroupHelpPageSource(menus.ListPageSource):
             )
             if isinstance(command, commands.Group):
                 com_names = sorted([com.name for com in command.commands])
-                desc += "\n⌙ **subcommands**: `" + "` - `".join(com_names) + "`"
+                desc += f"\n  - {format_join(com_names)}"
             # embed.add_field(name=signature, value=value, inline=False)
-            value.append(f"• {signature} - {desc}")
+            value.append(f"- {signature} - {desc}")
 
         embed.add_field(
             name="Commands" if isinstance(self.group, commands.Cog) else "Subcommands",
-            value="\u200b" + "\n\n".join(value),
+            value="\n".join(value),
             inline=False,
         )
         return embed
@@ -472,8 +473,7 @@ class PaginatedHelpCommand(commands.HelpCommand):
     def get_command_signature(command):
         parent = command.full_parent_name
         if len(command.aliases) > 0:
-            aliases = "/".join(command.aliases)
-            fmt = f"**{command.name}**[{aliases}]"
+            fmt = f"**{command.name}**"
             if parent:
                 fmt = f"{parent} {fmt}"
             alias = fmt
@@ -494,6 +494,12 @@ class PaginatedHelpCommand(commands.HelpCommand):
         embed_like.url = source(bot, command=command.qualified_name)
         if command.help:
             embed_like.description = command.help
+        if command.aliases:
+            embed_like.add_field(
+                name="Aliases",
+                value=f"Alternative names that can be used to use the command\n{format_join(command.aliases)}",
+                inline=False,
+            )
         if command.description:
             embed_like.add_field(
                 name="Description",
