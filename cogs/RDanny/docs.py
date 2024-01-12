@@ -203,7 +203,7 @@ class Documentation(commands.Cog):
     @commands.group(
         aliases=["rtfd", "rtfm", "doc", "documentation", "documentations"],
         invoke_without_command=True,
-        brief="Get documentation link for discord.py and python entities",
+        brief=f"Get documentation link for {', '.join(map(lambda s: f'`{s}`', PAGE_TYPES))} entities",
     )
     async def docs(self, ctx, *, obj: str = None):
         """Gives you a documentation link for a discord.py entity.
