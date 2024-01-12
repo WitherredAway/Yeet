@@ -214,6 +214,13 @@ class Documentation(commands.Cog):
 
         await self.do_rtfm(ctx, "discord.py", obj)
 
+    @docs.command(name="refresh", aliases=["delcache", "del-cache"])
+    async def docs_delete_cache(self, ctx):
+        async with ctx.typing():
+            await self.build_rtfm_lookup_table(PAGE_TYPES)
+            refreshed = self._rtfm_cache.keys()
+            await ctx.send(f"Refreshed rtfm cache for {', '.join(map(lambda s: f'`{s}`', refreshed))}.")
+
     @docs.command(name="python", aliases=["py"])
     async def docs_python(self, ctx, *, obj: str = None):
         """Gives you a documentation link for a Python entity."""
