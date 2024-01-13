@@ -354,6 +354,16 @@ DOCS = {
             branch_fmt_str="v{major}.{minor}.x",
         ),
     ),
+    "aiohttp": Doc(
+        name="aiohttp",
+        url="https://docs.aiohttp.org/en/stable/",
+        module_name="aiohttp",
+        source=DocSource(
+            base_url="https://github.com/aio-libs/aiohttp",
+            module=aiohttp,
+            branch_fmt_str="{major}.{minor}",
+        ),
+    ),
     "pymongo": Doc(
         name="PyMongo",
         url="https://pymongo.readthedocs.io/en/stable",
