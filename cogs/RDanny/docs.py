@@ -5,7 +5,9 @@ from functools import cached_property
 import importlib
 import inspect
 import logging
+import math
 import sys
+from textwrap import dedent
 from types import ModuleType
 import discord
 import re
@@ -217,16 +219,18 @@ class Doc:
                 None, self.parse_object_inv, stream
             )
 
-    async def get_objects(self, bot: Bot) -> List[DocObject]:
+    async def get_objects(self, ctx: CustomContext) -> List[DocObject]:
         if not hasattr(self, "_objects"):
-            await self.build_objects(bot)
+            # logger.info(f"Building `{self.name}` objects...")
+            async with ctx.typing():
+                await self.build_objects(ctx.bot)
         return self._objects
 
     def clear_objects(self):
         if hasattr(self, "_source"):
             del self._objects
 
-    async def fuzzyfind(self, bot: Bot, query: str) -> Generator[DocObject]:
+    async def fuzzyfind(self, ctx: CustomContext, query: str) -> Generator[DocObject]:
         query = re.sub(r"^(?:discord\.(?:ext\.)?)?(?:commands\.)?(.+)", r"\1", query)
         if self.name.lower().startswith("discord.py"):
             # point the abc.Messageable types properly:
@@ -239,16 +243,19 @@ class Doc:
                     break
 
         matches = fuzzy.finder(
-            query, await self.get_objects(bot), key=lambda obj: obj.label, lazy=False
+            query, await self.get_objects(ctx), key=lambda obj: obj.label, lazy=False
         )
         return matches
 
 
 @dataclass
 class DocObjectSource:
+    filename: str
     url: str
     parent: bool  # Whether the parent object's source is being shown e.g. if it's an attribute
     object: object
+    firstlineno: int
+    code_lines: List[str]
 
 
 @dataclass
@@ -318,13 +325,15 @@ class DocObject:
                         ],  # Might cause issues for hardcoding 'site-packages'
                     )
                     url = f"{self.doc.source.url}/{location}#L{firstlineno}-L{firstlineno + len(lines) - 1}"
-                    doc_object = DocObjectSource(url=url, object=obj, parent=parent)
+                    doc_object = DocObjectSource(filename=filename, url=url, object=obj, parent=parent, firstlineno=firstlineno, code_lines=lines)
 
         self._source = doc_object
 
-    async def get_source(self, bot: Bot) -> DocObjectSource | None:
+    async def get_source(self, ctx: CustomContext) -> DocObjectSource | None:
         if not hasattr(self, "_source"):
-            await bot.loop.run_in_executor(None, self.build_source)
+            # logger.info(f"Building `{self.label}` source...")
+            async with ctx.typing():
+                await ctx.bot.loop.run_in_executor(None, self.build_source)
         return self._source
 
     def clear_source(self):
@@ -405,7 +414,7 @@ class DocAndObjectsConverter(commands.Converter):
                     )  # If the entire thing is query. use default lib
 
         doc = DOCS[lib]
-        objs = await doc.fuzzyfind(ctx.bot, query) if query is not None else None
+        objs = await doc.fuzzyfind(ctx, query) if query is not None else None
 
         if objs is None:
             await ctx.send(
@@ -452,7 +461,7 @@ class DocsPageSource(menus.ListPageSource):
                 format_doc(
                     label=obj.label,
                     docs_url=obj.docs_url,
-                    source=await obj.get_source(self.bot),
+                    source=await obj.get_source(self.ctx),
                 )
                 for obj in objects
             ]
@@ -464,6 +473,111 @@ class DocsPageSource(menus.ListPageSource):
                 f"Page {menu.current_page + 1}/{maximum} ({len(self.entries)} objects)"
             )
             self.embed.set_footer(text=text)
+
+        return self.embed
+
+
+def normalize_indent(lines: List[str], index: Optional[int] = 0) -> List[str]:
+    """Add common indentation to the line at provided index (default 0) in case it's missing it"""
+
+    new_lines = lines[:]
+    if not new_lines[index].startswith(" "):
+        indent = ""
+        line = discord.utils.find(lambda l: l.startswith(" "), new_lines)
+        if line is not None:
+            for char in line:
+                if char != " ":
+                    break
+                indent += " "
+            new_lines[0] = indent + new_lines[0]
+    return new_lines
+
+
+class CodeSource(menus.PageSource):
+    def __init__(
+        self, ctx: CustomContext, doc: Doc, obj: DocObject
+    ):
+        self.ctx = ctx
+        self.bot = self.ctx.bot
+
+        self.doc = doc
+        self.obj = obj
+        self.source = obj._source
+        self.filetype = self.source.filename.split(".")[-1]
+
+        docstring = self.source.object.__doc__
+        code = re.sub(
+            r"""([ruRUfF]*(?:"{3}(?:.|\n)+?"{3})|(?:'{3}(?:.|\n)+?'{3}))\n *?""",
+            "...\n",
+            "".join(self.source.code_lines),
+            1
+        )
+
+        self.doclines = tuple(dedent(NL.join(normalize_indent(docstring.split(NL)))).split(NL))
+        self.codelines = tuple(dedent(NL.join(code.split(NL))).split(NL))
+
+        self.entrants = {
+            # lines: lines_per_page
+            self.doclines: 15,
+            self.codelines: 15
+        }
+
+        self.embed = self.bot.Embed(
+            title=obj.path,
+            url=obj._source.url
+        )
+
+    async def get_page(self, page_number: int) -> int:
+        return page_number
+
+    def is_paginating(self) -> bool:
+        return self.get_max_pages() > 1
+
+    def get_num_pages(self, lines: List[str], *, per_page: int) -> int:
+        return math.ceil(len(lines) / per_page)
+
+    def get_max_pages(self) -> int:
+        return max([self.get_num_pages(lines, per_page=per_page) for lines, per_page in self.entrants.items()])
+
+    def get_entries(self, lines: List[str], current_page: int, *, per_page: int) -> List[str]:
+        """Get entries for the current page."""
+
+        pgstart = current_page * per_page
+        max_entries = min(pgstart + per_page, len(lines))
+        min_entries = max(max_entries - per_page, 0)
+
+        return lines[min_entries:max_entries]
+
+    def get_page_info(self, lines: List[str], current_page: int, *, per_page: int) -> str:
+        pages = self.get_num_pages(lines, per_page=per_page)
+        return f"{min(current_page+1, pages)}/{pages} ({len(lines)} lines)"
+
+    async def format_page(self, menu: BotPages, current_page: int) -> Bot.Embed:
+        self.embed.clear_fields()
+
+        doc_per_page = self.entrants[self.doclines]
+        docstring = (
+            f"```yaml\n"
+            f"{NL.join(self.get_entries(self.doclines, current_page, per_page=doc_per_page))}\n"
+            "```"
+        )
+        self.embed.add_field(
+            name=f"docstring {self.get_page_info(self.doclines, current_page, per_page=doc_per_page)}",
+            value=docstring,
+            inline=False
+        )
+
+        code_per_page = self.entrants[self.codelines]
+        code = (
+            f"```{self.filetype}\n"
+            f"{NL.join(self.get_entries(self.codelines, current_page, per_page=code_per_page))}\n"
+            "```"
+        )
+        self.embed.add_field(
+            name=f"code {self.get_page_info(self.codelines, current_page, per_page=code_per_page)}",
+            value=code,
+            inline=False
+        )
 
         return self.embed
 
@@ -524,6 +638,43 @@ a cruddy fuzzy algorithm.""",
                 f"Refreshed rtfm cache of the following modules/libraries:\n"
                 f"{format_join(refreshed, '- `{0}` — {0:l} objects ({1:+})', joiner=NL)}"
             )
+
+    async def do_rtfs(self, ctx: CustomContext, doc: Doc, objs: List[DocObject] | None, *, n: Optional[int] = 1):
+        # TODO: Multiple objects?
+        if not objs:
+            return
+
+        if not doc.source:
+            return await ctx.send(f"Source code is not available for the `{doc.name}` module/library due to limitations :(")
+
+        for obj in objs[:n]:  # TODO: Allow multiple?
+            await obj.get_source(ctx)
+            if not hasattr(obj, "_source"):
+                await ctx.send(f"Source code is not available for `{obj.label}` due to limitations :(")
+
+        formatter = CodeSource(ctx, doc, objs[0])
+        menu = BotPages(formatter, ctx=ctx)
+        await menu.start()
+
+    @docs.command(
+        name="view",
+        aliases=("source", "src"),
+        brief=f"View documentation and source code for {', '.join(map(lambda s: f'`{s}`', DOCS.keys()))} entities",
+        usage=f"""[lib="{DEFAULT_LIBRARY}"] [entity_query=None]""",
+        description=f"""
+View documentation and source code for entities of the following modules/libraries:
+{NL.join([f"- {'/'.join([f'`{n}`' for n in d.qualified_names])}" for l, d in DOCS.items()])}
+
+Events, objects, and functions are all supported through
+a cruddy fuzzy algorithm.""",
+    )
+    async def docs_view(
+        self,
+        ctx: CustomContext,
+        *,
+        doc_and_objects: DocAndObjectsConverter = commands.param(default=DocAndObjectsConverter().convert)
+    ):
+        await self.do_rtfs(ctx, *doc_and_objects)
 
     @commands.command(
         name="source",

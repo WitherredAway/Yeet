@@ -304,9 +304,12 @@ def format_join(
     join_list = []
     for i in iterable:
         if isinstance(i, dict):
-            method = "format_map"
+            item = fmt_string.format_map(i)
         else:
-            method = "format"
-        join_list.append(getattr(fmt_string, method)(*i if isiterable(i) else i))
+            if isiterable(i):
+                item = fmt_string.format(*i)
+            else:
+                item = fmt_string.format(i)
+        join_list.append(item)
 
     return joiner.join(join_list)
