@@ -357,7 +357,7 @@ DOCS = {
     "pymongo": Doc(
         name="PyMongo",
         url="https://pymongo.readthedocs.io/en/stable",
-        aliases=("mongo",),
+        aliases=("mongo", "mg", "mongodb"),
         remove_substrings=("collection.",),
         module_name="pymongo",
         source=DocSource(
