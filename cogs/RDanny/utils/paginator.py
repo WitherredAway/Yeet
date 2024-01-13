@@ -75,11 +75,11 @@ class BotPages(discord.ui.View):
         kwargs = await self._get_kwargs_from_page(page)
         self._update_labels(page_number)
         if kwargs:
-            if interaction.response.is_done():
+            try:
+                await interaction.response.edit_message(**kwargs, view=self)
+            except discord.NotFound:
                 if self.message:
                     await self.message.edit(**kwargs, view=self)
-            else:
-                await interaction.response.edit_message(**kwargs, view=self)
 
     def _update_labels(self, page_number: int) -> None:
         if not self.source.is_paginating():
@@ -162,10 +162,10 @@ class BotPages(discord.ui.View):
     async def on_error(
         self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item
     ) -> None:
-        if interaction.response.is_done():
-            await interaction.followup.send(error)
-        else:
+        try:
             await interaction.response.send_message(error)
+        except discord.NotFound:
+            await interaction.followup.send(error)
         raise error
 
     async def start(self) -> None:
