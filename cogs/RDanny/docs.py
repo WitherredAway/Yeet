@@ -218,11 +218,14 @@ class Doc:
                 None, self.parse_object_inv, stream
             )
 
-    async def get_objects(self, ctx: CustomContext) -> List[DocObject]:
+    async def get_objects(self, ctx_or_bot: CustomContext | Bot) -> List[DocObject]:
         if not hasattr(self, "_objects"):
             # logger.info(f"Building `{self.name}` objects...")
-            async with ctx.typing():
-                await self.build_objects(ctx.bot)
+            if isinstance(ctx_or_bot, commands.Context):
+                async with ctx_or_bot.typing():
+                    await self.build_objects(ctx_or_bot.bot)
+            else:
+                await self.build_objects(ctx_or_bot)
         return self._objects
 
     def clear_objects(self):
@@ -328,11 +331,14 @@ class DocObject:
 
         self._source = doc_object
 
-    async def get_source(self, ctx: CustomContext) -> DocObjectSource | None:
+    async def get_source(self, ctx_or_bot: CustomContext | Bot) -> DocObjectSource | None:
         if not hasattr(self, "_source"):
             # logger.info(f"Building `{self.label}` source...")
-            async with ctx.typing():
-                await ctx.bot.loop.run_in_executor(None, self.build_source)
+            if isinstance(ctx_or_bot, commands.Context):
+                async with ctx_or_bot.typing():
+                    await ctx_or_bot.bot.loop.run_in_executor(None, self.build_source)
+            else:
+                await ctx_or_bot.loop.run_in_executor(None, self.build_source)
         return self._source
 
     def clear_source(self):
@@ -470,7 +476,7 @@ class DocsPageSource(menus.ListPageSource):
                 format_doc(
                     label=obj.label,
                     docs_url=obj.docs_url,
-                    source=await obj.get_source(self.ctx),
+                    source=(await obj.get_source(self.ctx) if obj.doc.source else None),
                 )
                 for obj in objects
             ]
@@ -598,6 +604,19 @@ class Documentation(commands.Cog):
         self.bot = bot
 
     display_emoji = "📄"
+
+    # async def cog_load(self):
+    #     start = time.time()
+    #     logger.info(
+    #         f"LOading all documentation objects and sources..."
+    #     )
+    #     for doc in DOCS.values():
+    #         objs = await doc.get_objects(self.bot)
+    #         for obj in objs:
+    #             await obj.get_source(self.bot)
+    #     logger.info(
+    #         f"Loaded all documentation objects and sources in \033[33;1m{round(time.time()-start, 2)}s\033[0m"
+    #     )
 
     async def do_rtfm(self, ctx: CustomContext, doc: Doc, objs: List[DocObject] | None):
         if not objs:
