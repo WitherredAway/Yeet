@@ -656,8 +656,20 @@ a cruddy fuzzy algorithm.""",
             refreshed[doc] = len(doc._objects) - old_objs
         return tuple(refreshed.items())
 
-    @docs.command(name="refresh", aliases=["recache"])
-    async def docs_refresh_cache(self, ctx: CustomContext):
+    @docs.group(name="cache", invoke_without_command=True)
+    async def docs_cache(self, ctx: CustomContext):
+        if not hasattr(self.bot, "DOCS"):
+            docs = DOCS
+        else:
+            docs = DOCS
+
+        return await ctx.send(
+            f"Current rtfm cache:\n"
+            f"{format_join(docs.values(), '- `{0}` — {0:l} objects', joiner=NL)}"
+        )
+
+    @docs_cache.command(name="refresh", aliases=["recache"])
+    async def docs_cache_refresh(self, ctx: CustomContext):
         """Refresh rtfm cache. For example to update with latest docs."""
 
         async with ctx.typing():
