@@ -271,9 +271,13 @@ class DocObject:
     def docs_url(self) -> str:
         return os.path.join(self.doc.url, self.location)
 
+    @property
+    def sourceable(self) -> bool:
+        return all((self.path, self.doc.source, self.doc.module_name))
+
     def build_source(self):
         doc_object = None
-        if all((self.path, self.doc.source, self.doc.module_name)):
+        if self.sourceable:
             parent_module_name = self.doc.module_name
             split = self.path.split(".")
             if len(split) == 1 and split[0] != parent_module_name:
@@ -331,14 +335,8 @@ class DocObject:
 
         self._source = doc_object
 
-    async def get_source(self, ctx_or_bot: CustomContext | Bot) -> DocObjectSource | None:
-        if not hasattr(self, "_source"):
-            # logger.info(f"Building `{self.label}` source...")
-            if isinstance(ctx_or_bot, commands.Context):
-                async with ctx_or_bot.typing():
-                    await ctx_or_bot.bot.loop.run_in_executor(None, self.build_source)
-            else:
-                await ctx_or_bot.loop.run_in_executor(None, self.build_source)
+    def get_source(self) -> DocObjectSource | None:
+        self.build_source()
         return self._source
 
     def clear_source(self):
@@ -476,7 +474,7 @@ class DocsPageSource(menus.ListPageSource):
                 format_doc(
                     label=obj.label,
                     docs_url=obj.docs_url,
-                    source=(await obj.get_source(self.ctx) if obj.doc.source else None),
+                    source=(await self.bot.loop.run_in_executor(None, obj.get_source) if obj.doc.source else None),
                 )
                 for obj in objects
             ]
@@ -679,7 +677,7 @@ a cruddy fuzzy algorithm.""",
                 f"{format_join(refreshed, '- `{0}` — {0:l} objects ({1:+})', joiner=NL)}"
             )
 
-    async def do_rtfs(self, ctx: CustomContext, doc: Doc, objs: List[DocObject] | None, *, n: Optional[int] = 1):
+    async def do_rtfs(self, ctx: CustomContext, doc: Doc, objs: List[DocObject] | None):
         # TODO: Multiple objects?
         if not objs:
             return
@@ -687,12 +685,16 @@ a cruddy fuzzy algorithm.""",
         if not doc.source:
             return await ctx.send(f"Source code is not available for the `{doc.name}` module/library due to limitations :(")
 
-        for obj in objs[:n]:  # TODO: Allow multiple?
-            await obj.get_source(ctx)
-            if not hasattr(obj, "_source"):
-                await ctx.send(f"Source code is not available for `{obj.label}` due to limitations :(")
+        for obj in objs:  # TODO: Allow multiple?
+            src = await self.bot.loop.run_in_executor(None, obj.get_source)
+            if src:
+                break
+        else:
+            return await ctx.send(
+                f"Source code is not available for any objects from `{doc.name}` matching your query due to limitations :("
+            )
 
-        formatter = CodeSource(ctx, doc, objs[0])
+        formatter = CodeSource(ctx, doc, obj)
         menu = BotPages(formatter, ctx=ctx)
         await menu.start()
 
