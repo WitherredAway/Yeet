@@ -4,6 +4,7 @@ import logging
 import math
 import os
 import sys
+import time
 import traceback
 import typing
 from typing import Any, Dict, Iterable, List, Tuple, Union
@@ -313,3 +314,18 @@ def format_join(
         join_list.append(item)
 
     return joiner.join(join_list)
+
+
+class Timer:
+    def __init__(self, logger, name: Optional[str] = "timer"):
+        self.logger = logger
+        self.name = name
+
+    def __enter__(self):
+        self.start_time = time.time()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.end_time = time.time()
+        self.elapsed = self.end_time - self.start_time
+        self.logger.info(f"\033[32mTimer `{self.name}` completed in \033[33;1m{round(self.elapsed, 2)}s\033[0m")
