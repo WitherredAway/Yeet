@@ -125,8 +125,8 @@ class Doc:
     """  # TODO
 
     name: str
-    aliases: Tuple[str]
     url: str
+    aliases: Optional[Tuple[str]] = None
     remove_substrings: Optional[Tuple[str]] = None
     module_name: Optional[str] = None
     source: Optional[DocSource] = None
@@ -136,15 +136,14 @@ class Doc:
 
     def __format__(self, spec: str) -> str:
         if "l" in spec:
-            if hasattr(self, "_objects"):
-                return str(len(self._objects))
+            return str(len(getattr(self, "_objects", [])))
         return self.name
 
     @property
     def qualified_names(self) -> Tuple[str]:
         """All (lowercase) names of the doc."""
 
-        return tuple(n.lower() for n in (self.name, *self.aliases))
+        return tuple(n.lower() for n in (self.name, *(self.aliases or [])))
 
     def parse_object_inv(self, stream: SphinxObjectFileReader) -> List[DocObject]:
         # key: URL
@@ -345,8 +344,8 @@ DOCS = {
     "python": Doc(name="Python", aliases=("py",), url="https://docs.python.org/3"),
     "discord.py": Doc(
         name="discord.py",
-        aliases=("dpy", "discord"),
         url="https://discordpy.readthedocs.io/en/latest",
+        aliases=("dpy", "discord"),
         remove_substrings=("ext.commands.",),
         module_name="discord",
         source=DocSource(
@@ -357,8 +356,8 @@ DOCS = {
     ),
     "pymongo": Doc(
         name="PyMongo",
-        aliases=("mongo",),
         url="https://pymongo.readthedocs.io/en/stable",
+        aliases=("mongo",),
         remove_substrings=("collection.",),
         module_name="pymongo",
         source=DocSource(
@@ -369,8 +368,8 @@ DOCS = {
     ),
     "pillow": Doc(
         name="Pillow",
-        aliases=("pil",),
         url="https://pillow.readthedocs.io/en/stable",
+        aliases=("pil",),
         module_name="PIL",
         source=DocSource(
             base_url="https://github.com/python-pillow/Pillow",
