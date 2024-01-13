@@ -328,4 +328,6 @@ class Timer:
     def __exit__(self, exc_type, exc_value, traceback):
         self.end_time = time.time()
         self.elapsed = self.end_time - self.start_time
-        self.logger.info(f"\033[32mTimer `{self.name}` completed in \033[33;1m{round(self.elapsed, 2)}s\033[0m")
+        self.logger.info(
+            f"\033[32mTimer `{self.name}` completed in \033[33;1m{round(self.elapsed, 2)}s\033[0m"
+        )

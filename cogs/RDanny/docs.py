@@ -96,6 +96,107 @@ class DocSource:
 
 
 @dataclass
+class DocObjectSource:
+    filename: str
+    url: str
+    parent: bool  # Whether the parent object's source is being shown e.g. if it's an attribute
+    object: object
+    firstlineno: int
+    code_lines: List[str]
+
+
+@dataclass
+class DocObject:
+    label: str
+    doc: Doc
+    path: str
+    location: str
+
+    @property
+    def docs_url(self) -> str:
+        return os.path.join(self.doc.url, self.location)
+
+    @property
+    def sourceable(self) -> bool:
+        return all((self.path, self.doc.source, self.doc.module_name))
+
+    def build_source(self):
+        doc_object = None
+        if self.sourceable:
+            parent_module_name = self.doc.module_name
+            split = self.path.split(".")
+            if len(split) == 1 and split[0] != parent_module_name:
+                split.insert(0, parent_module_name)
+
+            # Get module name by looping through and importing all
+            # cummulative split parts from the start until it errors.
+            # Hacky but it works. Theoretically.
+            module = None
+            for i in range(len(split)):
+                try:
+                    module_name = ".".join(split[0 : i + 1])
+                    candidate = sys.modules.get(module_name) or importlib.import_module(
+                        module_name
+                    )
+                except ModuleNotFoundError:
+                    break
+                else:
+                    module = candidate
+                    if module_name not in sys.modules:
+                        sys.modules[module_name] = module
+
+            if module is not None:
+                split = split[i:]
+                obj = None
+                filename = None
+                parent = False
+                for attr in split:
+                    try:
+                        candidate = getattr(obj or module, attr)
+                        filename = inspect.getsourcefile(candidate)
+                        lines, firstlineno = inspect.getsourcelines(candidate)
+                    except (AttributeError, TypeError):
+                        parent = (
+                            True  # Whether the parent object's source is being shown
+                        )
+                        break
+                    except OSError:
+                        print(f"Failed to get source of {candidate}.")
+                        continue
+                    else:
+                        obj = candidate
+
+                if obj is not None:
+                    location = os.path.join(
+                        self.doc.source.directory,
+                        os.path.relpath(filename)
+                        .replace("\\", "/")
+                        .split("/site-packages/")[
+                            -1
+                        ],  # Might cause issues for hardcoding 'site-packages'
+                    )
+                    url = f"{self.doc.source.url}/{location}#L{firstlineno}-L{firstlineno + len(lines) - 1}"
+                    doc_object = DocObjectSource(
+                        filename=filename,
+                        url=url,
+                        object=obj,
+                        parent=parent,
+                        firstlineno=firstlineno,
+                        code_lines=lines,
+                    )
+
+        self._source = doc_object
+
+    def get_source(self) -> DocObjectSource | None:
+        self.build_source()
+        return self._source
+
+    def clear_source(self):
+        if hasattr(self, "_source"):
+            del self._source
+
+
+@dataclass
 class Doc:
     """The Document object for a documentation source.
 
@@ -250,100 +351,6 @@ class Doc:
         return matches
 
 
-@dataclass
-class DocObjectSource:
-    filename: str
-    url: str
-    parent: bool  # Whether the parent object's source is being shown e.g. if it's an attribute
-    object: object
-    firstlineno: int
-    code_lines: List[str]
-
-
-@dataclass
-class DocObject:
-    label: str
-    doc: Doc
-    path: str
-    location: str
-
-    @property
-    def docs_url(self) -> str:
-        return os.path.join(self.doc.url, self.location)
-
-    @property
-    def sourceable(self) -> bool:
-        return all((self.path, self.doc.source, self.doc.module_name))
-
-    def build_source(self):
-        doc_object = None
-        if self.sourceable:
-            parent_module_name = self.doc.module_name
-            split = self.path.split(".")
-            if len(split) == 1 and split[0] != parent_module_name:
-                split.insert(0, parent_module_name)
-
-            # Get module name by looping through and importing all
-            # cummulative split parts from the start until it errors.
-            # Hacky but it works. Theoretically.
-            module = None
-            for i in range(len(split)):
-                try:
-                    module_name = ".".join(split[0 : i + 1])
-                    candidate = sys.modules.get(module_name) or importlib.import_module(
-                        module_name
-                    )
-                except ModuleNotFoundError:
-                    break
-                else:
-                    module = candidate
-                    if module_name not in sys.modules:
-                        sys.modules[module_name] = module
-
-            if module is not None:
-                split = split[i:]
-                obj = None
-                filename = None
-                parent = False
-                for attr in split:
-                    try:
-                        candidate = getattr(obj or module, attr)
-                        filename = inspect.getsourcefile(candidate)
-                        lines, firstlineno = inspect.getsourcelines(candidate)
-                    except (AttributeError, TypeError):
-                        parent = (
-                            True  # Whether the parent object's source is being shown
-                        )
-                        break
-                    except OSError:
-                        print(f"Failed to get source of {candidate}.")
-                        continue
-                    else:
-                        obj = candidate
-
-                if obj is not None:
-                    location = os.path.join(
-                        self.doc.source.directory,
-                        os.path.relpath(filename)
-                        .replace("\\", "/")
-                        .split("/site-packages/")[
-                            -1
-                        ],  # Might cause issues for hardcoding 'site-packages'
-                    )
-                    url = f"{self.doc.source.url}/{location}#L{firstlineno}-L{firstlineno + len(lines) - 1}"
-                    doc_object = DocObjectSource(filename=filename, url=url, object=obj, parent=parent, firstlineno=firstlineno, code_lines=lines)
-
-        self._source = doc_object
-
-    def get_source(self) -> DocObjectSource | None:
-        self.build_source()
-        return self._source
-
-    def clear_source(self):
-        if hasattr(self, "_source"):
-            del self._source
-
-
 DOCS = {
     "python": Doc(name="Python", aliases=("py",), url="https://docs.python.org/3"),
     "discord.py": Doc(
@@ -474,7 +481,11 @@ class DocsPageSource(menus.ListPageSource):
                 format_doc(
                     label=obj.label,
                     docs_url=obj.docs_url,
-                    source=(await self.bot.loop.run_in_executor(None, obj.get_source) if obj.doc.source else None),
+                    source=(
+                        await self.bot.loop.run_in_executor(None, obj.get_source)
+                        if obj.doc.source
+                        else None
+                    ),
                 )
                 for obj in objects
             ]
@@ -507,9 +518,7 @@ def normalize_indent(lines: List[str], index: Optional[int] = 0) -> List[str]:
 
 
 class CodeSource(menus.PageSource):
-    def __init__(
-        self, ctx: CustomContext, doc: Doc, obj: DocObject
-    ):
+    def __init__(self, ctx: CustomContext, doc: Doc, obj: DocObject):
         self.ctx = ctx
         self.bot = self.ctx.bot
 
@@ -523,22 +532,21 @@ class CodeSource(menus.PageSource):
             r"""([ruRUfF]*(?:"{3}(?:.|\n)+?"{3})|(?:'{3}(?:.|\n)+?'{3}))\n *?""",
             "...\n",
             "".join(self.source.code_lines),
-            1
+            1,
         )
 
-        self.doclines = tuple(dedent(NL.join(normalize_indent(docstring.split(NL)))).split(NL))
+        self.doclines = tuple(
+            dedent(NL.join(normalize_indent(docstring.split(NL)))).split(NL)
+        )
         self.codelines = tuple(dedent(NL.join(code.split(NL))).split(NL))
 
         self.entrants = {
             # lines: lines_per_page
             self.doclines: 15,
-            self.codelines: 15
+            self.codelines: 15,
         }
 
-        self.embed = self.bot.Embed(
-            title=obj.path,
-            url=obj._source.url
-        )
+        self.embed = self.bot.Embed(title=obj.path, url=obj._source.url)
 
     async def get_page(self, page_number: int) -> int:
         return page_number
@@ -550,9 +558,16 @@ class CodeSource(menus.PageSource):
         return math.ceil(len(lines) / per_page)
 
     def get_max_pages(self) -> int:
-        return max([self.get_num_pages(lines, per_page=per_page) for lines, per_page in self.entrants.items()])
+        return max(
+            [
+                self.get_num_pages(lines, per_page=per_page)
+                for lines, per_page in self.entrants.items()
+            ]
+        )
 
-    def get_entries(self, lines: List[str], current_page: int, *, per_page: int) -> List[str]:
+    def get_entries(
+        self, lines: List[str], current_page: int, *, per_page: int
+    ) -> List[str]:
         """Get entries for the current page."""
 
         pgstart = current_page * per_page
@@ -561,7 +576,9 @@ class CodeSource(menus.PageSource):
 
         return lines[min_entries:max_entries]
 
-    def get_page_info(self, lines: List[str], current_page: int, *, per_page: int) -> str:
+    def get_page_info(
+        self, lines: List[str], current_page: int, *, per_page: int
+    ) -> str:
         pages = self.get_num_pages(lines, per_page=per_page)
         return f"{min(current_page+1, pages)}/{pages} ({len(lines)} lines)"
 
@@ -577,7 +594,7 @@ class CodeSource(menus.PageSource):
         self.embed.add_field(
             name=f"docstring {self.get_page_info(self.doclines, current_page, per_page=doc_per_page)}",
             value=docstring,
-            inline=False
+            inline=False,
         )
 
         code_per_page = self.entrants[self.codelines]
@@ -589,7 +606,7 @@ class CodeSource(menus.PageSource):
         self.embed.add_field(
             name=f"code {self.get_page_info(self.codelines, current_page, per_page=code_per_page)}",
             value=code,
-            inline=False
+            inline=False,
         )
 
         return self.embed
@@ -683,7 +700,9 @@ a cruddy fuzzy algorithm.""",
             return
 
         if not doc.source:
-            return await ctx.send(f"Source code is not available for the `{doc.name}` module/library due to limitations :(")
+            return await ctx.send(
+                f"Source code is not available for the `{doc.name}` module/library due to limitations :("
+            )
 
         for obj in objs:  # TODO: Allow multiple?
             src = await self.bot.loop.run_in_executor(None, obj.get_source)
@@ -714,7 +733,9 @@ a cruddy fuzzy algorithm.""",
         self,
         ctx: CustomContext,
         *,
-        doc_and_objects: DocAndObjectsConverter = commands.param(default=DocAndObjectsConverter().convert)
+        doc_and_objects: DocAndObjectsConverter = commands.param(
+            default=DocAndObjectsConverter().convert
+        ),
     ):
         await self.do_rtfs(ctx, *doc_and_objects)
 
