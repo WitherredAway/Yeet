@@ -77,7 +77,7 @@ class BotPages(discord.ui.View):
         if kwargs:
             try:
                 await interaction.response.edit_message(**kwargs, view=self)
-            except discord.NotFound:
+            except (discord.NotFound, discord.InteractionResponded):
                 if self.message:
                     await self.message.edit(**kwargs, view=self)
 
@@ -164,7 +164,7 @@ class BotPages(discord.ui.View):
     ) -> None:
         try:
             await interaction.response.send_message(error)
-        except discord.NotFound:
+        except (discord.NotFound, discord.InteractionResponded):
             await interaction.followup.send(error)
         raise error
 
