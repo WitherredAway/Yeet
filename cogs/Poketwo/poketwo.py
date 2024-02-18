@@ -58,7 +58,7 @@ class Poketwo(PoketwoChances, PoketwoMoves):
         await ctx.send(" ".join(ids) or "No IDs found.")
 
     @commands.command(
-        name="resolve_id",
+        name="resolve-id",
         aliases=("resolveid",),
         brief="Get the timestamp associated with a Pokémon ID",
         help="Get the timestamp associated with a Pokémon ID",
@@ -68,7 +68,8 @@ class Poketwo(PoketwoChances, PoketwoMoves):
             if len(pokemon_id) < 8:
                 raise ValueError
 
-            timestamp = int(pokemon_id[:8], 16)
+            b = bytes.fromhex(pokemon_id)
+            timestamp = int.from_bytes(b[:4])
         except ValueError:
             content = f"`{pokemon_id}` is not a valid Pokémon ID!"
         else:
