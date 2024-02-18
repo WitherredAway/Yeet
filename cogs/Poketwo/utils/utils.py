@@ -1,7 +1,7 @@
 import csv
 from io import StringIO
+from typing import IO, Any, Dict, List
 import unicodedata
-from aiohttp import ClientSession
 import pandas as pd
 
 
@@ -36,11 +36,7 @@ def isnumber(v):
     return True
 
 
-async def get_data_from(csv_url: str, session: ClientSession):
-    response = await session.get(csv_url)
-    stream = StringIO((await response.read()).decode("utf-8"))
-
+def get_data_from(stream: IO[str]) -> List[Dict[str, Any]]:
     reader = csv.DictReader(stream)
     data = list({k: int(v) if isnumber(v) else v for k, v in row.items() if v != ""} for row in reader)
-
     return data

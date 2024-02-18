@@ -16,14 +16,15 @@ along with this program; if not, see <https://www.gnu.org/licenses>.
 """
 import csv
 import random
-import typing
 from collections import defaultdict
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Callable, Dict, List, Literal, Optional
+from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
 from urllib.parse import urljoin
 
 import pandas as pd
+
+from cogs.Poketwo.utils.utils import deaccent
 
 from .constants import GENDER_RATES
 
@@ -54,14 +55,15 @@ class Stats:
 @dataclass
 class Species:
     id: int
-    names: typing.List[typing.Tuple[str, str]]
+    enabled: bool
+    names: List[Tuple[str, str]]
     slug: str
     base_stats: Stats
     height: int
     weight: int
     dex_number: int
     catchable: bool
-    types: typing.List[str]
+    types: List[str]
     abundance: int
     gender_rate: int
     has_gender_differences: int
@@ -78,13 +80,24 @@ class Species:
     region: str = None
     art_credit: str = None
 
-    instance: typing.Any = UnregisteredDataManager()
+    instance: Any = UnregisteredDataManager()
 
     def __post_init__(self):
-        self.name = next(filter(lambda x: x[0] == "🇬🇧", self.names))[1]
+        if len(self.names) > 0:
+            self.name = next(filter(lambda x: x[0] == "🇬🇧", self.names))[1]
+        else:
+            self.name = self.slug
 
     def __str__(self):
         return self.name
+
+    def __eq__(self, other) -> bool:
+        if isinstance(other, Species):
+            return self.id == other.id
+        return False
+
+    def __hash__(self) -> hash:
+        return hash(self.id)
 
     @cached_property
     def gender_ratios(self):
@@ -228,15 +241,12 @@ class Species:
         return getattr(self, attr)
 
 
-def get_pokemon(instance, data: List[Dict]) -> Dict[int, Species]:
+def get_pokemon(instance, data: List[Dict[str, Any]]) -> Dict[int, Species]:
     species = {x["id"]: x for x in data}
 
     pokemon = {}
 
     for row in species.values():
-        if "enabled" not in row:
-            continue
-
         types = []
         if "type.0" in row:
             types.append(row["type.0"])
@@ -268,6 +278,7 @@ def get_pokemon(instance, data: List[Dict]) -> Dict[int, Species]:
 
         pokemon[row["id"]] = Species(
             id=row["id"],
+            enabled="enabled" in row,
             names=names,
             slug=row["slug"],
             base_stats=Stats(
@@ -306,13 +317,13 @@ def get_pokemon(instance, data: List[Dict]) -> Dict[int, Species]:
 
 @dataclass
 class DataManager:
-    def __init__(self, csv_reader: csv.DictReader):
-        self.csv_reader = csv_reader
-        self.pokemon = get_pokemon(self, csv_reader)
+    def __init__(self, csv_data: csv.DictReader):
+        self.csv_data = csv_data
+        self.pokemon = get_pokemon(self, csv_data)
 
     @cached_property
     def df(self) -> pd.DataFrame:
-        return pd.DataFrame.from_records(self.csv_reader)
+        return pd.DataFrame.from_records(self.csv_data)
 
     @cached_property
     def df_catchable(self) -> pd.DataFrame:
@@ -322,11 +333,13 @@ class DataManager:
         base_url = getattr(self, "assets_base_url", "https://cdn.poketwo.net")
         return urljoin(base_url, path)
 
-    def all_pokemon(self):
-        return self.pokemon.values()
+    def all_pokemon(self, predicate: Optional[Callable[[Species], bool]] = None) -> List[Species]:
+        base_predicate = lambda s: s.enabled
+        all_pokemon = list(filter(base_predicate, self.pokemon.values()))
+        if predicate is not None:
+            all_pokemon = list(filter(predicate, all_pokemon))
 
-    def get_species(self, predicate: Callable[[Species], bool]) -> List[Species]:
-        return [s for s in self.all_pokemon() if predicate(s)]
+        return all_pokemon
 
     @cached_property
     def list_alolan(self):

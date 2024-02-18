@@ -62,7 +62,7 @@ class Bot(commands.Bot):
 
     COGS = unwind(
         {
-            ("poketwo", "p2"): "Poketwo.poketwo",
+            ("poketwo", "p2", "p2data"): "Poketwo.poketwo",
             "docs": "RDanny.docs",
             "help": "RDanny.help",
             "admin": "admin",

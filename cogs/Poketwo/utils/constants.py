@@ -2,13 +2,9 @@ import os
 
 
 POKETWO_ID = 716390085896962058
-POKEMON_CSV = (
+POKEMON_GIST_URL = (
     # "https://raw.githubusercontent.com/poketwo/data/master/csv/pokemon.csv"
-    os.getenv("POKEMON_CSV")
-)
-POKEMON_CSV = (
-    # "https://raw.githubusercontent.com/poketwo/data/master/csv/pokemon.csv"
-    os.getenv("POKEMON_CSV")
+    os.getenv("POKEMON_GIST_URL")
 )
 IMAGE_URL = os.getenv("POKETWO_IMAGE_SERVER_API")
 

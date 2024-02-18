@@ -1,19 +1,22 @@
 from __future__ import annotations
-import logging
 
+from io import StringIO
+import logging
 import re
-from typing import TYPE_CHECKING, List, Optional
+import textwrap
+from typing import IO, TYPE_CHECKING, List, Optional
+
+import aiohttp
 import discord
 from discord.ext import commands
 import pandas as pd
-from cogs.Poketwo.utils.constants import POKEMON_CSV
+
+from cogs.Poketwo.utils.constants import POKEMON_GIST_URL
 from cogs.Poketwo.utils.models import DataManager
 from cogs.Poketwo.utils.utils import get_data_from
-
 from helpers.utils import enumerate_list, force_log_errors, reload_modules
 from helpers.context import CustomContext
 from helpers.timer import Timer
-
 from .ext.poketwo_chances import PoketwoChances
 
 if TYPE_CHECKING:
@@ -29,9 +32,29 @@ class Poketwo(PoketwoChances):
     def __init__(self, bot: Bot):
         self.bot = bot
 
-    async def initialize_data(self):
-        csv_reader = await get_data_from(POKEMON_CSV, self.bot.session)
-        self.data = DataManager(csv_reader)
+    async def initialize_data(self, update_stream: Optional[IO[str]] = None):
+        self.pokemon_gist = await self.bot.wgists_client.get_gist(POKEMON_GIST_URL)
+        if update_stream is None:
+            content = self.pokemon_gist.files[0].content
+            stream = StringIO(content)
+        else:
+            content = update_stream.read()
+            stream = StringIO(content)
+            if old_data := getattr(self, "data"):
+                old_pokemon = list(old_data.pokemon.values())
+            else:
+                old_pokemon = None
+
+        csv_data = get_data_from(stream)
+        self.data = DataManager(csv_data)
+
+        if update_stream is not None:
+            new_pokemon = list(self.data.pokemon.values())
+            has_changed = old_pokemon != new_pokemon
+            if has_changed:
+                self.pokemon_gist.files[0].content = content
+                await self.pokemon_gist.edit()
+
 
     hint_pattern = re.compile(r"The pokémon is (?P<hint>.+)\.")
     ids_pattern = re.compile(r"^`?\s*(\d+)`?\b", re.MULTILINE)
@@ -56,6 +79,68 @@ class Poketwo(PoketwoChances):
     @force_log_errors
     async def cog_unload(self):
         reload_modules("cogs/Poketwo", skip=__name__)
+
+    @commands.group(
+        name="poketwo-data",
+        aliases=("p2data",),
+        brief="See info about the Pokétwo data currently loaded on the bot",
+        invoke_without_command=True
+    )
+    async def data_group(self, ctx: CustomContext) -> str:
+        embed = self.bot.Embed(title="Local Pokétwo Data Information")
+        embed.add_field(name="Total Pokémon", value=str(len(self.data.pokemon.values())))
+        embed.add_field(name="Enabled Pokémon", value=str(len(self.data.all_pokemon())))
+
+        updated_timestamp = discord.utils.format_dt(self.pokemon_gist.updated_at, "F")
+        updated_relative_timestamp = discord.utils.format_dt(self.pokemon_gist.updated_at, "R")
+        embed.add_field(name="Data Last Updated At", value=f"{updated_timestamp} ({updated_relative_timestamp})")
+
+        return await ctx.send(embed=embed)
+
+    @commands.is_owner()
+    @data_group.command(
+        name="update",
+        brief="Update the pokemon.csv gist containing the Pokétwo data using provided csv data url.",
+    )
+    async def update_data(self, ctx: CustomContext, *, csv_data_url: str):
+        async with ctx.typing():
+            old_pokemon = set(self.data.pokemon.values())
+            try:
+                response = await self.bot.session.get(csv_data_url)
+            except aiohttp.InvalidURL:
+                return await ctx.send("Invalid URL provided.")
+
+            content = await response.text()
+            try:
+                await self.initialize_data(StringIO(content))
+            except Exception as e:
+                return await ctx.send(f"Invalid data provided. Please make sure that it is a pokemon.csv file from Pokétwo.")
+            else:
+                new_pokemon = set(self.data.pokemon.values())
+                has_changed = old_pokemon != new_pokemon
+
+            if has_changed is True:
+                old_pokemon_count = len(old_pokemon)
+                new_pokemon_count = len(new_pokemon)
+
+                message = f"""
+                    Successfully updated the data! Total Pokémon `{old_pokemon_count}` -> `{new_pokemon_count}`!"""
+                additions = [s for s in new_pokemon if s not in old_pokemon]
+                removals = [s for s in old_pokemon if s not in new_pokemon]
+                if additions:
+                    message += f"""
+                    ### Additions (`{len(additions)}`)
+                    {", ".join([f"{s.name} (`{s.id}`)" for s in additions])}
+                    """
+                if removals:
+                    message += f"""
+                    ### Removals (`{len(removals)}`)
+                    {", ".join([f"{s.name} (`{s.id}`)" for s in removals])}
+                    """
+            else:
+                message = "No changes found!"
+
+            await ctx.send(textwrap.dedent(message))
 
     @commands.command(
         name="extract-ids",
