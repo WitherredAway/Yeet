@@ -13,7 +13,7 @@ from helpers.context import CustomContext
 
 from .RDanny.utils.paginator import BotPages
 from helpers.constants import MESSAGE_CHAR_LIMIT, NL
-from ..helpers.utils import UrlView
+from helpers.utils import UrlView
 
 if typing.TYPE_CHECKING:
     from main import Bot

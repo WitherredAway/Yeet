@@ -6,7 +6,7 @@ import math
 from simpleeval import simple_eval
 from typing import Optional
 from discord.ext import commands, tasks
-from ..helpers.utils import isfloat
+from helpers.utils import isfloat
 
 
 class Calculator(discord.ui.View):

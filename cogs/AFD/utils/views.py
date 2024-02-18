@@ -12,7 +12,7 @@ from .constants import DATETIME_FMT, FIRST_ROW_IDX
 
 from .urls import SUBMISSION_URL
 from .utils import EmbedColours, Row
-from ....helpers.utils import SimpleModal, url_to_image
+from helpers.utils import SimpleModal, url_to_image
 from helpers.context import CustomContext
 from .labels import (
     COMMENT_LABEL,

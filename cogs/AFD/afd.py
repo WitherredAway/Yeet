@@ -46,7 +46,7 @@ from cogs.AFD.utils.list_paginator import (
     StatsPageMenu,
     RemindAllButton,
 )
-from ...helpers.utils import (
+from helpers.utils import (
     UrlView,
     enumerate_list,
     force_log_errors,
