@@ -30,7 +30,6 @@ class Poketwo(PoketwoChances):
         self.bot = bot
 
     async def initialize_data(self):
-        self.pokemon_gist = ...
         csv_reader = await get_data_from(POKEMON_CSV, self.bot.session)
         self.data = DataManager(csv_reader)
 
@@ -57,15 +56,6 @@ class Poketwo(PoketwoChances):
     @force_log_errors
     async def cog_unload(self):
         reload_modules("cogs/Poketwo", skip=__name__)
-
-    @commands.is_owner()
-    @commands.command(
-        name="update-data",
-        aliases=("updatedata",),
-        brief="Update pokemon.csv containing Pokétwo data using provided csv data url.",
-    )
-    async def update_data(self, ctx: CustomContext, *, csv_data_url: str):
-        ...
 
     @commands.command(
         name="extract-ids",
