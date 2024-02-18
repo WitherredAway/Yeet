@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from helpers.timer import Timer
+
 main_timer = Timer("main").start()
 
 import json
@@ -170,11 +171,17 @@ class Bot(commands.Bot):
             "loading extensions",
             logger=log,
             start_message="Started loading extensions" + NL + LOG_BORDER,
-            end_message="Loaded all extensions in \033[33;1m{end_time}\033[0m" + NL + LOG_BORDER
+            end_message="Loaded all extensions in \033[33;1m{end_time}\033[0m"
+            + NL
+            + LOG_BORDER,
         ):
             for filename in set(self.COGS.values()):
                 path = f"cogs.{filename}"
-                with Timer(f"loading {path}", logger=log, end_message=f"Loaded \033[34;1mcogs.{filename}\033[0m in {{end_time}}"):
+                with Timer(
+                    f"loading {path}",
+                    logger=log,
+                    end_message=f"Loaded \033[34;1mcogs.{filename}\033[0m in {{end_time}}",
+                ):
                     await self.load_extension(path)
 
         for name, cog in self.cogs.items():

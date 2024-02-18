@@ -36,6 +36,7 @@ class UnregisteredError(Exception):
 class UnregisteredDataManager:
     pass
 
+
 # Stats
 
 
@@ -221,9 +222,8 @@ class Species:
     def get_image_url(
         self,
         shiny: Optional[bool] = False,
-        gender: Optional[Literal["unknown", "male", "female"]] = None
+        gender: Optional[Literal["unknown", "male", "female"]] = None,
     ) -> str:
-
         if gender is not None:
             gender = gender.lower()
 
@@ -299,7 +299,9 @@ def get_pokemon(instance, data: List[Dict[str, Any]]) -> Dict[int, Species]:
             dex_number=row["dex_number"],
             abundance=row["abundance"] if "abundance" in row else 0,
             gender_rate=row["gender_rate"] if "gender_rate" in row else -1,
-            has_gender_differences=row["has_gender_differences"] if "has_gender_differences" in row else 0,
+            has_gender_differences=row["has_gender_differences"]
+            if "has_gender_differences" in row
+            else 0,
             description=row.get("description", None),
             mythical="mythical" in row,
             legendary="legendary" in row,
@@ -333,7 +335,9 @@ class DataManager:
         base_url = getattr(self, "assets_base_url", "https://cdn.poketwo.net")
         return urljoin(base_url, path)
 
-    def all_pokemon(self, predicate: Optional[Callable[[Species], bool]] = None) -> List[Species]:
+    def all_pokemon(
+        self, predicate: Optional[Callable[[Species], bool]] = None
+    ) -> List[Species]:
         base_predicate = lambda s: s.enabled
         all_pokemon = list(filter(base_predicate, self.pokemon.values()))
         if predicate is not None:

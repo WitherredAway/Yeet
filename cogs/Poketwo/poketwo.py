@@ -55,7 +55,6 @@ class Poketwo(PoketwoChances):
                 self.pokemon_gist.files[0].content = content
                 await self.pokemon_gist.edit()
 
-
     hint_pattern = re.compile(r"The pokémon is (?P<hint>.+)\.")
     ids_pattern = re.compile(r"^`?\s*(\d+)`?\b", re.MULTILINE)
 
@@ -70,10 +69,7 @@ class Poketwo(PoketwoChances):
         return list(self.pk["name.en"])
 
     async def cog_load(self):
-        with Timer(
-            logger=logger,
-            end_message="Pokétwo data loaded in {end_time}"
-        ):
+        with Timer(logger=logger, end_message="Pokétwo data loaded in {end_time}"):
             await self.initialize_data()
 
     @force_log_errors
@@ -84,16 +80,23 @@ class Poketwo(PoketwoChances):
         name="poketwo-data",
         aliases=("p2data",),
         brief="See info about the Pokétwo data currently loaded on the bot",
-        invoke_without_command=True
+        invoke_without_command=True,
     )
     async def data_group(self, ctx: CustomContext) -> str:
         embed = self.bot.Embed(title="Local Pokétwo Data Information")
-        embed.add_field(name="Total Pokémon", value=str(len(self.data.pokemon.values())))
+        embed.add_field(
+            name="Total Pokémon", value=str(len(self.data.pokemon.values()))
+        )
         embed.add_field(name="Enabled Pokémon", value=str(len(self.data.all_pokemon())))
 
         updated_timestamp = discord.utils.format_dt(self.pokemon_gist.updated_at, "F")
-        updated_relative_timestamp = discord.utils.format_dt(self.pokemon_gist.updated_at, "R")
-        embed.add_field(name="Data Last Updated At", value=f"{updated_timestamp} ({updated_relative_timestamp})")
+        updated_relative_timestamp = discord.utils.format_dt(
+            self.pokemon_gist.updated_at, "R"
+        )
+        embed.add_field(
+            name="Data Last Updated At",
+            value=f"{updated_timestamp} ({updated_relative_timestamp})",
+        )
 
         return await ctx.send(embed=embed)
 
@@ -114,7 +117,9 @@ class Poketwo(PoketwoChances):
             try:
                 await self.initialize_data(StringIO(content))
             except Exception as e:
-                return await ctx.send(f"Invalid data provided. Please make sure that it is a pokemon.csv file from Pokétwo.")
+                return await ctx.send(
+                    f"Invalid data provided. Please make sure that it is a pokemon.csv file from Pokétwo."
+                )
             else:
                 new_pokemon = set(self.data.pokemon.values())
                 has_changed = old_pokemon != new_pokemon
@@ -203,7 +208,7 @@ class Poketwo(PoketwoChances):
         matches = []
         for pkm in self.pkm_list:
             if match := method(pkm):
-                matches.append((match.start()/len(pkm), pkm))
+                matches.append((match.start() / len(pkm), pkm))
         matches.sort(key=lambda m: m[0])
 
         return [m[1] for m in matches][:limit]
@@ -214,12 +219,14 @@ class Poketwo(PoketwoChances):
         brief="Solve the hint sent by Pokétwo for a Pokémon spawn",
         help=(
             "Solve the hint sent by Pokétwo for a Pokémon spawn. Pass in the message/hint into this command."
-        )
+        ),
     )
     async def solve_hint_command(self, ctx: CustomContext, *, text: str):
         pokemon = self.solve_hint(text)
         if not pokemon:
-            return await ctx.send("Could not solve that hint. Please make sure it's in the same format as posted by Pokétwo.")
+            return await ctx.send(
+                "Could not solve that hint. Please make sure it's in the same format as posted by Pokétwo."
+            )
 
         if len(pokemon) > 1:
             pokemon = enumerate_list(pokemon)

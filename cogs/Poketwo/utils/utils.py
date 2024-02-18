@@ -38,5 +38,8 @@ def isnumber(v):
 
 def get_data_from(stream: IO[str]) -> List[Dict[str, Any]]:
     reader = csv.DictReader(stream)
-    data = list({k: int(v) if isnumber(v) else v for k, v in row.items() if v != ""} for row in reader)
+    data = list(
+        {k: int(v) if isnumber(v) else v for k, v in row.items() if v != ""}
+        for row in reader
+    )
     return data
