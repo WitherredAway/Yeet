@@ -4,10 +4,9 @@ import logging
 import math
 import os
 import sys
-import time
 import traceback
 import typing
-from typing import Any, Dict, Iterable, List, Tuple, Union
+from typing import Any, Dict, Iterable, List, Union
 import cProfile
 from typing import Dict, Optional
 import unicodedata
@@ -318,28 +317,12 @@ def format_join(
     return joiner.join(join_list)
 
 
-class Timer:
-    def __init__(
-        self,
-        name: Optional[str] = "timer",
-        *,
-        logger: Optional[logging.Logger] = None,
-        start_message: Optional[str] = "Timer `{name}` started",
-        end_message: Optional[str] = "\033[32mTimer `{name}` completed in \033[33;1m{seconds}s",
-    ):
-        self.name = name
-        self.logger = logger
-        self.start_message = start_message
-        self.end_message = end_message
+def comma_join(iterable: Iterable) -> str:
+    """Function to take in a list and return a comma formatted string of its elements"""
 
-    def __enter__(self):
-        if self.logger and self.start_message:
-            self.logger.info(self.start_message.format_map({"name": self.name}))
-        self.start_time = time.time()
-        return self
+    if len(iterable) == 0:
+        return ""
+    elif len(iterable) == 1:
+        return str(iterable[0])
 
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.end_time = time.time()
-        self.elapsed = self.end_time - self.start_time
-        if self.logger and self.end_message:
-            self.logger.info(self.end_message.format_map({"name": self.name, "seconds": round(self.elapsed, 2)}))
+    return f"{', '.join(map(str, iterable[:-1]))} and {iterable[-1]}"

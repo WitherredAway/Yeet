@@ -1,18 +1,25 @@
 from __future__ import annotations
+
+from helpers.timer import Timer
+main_timer = Timer("main").start()
+
 import json
+import os
+
+# Set environment variables. Using this instead of dotenv because my data is a specific format
+if __name__ == "__main__":
+    with open(".env") as f:
+        env = json.load(f)
+        for key, value in env.items():
+            os.environ[key] = (
+                str(value) if not isinstance(value, dict) else json.dumps(value)
+            )
+
 import sys
-
-import time
 import traceback
-
-from cogs.utils.utils import UrlView, unwind
-
-start_time = time.time()
-
 import asyncio
 import datetime
 import logging
-import os
 from functools import cached_property
 from typing import Any, Optional, Tuple, Union
 
@@ -20,7 +27,6 @@ import aiohttp
 import discord
 import gists
 from discord.ext import commands
-import pandas as pd
 
 from helpers.context import CustomContext
 from cogs.Draw.utils.colour import Colour
@@ -34,15 +40,8 @@ from helpers.constants import (
     NL,
 )
 from helpers.keep_alive import keep_alive
-
-
-if __name__ == "__main__":
-    with open(".env") as f:
-        env = json.load(f)
-        for key, value in env.items():
-            os.environ[key] = (
-                str(value) if not isinstance(value, dict) else json.dumps(value)
-            )
+from cogs.Poketwo.poketwo import DataManager
+from cogs.utils.utils import UrlView, unwind
 
 
 logging.basicConfig(level=logging.INFO)
@@ -170,19 +169,16 @@ class Bot(commands.Bot):
         self.wgists_client = gists.Client()
         await self.wgists_client.authorize(os.getenv("WgithubTOKEN"))
 
-        ext_start = time.time()
-        log.info("Started loading extensions" + NL + LOG_BORDER)
-        for filename in set(self.COGS.values()):
-            start = time.time()
-            await self.load_extension(f"cogs.{filename}")
-            log.info(
-                f"Loaded \033[34;1mcogs.{filename}\033[0m in \033[33;1m{round(time.time()-start, 2)}s\033[0m"
-            )
-        log.info(
-            f"Loaded all extensions in \033[33;1m{round(time.time()-ext_start, 2)}s\033[0m"
-            + NL
-            + LOG_BORDER
-        )
+        with Timer(
+            "loading extensions",
+            logger=log,
+            start_message="Started loading extensions" + NL + LOG_BORDER,
+            end_message="Loaded all extensions in \033[33;1m{end_time}\033[0m" + NL + LOG_BORDER
+        ):
+            for filename in set(self.COGS.values()):
+                path = f"cogs.{filename}"
+                with Timer(f"loading {path}", logger=log, end_message=f"Loaded \033[34;1mcogs.{filename}\033[0m in {{end_time}}"):
+                    await self.load_extension(path)
 
         for name, cog in self.cogs.items():
             try:
@@ -190,9 +186,8 @@ class Bot(commands.Bot):
             except AttributeError:
                 continue
 
-        time_taken = time.time() - self.start_time
-        m, s = divmod(time_taken, 60)
-        msg = f"\033[32;1m{self.user}\033[0;32m connected in \033[33;1m{round(m)}m{round(s)}s\033[0;32m.\033[0m"
+        time_taken = main_timer.end()
+        msg = f"\033[32;1m{self.user}\033[0;32m connected in \033[33;1m{time_taken}\033[0;32m.\033[0m"
         await self.status_channel.send(f"```ansi\n{msg}\n```")
         log.info(msg)
 
@@ -311,7 +306,7 @@ if __name__ == "__main__":
         intents=discord.Intents.all(),
         strip_after_prefix=True,
     )
-    bot.start_time = start_time
+    bot.start_time = main_timer.start_time
     if os.getenv("REPL_ID") is not None:
         keep_alive()
         try:
