@@ -333,7 +333,7 @@ class Timer:
         self.end_message = end_message
 
     def __enter__(self):
-        if self.logger:
+        if self.logger and self.start_message:
             self.logger.info(self.start_message.format_map({"name": self.name}))
         self.start_time = time.time()
         return self
@@ -341,5 +341,5 @@ class Timer:
     def __exit__(self, exc_type, exc_value, traceback):
         self.end_time = time.time()
         self.elapsed = self.end_time - self.start_time
-        if self.logger:
+        if self.logger and self.end_message:
             self.logger.info(self.end_message.format_map({"name": self.name, "seconds": round(self.elapsed, 2)}))
