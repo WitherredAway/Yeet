@@ -5,7 +5,7 @@ from jishaku.cog import Jishaku
 from jishaku.codeblocks import codeblock_converter
 from jishaku.features.baseclass import Feature
 
-from .utils.jishaku_py_modal import CodeView
+from .jishaku_py_modal import CodeView
 
 
 os.environ["JISHAKU_RETAIN"] = "True"

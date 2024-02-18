@@ -71,7 +71,7 @@ class Bot(commands.Bot):
             ("define", "df"): "define",
             "draw": "Draw.draw",
             "gist": "gist",
-            ("jishaku", "jsk"): "jishaku",
+            ("jishaku", "jsk"): "Jishaku.jishaku",
             "math": "math",
             "image": "Image.image",
             "afd": "AFD.afd",
