@@ -319,17 +319,27 @@ def format_join(
 
 
 class Timer:
-    def __init__(self, logger, name: Optional[str] = "timer"):
-        self.logger = logger
+    def __init__(
+        self,
+        name: Optional[str] = "timer",
+        *,
+        logger: Optional[logging.Logger] = None,
+        start_message: Optional[str] = "Timer `{name}` started",
+        end_message: Optional[str] = "\033[32mTimer `{name}` completed in \033[33;1m{seconds}s",
+    ):
         self.name = name
+        self.logger = logger
+        self.start_message = start_message
+        self.end_message = end_message
 
     def __enter__(self):
+        if self.logger:
+            self.logger.info(self.start_message.format_map({"name": self.name}))
         self.start_time = time.time()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.end_time = time.time()
         self.elapsed = self.end_time - self.start_time
-        self.logger.info(
-            f"\033[32mTimer `{self.name}` completed in \033[33;1m{round(self.elapsed, 2)}s\033[0m"
-        )
+        if self.logger:
+            self.logger.info(self.end_message.format_map({"name": self.name, "seconds": round(self.elapsed, 2)}))
