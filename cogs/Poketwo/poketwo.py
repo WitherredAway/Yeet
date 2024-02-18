@@ -60,8 +60,8 @@ class Poketwo(PoketwoChances):
     @commands.command(
         name="extract-ids",
         aliases=("ids", "extractids"),
-        brief="Extract pokémon IDs from Pokétwo embeds",
-        help="Extract pokémon IDs from Pokétwo embeds like marketplace, inventory, etc by providing message link, ID or by replying to the message.",
+        brief="Extract Pokémon IDs from Pokétwo embeds",
+        help="Extract Pokémon IDs from Pokétwo embeds like marketplace, inventory, etc by providing message link, ID or by replying to the message.",
     )
     async def extract_ids(
         self, ctx: CustomContext, msg: Optional[discord.Message] = None
@@ -126,9 +126,9 @@ class Poketwo(PoketwoChances):
     @commands.command(
         name="solve-hint",
         aliases=("solvehint", "solve"),
-        brief="Solve the hint sent by Pokétwo for a pokémon spawn",
+        brief="Solve the hint sent by Pokétwo for a Pokémon spawn",
         help=(
-            "Solve the hint sent by Pokétwo for a pokémon spawn. Pass in the message/hint into this command."
+            "Solve the hint sent by Pokétwo for a Pokémon spawn. Pass in the message/hint into this command."
         )
     )
     async def solve_hint_command(self, ctx: CustomContext, *, text: str):

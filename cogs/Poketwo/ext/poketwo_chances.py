@@ -51,7 +51,7 @@ EVENT_GIST = "https://gist.github.com/caf8fc84a8072cfcd1d07b2d18730d5e"
 DELAY = 1
 pattern = re.compile(
     r"""__\*\*(?P<title>.+) spawn-chances\*\*__ \(Includes all catchable forms\)
-> All pokémon: <(?P<gist>.+)>
+> All Pokémon: <(?P<gist>.+)>
 \*\*Total pokemon\*\*: (?P<total>\d+)
 \*\*Total chance\*\*: (?P<chance_per>[\d.]+)% or (?P<chance>[\d\/]+)"""
 )
@@ -185,26 +185,26 @@ class PoketwoChances(commands.Cog):
         if list_pokemon is True:
             await self.update_chance_gist(
                 pkm_df,
-                description=f"Spawn chances of {title} pokémon ({len(pkm_df)}). {total_chances}",
+                description=f"Spawn chances of {title} Pokémon ({len(pkm_df)}). {total_chances}",
                 gist=gist,
                 keep_cols=keep_cols,
             )
-            all_pokemon = f"> All pokémon: <{gist.url}>"
-            extra = f" (Includes all catchable forms)\n{all_pokemon}\n**Total pokemon**: {len(pkm_df)}"
+            all_pokemon = f"> All Pokémon: <{gist.url}>"
+            extra = f" (Includes all catchable forms)\n{all_pokemon}\n**Total Pokémon**: {len(pkm_df)}"
 
         result = f"__**{title} spawn-chances**__{extra}\n{total_chances}"
         return result
 
     @commands.group(
         aliases=("chances",),
-        help="See the chances of a single pokémon.",
+        help="See the chances of a single Pokémon.",
         invoke_without_command=True,
     )
     async def chance(self, ctx, *, pokemon: str):
         try:
             pkm_df = self.pk.loc[self.pk["name.en"] == get_pokemon(pokemon, pk=self.pk)]
         except IndexError:
-            await ctx.send(f"`{pokemon}` is not a valid pokemon!")
+            await ctx.send(f"`{pokemon}` is not a valid Pokémon!")
             return await ctx.send_help(ctx.command)
 
         pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance"]]
@@ -218,7 +218,7 @@ class PoketwoChances(commands.Cog):
         await ctx.send(result)
         return result
 
-    @chance.command(name="all", help="See the chances of all pokémon in a nice table")
+    @chance.command(name="all", help="See the chances of all Pokémon in a nice table")
     async def all(self, ctx):
         pkm_df = self.pk
         pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance"]]
@@ -247,7 +247,7 @@ class PoketwoChances(commands.Cog):
 
     @chance.command(
         name="rarity",
-        help="See the chances of a rarity and the pokémon that belong to that rarity.",
+        help="See the chances of a rarity and the Pokémon that belong to that rarity.",
     )
     async def _rarity(self, ctx, rarity):
         options = RARITY_GISTS.keys()
@@ -272,7 +272,7 @@ class PoketwoChances(commands.Cog):
 
     @chance.command(
         name="form",
-        help="See the chances of a form and the individual pokémon. Options: Alolan, Galarian & Hisuian.",
+        help="See the chances of a form and the individual Pokémon. Options: Alolan, Galarian & Hisuian.",
     )
     async def _form(self, ctx, form):
         options = FORM_GISTS.keys()
@@ -298,8 +298,8 @@ class PoketwoChances(commands.Cog):
     @chance.command(
         name="region",
         aliases=("gen",),
-        brief="See the chances of the pokémon from a region.",
-        help="See the chances of the pokémon from a region. Options: Kanto/1, Johto/2, Hoenn/3, Sinnoh/4, Unova/5, Kalos/6, Alola/7, Galar/8, Hisui",
+        brief="See the chances of the Pokémon from a region.",
+        help="See the chances of the Pokémon from a region. Options: Kanto/1, Johto/2, Hoenn/3, Sinnoh/4, Unova/5, Kalos/6, Alola/7, Galar/8, Hisui",
     )
     async def _region(self, ctx, region: Union[int, str]):
         options = list(REGION_GISTS.keys())
@@ -354,8 +354,8 @@ class PoketwoChances(commands.Cog):
     @chance.command(
         name="type",
         aliases=("types", "ty", "t"),
-        brief="See the chances of pokémon with certain type(s)",
-        help="See the chances of pokémon with certain type(s). Types: Normal, Fire, Water, Grass, Flying, Fighting, Poison, Electric, Ground, Rock, Psychic, Ice, Bug, Ghost, Steel, Dragon, Dark and Fairy.",
+        brief="See the chances of Pokémon with certain type(s)",
+        help="See the chances of Pokémon with certain type(s). Types: Normal, Fire, Water, Grass, Flying, Fighting, Poison, Electric, Ground, Rock, Psychic, Ice, Bug, Ghost, Steel, Dragon, Dark and Fairy.",
     )
     async def _type(self, ctx, type_1: str, type_2: str = None):
         type_1 = type_1.capitalize()
@@ -381,7 +381,7 @@ class PoketwoChances(commands.Cog):
         pkm_df = pkm_df.loc[pkm_df["catchable"] > 0]
         if len(pkm_df) == 0:
             return await ctx.send(
-                f'No catchable pokémon found with type(s) `{"` and `".join(types)}`'
+                f'No catchable Pokémon found with type(s) `{"` and `".join(types)}`'
             )
         pkm_df.rename(columns={"type.0": "Type 1", "type.1": "Type 2"}, inplace=True)
         pkm_df = pkm_df.loc[
@@ -473,17 +473,17 @@ class PoketwoChances(commands.Cog):
 
 {event_msg}
 
-**All pokémon** - <{ALL_GIST}>
+**All Pokémon** - <{ALL_GIST}>
 
-**Starter pokémon** = {starters.group("chance_per")}% ({starters.group("chance")})
+**Starter Pokémon** = {starters.group("chance_per")}% ({starters.group("chance")})
 
-**Mythical pokémon** (?tag `my%`) = {mythical.group("chance_per")}%
-**Legendary pokémon** (?tag `leg%`) = {legendary.group("chance_per")}%
-**Ultra beast pokémon** (?tag `ub%`) = {ub.group("chance_per")}%
+**Mythical Pokémon** (?tag `my%`) = {mythical.group("chance_per")}%
+**Legendary Pokémon** (?tag `leg%`) = {legendary.group("chance_per")}%
+**Ultra beast Pokémon** (?tag `ub%`) = {ub.group("chance_per")}%
 
-**Alolan pokémon** (?tag `al%`) = {alolan.group("chance_per")}%
-**Galarian pokémon** (?tag `gal%`) = {galarian.group("chance_per")}%
-**Hisuian pokémon** (?tag `his%`) = {hisuian.group("chance_per")}%
+**Alolan Pokémon** (?tag `al%`) = {alolan.group("chance_per")}%
+**Galarian Pokémon** (?tag `gal%`) = {galarian.group("chance_per")}%
+**Hisuian Pokémon** (?tag `his%`) = {hisuian.group("chance_per")}%
 
 **Regions** - ?tag `reg%`
 
