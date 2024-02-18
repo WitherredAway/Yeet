@@ -37,6 +37,7 @@ class Poketwo(PoketwoChances, PoketwoMoves):
         reload_modules("cogs/Poketwo", skip=__name__)
 
     @commands.command(
+        name="extract-ids",
         aliases=("ids", "extractids"),
         brief="Extract pokémon IDs from Pokétwo embeds",
         help="Extract pokémon IDs from Pokétwo embeds like marketplace, inventory, etc by providing message link, ID or by replying to the message.",
