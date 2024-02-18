@@ -1,8 +1,7 @@
 from __future__ import annotations
-import asyncio
 
 import re
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, List, Optional
 import discord
 from discord.ext import commands
 
@@ -77,29 +76,47 @@ class Poketwo(PoketwoChances, PoketwoMoves):
 
         await ctx.reply(content)
 
-    @commands.Cog.listener("on_message")
-    async def on_message(self, message: discord.Message):
-        if message.author.id != POKETWO_ID:
-            return
+    def solve_hint(self, text: str, *, limit: Optional[int] = 10) -> List[str] | None:
+        match = self.hint_pattern.match(text)
 
-        content = message.content
-        match = self.hint_pattern.match(content)
-        if match is None:
-            return
+        official_hint = match is not None
 
-        hint = match.group("hint").replace(r"\_", ".")
-        hint = f"^{hint}$"
-        pattern = re.compile(hint)
+        hint = match.group("hint") if official_hint else text
+        hint = re.sub(r"\\?_", ".", hint)
+        pattern = re.compile(hint, re.IGNORECASE)
 
-        pkms = []
+        if official_hint:
+            hint = f"^{hint}$"
+            method = pattern.match
+        else:
+            hint = text
+            method = pattern.search
+
+        matches = []
         for pkm in self.pkm_list:
-            if pattern.match(pkm):
-                pkms.append(pkm)
+            if match := method(pkm):
+                matches.append((match.start()/len(pkm), pkm))
+        matches.sort(key=lambda m: m[0])
 
-        if len(pkms) > 1:
-            pkms = enumerate_list(pkms)
+        return [m[1] for m in matches][:limit]
 
-        await message.channel.send("\n".join(pkms), reference=message)
+    @commands.command(
+        name="solve-hint",
+        aliases=("solvehint", "solve"),
+        brief="Solve the hint sent by Pokétwo for a pokémon spawn",
+        help=(
+            "Solve the hint sent by Pokétwo for a pokémon spawn. Pass in the message/hint into this command."
+        )
+    )
+    async def solve_hint_command(self, ctx: CustomContext, *, text: str):
+        pokemon = self.solve_hint(text)
+        if not pokemon:
+            return await ctx.send("Could not solve that hint. Please make sure it's in the same format as posted by Pokétwo.")
+
+        if len(pokemon) > 1:
+            pokemon = enumerate_list(pokemon)
+
+        return await ctx.send("\n".join(pokemon), reference=ctx.message)
 
 
 async def setup(bot):
