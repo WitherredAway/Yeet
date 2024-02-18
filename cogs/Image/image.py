@@ -5,12 +5,13 @@ import re
 import typing
 import io
 from typing import Optional
+import aiohttp
 
 import discord
 from discord.ext import commands
 from PIL.Image import Image
 
-from cogs.utils.utils import url_to_image
+from cogs.utils.utils import format_join, url_to_image
 
 from .utils.utils import center_resize, fit_image, resize
 from helpers.constants import NL
@@ -86,9 +87,17 @@ Specify height, width or aspect ratio parameters using flags.
 
         attachments = ctx.message.attachments[:]
         if flags.url:
+            failed = []
             for url in flags.url:
-                image = await url_to_image(url, self.bot.session)
-                attachments.append(FakeAttachment.from_image(image))
+                try:
+                    image = await url_to_image(url, self.bot.session)
+                except aiohttp.InvalidURL:
+                    failed.append(url)
+                else:
+                    attachments.append(FakeAttachment.from_image(image))
+
+            if failed:
+                await ctx.send(f"Invalid URLs: {format_join(failed)}")
 
         if len(attachments) == 0:
             await ctx.reply(
