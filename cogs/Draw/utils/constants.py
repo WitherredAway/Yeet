@@ -4,7 +4,7 @@ from PIL import ImageFont
 import discord
 
 from helpers.constants import u200b
-from cogs.utils.utils import invert_dict
+from helpers.utils import invert_dict
 
 
 SAVE_FILENAME = "drawing"

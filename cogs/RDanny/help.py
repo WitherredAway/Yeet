@@ -7,7 +7,7 @@ import typing
 from typing import Any, Dict, List, Optional, Union, Tuple
 
 from discord.ext import commands, menus
-from cogs.utils.utils import format_join
+from helpers.utils import format_join
 
 from helpers.constants import NL
 from helpers.context import CustomContext

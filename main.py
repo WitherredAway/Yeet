@@ -41,7 +41,7 @@ from helpers.constants import (
 )
 from helpers.keep_alive import keep_alive
 from cogs.Poketwo.poketwo import DataManager
-from cogs.utils.utils import UrlView, unwind
+from helpers.utils import UrlView, unwind
 
 
 logging.basicConfig(level=logging.INFO)

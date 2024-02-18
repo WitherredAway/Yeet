@@ -15,7 +15,7 @@ import io
 import os
 from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Tuple, Union
 
-from cogs.utils.utils import format_join
+from helpers.utils import format_join
 
 if TYPE_CHECKING:
     from main import Bot

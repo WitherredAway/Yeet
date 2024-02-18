@@ -3,7 +3,7 @@ import logging
 import time
 from typing import List, Optional, Self, Tuple
 
-from cogs.utils.utils import comma_join
+from helpers.utils import comma_join
 
 
 class Elapsed(timedelta):

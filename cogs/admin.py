@@ -4,7 +4,7 @@ from typing import Optional
 
 import discord
 from discord.ext import commands
-from cogs.utils.utils import enumerate_list
+from helpers.utils import enumerate_list
 from jishaku.codeblocks import codeblock_converter
 
 from helpers.context import CustomContext

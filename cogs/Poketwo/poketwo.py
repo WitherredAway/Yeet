@@ -10,7 +10,7 @@ from cogs.Poketwo.utils.constants import POKEMON_CSV
 from cogs.Poketwo.utils.models import DataManager
 from cogs.Poketwo.utils.utils import get_data_from
 
-from cogs.utils.utils import enumerate_list, force_log_errors, reload_modules
+from helpers.utils import enumerate_list, force_log_errors, reload_modules
 from helpers.context import CustomContext
 from helpers.timer import Timer
 

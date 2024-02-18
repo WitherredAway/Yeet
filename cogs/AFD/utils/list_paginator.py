@@ -10,7 +10,7 @@ from discord.ext import menus
 
 
 from .utils import Category, Row, get_initial
-from cogs.utils.utils import value_to_option_dict
+from helpers.utils import value_to_option_dict
 from cogs.RDanny.utils.paginator import (
     FIRST_PAGE_SYMBOL,
     LAST_PAGE_SYMBOL,

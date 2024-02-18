@@ -14,7 +14,7 @@ from discord.ext import commands
 from discord import app_commands
 from discord.utils import utcnow, maybe_coroutine
 
-from cogs.utils.utils import UrlView
+from helpers.utils import UrlView
 from helpers.constants import PY_BLOCK_FMT, NL
 from helpers.context import CustomContext
 

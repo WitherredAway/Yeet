@@ -11,7 +11,7 @@ import discord
 from discord.ext import commands
 from PIL.Image import Image
 
-from cogs.utils.utils import format_join, url_to_image
+from helpers.utils import format_join, url_to_image
 
 from .utils.utils import center_resize, fit_image, resize
 from helpers.constants import NL

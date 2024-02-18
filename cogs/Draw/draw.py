@@ -17,7 +17,7 @@ from PIL import Image
 from helpers.context import CustomContext
 from pilmoji import Pilmoji
 
-from ..utils.utils import (
+from ...helpers.utils import (
     emoji_to_option_dict,
     force_log_errors,
     image_to_file,

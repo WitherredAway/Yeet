@@ -16,7 +16,7 @@ from cogs.AFD.utils.labels import (
 )
 from cogs.Draw.utils.constants import ALPHABET_EMOJIS
 
-from cogs.utils.utils import RoleMenu, enumerate_list, make_progress_bar
+from helpers.utils import RoleMenu, enumerate_list, make_progress_bar
 
 if TYPE_CHECKING:
     from cogs.AFD.afd import Afd
