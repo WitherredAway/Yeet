@@ -1,12 +1,18 @@
 from __future__ import annotations
+import logging
 
 import re
 from typing import TYPE_CHECKING, List, Optional
 import discord
 from discord.ext import commands
+import pandas as pd
+from cogs.Poketwo.utils.constants import POKEMON_CSV
+from cogs.Poketwo.utils.models import DataManager
+from cogs.Poketwo.utils.utils import get_data_from
 
 from cogs.utils.utils import enumerate_list, force_log_errors, reload_modules
 from helpers.context import CustomContext
+from helpers.timer import Timer
 
 from .ext.poketwo_chances import PoketwoChances
 
@@ -14,7 +20,7 @@ if TYPE_CHECKING:
     from main import Bot
 
 
-POKETWO_ID = 716390085896962058
+logger = logging.getLogger(__name__)
 
 
 class Poketwo(PoketwoChances):
@@ -22,18 +28,44 @@ class Poketwo(PoketwoChances):
 
     def __init__(self, bot: Bot):
         self.bot = bot
-        self.pk = self.bot.pk
 
-        self.pkm_list = list(self.pk["name.en"])
+    async def initialize_data(self):
+        self.pokemon_gist = ...
+        csv_reader = await get_data_from(POKEMON_CSV, self.bot.session)
+        self.data = DataManager(csv_reader)
 
     hint_pattern = re.compile(r"The pokémon is (?P<hint>.+)\.")
     ids_pattern = re.compile(r"^`?\s*(\d+)`?\b", re.MULTILINE)
 
     display_emoji = "🫒"
 
+    @property
+    def pk(self) -> pd.DataFrame:
+        return self.data.df_catchable
+
+    @property
+    def pkm_list(self) -> List[str]:
+        return list(self.pk["name.en"])
+
+    async def cog_load(self):
+        with Timer(
+            logger=logger,
+            end_message="Pokétwo data loaded in {end_time}"
+        ):
+            await self.initialize_data()
+
     @force_log_errors
     async def cog_unload(self):
         reload_modules("cogs/Poketwo", skip=__name__)
+
+    @commands.is_owner()
+    @commands.command(
+        name="update-data",
+        aliases=("updatedata",),
+        brief="Update pokemon.csv containing Pokétwo data using provided csv data url.",
+    )
+    async def update_data(self, ctx: CustomContext, *, csv_data_url: str):
+        ...
 
     @commands.command(
         name="extract-ids",

@@ -91,21 +91,6 @@ class Bot(commands.Bot):
 
         self.lock = asyncio.Lock()
 
-        self.pokemon_csv = (
-            # "https://raw.githubusercontent.com/poketwo/data/master/csv/pokemon.csv"
-            os.getenv("POKEMON_CSV")
-        )
-
-    @cached_property
-    def original_pk(self):
-        original_pk = pd.read_csv(self.pokemon_csv)
-        return original_pk
-
-    @cached_property
-    def pk(self):
-        pk = self.original_pk[self.original_pk["catchable"] > 0]
-        return pk
-
     @cached_property
     def invite_url(self) -> str:
         perms = discord.Permissions.none()
@@ -135,6 +120,18 @@ class Bot(commands.Bot):
             self._connection._users[user.id] = user
 
         return user, False
+
+    @property
+    def p2data(self) -> DataManager:
+        return self.get_cog("Poketwo").data
+
+    @property
+    def original_pk(self):
+        return self.p2data.df
+
+    @property
+    def pk(self):
+        return self.p2data.df_catchable
 
     async def setup_hook(self):
         self.EMOJI_SERVER_IDS = [

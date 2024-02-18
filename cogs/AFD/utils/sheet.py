@@ -43,9 +43,9 @@ from .labels import (
     CLAIM_MAX_LABEL,
     UNAPP_MAX_LABEL,
 )
-from .urls import IMAGE_URL
 from .utils import Row
-from cogs.Poketwo.utils import get_pokemon
+from cogs.Poketwo.utils.utils import get_pokemon
+from cogs.Poketwo.utils.constants import IMAGE_URL
 
 
 log = logging.getLogger("cogs.AFD.afd")

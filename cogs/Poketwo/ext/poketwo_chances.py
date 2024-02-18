@@ -10,7 +10,7 @@ import discord
 from discord.ext import commands
 import numpy as np
 import pandas as pd
-from cogs.Poketwo.utils import get_pokemon
+from cogs.Poketwo.utils.utils import get_pokemon
 import gists
 
 if typing.TYPE_CHECKING:

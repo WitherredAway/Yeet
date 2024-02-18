@@ -184,17 +184,6 @@ def make_progress_bar(
     return f"`{progress_bar}`" if compact else progress_bar
 
 
-def normalize(text: str) -> str:
-    """Taken from poketwo!"""
-    try:
-        text = text.casefold()
-    except AttributeError:
-        return ""
-    norm = unicodedata.normalize("NFD", text)
-    result = "".join(ch for ch in norm if unicodedata.category(ch) != "Mn")
-    return unicodedata.normalize("NFKC", result)
-
-
 class SimpleModal(discord.ui.Modal):
     def __init__(self, *, title: str, inputs: List[discord.TextInput]):
         super().__init__(title=title)
