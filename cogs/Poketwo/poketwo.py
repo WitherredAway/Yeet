@@ -9,7 +9,6 @@ from cogs.utils.utils import enumerate_list, force_log_errors, reload_modules
 from helpers.context import CustomContext
 
 from .ext.poketwo_chances import PoketwoChances
-from .ext.poketwo_moves import PoketwoMoves
 
 if TYPE_CHECKING:
     from main import Bot
@@ -18,7 +17,7 @@ if TYPE_CHECKING:
 POKETWO_ID = 716390085896962058
 
 
-class Poketwo(PoketwoChances, PoketwoMoves):
+class Poketwo(PoketwoChances):
     """Utility commands for the Pokétwo bot"""
 
     def __init__(self, bot: Bot):
