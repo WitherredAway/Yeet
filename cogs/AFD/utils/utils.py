@@ -142,7 +142,7 @@ class Category:
         if "p" in spec:
             bullet = ""
             if "-p" in spec:
-                indents_match = re.search("(?<i>-+)p", spec)
+                indents_match = re.search("(?P<i>-+)p", spec)
                 i = len(indents_match.group("i")) - 1
                 indent = "  " * i
                 bullet = indent + "- "
