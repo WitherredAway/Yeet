@@ -112,10 +112,10 @@ REVIEW_EMOJI = "❗"
 
 class Categories(Enum):
     CLAIMED: str = "Engaged"
-    UNCLAIMED: str = "Unclaimed"
+    UNCLAIMED: str = "Not Claimed"
     SUBMITTED: str = "Submitted"
-    INCOMPLETE: str = "In Progress"
-    UNREVIEWED: str = "Submitted (Awaiting review)"
+    INCOMPLETE: str = "Claimed (In Progress)"
+    UNREVIEWED: str = "Awaiting Review"
     CORRECTION: str = "Correction Pending"
     APPROVED: str = "Approved 🎉"
 
