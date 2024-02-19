@@ -140,7 +140,12 @@ class Category:
             result = f"**{result}**"
 
         if "p" in spec:
-            bullet = "- " if "-p" in spec else ""
+            bullet = ""
+            if "-p" in spec:
+                indents_match = re.search("(?<i>-+)p", spec)
+                i = len(indents_match.group("i"))
+                indent = "  " * i
+                bullet = indent + "- "
             result += f"\n{bullet}{self.progress_bar()}"
 
         if "n" in spec:
