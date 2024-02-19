@@ -23,6 +23,7 @@ import pandas as pd
 import random
 from functools import cached_property
 import difflib
+import textwrap
 
 import discord
 import gists
@@ -30,7 +31,6 @@ from discord.ext import commands
 
 from helpers.constants import INDENT, NL
 from helpers.context import CustomContext
-
 from cogs.AFD.utils.labels import PKM_LABEL
 from cogs.AFD.utils.random import (
     RandomFlagDescriptions,
@@ -333,17 +333,15 @@ class Afd(AfdGist):
         stats.correction_pending.total_amount = stats.submitted.amount
         embed.add_field(
             name="Community Stats",
-            value=NL.join(
-                [
-                    f"**{category.name}**\n{category.progress_bar()} {category.progress()}"
-                    for category in (
-                        stats.correction_pending,
-                        stats.unreviewed,
-                        stats.submitted,
-                        stats.approved,
-                        stats.claimed,
-                    )
-                ]
+            value=textwrap.dedent(
+                f"""
+                {stats.submitted:bpN}
+                - {stats.correction_pending:b-pn}
+                - {stats.unreviewed:b-pn}
+                {stats.claimed:bpN}
+                - {stats.incomplete:b-pn}
+                - {stats.approved:b-pn}
+                """
             ),
             inline=False,
         )
