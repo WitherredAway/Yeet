@@ -83,8 +83,7 @@ def is_afd_admin(func):
 
         is_admin = ctx.bot.get_cog("Afd").is_admin(ctx.author)
         if not is_admin:
-            raise commands.CheckFailure("You must be an AFD Admin in order to do this.")
-
+            return await ctx.send("You must be an AFD Admin in order to do this.")
         return await func(*args, **kwargs)
     return wrapper
 
