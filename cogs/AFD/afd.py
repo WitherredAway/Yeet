@@ -1223,7 +1223,7 @@ and lets you directly perform actions such as:
             pokemon = enumerate_list(pokemon) if enumerate else pokemon
             pkm = joiner.join(pokemon)
             entry = f"""- **{str(user)}** ({user.id}) [`{len(pokemon)}`]
->    {pkm}"""
+> {pkm}"""
             entries.append(entry)
         entries.sort()
 
