@@ -133,6 +133,23 @@ class Category:
         self.name = self.category.value
         self.amount = len(self.pokemon)
 
+    def __format__(self, spec: str) -> str:
+        result = self.name
+
+        if "b" in spec:
+            result = f"**{result}**"
+
+        if "p" in spec:
+            bullet = "  - " if "-p" in spec else ""
+            result += f"\n{bullet}{self.progress_bar()}"
+
+        if "n" in spec:
+            result += f" {self.amount}"
+        elif "N" in spec:
+            result += f" {self.progress()}"
+
+        return result
+
     @property
     def pokemon(self) -> List[str]:
         return [row.pokemon for row in self.rows]
