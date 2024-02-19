@@ -1129,9 +1129,9 @@ and lets you directly perform actions such as:
         brief="View pokémon that have not been claimed yet.",
         help="View a list of pokémon that are available to claim.",
     )
-    async def list_unclaimed(self, ctx: CustomContext, *, user: Optional[discord.Member] = None):
+    async def list_unclaimed(self, ctx: CustomContext):
         await self.sheet.update_df()
-        stats = self.get_stats(user)
+        stats = self.get_stats()
         category = stats.unclaimed
         entries = enumerate_list(self.bold_initials_fmt(category.rows))
 
@@ -1184,8 +1184,8 @@ and lets you directly perform actions such as:
         help="View a list of pokémon that have a comment left by an admin, and hence pending correction of some sort.",
     )
     async def list_correction(self, ctx: CustomContext, *, user: Optional[discord.Member] = None):
-        await self.sheet.update_df(user)
-        stats = self.get_stats()
+        await self.sheet.update_df()
+        stats = self.get_stats(user)
         category = stats.correction_pending
         entries = enumerate_list(await self.pokemon_user_fmt(category.rows))
 
