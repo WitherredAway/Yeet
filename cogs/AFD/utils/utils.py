@@ -143,7 +143,7 @@ class Category:
             bullet = ""
             if "-p" in spec:
                 indents_match = re.search("(?<i>-+)p", spec)
-                i = len(indents_match.group("i"))
+                i = len(indents_match.group("i")) - 1
                 indent = "  " * i
                 bullet = indent + "- "
             result += f"\n{bullet}{self.progress_bar()}"
