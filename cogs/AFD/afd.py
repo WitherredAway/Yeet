@@ -338,10 +338,10 @@ class Afd(AfdGist):
                     f"**{category.name}**\n{category.progress_bar()} {category.progress()}"
                     for category in (
                         stats.correction_pending,
-                        stats.submitted,
                         stats.unreviewed,
-                        stats.claimed,
+                        stats.submitted,
                         stats.approved,
+                        stats.claimed,
                     )
                 ]
             ),
