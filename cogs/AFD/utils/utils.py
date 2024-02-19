@@ -140,7 +140,7 @@ class Category:
             result = f"**{result}**"
 
         if "p" in spec:
-            bullet = "  - " if "-p" in spec else ""
+            bullet = "- " if "-p" in spec else ""
             result += f"\n{bullet}{self.progress_bar()}"
 
         if "n" in spec:
