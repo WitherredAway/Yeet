@@ -114,7 +114,7 @@ class Categories(Enum):
     CLAIMED: str = "Engaged"
     UNCLAIMED: str = "Unclaimed"
     SUBMITTED: str = "Submitted"
-    INCOMPLETE: str = "Claimed (Incomplete)"
+    INCOMPLETE: str = "In Progress"
     UNREVIEWED: str = "Submitted (Awaiting review)"
     CORRECTION: str = "Correction Pending"
     APPROVED: str = "Approved 🎉"
@@ -248,5 +248,5 @@ class Stats:
             negative_pb=True,
         )
         self.approved = Category(
-            Categories.APPROVED, approved_rows, total_amount=self.total_amount
+            Categories.APPROVED, approved_rows, total_amount=self.claimed.amount
         )
