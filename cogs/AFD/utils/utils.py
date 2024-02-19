@@ -139,6 +139,11 @@ class Category:
         if "b" in spec:
             result = f"**{result}**"
 
+        if "n" in spec:
+            result += f" — {self.amount}"
+        elif "N" in spec:
+            result += f" — {self.progress()}"
+
         if "p" in spec:
             bullet = ""
             if "-p" in spec:
@@ -147,11 +152,6 @@ class Category:
                 indent = "  " * i
                 bullet = indent + "- "
             result += f"\n{bullet}{self.progress_bar()}"
-
-        if "n" in spec:
-            result += f" {self.amount}"
-        elif "N" in spec:
-            result += f" {self.progress()}"
 
         return result
 
