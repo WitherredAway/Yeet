@@ -23,6 +23,7 @@ import pandas as pd
 import random
 from functools import cached_property
 import difflib
+from functools import wraps
 
 import discord
 import gists
@@ -69,6 +70,23 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
+
+
+def is_afd_admin(func):
+    """Adds a check to any function with ctx to allow only AFD Admins"""
+    
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        ctx = discord.utils.find(lambda a: isinstance(a, commands.Context), args)
+        if ctx is None:
+            raise ValueError("is_afd_admin check is supported only for functions with ctx")
+
+        is_admin = ctx.bot.get_cog("Afd").is_admin(ctx.author)
+        if not is_admin:
+            raise commands.CheckFailure("You must be an AFD Admin in order to do this.")
+
+        return await func(*args, **kwargs)
+    return wrapper
 
 
 class Afd(AfdGist):
@@ -837,6 +855,7 @@ class Afd(AfdGist):
     async def unapprove_cmd(self, ctx: CustomContext, *, pokemon: str):
         await self.unapprove(ctx, pokemon)
 
+    @is_afd_admin
     async def comment(
         self, ctx: CustomContext, pokemon: str, comment: Optional[str] = None
     ):
