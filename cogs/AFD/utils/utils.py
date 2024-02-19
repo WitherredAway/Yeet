@@ -111,7 +111,7 @@ REVIEW_EMOJI = "❗"
 
 
 class Categories(Enum):
-    CLAIMED: str = "Claimed"
+    CLAIMED: str = "Engaged"
     UNCLAIMED: str = "Unclaimed"
     SUBMITTED: str = "Submitted"
     INCOMPLETE: str = "Claimed (Incomplete)"
