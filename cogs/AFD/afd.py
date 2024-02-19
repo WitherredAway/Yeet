@@ -1076,7 +1076,7 @@ and lets you directly perform actions such as:
 
     @afd.group(
         name="list",
-        brief="View a user's stats, categorized",
+        brief="View the different categories of pokémon entries",
         help="View lists of every category of pokémon of a specific user. To see your own, leave the user argument empty.",
         invoke_without_command=True,
     )
