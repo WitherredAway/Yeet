@@ -1083,11 +1083,9 @@ and lets you directly perform actions such as:
     async def _list(
         self,
         ctx: CustomContext,
-        *,
-        user: Optional[Union[discord.User, discord.Member]] = None,
     ):
         await self.sheet.update_df()
-        user = user or ctx.author
+        user = ctx.author
         stats = self.get_stats(user)
 
         embed = self.bot.Embed()
@@ -1100,9 +1098,9 @@ and lets you directly perform actions such as:
         brief="View all stats, categorized",
         help="View lists of every category of pokémon in a compact form compared to their respective subcommands.",
     )
-    async def list_all(self, ctx: CustomContext):
+    async def list_all(self, ctx: CustomContext, *, user: Optional[discord.Member] = None):
         await self.sheet.update_df()
-        stats = self.get_stats()
+        stats = self.get_stats(user)
 
         embed = self.bot.Embed()
         embed.set_author(name=f"All stats")
@@ -1131,9 +1129,9 @@ and lets you directly perform actions such as:
         brief="View pokémon that have not been claimed yet.",
         help="View a list of pokémon that are available to claim.",
     )
-    async def list_unclaimed(self, ctx: CustomContext):
+    async def list_unclaimed(self, ctx: CustomContext, *, user: Optional[discord.Member] = None):
         await self.sheet.update_df()
-        stats = self.get_stats()
+        stats = self.get_stats(user)
         category = stats.unclaimed
         entries = enumerate_list(self.bold_initials_fmt(category.rows))
 
@@ -1185,8 +1183,8 @@ and lets you directly perform actions such as:
         brief="View pokémon that have a comment left by an admin.",
         help="View a list of pokémon that have a comment left by an admin, and hence pending correction of some sort.",
     )
-    async def list_correction(self, ctx: CustomContext):
-        await self.sheet.update_df()
+    async def list_correction(self, ctx: CustomContext, *, user: Optional[discord.Member] = None):
+        await self.sheet.update_df(user)
         stats = self.get_stats()
         category = stats.correction_pending
         entries = enumerate_list(await self.pokemon_user_fmt(category.rows))
@@ -1237,9 +1235,9 @@ and lets you directly perform actions such as:
         brief="View pokémon that have been claimed but not yet submitted.",
         help="View a list of pokémon that have been claimed but no submission yet.",
     )
-    async def list_incomplete(self, ctx: CustomContext):
+    async def list_incomplete(self, ctx: CustomContext, *, user: Optional[discord.Member] = None):
         await self.sheet.update_df()
-        stats = self.get_stats()
+        stats = self.get_stats(user)
         category = stats.incomplete
         entries = await self.per_user_fmt(category.rows)
 
@@ -1257,9 +1255,9 @@ and lets you directly perform actions such as:
         brief="View submitted pokémon awaiting review",
         help="View a list of pokémon that have been submitted but no review (comment/approval) yet.",
     )
-    async def list_unreviewed(self, ctx: CustomContext):
+    async def list_unreviewed(self, ctx: CustomContext, *, user: Optional[discord.Member] = None):
         await self.sheet.update_df()
-        stats = self.get_stats()
+        stats = self.get_stats(user)
         category = stats.unreviewed
         entries = enumerate_list(await self.pokemon_user_fmt(category.rows))
 
@@ -1285,9 +1283,9 @@ and lets you directly perform actions such as:
         brief="View approved pokémon",
         help="View a list of pokémon that have been submitted and approved.",
     )
-    async def list_approved(self, ctx: CustomContext):
+    async def list_approved(self, ctx: CustomContext, *, user: Optional[discord.Member] = None):
         await self.sheet.update_df()
-        stats = self.get_stats()
+        stats = self.get_stats(user)
         category = stats.approved
         entries = await self.per_user_fmt(category.rows)
 
