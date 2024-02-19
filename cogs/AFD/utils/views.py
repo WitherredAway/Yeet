@@ -357,6 +357,7 @@ class PokemonView(discord.ui.View):
 
         row = self.row
         color = self.ctx.bot.Embed.COLOUR
+        is_admin = self.afdcog.is_admin(self.ctx.author)
         if row.claimed:
             embed.set_author(
                 name=f"{self.user} ({self.user.id})",
@@ -379,19 +380,20 @@ class PokemonView(discord.ui.View):
                 if row.approved:
                     status = f"Complete! Approved by {self.approved_by}."
                     color = EmbedColours.APPROVED.value
-                    if self.afdcog.is_admin(self.ctx.author):
+                    if is_admin:
                         self.add_item(
                             self.unapprove_btn
                         )  # Add unapprove button if completed
                 else:
-                    if self.afdcog.is_admin(self.ctx.author):
+                    if is_admin:
                         self.add_item(
                             self.approve_btn
                         )  # Add approve button if not completed
                 self.comment_btn.label = (
                     COMMENT_BTN_LABEL if not row.correction_pending else "Edit comment"
                 )
-                self.add_item(self.comment_btn)  # Add comment button if image exists
+                if is_admin:
+                    self.add_item(self.comment_btn)  # Add comment button if image exists
 
                 if row.correction_pending:
                     status = "Correction pending."
@@ -415,7 +417,7 @@ class PokemonView(discord.ui.View):
                     )
 
             if (not row.image) or (row.correction_pending):
-                if self.afdcog.is_admin(self.ctx.author):
+                if is_admin:
                     self.add_item(
                         self.remind_btn
                     )  # Add remind button if not submitted or correction pending
@@ -429,7 +431,7 @@ class PokemonView(discord.ui.View):
             embed.set_footer(text=status)
             self.add_item(self.claim_btn)  # Add claim button if not claimed
 
-        if self.afdcog.is_admin(self.ctx.author):
+        if is_admin:
             self.add_item(
                 discord.ui.Button(
                     label="Jump To Spreadsheet",
