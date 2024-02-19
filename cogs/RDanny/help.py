@@ -84,6 +84,7 @@ class GroupHelpPageSource(menus.ListPageSource):
 
         if isinstance(self.group, commands.Group):
             group_command = self.group
+            parent = f"{group_command.qualified_name} "
             bs = "\_"
 
             PaginatedHelpCommand.common_command_formatting(
@@ -96,6 +97,7 @@ class GroupHelpPageSource(menus.ListPageSource):
             )
         elif isinstance(self.group, commands.Cog):
             group_cog = self.group
+            parent = ""
             embed.title = f"{group_cog.qualified_name} Commands"
             embed.description = (
                 group_cog.description
@@ -117,7 +119,7 @@ class GroupHelpPageSource(menus.ListPageSource):
         for command in entries:
             # signature = f"{self.prefix}{PaginatedHelpCommand.get_command_signature(self, command)}"
             # value = f">>> **Category**: `{command.cog_name if command.cog else 'None'}`\n\n**Description**: {command.description if command.description else 'No description found.'}\n\n**Help**: {command.help if command.help else 'No help found.'}"
-            signature = f"`{self.prefix}`{self.group.qualified_name} **{command.name}**"
+            signature = f"`{self.prefix}`{parent}**{command.name}**"
             desc = (
                 command.brief
                 if command.brief
