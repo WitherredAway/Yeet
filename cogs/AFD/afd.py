@@ -72,21 +72,38 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def is_afd_admin(func):
-    """Adds a check to any function with ctx to allow only AFD Admins"""
-    
-    @wraps(func)
-    async def wrapper(*args, **kwargs):
-        ctx = discord.utils.find(lambda a: isinstance(a, commands.Context), args)
-        if ctx is None:
-            raise ValueError("is_afd_admin check is supported only for functions with ctx")
+def is_afd_admin(obj: Union[discord.User, commands.Command, Callable]):
+    """Adds a check to any command or function with ctx to allow only AFD Admins"""
 
-        is_admin = ctx.bot.get_cog("Afd").is_admin(ctx.author)
-        if not is_admin:
-            raise commands.CheckFailure("You must be an AFD Admin in order to do this.")
+    def has_admin_role(user: discord.Member) -> bool:
+        if not hasattr(user, "roles"):
+            return False
+        return AFD_ADMIN_ROLE_ID in [r.id for r in user.roles]
 
-        return await func(*args, **kwargs)
-    return wrapper
+    if is_instance(obj, (discord.User, discord.Member)):
+        user = obj
+        return has_admin_role(user)
+
+    if is_instance(obj, commands.Command):
+        async def predicate(ctx):
+            return has_admin_role(ctx.author)
+        return commands.check(predicate)
+
+    elif callable(obj):
+        func = obj
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            ctx = discord.utils.find(lambda a: isinstance(a, commands.Context), args)
+            if ctx is None:
+                raise ValueError("is_afd_admin check is supported only for functions with ctx")
+
+            if not has_admin_role(ctx.author):
+                return await ctx.send("You must be an AFD Admin in order to do this.")
+
+            return await func(*args, **kwargs)
+        return wrapper
+
+    raise ValueError("Invalid object passed")
 
 
 class Afd(AfdGist):
@@ -137,7 +154,7 @@ class Afd(AfdGist):
         )
 
     def is_admin(self, user: discord.Member) -> bool:
-        return AFD_ADMIN_ROLE_ID in [r.id for r in user.roles]
+        return is_afd_admin(user)
 
     @property
     def sheet(self) -> AfdSheet:
@@ -421,7 +438,7 @@ class Afd(AfdGist):
         )
 
     # --- AFD Admin only commands ---
-    @commands.has_role(AFD_ADMIN_ROLE_ID)
+    @is_afd_admin
     @afd.command(
         name="forceclaim",
         aliases=("fc",),
@@ -504,7 +521,7 @@ class Afd(AfdGist):
         embed.description = f"**{pokemon}** has been forcefully claimed for you."
         await self.send_notification(embed, user=user, ctx=ctx, view=view)
 
-    @commands.has_role(AFD_ADMIN_ROLE_ID)
+    @is_afd_admin
     @afd.command(
         name="forceunclaim",
         aliases=("ufc",),
@@ -568,7 +585,7 @@ class Afd(AfdGist):
         embed.description = f"**{pokemon}** has been forcefully unclaimed from you."
         await self.send_notification(embed, user=user, ctx=ctx, view=view)
 
-    @commands.has_role(AFD_ADMIN_ROLE_ID)
+    @is_afd_admin
     @afd.command(
         name="forcesubmit",
         aliases=("fs",),
@@ -666,7 +683,7 @@ class Afd(AfdGist):
         await self.send_notification(embeds, user=user, ctx=ctx, view=view)
         return True
 
-    @commands.has_role(AFD_ADMIN_ROLE_ID)
+    @is_afd_admin
     @afd.command(
         name="forceunsubmit",
         aliases=("ufs",),
@@ -730,6 +747,7 @@ class Afd(AfdGist):
         await self.send_notification(embeds, user=user, ctx=ctx, view=view)
         return True
 
+    @is_afd_admin
     async def approve(self, ctx: CustomContext, pokemon: str):
         pokemon = await self.get_pokemon(ctx, pokemon)
         if not pokemon:
@@ -788,7 +806,7 @@ class Afd(AfdGist):
         await self.send_notification(embed, user=user, ctx=ctx, view=view)
         return True
 
-    @commands.has_role(AFD_ADMIN_ROLE_ID)
+    @is_afd_admin
     @afd.command(
         name="approve",
         brief="Approve a drawing",
@@ -846,7 +864,7 @@ class Afd(AfdGist):
         await self.send_notification(embed, user=user, ctx=ctx, view=view)
         return True
 
-    @commands.has_role(AFD_ADMIN_ROLE_ID)
+    @is_afd_admin
     @afd.command(
         name="unapprove",
         brief="Unapprove an approved drawing",
@@ -943,6 +961,7 @@ class Afd(AfdGist):
         await self.send_notification(embed, user=user, ctx=ctx, view=view)
         return True
 
+    @is_afd_admin
     async def uncomment(self, ctx: CustomContext, pokemon: str):
         pokemon = await self.get_pokemon(ctx, pokemon)
         if not pokemon:
