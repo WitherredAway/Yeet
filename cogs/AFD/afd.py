@@ -23,7 +23,6 @@ import pandas as pd
 import random
 from functools import cached_property
 import difflib
-import textwrap
 
 import discord
 import gists
@@ -333,16 +332,12 @@ class Afd(AfdGist):
         stats.correction_pending.total_amount = stats.submitted.amount
         embed.add_field(
             name="Community Stats",
-            value=textwrap.dedent(
-                f"""
-                {stats.submitted:bpN}
-                - {stats.correction_pending:b-pn}
-                - {stats.unreviewed:b-pn}
-                {stats.claimed:bpN}
-                - {stats.incomplete:b-pn}
-                - {stats.approved:b-pn}
-                """
-            ),
+            value=f"""{stats.submitted:bpN}
+- {stats.correction_pending:b-pn}
+- {stats.unreviewed:b-pn}
+{stats.claimed:bpN}
+- {stats.incomplete:b-pn}
+- {stats.approved:b-pn}""",
             inline=False,
         )
         return embed
