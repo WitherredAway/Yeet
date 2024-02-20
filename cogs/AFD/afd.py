@@ -350,11 +350,11 @@ class Afd(AfdGist):
         embed.add_field(
             name="Community Stats",
             value=f"""{stats.claimed:bpN}
-- {stats.submitted:b-pn}
-  - {stats.correction_pending:b--pn}
-  - {stats.unreviewed:b--pn}
-- {stats.incomplete:b-pn}
-- {stats.approved:b-pn}""",
+>>> {stats.submitted:b-pn}
+- {stats.correction_pending:b--pn}
+- {stats.unreviewed:b--pn}
+{stats.incomplete:b-pn}
+{stats.approved:b-pn}""",
             inline=False,
         )
         return embed
