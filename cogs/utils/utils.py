@@ -161,6 +161,7 @@ def make_progress_bar(
     *,
     negative: Optional[bool] = False,
     length: Optional[int] = 10,
+    compact: Optional[bool] = False,
 ) -> str:
     bars = PB_BARS if negative is False else NEGATIVE_PB_BARS
 
@@ -180,7 +181,8 @@ def make_progress_bar(
             break
 
     full_bar[:to_val] = cell
-    return "".join(full_bar)
+    progress_bar = "".join(full_bar)
+    return f"`{progress_bar}`" if compact else progress_bar
 
 
 def normalize(text: str) -> str:
