@@ -145,13 +145,16 @@ class Category:
             result += f" — {self.progress()}"
 
         if "p" in spec:
-            bullet = ""
-            if "-p" in spec:
-                indents_match = re.search("(?P<i>-+)p", spec)
-                i = len(indents_match.group("i")) - 1
-                indent = "  " * i
-                bullet = indent + "- "
-            result += f"\n{bullet}{self.progress_bar()}"
+            options = re.search("(?P<indents>-*)p(?P<compact>`?)", spec)
+            if options.group("compact"):
+                result += f" {self.progress_bar(compact=True)}"
+            else:
+                bullet = ""
+                if options.group("indents"):
+                    i = len(options.group("indents")) - 1
+                    indent = "  " * i
+                    bullet = indent + "- "
+                result += f"\n{bullet}{self.progress_bar()}"
 
         return result
 
@@ -166,12 +169,13 @@ class Category:
     def progress(self, total_amount: Optional[int] = None) -> str:
         return f"{self.amount}/{total_amount if total_amount is not None else self.total_amount}"
 
-    def progress_bar(self, total_amount: Optional[int] = None) -> str:
+    def progress_bar(self, total_amount: Optional[int] = None, *, compact: Optional[bool] = False) -> str:
         return make_progress_bar(
             self.amount,
             total_amount if total_amount is not None else self.total_amount,
             negative=self.negative_pb,
             length=PROGRESS_BAR_LENGTH,
+            compact=compact,
         )
 
 
