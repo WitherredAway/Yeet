@@ -351,8 +351,8 @@ class Afd(AfdGist):
             name="Community Stats",
             value=f"""{stats.claimed:bpN}
 >>> {stats.submitted:bpn}
-- {stats.correction_pending:b--pn}
-- {stats.unreviewed:b--pn}
+- {stats.correction_pending:b-pn}
+- {stats.unreviewed:b-pn}
 {stats.incomplete:bpn}
 {stats.approved:bpn}""",
             inline=False,
