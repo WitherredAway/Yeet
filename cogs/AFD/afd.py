@@ -1035,7 +1035,7 @@ If `user` arg is passed, it will show stats of that user. Otherwise it will show
         )
 
         view = PokemonView(ctx, row, afdcog=self, user=user, approved_by=approved_by)
-        await view.set_image_info()
+        # await view.set_image_info()
         view.message = await ctx.send(embed=view.embed, view=view)
 
     @afd.command(
