@@ -754,28 +754,28 @@ class Afd(AfdGist):
                     colour=EmbedColours.APPROVED,
                 )
             )
-        conf, cmsg = await ctx.confirm(
-            embed=self.confirmation_embed(
-                f"""{f'There is a correction pending with comment "{row.comment}" by **{approved_by} ({approved_by.id})**. ' if row.correction_pending else ''}\nAre you sure you want to approve **{pokemon}**?""",
-                row=row,
-            ),
-            confirm_label="Approve",
-        )
-        if conf is False:
-            return
+        # conf, cmsg = await ctx.confirm(
+        #     embed=self.confirmation_embed(
+        #         f"""{f'There is a correction pending with comment "{row.comment}" by **{approved_by} ({approved_by.id})**. ' if row.correction_pending else ''}\nAre you sure you want to approve **{pokemon}**?""",
+        #         row=row,
+        #     ),
+        #     confirm_label="Approve",
+        # )
+        # if conf is False:
+        #     return
 
         user = await self.fetch_user(row.user_id)
         row = self.sheet.approve(pokemon, by=ctx.author.id)
         await self.sheet.update_row(row.dex)
         await self.update_credits()
-        await cmsg.edit(
-            embed=self.confirmation_embed(
-                f"**{pokemon}** has been approved! 🎉",
-                row=row,
-                colour=EmbedColours.APPROVED,
-                footer=f"You can undo this using the `unapprove` command.",
-            )
-        )
+        # await cmsg.edit(
+        #     embed=self.confirmation_embed(
+        #         f"**{pokemon}** has been approved! 🎉",
+        #         row=row,
+        #         colour=EmbedColours.APPROVED,
+        #         footer=f"You can undo this using the `unapprove` command.",
+        #     )
+        # )
         embed = self.confirmation_embed(
             f"**{pokemon}** has been approved! 🎉",
             row=row,
