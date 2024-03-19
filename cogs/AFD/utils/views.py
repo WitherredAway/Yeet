@@ -328,7 +328,10 @@ class PokemonView(discord.ui.View):
 
     async def set_image_info(self):
         if self.row.image:
-            image = await url_to_image(self.row.image, self.ctx.bot.session)
+            try:
+                image = await url_to_image(self.row.image, self.ctx.bot.session)
+            except ValueError:
+                return
             t = sum(1 for r, g, b, a in list(image.getdata()) if a == 0)
             total = image.height * image.width
             transparent = round((t / total) * 100, 2)
