@@ -68,10 +68,10 @@ class Row:
     correction_pending: Optional[bool] = None
 
     def __post_init__(self):
+        self.dex = self.row.index.values[0]
         if isinstance(self.row, pd.DataFrame):
-            self.row = self.row.loc[self.row.index.values[0], :]
+            self.row = self.row.loc[self.dex, :]
 
-        self.dex = int(self.row.Dex)
         self.pokemon = self.row[PKM_LABEL]
 
         self.user_id = self.row[USER_ID_LABEL]
