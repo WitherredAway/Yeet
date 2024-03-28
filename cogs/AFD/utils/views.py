@@ -381,7 +381,7 @@ class PokemonView(discord.ui.View):
             if row.image:
                 embed.set_image(url=row.image)
                 if row.approved:
-                    status = f"Complete! Approved by {row.approved_by}."
+                    status = f"Complete! Approved by {self.approved_by}."
                     color = EmbedColours.APPROVED.value
                     if is_admin:
                         self.add_item(
@@ -451,6 +451,11 @@ class PokemonView(discord.ui.View):
         self.user = (
             (await self.afdcog.fetch_user(self.row.user_id))
             if self.row.claimed
+            else None
+        )
+        self.approved_by = (
+            (await self.afdcog.fetch_user(self.row.approved_by))
+            if self.row.approved
             else None
         )
         await self.set_image_info()
