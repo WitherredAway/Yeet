@@ -27,7 +27,7 @@ from functools import wraps
 
 import discord
 import gists
-from discord.ext import commands
+from discord.ext import commands, tasks
 
 from helpers.constants import INDENT, NL
 from helpers.context import CustomContext
@@ -74,7 +74,7 @@ logger = logging.getLogger(__name__)
 
 def is_afd_admin(func):
     """Adds a check to any function with ctx to allow only AFD Admins"""
-    
+
     @wraps(func)
     async def wrapper(*args, **kwargs):
         ctx = discord.utils.find(lambda a: isinstance(a, commands.Context), args)
@@ -111,6 +111,7 @@ class Afd(AfdGist):
             await self.bot.report_error(e)
 
         self.bot.add_view(AFDRoleMenu())
+        self.update_credits_loop.start()
 
     async def reload_sheet(self):
         self.bot.sheet = AfdSheet(SHEET_URL, pokemon_df=self.pk) if SHEET_URL else None
@@ -120,6 +121,7 @@ class Afd(AfdGist):
 
     @force_log_errors
     async def cog_unload(self):
+        self.update_credits_loop.cancel()
         reload_modules("cogs/AFD", skip=__name__)
 
     def cog_check(self, ctx: CustomContext):
@@ -729,6 +731,10 @@ class Afd(AfdGist):
         await self.send_notification(embeds, user=user, ctx=ctx, view=view)
         return True
 
+    @tasks.loop(minutes=5)
+    async def update_credits_loop(self):
+        await self.update_credits()
+
     async def approve(self, ctx: CustomContext, pokemon: str):
         pokemon = await self.get_pokemon(ctx, pokemon)
         if not pokemon:
@@ -767,7 +773,6 @@ class Afd(AfdGist):
         user = await self.fetch_user(row.user_id)
         row = self.sheet.approve(pokemon, by=ctx.author.id)
         await self.sheet.update_row(row.dex)
-        await self.update_credits()
         # await cmsg.edit(
         #     embed=self.confirmation_embed(
         #         f"**{pokemon}** has been approved! 🎉",
@@ -826,7 +831,6 @@ class Afd(AfdGist):
         user = await self.fetch_user(row.user_id)
         row = self.sheet.unapprove(pokemon)
         await self.sheet.update_row(row.dex)
-        await self.update_credits()
         await cmsg.edit(
             embed=self.confirmation_embed(
                 f"**{pokemon}** has been unapproved.",

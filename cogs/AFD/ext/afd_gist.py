@@ -208,6 +208,7 @@ class AfdGist(commands.Cog):
         )
 
     async def update_credits(self):
+        await self.sheet.update_df()
         og_start = time.time()
         contents_file = gists.File(
             name=CONTENTS_FILENAME,
