@@ -188,7 +188,7 @@ class AfdGist(commands.Cog):
             if row.approved_by:
                 user_id = row.user_id
                 if row.image:
-                    link = f"![art]({row.image})"
+                    link = f"![art](https://raw.githubusercontent.com/WitherredAway/afd-images/master/{datetime.datetime.now().year}/{row.row['Dex']}.png)"
 
                 user = str(await self.fetch_user(row.user_id))
             else:
