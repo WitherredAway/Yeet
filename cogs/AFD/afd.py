@@ -732,7 +732,7 @@ class Afd(AfdGist):
         await self.send_notification(embeds, user=user, ctx=ctx, view=view)
         return True
 
-    @tasks.loop(minutes=5)
+    @tasks.loop(minutes=10)
     async def update_credits_loop(self):
         await self.update_credits()
 
