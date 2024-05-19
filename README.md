@@ -49,8 +49,8 @@ All these commands directly use Pokétwo's game data to provide you with 100% ac
 ### Other features
 **Yeet.** also improves upon features from other bots, such as R. Danny, such as
 - Intuitive pagination of appropriate commands (improved upon to match **Yeet.**'s needs)
-- Discord.py documentation command to view documentation of the library, improved upon by pagination using buttons
-- A robust help command inherited from R. Danny's help command to provide a highly customized help command to suit the your needs
+- Easy Discord.py, PIL, pymongo, etc documentation command to view documentation of entities from the library, improved upon by including source code of entities and pagination using buttons
+- A robust help command inherited from R. Danny's help command to provide a highly customized help command
 - A intuitive info command to view user info, improved upon with role support
 - A permissions command to view the permissions of a member of a server
 - Error handling in various cases, taken and improved from Pokétwo.
