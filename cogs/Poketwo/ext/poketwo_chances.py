@@ -454,7 +454,7 @@ class PoketwoChances(commands.Cog):
         cmd = chance.get_command("event")
         event = pattern.match(await ctx.invoke(cmd))
         event_msg = (
-            f'**Current event pokemon chances** (?tag `ev%`) = {event.group("chance_per")}%'
+            f'\n**Current event pokemon chances** (?tag `ev%`) = {event.group("chance_per")}%\n'
             if event is not None
             else ""
         )
@@ -469,10 +469,8 @@ class PoketwoChances(commands.Cog):
 
         chance_msg = f"""__**Spawn chances:**__
 > __Recent updates (Last update: {discord.utils.format_dt(discord.utils.utcnow(), "f")})__
-> - Updated chances
-
+> - Updated chances for <>
 {event_msg}
-
 **All Pokémon** - <{ALL_GIST}>
 
 **Starter Pokémon** = {starters.group("chance_per")}% ({starters.group("chance")})
