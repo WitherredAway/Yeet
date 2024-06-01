@@ -40,17 +40,12 @@ class Poketwo(PoketwoChances):
         else:
             content = update_stream.read()
             stream = StringIO(content)
-            if old_data := getattr(self, "data"):
-                old_pokemon = list(old_data.pokemon.values())
-            else:
-                old_pokemon = None
 
         csv_data = get_data_from(stream)
         self.data = DataManager(csv_data)
 
         if update_stream is not None:
-            new_pokemon = list(self.data.pokemon.values())
-            has_changed = old_pokemon != new_pokemon
+            has_changed = self.pokemon_gist.files[0].content != content
             if has_changed:
                 self.pokemon_gist.files[0].content = content
                 await self.pokemon_gist.edit()
