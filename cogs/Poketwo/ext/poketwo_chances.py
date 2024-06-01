@@ -52,7 +52,7 @@ DELAY = 1
 pattern = re.compile(
     r"""__\*\*(?P<title>.+) spawn-chances\*\*__ \(Includes all catchable forms\)
 > All Pokémon: <(?P<gist>.+)>
-\*\*Total pokemon\*\*: (?P<total>\d+)
+\*\*Total Pokémon\*\*: (?P<total>\d+)
 \*\*Total chance\*\*: (?P<chance_per>[\d.]+)% or (?P<chance>[\d\/]+)"""
 )
 
