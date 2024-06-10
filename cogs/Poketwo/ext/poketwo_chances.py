@@ -115,7 +115,7 @@ class PoketwoChances(commands.Cog):
             df.at[idx, "Chance"] = "1/" + str(round(chance))
             df.at[idx, "Chance percentage"] = str(round(1 / chance * 100, 4)) + "%"
 
-        df.sort_values("abundance", ascending=False, inplace=True)
+        df.sort_values(["abundance", "name.en"], ascending=[False, True], inplace=True)
         if keep_cols is None:
             keep_cols = []
         drop_cols = ["abundance", "catchable"]
