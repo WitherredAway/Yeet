@@ -4,17 +4,7 @@ from helpers.timer import Timer
 
 main_timer = Timer("main").start()
 
-import json
 import os
-
-# Set environment variables. Using this instead of dotenv because my data is a specific format
-if __name__ == "__main__":
-    with open(".env") as f:
-        env = json.load(f)
-        for key, value in env.items():
-            os.environ[key] = (
-                str(value) if not isinstance(value, dict) else json.dumps(value)
-            )
 
 import sys
 import traceback
