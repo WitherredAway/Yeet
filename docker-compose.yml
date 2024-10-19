@@ -7,6 +7,14 @@ services:
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
     env_file:
       - .env
+    deploy:
+      resources:
+        limits:
+          memory: "800M"
+          cpus: "1"
+        reservations:
+          memory: "400M"
+          cpus: "0.5"
   db:
     image: postgres:latest
     environment:
