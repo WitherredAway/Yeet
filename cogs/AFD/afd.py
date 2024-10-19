@@ -378,7 +378,7 @@ class Afd(AfdGist):
     # --- Owner only commands ---
     @commands.is_owner()
     @afd.command(
-        name="new_spreadsheet",
+        name="new-spreadsheet",
         brief="Used to create a brand new spreadsheet.",
         description="Sets up a new spreadsheet to use. Intended to be used only once.",
     )
@@ -1322,7 +1322,7 @@ and lets you directly perform actions such as:
         if datetime.datetime.now() > self.sheet.DEADLINE_DT:
             await ctx.send("The deadline is over, you can't claim any more pokémon. Thank you for participating and for all your hard work ❤️")
             return
-        
+
         pokemon = await self.get_pokemon(ctx, pokemon)
         if not pokemon:
             return
