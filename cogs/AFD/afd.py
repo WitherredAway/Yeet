@@ -401,6 +401,25 @@ class Afd(AfdGist):
 
     @commands.is_owner()
     @afd.command(
+        name="change-spreadsheet",
+        brief="Change to a different spreadsheet.",
+    )
+    async def change(self, ctx: CustomContext, *, url: str):
+        old_url = self.sheet.url
+        async with ctx.typing():
+            self.sheet.url = url
+            await self.sheet.setup()
+
+            embed = self.bot.Embed(
+                title="Spreadsheet changed",
+                description=f"[Old]({old_url}) -> [New]({self.sheet.url})",
+            ).set_footer(text="You need to change the environment variable for it to be permanent")
+            await ctx.reply(
+                embed=embed, view=UrlView({"Old Spreadsheet": old_url, "New Spreadsheet": self.sheet.url})
+            )
+
+    @commands.is_owner()
+    @afd.command(
         name="forceupdate",
         brief="Forcefully update AFD sheet.",
         description="Used to forcefully update the AFD sheet and AFD credits gist",
