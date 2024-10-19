@@ -11,11 +11,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: "800M"
+          memory: "500M"
           cpus: "1"
-        reservations:
-          memory: "400M"
-          cpus: "0.5"
   db:
     image: postgres:latest
     environment:
