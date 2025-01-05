@@ -112,7 +112,7 @@ class Afd(AfdGist):
             await self.bot.report_error(e)
 
         self.bot.add_view(AFDRoleMenu())
-        self.update_credits_loop.start()
+        # self.update_credits_loop.start()
 
     async def reload_sheet(self):
         self.bot.sheet = AfdSheet(SHEET_URL, pokemon_df=self.pk) if SHEET_URL else None
