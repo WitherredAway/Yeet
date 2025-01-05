@@ -13,7 +13,7 @@ import discord
 import re
 import io
 import os
-from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Tuple, Union
 
 from helpers.utils import format_join
 
@@ -471,6 +471,7 @@ class DocsPageSource(menus.ListPageSource):
         super().__init__(objects, per_page=per_page)
         self.ctx = ctx
         self.bot = self.ctx.bot
+        self.doc = doc
 
         self.embed = self.bot.Embed(
             title=f"{doc.name}"
@@ -615,6 +616,60 @@ class CodeSource(menus.PageSource):
         return self.embed
 
 
+class SourceSelect(discord.ui.Select):
+    def __init__(self):
+        super().__init__(placeholder="View source code of an entity", options=[discord.SelectOption(label="-", value="-")])
+
+    async def callback(self, interaction):
+        await interaction.response.defer()
+        cog: Documentation = self.view.ctx.bot.get_cog("Documentation")
+        await self.view.ctx.invoke(
+            cog.docs_view,
+            doc_and_objects=await DocAndObjectsConverter().convert(
+                self.view.ctx,
+                f"{self.view.source.doc.name} {self.values[0]}"
+            )
+        )
+
+
+class DocPages(BotPages):
+    def __init__(self, source, *, ctx):
+        self.source_select = SourceSelect()
+        super().__init__(source, ctx=ctx)
+
+    def _update_labels(self, page_number):
+        if not self.source.is_paginating():
+            self.remove_item(self.source_select)
+            return
+        else:
+            if self.source_select not in self.children:
+                self.add_item(self.source_select)
+
+        super()._update_labels(page_number)
+        self.remove_item(self.numbered_page)
+
+    async def _get_kwargs_from_page(self, page: List[DocObject]) -> Dict[str, Any]:
+        self.source_select.options = []
+        for obj in page:
+            src = await self.ctx.bot.loop.run_in_executor(None, obj.get_source)
+            option = discord.SelectOption(
+                label=obj.label,
+                value=obj.label,
+                description=src.object.__name__ if src.parent else ""
+            )
+            self.source_select.options.append(option)
+
+        value = await discord.utils.maybe_coroutine(self.source.format_page, self, page)
+        if isinstance(value, dict):
+            return value
+        elif isinstance(value, str):
+            return {"content": value, "embed": None}
+        elif isinstance(value, discord.Embed):
+            return {"embed": value, "content": None}
+        else:
+            return {}
+
+
 class Documentation(commands.Cog):
     """Documentation of Discord.py and source code of features"""
 
@@ -640,8 +695,9 @@ class Documentation(commands.Cog):
         if not objs:
             return
 
-        formatter = DocsPageSource(ctx, doc, objs, per_page=8)
-        menu = BotPages(formatter, ctx=ctx)
+        PER_PAGE = 8
+        formatter = DocsPageSource(ctx, doc, objs, per_page=PER_PAGE)
+        menu = DocPages(formatter, ctx=ctx)
         await menu.start()
 
     @commands.group(
