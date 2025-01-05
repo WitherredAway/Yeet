@@ -6,6 +6,7 @@ import typing
 
 import discord
 from discord.ext import commands, menus
+from discord import app_commands
 import aiohttp
 import aiowiki
 
@@ -164,11 +165,13 @@ class Define(commands.Cog):
     async def cog_unload(self) -> None:
         await self.wiki_client.close()
 
-    @commands.command(
+    @commands.hybrid_command(
         name="define",
         aliases=("definition", "definitions", "df"),
         description=("Show definitions and other info about a term."),
     )
+    @app_commands.allowed_installs(guilds=True, users=True)
+    @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     async def define(self, ctx: CustomContext, *, term: str):
         try:
             term = await Term(term)
@@ -196,12 +199,26 @@ class Define(commands.Cog):
         menu = TermPages(formatter, ctx=ctx, compact=True)
         await menu.start()
 
-    @commands.command(
+    @define.autocomplete("term")
+    async def term_autocomplete(self, interaction: discord.Interaction, current: str):
+        current = current.casefold()
+        terms = (
+            sorted(
+                [w for w in self.ALL_DEFINE_WORDS if current in w.lower()],
+                key=lambda w: w.find(current),
+            )
+            or self.ALL_DEFINE_WORDS
+        )
+        return [app_commands.Choice(name=w, value=w) for w in terms][:25]
+
+    @commands.hybrid_command(
         name="wiki",
         aliases=["wikipedia"],
         brief="Searches wikipedia for info.",
         help="Use this command to look up anything on wikipedia. Sends the first 10 sentences from wikipedia.",
     )
+    @app_commands.allowed_installs(guilds=True, users=True)
+    @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     async def wiki(self, ctx: commands.Context, *, query: str):
         await ctx.typing()
         pages = await self.wiki_client.opensearch(query)

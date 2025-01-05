@@ -6,6 +6,7 @@ import math
 from simpleeval import simple_eval
 from typing import Optional
 from discord.ext import commands, tasks
+from discord import app_commands
 from helpers.utils import isfloat
 
 
@@ -272,7 +273,7 @@ class Math(commands.Cog):
 
     display_emoji = "🔢"
 
-    @commands.command(
+    @commands.hybrid_command(
         name="calculate",
         aliases=["calc", "calculator"],
         brief="Interactive and fancy calculator.",
@@ -295,30 +296,34 @@ R% - Modulus operator, shows remainder of a division
 = - Equals to, brings the result into the text box. Also logs the calculation for ↻
 ```
                     """,
-        description="Intuitive, interactive and seamless calculator made with buttons! A whole ton easier than typing the numbers, but you can do that aswell if you wish.",
+        description="Interactive calculator with buttons! Easier than typing numbers, but you can do that aswell.",
         invoke_without_command=True,
         case_insensitive=True,
     )
-    async def calculator(self, ctx, *, string: str = ""):
-        string = string.replace("\\", "")
-        string = string.replace(" ", "")
-        result = calculate(string)
-        view = Calculator(ctx=ctx, text=string)
+    @app_commands.allowed_installs(guilds=True, users=True)
+    @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
+    async def calculator(self, ctx, *, expression: str = ""):
+        expression = expression.replace("\\", "")
+        expression = expression.replace(" ", "")
+        result = calculate(expression)
+        view = Calculator(ctx=ctx, text=expression)
         response = await ctx.send(result, view=view)
         view.response = response
         await view.wait()
 
-    @commands.command(
+    @commands.hybrid_command(
         name="simplecalculate",
         aliases=["simplecalc", "sc", "simplecalculator"],
         brief="Simple calculator. Use `calculate` for fanciness.",
         help="Supports simple [python arithmetic operators](https://www.w3schools.com/python/python_operators.asp#:~:text=Python%20Arithmetic%20Operators) for calculation.",
-        description="Simple calculate command to perform arithmetic calculations. Use the `calculate` command for a more interactive calculator.",
+        description="Simple calculate command. Use the `calculate` command for an interactive calculator.",
     )
-    async def simplecalculate(self, ctx, *, string=""):
-        string = string.replace("\\", "")
-        string = string.replace(" ", "")
-        result = calculate(string)
+    @app_commands.allowed_installs(guilds=True, users=True)
+    @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
+    async def simplecalculate(self, ctx, *, expression=""):
+        expression = expression.replace("\\", "")
+        expression = expression.replace(" ", "")
+        result = calculate(expression)
         await ctx.send(result)
 
 

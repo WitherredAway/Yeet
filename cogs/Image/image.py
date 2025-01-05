@@ -9,6 +9,7 @@ import aiohttp
 
 import discord
 from discord.ext import commands
+from discord import app_commands
 from PIL.Image import Image
 
 from helpers.utils import format_join, url_to_image
@@ -59,7 +60,7 @@ class ImageCog(commands.Cog):
 
     display_emoji = "🖼️"
 
-    @commands.command(
+    @commands.hybrid_command(
         name="resize",
         brief="Resize image(s) to any size with minimum quality loss.",
         help=f"""**Attach files to resize them to specified height and/or width or aspect ratio.**
@@ -80,15 +81,17 @@ Specify height, width or aspect ratio parameters using flags.
 - `resize --aspect_ratio 16:9` - Resizes height based on original width. If original width is 1600, will change height to 900
 - `resize --h 3000 --ar original` - Resizes to height 3000 and width proportional to height based on original AR of each file
 - `resize --fit yes` - Crops away surrounding transparent areas to fit the content fully. Use --crop to crop instead of resizing after fitting.""",
-        description="Resize image(s) to custom height/width while retaining maximum quality.",
+        description="Resize attached (or from url) image(s) to custom height/width while retaining maximum quality.",
     )
+    @app_commands.allowed_installs(guilds=True, users=True)
+    @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     async def _resize(self, ctx: CustomContext, *, flags: ResizeFlags):
         await ctx.typing()
 
         attachments = ctx.message.attachments[:]
         if flags.url:
             failed = []
-            for url in flags.url:
+            for url in flags.url if isinstance(flags.url, list) else flags.url.split(" "):
                 try:
                     image = await url_to_image(url, self.bot.session)
                 except aiohttp.InvalidURL:

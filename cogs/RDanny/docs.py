@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 import zlib
 import aiohttp
 from discord.ext import commands, menus
+from discord import app_commands
 from helpers.constants import NL
 
 from helpers.context import CustomContext
@@ -700,18 +701,20 @@ class Documentation(commands.Cog):
         menu = DocPages(formatter, ctx=ctx)
         await menu.start()
 
-    @commands.group(
+    @commands.hybrid_group(
         aliases=["rtfd", "rtfm", "rtfs", "doc", "documentation"],
         invoke_without_command=True,
-        brief=f"Get documentation and source code links for {', '.join(map(lambda s: f'`{s}`', DOCS.keys()))} entities",
+        description=f"Get documentation and source code for python, discord.py, pillow, etc entities",
         usage=f"""[lib="{DEFAULT_LIBRARY}"] [entity_query=None]""",
-        description=f"""
+        help=f"""
 Find documentation and source code links for entities of the following modules/libraries:
 {NL.join([f"- {'/'.join([f'`{n}`' for n in d.qualified_names])}" for l, d in DOCS.items()])}
 
 Events, objects, and functions are all supported through
 a cruddy fuzzy algorithm.""",
     )
+    @app_commands.allowed_installs(guilds=True, users=True)
+    @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     async def docs(
         self,
         ctx: CustomContext,
@@ -777,12 +780,12 @@ a cruddy fuzzy algorithm.""",
         await menu.start()
 
     @docs.command(
-        name="view",
-        aliases=("source", "src"),
-        brief=f"View documentation and source code for {', '.join(map(lambda s: f'`{s}`', DOCS.keys()))} entities",
+        name="source",
+        aliases=("src", "view"),
+        description=f"View source code for {', '.join(map(lambda s: f'`{s}`', DOCS.keys()))} entities",
         usage=f"""[lib="{DEFAULT_LIBRARY}"] [entity_query=None]""",
-        description=f"""
-View documentation and source code for entities of the following modules/libraries:
+        help=f"""
+View source code for entities of the following modules/libraries:
 {NL.join([f"- {'/'.join([f'`{n}`' for n in d.qualified_names])}" for l, d in DOCS.items()])}
 
 Events, objects, and functions are all supported through

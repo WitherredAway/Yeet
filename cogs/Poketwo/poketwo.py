@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 from io import StringIO
 import logging
 import re
@@ -9,6 +10,7 @@ from typing import IO, TYPE_CHECKING, List, Optional
 import aiohttp
 import discord
 from discord.ext import commands
+from discord import app_commands
 import pandas as pd
 
 from cogs.Poketwo.utils.constants import POKEMON_GIST_URL
@@ -51,7 +53,7 @@ class Poketwo(PoketwoChances):
                 await self.pokemon_gist.edit()
 
     hint_pattern = re.compile(r"The pokémon is (?P<hint>.+)\.")
-    ids_pattern = re.compile(r"^`?\s*(\d+)`?\b", re.MULTILINE)
+    ids_pattern = re.compile(r"^\**`?\s*(\d+)`?\**\b", re.MULTILINE)
 
     display_emoji = "🫒"
 
@@ -142,34 +144,41 @@ class Poketwo(PoketwoChances):
 
             await ctx.send(textwrap.dedent(message))
 
-    @commands.command(
+    @commands.hybrid_command(
         name="extract-ids",
         aliases=("ids", "extractids"),
         brief="Extract Pokémon IDs from Pokétwo embeds",
         help="Extract Pokémon IDs from Pokétwo embeds like marketplace, inventory, etc by providing message link, ID or by replying to the message.",
     )
+    @app_commands.allowed_installs(guilds=True, users=True)
+    @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     async def extract_ids(
-        self, ctx: CustomContext, msg: Optional[discord.Message] = None
+        self, ctx: CustomContext, msg_link: Optional[str] = None
     ):
-        msg = msg or (
+        with contextlib.suppress(discord.HTTPException):
+            msg_link = await commands.MessageConverter().convert(ctx, msg_link)
+
+        msg_link = msg_link or (
             (ref.resolved or await ctx.channel.fetch_message(ref.message_id))
             if (ref := ctx.message.reference)
             else None
         )
-        if msg is not None:
-            content = msg.embeds[0].description
+        if msg_link is not None:
+            content = msg_link.embeds[0].description
         else:
             return await ctx.send_help(ctx.command)
 
         ids = self.ids_pattern.findall(content)
         await ctx.send(" ".join(ids) or "No IDs found.")
 
-    @commands.command(
+    @commands.hybrid_command(
         name="resolve-id",
         aliases=("resolveid",),
         brief="Get the timestamp associated with a Pokémon ID",
         help="Get the timestamp associated with a Pokémon ID",
     )
+    @app_commands.allowed_installs(guilds=True, users=True)
+    @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     async def resolve_id(self, ctx: CustomContext, pokemon_id: str):
         try:
             if len(pokemon_id) < 8:
@@ -208,7 +217,7 @@ class Poketwo(PoketwoChances):
 
         return [m[1] for m in matches][:limit]
 
-    @commands.command(
+    @commands.hybrid_command(
         name="solve-hint",
         aliases=("solvehint", "solve"),
         brief="Solve the hint sent by Pokétwo for a Pokémon spawn",
@@ -216,6 +225,8 @@ class Poketwo(PoketwoChances):
             "Solve the hint sent by Pokétwo for a Pokémon spawn. Pass in the message/hint into this command."
         ),
     )
+    @app_commands.allowed_installs(guilds=True, users=True)
+    @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     async def solve_hint_command(self, ctx: CustomContext, *, text: str):
         pokemon = self.solve_hint(text)
         if not pokemon:

@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import Optional, List
 
+import discord
 from discord.ext import commands
 from discord.utils import maybe_coroutine
 from discord.ext.commands import MissingRequiredFlag, TooManyFlags
@@ -12,7 +13,7 @@ from .utils import ASPECT_RATIO_ORIGINAL
 
 
 class ResizeFlagDescriptions(Enum):
-    url = "Flag to pass in an image url"
+    url = "Flag to pass in image url(s). Multiple uses allowed, or separate urls with space for multiple in slash command."
     height = "Flag to specify height."
     width = "Flag to specify width."
     aspect_ratio = f"Flag to specify width:height aspect ratio when resizing. \
