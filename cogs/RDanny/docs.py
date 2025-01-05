@@ -121,6 +121,9 @@ class DocObject:
         return all((self.path, self.doc.source, self.doc.module_name))
 
     def build_source(self):
+        if getattr(self, "_source", None):
+            return self._source
+
         doc_object = None
         if self.sourceable:
             parent_module_name = self.doc.module_name
