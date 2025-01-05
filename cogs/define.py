@@ -125,7 +125,8 @@ class Term:
         term = urllib.parse.quote(term)
         async with aiohttp.ClientSession() as session:
             async with session.get(f"{self.API}{term}") as resp:
-                return (await resp.json())[0]
+                j = await resp.json()
+                return j[0]
 
     @property
     def clean_meanings(
@@ -173,7 +174,7 @@ class Define(commands.Cog):
             term = await Term(term)
         except KeyError:
             autocorrect = difflib.get_close_matches(term, self.ALL_DEFINE_WORDS, 5)
-            if not autocorrect:
+            if not autocorrect or term in map(lambda w: w.casefold(), autocorrect):
                 return await ctx.send(
                     "Could not find the searched term or similar matches, sorry."
                 )
@@ -188,6 +189,7 @@ class Define(commands.Cog):
             )
             if not values:
                 return
+
             term = await Term(values[0])
 
         formatter = TermPageSource(term, ctx=ctx, per_page=1)
