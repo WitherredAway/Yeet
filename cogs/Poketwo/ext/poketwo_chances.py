@@ -196,9 +196,9 @@ class PoketwoChances(commands.Cog):
                 gist=gist,
                 keep_cols=keep_cols,
             )
-            extra = f" (Includes all catchable forms)"
+            extra = f"-# (Includes all catchable forms)"
 
-        result = f"### {title} spawn-chances\n-#{extra}\n**Total Chance**: {chances}"
+        result = f"### {title} spawn chances\n{extra}\n**Total Chance**: {chances}"
 
         if list_pokemon:
             result += f"\n**Total Pokémon**: {len(pkm_df)} ([Full list](<{gist.url}>){'' if updated else '❗'})"
@@ -209,6 +209,7 @@ class PoketwoChances(commands.Cog):
         aliases=("chances",),
         help="See the chances of a single Pokémon.",
         invoke_without_command=True,
+        fallback="species",
     )
     @app_commands.allowed_installs(guilds=True, users=True)
     @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
@@ -223,7 +224,7 @@ class PoketwoChances(commands.Cog):
 
         result = await self.with_typing(
             ctx,
-            await self.format_chances_message(
+            self.format_chances_message(
                 ", ".join([pkm_row["name.en"] for _, pkm_row in pkm_df.iterrows()]),
                 pkm_df,
                 list_pokemon=False,

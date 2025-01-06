@@ -708,6 +708,7 @@ Find documentation and source code links for entities of the following modules/l
 
 Events, objects, and functions are all supported through
 a cruddy fuzzy algorithm.""",
+        fallback="get",
     )
     @app_commands.allowed_installs(guilds=True, users=True)
     @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
