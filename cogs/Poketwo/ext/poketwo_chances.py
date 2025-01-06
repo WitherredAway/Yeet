@@ -8,6 +8,7 @@ from functools import cached_property
 
 import discord
 from discord.ext import commands
+from discord import app_commands
 import numpy as np
 import pandas as pd
 from cogs.Poketwo.utils.utils import get_pokemon
@@ -195,11 +196,13 @@ class PoketwoChances(commands.Cog):
         result = f"__**{title} spawn-chances**__{extra}\n{total_chances}"
         return result
 
-    @commands.group(
+    @commands.hybrid_group(
         aliases=("chances",),
         help="See the chances of a single Pokémon.",
         invoke_without_command=True,
     )
+    @app_commands.allowed_installs(guilds=True, users=True)
+    @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     async def chance(self, ctx, *, pokemon: str):
         try:
             pkm_df = self.pk.loc[self.pk["name.en"] == get_pokemon(pokemon, pk=self.pk)]
@@ -209,13 +212,25 @@ class PoketwoChances(commands.Cog):
 
         pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance"]]
 
-        async with ctx.channel.typing():
-            result = await self.format_chances_message(
+        result = await self.with_typing(
+            ctx,
+            await self.format_chances_message(
                 ", ".join([pkm_row["name.en"] for _, pkm_row in pkm_df.iterrows()]),
                 pkm_df,
                 list_pokemon=False,
-            )
+            ),
+        )
         await ctx.send(result)
+        return result
+
+    async def with_typing(self, ctx, coro):
+        if ctx.interaction:
+            await ctx.defer()
+            result = await coro
+        else:
+            async with ctx.channel.typing():
+                result = await coro
+
         return result
 
     @chance.command(name="all", help="See the chances of all Pokémon in a nice table")
@@ -223,8 +238,10 @@ class PoketwoChances(commands.Cog):
         pkm_df = self.pk
         pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance"]]
 
-        async with ctx.channel.typing():
-            result = await self.format_chances_message("All", pkm_df, gist=ALL_GIST)
+        result = await self.with_typing(
+            ctx, self.format_chances_message("All", pkm_df, gist=ALL_GIST)
+        )
+
         await ctx.send(result)
         return result
 
@@ -236,12 +253,16 @@ class PoketwoChances(commands.Cog):
     async def _starters(self, ctx):
         pkm_df = self.pk.loc[self.pk["name.en"].isin(STARTERS)]
         pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance"]]
-        async with ctx.channel.typing():
-            result = await self.format_chances_message(
+
+        result = await self.with_typing(
+            ctx,
+            self.format_chances_message(
                 ", ".join([pkm_row["name.en"] for _, pkm_row in pkm_df.iterrows()]),
                 pkm_df,
                 gist=STARTERS_GIST,
-            )
+            ),
+        )
+
         await ctx.send(result)
         return result
 
@@ -263,10 +284,10 @@ class PoketwoChances(commands.Cog):
         pkm_df = self.pk.loc[self.pk[rarity.lower()] == 1]
         pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance"]]
 
-        async with ctx.channel.typing():
-            result = await self.format_chances_message(
-                rarity, pkm_df, gist=RARITY_GISTS.get(rarity)
-            )
+        result = await self.with_typing(
+            ctx,
+            self.format_chances_message(rarity, pkm_df, gist=RARITY_GISTS.get(rarity)),
+        )
         await ctx.send(result)
         return result
 
@@ -288,10 +309,9 @@ class PoketwoChances(commands.Cog):
         pkm_df = self.pk.loc[self.pk["slug"].str.endswith(form.lower()[:5])]
         pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance"]]
 
-        async with ctx.channel.typing():
-            result = await self.format_chances_message(
-                form, pkm_df, gist=FORM_GISTS.get(form)
-            )
+        result = await self.with_typing(
+            ctx, self.format_chances_message(form, pkm_df, gist=FORM_GISTS.get(form))
+        )
         await ctx.send(result)
         return result
 
@@ -301,7 +321,12 @@ class PoketwoChances(commands.Cog):
         brief="See the chances of the Pokémon from a region.",
         help="See the chances of the Pokémon from a region. Options: Kanto/1, Johto/2, Hoenn/3, Sinnoh/4, Unova/5, Kalos/6, Alola/7, Galar/8, Hisui",
     )
-    async def _region(self, ctx, region: Union[int, str]):
+    async def _region(self, ctx, region: str):
+        try:
+            region = int(region)
+        except ValueError:
+            pass
+
         options = list(REGION_GISTS.keys())
         if isinstance(region, int):
             if region < len(options):
@@ -321,10 +346,12 @@ class PoketwoChances(commands.Cog):
                 f'Invalid region provided. Options: {", ".join(options)}'
             )
 
-        async with ctx.channel.typing():
-            result = await self.format_chances_message(
+        result = await self.with_typing(
+            ctx,
+            self.format_chances_message(
                 f"{region} region", pkm_df, gist=REGION_GISTS.get(region)
-            )
+            ),
+        )
         await ctx.send(result)
         return result
 
@@ -388,12 +415,14 @@ class PoketwoChances(commands.Cog):
             :, ["id", "name.en", "Type 1", "Type 2", "catchable", "abundance"]
         ]
 
-        async with ctx.channel.typing():
-            result = await self.format_chances_message(
+        result = await self.with_typing(
+            ctx,
+            self.format_chances_message(
                 f"{msg} Type(s)",
                 pkm_df,
                 gist=await self.get_types_gist(type_1, type_2),
-            )
+            ),
+        )
         await ctx.send(result)
         return result
 
@@ -408,10 +437,12 @@ class PoketwoChances(commands.Cog):
         pkm_df = pkm_df.loc[:, ["id", "name.en", "catchable", "abundance", "enabled"]]
         pkm_df["enabled"] = pkm_df["enabled"] > 0
 
-        async with ctx.channel.typing():
-            result = await self.format_chances_message(
+        result = await self.with_typing(
+            ctx,
+            self.format_chances_message(
                 "Event", pkm_df, keep_cols=["enabled"], gist=EVENT_GIST
-            )
+            ),
+        )
         await ctx.send(result)
         return result
 
