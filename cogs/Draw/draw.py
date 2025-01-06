@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
+import contextlib
 import copy
 from dataclasses import dataclass
 from functools import cached_property
@@ -13,6 +14,7 @@ import emoji
 import numpy as np
 import discord
 from discord.ext import commands
+from discord import app_commands
 from PIL import Image
 from helpers.context import CustomContext
 from pilmoji import Pilmoji
@@ -1713,7 +1715,7 @@ class Draw(commands.Cog):
         reload_modules("cogs/Draw", skip=__name__)
 
     @commands.bot_has_permissions(external_emojis=True)
-    @commands.group(
+    @commands.hybrid_group(
         name="draw",
         aliases=("paint", "pixelart"),
         case_insensitive=True,
@@ -1721,7 +1723,10 @@ class Draw(commands.Cog):
         help="WIP",
         description="Create pixel art using buttons and dropdown menus",
         invoke_without_command=True,
+        fallback="start",
     )
+    @app_commands.allowed_installs(guilds=True, users=True)
+    @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     async def draw(
         self,
         ctx: CustomContext,
@@ -1775,18 +1780,21 @@ class Draw(commands.Cog):
     @draw.command(
         name="copy",
         brief="Copy a drawing.",
-        help="Copy a drawing from an embed by replying to the message or using message link.",
-        description="Allows you to copy a drawing that was done with the `draw` command. This will also copy the palette! You can copy by replying to such a message or by providing the message link (or ID).",
+        help="Copy a drawing and palette from a `draw` embed by replying to the message or using message link.",
+        description="Copy a drawing and palette from a `draw` embed.",
     )
     async def copy(
         self,
         ctx: CustomContext,
-        message_link: Optional[discord.Message] = None,
+        message_link: Optional[str] = None,
     ):
-        message = message_link
+        message = None
+        with contextlib.suppress(discord.HTTPException):
+            message = await commands.MessageConverter().convert(ctx, message_link)
+
         if ref := ctx.message.reference:
             message = ref.resolved
-        elif message_link is None or not isinstance(message_link, discord.Message):
+        elif message is None or not isinstance(message, discord.Message):
             return await ctx.send_help(ctx.command)
 
         items = await self.board_from_message(ctx, message=message)
@@ -1810,13 +1818,16 @@ class Draw(commands.Cog):
         help="Quickly save/export a drawing by replying to a drawing message or using message link.",
     )
     async def save(
-        self, ctx: CustomContext, message_link: Optional[discord.Message] = None
+        self, ctx: CustomContext, message_link: Optional[str] = None
     ):
+        message = None
+        with contextlib.suppress(discord.HTTPException):
+            message = await commands.MessageConverter().convert(ctx, message_link)
+
         await ctx.typing()
-        message = message_link
         if ref := ctx.message.reference:
             message = ref.resolved
-        elif message_link is None or not isinstance(message_link, discord.Message):
+        elif message is None or not isinstance(message, discord.Message):
             return await ctx.send_help(ctx.command)
 
         items = await self.board_from_message(ctx, message=message)
