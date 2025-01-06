@@ -639,12 +639,8 @@ class DocPages(BotPages):
         super().__init__(source, ctx=ctx)
 
     def _update_labels(self, page_number):
-        if not self.source.is_paginating():
-            self.remove_item(self.source_select)
-            return
-        else:
-            if self.source_select not in self.children:
-                self.add_item(self.source_select)
+        if self.source_select not in self.children:
+            self.add_item(self.source_select)
 
         super()._update_labels(page_number)
         self.remove_item(self.numbered_page)
