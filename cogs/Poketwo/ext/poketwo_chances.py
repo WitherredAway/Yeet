@@ -161,7 +161,13 @@ class PoketwoChances(commands.Cog):
 
         if gist == new_gist:
             return
-        await gist.edit(files=files, description=description)
+
+        try:
+            await gist.edit(files=files, description=description)
+        except gists.HTTPException:
+            return False
+        else:
+            return True
 
     async def format_chances_message(
         self,
@@ -177,23 +183,26 @@ class PoketwoChances(commands.Cog):
 
         out_of = round(self.possible_abundance / total_abundance)
         per_cent = round(1 / out_of * 100, 4)
-        total_chances = f"**Total chance**: {per_cent}% or 1/{out_of}"
+        chances = f"`{per_cent}%` or `1/{out_of}`"
 
         if isinstance(gist, str):
             gist = await self.gists_client.get_gist(gist)
 
         extra = "\n"
         if list_pokemon is True:
-            await self.update_chance_gist(
+            updated = await self.update_chance_gist(
                 pkm_df,
-                description=f"Spawn chances of {title} Pokémon ({len(pkm_df)}). {total_chances}",
+                description=f"Spawn chances of {title} Pokémon ({len(pkm_df)}). Total: {chances}",
                 gist=gist,
                 keep_cols=keep_cols,
             )
-            all_pokemon = f"> All Pokémon: <{gist.url}>"
-            extra = f" (Includes all catchable forms)\n{all_pokemon}\n**Total Pokémon**: {len(pkm_df)}"
+            extra = f" (Includes all catchable forms)"
 
-        result = f"__**{title} spawn-chances**__{extra}\n{total_chances}"
+        result = f"### {title} spawn-chances\n-#{extra}\n**Total Chance**: {chances}"
+
+        if list_pokemon:
+            result += f"\n**Total Pokémon**: {len(pkm_df)} ([Full list](<{gist.url}>){'' if updated else '❗'})"
+
         return result
 
     @commands.hybrid_group(
