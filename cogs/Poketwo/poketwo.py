@@ -104,7 +104,7 @@ class Poketwo(PoketwoChances):
     )
     async def update_data(self, ctx: CustomContext, *, csv_data_url: str):
         async with ctx.typing():
-            old_pokemon = set(self.data.pokemon.values())
+            old_pokemon = {s: (s.names, s.catchable, s.abundance) for s in self.data.pokemon.values()}
             try:
                 response = await self.bot.session.get(csv_data_url)
             except aiohttp.InvalidURL:
@@ -118,7 +118,7 @@ class Poketwo(PoketwoChances):
                     f"Invalid data provided. Please make sure that it is a pokemon.csv file from Pokétwo."
                 )
             else:
-                new_pokemon = set(self.data.pokemon.values())
+                new_pokemon = {s: (s.names, s.catchable, s.abundance) for s in self.data.pokemon.values()}
                 has_changed = old_pokemon != new_pokemon
 
             if has_changed is True:
@@ -129,6 +129,7 @@ class Poketwo(PoketwoChances):
                     Successfully updated the data! Total Pokémon `{old_pokemon_count}` -> `{new_pokemon_count}`!"""
                 additions = [s for s in new_pokemon if s not in old_pokemon]
                 removals = [s for s in old_pokemon if s not in new_pokemon]
+                modifications = [s for s, v in new_pokemon.items() if old_pokemon.get(s) != v]
                 if additions:
                     message += f"""
                     ### Additions (`{len(additions)}`)
@@ -138,6 +139,11 @@ class Poketwo(PoketwoChances):
                     message += f"""
                     ### Removals (`{len(removals)}`)
                     {", ".join([f"{s.name} (`{s.id}`)" for s in removals])}
+                    """
+                if modifications:
+                    message += f"""
+                    ### Modifications (`{len(modifications)}`)
+                    {", ".join([f"{s.name} (`{s.id}`)" for s in modifications])}
                     """
             else:
                 message = "No changes found!"
