@@ -169,14 +169,17 @@ class BotPages(discord.ui.View):
         raise error
 
     async def start(self) -> None:
-        if (
-            self.check_embeds
-            and not self.ctx.channel.permissions_for(self.ctx.me).embed_links
-        ):
-            await self.ctx.send(
-                "Bot does not have embed links permission in this channel."
-            )
-            return
+        try:
+            if (
+                self.check_embeds
+                and not self.ctx.channel.permissions_for(self.ctx.me).embed_links
+            ):
+                await self.ctx.send(
+                    "Bot does not have embed links permission in this channel."
+                )
+                return
+        except discord.ClientException:
+            pass
 
         await self.source._prepare_once()
         page = await self.source.get_page(0)
