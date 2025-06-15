@@ -3,6 +3,7 @@ import difflib
 
 import urllib
 import typing
+from typing import Optional
 
 import discord
 from discord.ext import commands, menus
