@@ -168,7 +168,7 @@ class BotPages(discord.ui.View):
             await interaction.followup.send(error)
         raise error
 
-    async def start(self) -> None:
+    async def start(self, *, ephemeral: bool = False) -> None:
         try:
             if (
                 self.check_embeds
@@ -185,7 +185,7 @@ class BotPages(discord.ui.View):
         page = await self.source.get_page(0)
         kwargs = await self._get_kwargs_from_page(page)
         self._update_labels(0)
-        self.message = await self.ctx.send(**kwargs, view=self)
+        self.message = await self.ctx.send(**kwargs, view=self, ephemeral=ephemeral)
 
     @discord.ui.button(label=FIRST_PAGE_SYMBOL, style=discord.ButtonStyle.grey)
     async def go_to_first_page(
