@@ -144,6 +144,11 @@ class Term:
         return clean_list
 
 
+class DefineFlagConverter(commands.FlagConverter, case_insensitive=True):
+    term: str = commands.flag(max_args=1, positional=True)
+    ephemeral: Optional[bool] = False
+
+
 class Define(commands.Cog):
     """Command(s) for all kinds of information of a term; word or phrase."""
 
@@ -172,7 +177,9 @@ class Define(commands.Cog):
     )
     @app_commands.allowed_installs(guilds=True, users=True)
     @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
-    async def define(self, ctx: CustomContext, *, term: str):
+    async def define(self, ctx: CustomContext, *, flags: DefineFlagConverter):
+        term = flags.term
+
         try:
             term = await Term(term)
         except KeyError:
@@ -197,7 +204,7 @@ class Define(commands.Cog):
 
         formatter = TermPageSource(term, ctx=ctx, per_page=1)
         menu = TermPages(formatter, ctx=ctx, compact=True)
-        await menu.start()
+        await menu.start(ephemeral=flags.ephemeral)
 
     @define.autocomplete("term")
     async def term_autocomplete(self, interaction: discord.Interaction, current: str):
