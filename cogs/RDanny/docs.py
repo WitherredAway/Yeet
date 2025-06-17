@@ -121,7 +121,7 @@ class DocObject:
     def sourceable(self) -> bool:
         return all((self.path, self.doc.source, self.doc.module_name))
 
-    def build_source(self):
+    def get_source(self) -> DocObjectSource | None:
         if getattr(self, "_source", None):
             return self._source
 
@@ -190,9 +190,6 @@ class DocObject:
                     )
 
         self._source = doc_object
-
-    def get_source(self) -> DocObjectSource | None:
-        self.build_source()
         return self._source
 
     def clear_source(self):
@@ -652,7 +649,7 @@ class DocPages(BotPages):
             option = discord.SelectOption(
                 label=obj.label,
                 value=obj.label,
-                description=src.object.__name__ if src.parent else ""
+                description=src.object.__name__ if src and src.parent else ""
             )
             self.source_select.options.append(option)
 
