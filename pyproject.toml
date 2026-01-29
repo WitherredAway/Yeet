@@ -62,7 +62,7 @@ gists-py = {git = "https://github.com/WitherredAway/gists.py", rev = "a15548d32f
 aiowiki = {git = "https://github.com/Gelbpunkt/aiowiki", rev = "34f24bdcaedfd5da96cb6125714505945211287c"}
 discord-ext-menus = {git = "https://github.com/Rapptz/discord-ext-menus", rev = "fbb8803779373357e274e1540b368365fd9d8074"}
 pilmoji = {git = "https://github.com/jay3332/pilmoji/", rev = "ec48ff47bbf7a8ae5ceec7f5fef483402c9e7a0e"}
-jishaku = {git = "https://github.com/Gorialis/jishaku.git"}
+jishaku = {git = "https://github.com/scarletcafe/jishaku.git", rev = "5f504400137c1a1f96059b9b5d9dde4aeebbcf47"}
 
 
 [build-system]
