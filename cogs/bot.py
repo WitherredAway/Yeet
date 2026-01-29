@@ -166,6 +166,11 @@ class TimestampArgs(commands.FlagConverter, case_insensitive=True):
         description="Get timestamp from a snowflake (e.g. message ID, channel ID, etc.).",
         max_args=1,
     )
+    ephemeral: Optional[bool] = commands.flag(
+        description="Show the message only to you.",
+        default=False,
+        max_args=1,
+    )
 
 
 class BotCog(commands.Cog):
@@ -359,16 +364,16 @@ class BotCog(commands.Cog):
                 return await ctx.send(e.args[0].capitalize())
 
         timestamp = Timestamp.from_dt(dt)
+        ts_text = format(timestamp, args.style)
+        message = ts_text
 
         if args.message:
             if TIMESTAMP_REPLACE_KEY in args.message:
                 message = args.message.format(t=timestamp)
             else:
-                message = f"{args.message} {timestamp:{args.style}}"
-        else:
-            message = f"{timestamp:{args.style}}"
+                message = f"{args.message} {ts_text}"
 
-        await ctx.send(message)
+        await ctx.send(message, ephemeral=args.ephemeral)
 
     @timestamp.autocomplete("month")
     async def month_autocomplete(self, interaction: discord.Interaction, current: str):
