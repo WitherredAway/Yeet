@@ -146,7 +146,11 @@ class Term:
 
 
 class DefineFlagConverter(commands.FlagConverter, case_insensitive=True):
-    term: str = commands.flag(max_args=1, positional=True)
+    term: str = commands.flag(
+        description="What to find the definition of.",
+        max_args=1,
+        positional=True
+    )
     ephemeral: Optional[bool] = False
 
 
