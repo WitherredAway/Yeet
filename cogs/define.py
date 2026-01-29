@@ -151,7 +151,11 @@ class DefineFlagConverter(commands.FlagConverter, case_insensitive=True):
         max_args=1,
         positional=True
     )
-    ephemeral: Optional[bool] = False
+    ephemeral: Optional[bool] = commands.flag(
+        description="Show the message only to you.",
+        default=False,
+        max_args=1,
+    )
 
 
 class Define(commands.Cog):
