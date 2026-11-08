@@ -109,6 +109,7 @@ class PoketwoChances(commands.Cog):
         gist: gists.Gist,
         keep_cols: Optional[typing.List[str]] = None,
     ) -> gists.Gist:
+        df = df[df["abundance"] > 0].copy()
         df["Chance"] = np.nan
         df["Chance percentage"] = np.nan
         for idx in df.index:
@@ -181,9 +182,12 @@ class PoketwoChances(commands.Cog):
         pkm_df = pokemon_dataframe
         total_abundance = round(pkm_df["abundance"][pkm_df["catchable"] > 0].sum())
 
-        out_of = round(self.possible_abundance / total_abundance)
-        per_cent = round(1 / out_of * 100, 4)
-        chances = f"`{per_cent}%` or `1/{out_of}`"
+        if total_abundance > 0:
+            out_of = round(self.possible_abundance / total_abundance)
+            per_cent = round(1 / out_of * 100, 4)
+            chances = f"`{per_cent}%` or `1/{out_of}`"
+        else:
+            chances = "`0%` (does not spawn)"
 
         if isinstance(gist, str):
             gist = await self.gists_client.get_gist(gist)
