@@ -329,7 +329,9 @@ class DataManager:
 
     @cached_property
     def df_catchable(self) -> pd.DataFrame:
-        return self.df[self.df["catchable"] > 0]
+        df = self.df[self.df["catchable"] > 0].copy()
+        df["abundance"] = df["abundance"].fillna(0)
+        return df
 
     def asset(self, path):
         base_url = getattr(self, "assets_base_url", "https://cdn.poketwo.net")

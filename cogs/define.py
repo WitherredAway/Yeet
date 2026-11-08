@@ -17,8 +17,16 @@ from .RDanny.utils.paginator import BotPages
 from helpers.constants import MESSAGE_CHAR_LIMIT, NL
 from helpers.utils import UrlView
 
+USER_AGENT = "YeetBot/1.0 (https://github.com/WitherredAway/Yeet)"
+
 if typing.TYPE_CHECKING:
     from main import Bot
+
+
+class ServiceUnavailable(Exception):
+    def __init__(self, service: str):
+        self.service = service
+        super().__init__(f"The {service} service is unavailable right now.")
 
 
 class TermSelectMenu(discord.ui.Select):
@@ -125,8 +133,12 @@ class Term:
     async def get_data(self, term: str) -> typing.Dict:
         """Get data from the dictionary api."""
         term = urllib.parse.quote(term)
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(headers={"User-Agent": USER_AGENT}) as session:
             async with session.get(f"{self.API}{term}") as resp:
+                if resp.status == 404:
+                    raise KeyError(term)
+                if resp.status != 200 or resp.content_type != "application/json":
+                    raise ServiceUnavailable("dictionary")
                 j = await resp.json()
                 return j[0]
 
@@ -163,11 +175,13 @@ class Define(commands.Cog):
 
     def __init__(self, bot: Bot):
         self.bot = bot
-        self.wiki_client = aiowiki.Wiki.wikipedia("en")
 
     display_emoji: discord.PartialEmoji = "🔍"
 
     async def cog_load(self) -> None:
+        self.wiki_client = aiowiki.Wiki.wikipedia(
+            "en", session=aiohttp.ClientSession(headers={"User-Agent": USER_AGENT})
+        )
         self.ALL_DEFINE_WORDS = (
             await (
                 await self.bot.session.get(
@@ -191,6 +205,8 @@ class Define(commands.Cog):
 
         try:
             term = await Term(term)
+        except ServiceUnavailable as e:
+            return await ctx.send(f"{e} Please try again later.")
         except KeyError:
             autocorrect = difflib.get_close_matches(term, self.ALL_DEFINE_WORDS, 5)
             if not autocorrect or term in map(lambda w: w.casefold(), autocorrect):
@@ -209,7 +225,13 @@ class Define(commands.Cog):
             if not values:
                 return
 
-            term = await Term(values[0])
+            try:
+                term = await Term(values[0])
+            except (KeyError, ServiceUnavailable):
+                return await msg.edit(
+                    content="Could not fetch that term right now, please try again later.",
+                    view=None,
+                )
 
         formatter = TermPageSource(term, ctx=ctx, per_page=1)
         menu = TermPages(formatter, ctx=ctx, compact=True)
@@ -237,20 +259,26 @@ class Define(commands.Cog):
     @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     async def wiki(self, ctx: commands.Context, *, query: str):
         await ctx.typing()
-        pages = await self.wiki_client.opensearch(query)
         try:
-            page = pages[0]
-        except IndexError:
-            return await ctx.reply("Not found, sorry!")
-        summary = (
-            await page.summary() or "No summary found, please visit the page instead:"
-        )
+            pages = await self.wiki_client.opensearch(query)
+            try:
+                page = pages[0]
+            except IndexError:
+                return await ctx.reply("Not found, sorry!")
+            summary = (
+                await page.summary()
+                or "No summary found, please visit the page instead:"
+            )
+            url = (await page.urls()).view
+            images = await page.media()
+        except aiohttp.ContentTypeError:
+            return await ctx.reply(
+                "Wikipedia is unavailable right now, please try again later."
+            )
+
         text = summary[:MESSAGE_CHAR_LIMIT] + (
             "..." if len(summary) >= MESSAGE_CHAR_LIMIT else ""
         )
-        url = (await page.urls()).view
-        images = await page.media()
-
         embed = self.bot.Embed(
             title=page.title, description=(NL * 2).join(text.split(NL))
         )
